@@ -20,28 +20,40 @@
     var CONFIG = {"hostname":"cursorhu.github.io","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
   </script>
 
-  <meta property="og:type" content="website">
-<meta property="og:title" content="ThinkNotes">
-<meta property="og:url" content="https://cursorhu.github.io/index.html">
+  <meta name="description" content="1. Linux MMC 框架现状Linux MMC driver是支持包括SD卡，eMMC卡等等，属于MultiMediaCard设备和接口的驱动其源码路径位于Kernel source code的drivers&#x2F;mmc路径, 头文件位于include&#x2F;linux&#x2F;mmcmmc源码分为core&#x2F;host两层，是为了解耦：  通用的SD&#x2F;eMMC流">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux MMC框架下的UHS-II功能移植与调试">
+<meta property="og:url" content="https://cursorhu.github.io/2022/03/25/Linux%20MMC%E6%A1%86%E6%9E%B6%E4%B8%8B%E7%9A%84UHS-II%E9%A9%B1%E5%8A%A8%E8%B0%83%E8%AF%95/index.html">
 <meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="1. Linux MMC 框架现状Linux MMC driver是支持包括SD卡，eMMC卡等等，属于MultiMediaCard设备和接口的驱动其源码路径位于Kernel source code的drivers&#x2F;mmc路径, 头文件位于include&#x2F;linux&#x2F;mmcmmc源码分为core&#x2F;host两层，是为了解耦：  通用的SD&#x2F;eMMC流">
 <meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/cursorhu/blog-images-on-picgo@master/images/202203301058425.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/cursorhu/blog-images-on-picgo@master/images/202203301119947.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/cursorhu/blog-images-on-picgo@master/images/202203301120184.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/cursorhu/blog-images-on-picgo@master/images/202203301640662.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/cursorhu/blog-images-on-picgo@master/images/202203301645712.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/cursorhu/blog-images-on-picgo@master/images/202203301645737.png">
+<meta property="article:published_time" content="2022-03-25T03:21:00.000Z">
+<meta property="article:modified_time" content="2022-03-30T09:32:28.301Z">
 <meta property="article:author" content="Cursorhu">
+<meta property="article:tag" content="linux">
 <meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://cdn.jsdelivr.net/gh/cursorhu/blog-images-on-picgo@master/images/202203301058425.png">
 
-<link rel="canonical" href="https://cursorhu.github.io/">
+<link rel="canonical" href="https://cursorhu.github.io/2022/03/25/Linux%20MMC%E6%A1%86%E6%9E%B6%E4%B8%8B%E7%9A%84UHS-II%E9%A9%B1%E5%8A%A8%E8%B0%83%E8%AF%95/">
 
 
 <script id="page-configurations">
   // https://hexo.io/docs/variables.html
   CONFIG.page = {
     sidebar: "",
-    isHome : true,
-    isPost : false,
+    isHome : false,
+    isPost : true,
     lang   : 'zh-CN'
   };
 </script>
 
-  <title>ThinkNotes</title>
+  <title>Linux MMC框架下的UHS-II功能移植与调试 | ThinkNotes</title>
   
 
 
@@ -140,9 +152,10 @@
         <div class="content-wrap">
           
 
-          <div class="content index posts-expand">
+          <div class="content post posts-expand">
             
-      
+
+    
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
@@ -158,10 +171,9 @@
       <meta itemprop="name" content="ThinkNotes">
     </span>
       <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2022/03/25/Linux%20MMC%E6%A1%86%E6%9E%B6%E4%B8%8B%E7%9A%84UHS-II%E9%A9%B1%E5%8A%A8%E8%B0%83%E8%AF%95/" class="post-title-link" itemprop="url">Linux MMC框架下的UHS-II功能移植与调试</a>
-        </h2>
+        <h1 class="post-title" itemprop="name headline">
+          Linux MMC框架下的UHS-II功能移植与调试
+        </h1>
 
         <div class="post-meta">
             <span class="post-meta-item">
@@ -200,7 +212,7 @@
     <div class="post-body" itemprop="articleBody">
 
       
-          <h2 id="1-Linux-MMC-框架现状"><a href="#1-Linux-MMC-框架现状" class="headerlink" title="1. Linux MMC 框架现状"></a>1. Linux MMC 框架现状</h2><p>Linux MMC driver是支持包括SD卡，eMMC卡等等，属于MultiMediaCard设备和接口的驱动<br>其源码路径位于Kernel source code的drivers&#x2F;mmc路径, 头文件位于include&#x2F;linux&#x2F;mmc<br>mmc源码分为core&#x2F;host两层，是为了解耦：</p>
+        <h2 id="1-Linux-MMC-框架现状"><a href="#1-Linux-MMC-框架现状" class="headerlink" title="1. Linux MMC 框架现状"></a>1. Linux MMC 框架现状</h2><p>Linux MMC driver是支持包括SD卡，eMMC卡等等，属于MultiMediaCard设备和接口的驱动<br>其源码路径位于Kernel source code的drivers&#x2F;mmc路径, 头文件位于include&#x2F;linux&#x2F;mmc<br>mmc源码分为core&#x2F;host两层，是为了解耦：</p>
 <ul>
 <li>通用的SD&#x2F;eMMC流程(core)</li>
 <li>具体的硬件操作流程(host)，在此层又可分为通用的SDHCI框架和非SDHCI框架，各eMMC&#x2F;SD host厂商实现最底层driver时，可以遵循SDHCI框架下的API, 间接实现core层定义的方法(driver称为operations), 也可以不遵循SDHCI框架，直接实现core层定义的方法。<br><img src="https://cdn.jsdelivr.net/gh/cursorhu/blog-images-on-picgo@master/images/202203301058425.png"></li>
@@ -303,281 +315,33 @@
 </li>
 </ol>
 
-      
     </div>
 
     
     
     
+
       <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
+          <div class="post-tags">
+              <a href="/tags/linux/" rel="tag"># linux</a>
+          </div>
 
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2022/03/09/python%E6%AD%A3%E5%88%99%E8%A1%A8%E8%BE%BE%E5%BC%8F/">
+        
 
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Cursorhu">
-      <meta itemprop="description" content="">
-    </span>
 
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="ThinkNotes">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2022/03/09/python%E6%AD%A3%E5%88%99%E8%A1%A8%E8%BE%BE%E5%BC%8F/" class="post-title-link" itemprop="url">python正则表达式</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2022-03-09 19:12:00" itemprop="dateCreated datePublished" datetime="2022-03-09T19:12:00+08:00">2022-03-09</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2022-03-10 09:58:44" itemprop="dateModified" datetime="2022-03-10T09:58:44+08:00">2022-03-10</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/python/" itemprop="url" rel="index"><span itemprop="name">python</span></a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h2 id="1-Python正则表达式简介"><a href="#1-Python正则表达式简介" class="headerlink" title="1.Python正则表达式简介"></a>1.Python正则表达式简介</h2><p>参考<a target="_blank" rel="noopener" href="https://www.programiz.com/python-programming/regex"># Python RegEx</a></p>
-<h2 id="2-示例"><a href="#2-示例" class="headerlink" title="2.示例"></a>2.示例</h2><p>芯片ATE测试中，不同ATE平台的测试模式文件格式有不同，需要匹配字符串并按特定转换<br>转换前：</p>
-<blockquote>
-<p>Pattern “pll_dll_100m_test” {<br>waveform_start:<br>W pll_dll_100m_wft;</p>
-<p>&#x2F;&#x2F;Enter PLL&#x2F;DLL Mode<br>V {pll_dll_100m_group &#x3D; 0 0 1 0 0 1 1 0 X X ;}<br>V {pll_dll_100m_group &#x3D; 0 1 1 0 0 1 1 0 X X ;}<br>V {pll_dll_100m_group &#x3D; 0 0 1 0 0 1 1 0 X X ;}</p>
-</blockquote>
-<p>转后后：</p>
-<blockquote>
-<p>&#x2F;&#x2F;Enter PLL&#x2F;DLL Mode<br>V {pll_dll_100m_group &#x3D; 0 0 1 0 0 1 1 0 X X ;} W pll_dll_100m_wft;<br>V {pll_dll_100m_group &#x3D; 0 1 1 0 0 1 1 0 X X ;}</p>
-</blockquote>
-<p>规则：将以“W_xxx”的字符串放到下一个以“V_xxx”的字符串后面</p>
-<p>利用python正则匹配，配合读取文件到字符串数组，实现如下转换：</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> os.path</span><br><span class="line"><span class="keyword">import</span> re</span><br><span class="line"></span><br><span class="line">infile_name = <span class="built_in">input</span>(<span class="string">&quot;Please input the name of file in current directory to convert: &quot;</span>)</span><br><span class="line">name_flag = infile_name.find(<span class="string">&#x27;.&#x27;</span>)</span><br><span class="line"><span class="keyword">if</span> name_flag == -<span class="number">1</span>:</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">&quot;file name error, need input the suffix of file name&quot;</span>)</span><br><span class="line">    <span class="built_in">input</span>(<span class="string">&quot;Please press Enter key to exit&quot;</span>)</span><br><span class="line">    exit(<span class="number">0</span>)</span><br><span class="line"><span class="keyword">else</span>:</span><br><span class="line">    <span class="keyword">if</span> os.path.isfile(infile_name):</span><br><span class="line">        outfile_name = infile_name[<span class="number">0</span>:name_flag] + <span class="string">&quot;_updated&quot;</span> + infile_name[name_flag:]</span><br><span class="line">    <span class="keyword">else</span>:</span><br><span class="line">        <span class="built_in">print</span>(<span class="string">&quot;no such file!&quot;</span>)</span><br><span class="line">        <span class="built_in">input</span>(<span class="string">&quot;Please press Enter key to exit&quot;</span>)</span><br><span class="line">        exit(<span class="number">0</span>)</span><br><span class="line"></span><br><span class="line">infile = <span class="built_in">open</span>(infile_name, <span class="string">&quot;r&quot;</span>,encoding=<span class="string">&#x27;utf-8&#x27;</span>)</span><br><span class="line">outfile = <span class="built_in">open</span>(outfile_name, <span class="string">&quot;w&quot;</span>,encoding=<span class="string">&#x27;utf-8&#x27;</span>)</span><br><span class="line"></span><br><span class="line">lines = infile.readlines()</span><br><span class="line">infile.close()</span><br><span class="line">flag = <span class="number">0</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">for</span> index <span class="keyword">in</span> <span class="built_in">range</span>(<span class="built_in">len</span>(lines)):</span><br><span class="line">    str_obj = re.match(<span class="string">&#x27;[\s]*W[\s].*&#x27;</span>, lines[index]) <span class="comment">#match the &quot;W ...&quot;</span></span><br><span class="line">    <span class="keyword">if</span> str_obj != <span class="literal">None</span>:</span><br><span class="line">        flag = <span class="number">1</span></span><br><span class="line">        temp_index = index</span><br><span class="line">        temp_str = str_obj.group()</span><br><span class="line">    <span class="keyword">else</span>:</span><br><span class="line">        str_obj = re.match(<span class="string">&#x27;[\s]*V[\s].*&#x27;</span>, lines[index]) <span class="comment">#match the &quot;V ...&quot;</span></span><br><span class="line">        <span class="keyword">if</span> str_obj != <span class="literal">None</span>:</span><br><span class="line">            <span class="keyword">if</span> flag == <span class="number">1</span>:</span><br><span class="line">                lines[temp_index] = <span class="string">&#x27;\n&#x27;</span> <span class="comment">#clear last &quot;W ...&quot;</span></span><br><span class="line">                lines[index] = str_obj.group() + <span class="string">&#x27; &#x27;</span> + temp_str + <span class="string">&#x27;\n&#x27;</span> <span class="comment">#add the &quot;W ...&quot; from &quot;V ...&quot; end</span></span><br><span class="line">                flag = <span class="number">0</span></span><br><span class="line">outfile.writelines(lines)</span><br><span class="line">outfile.close()</span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;outputfile is &quot;</span> + outfile_name)</span><br><span class="line"><span class="built_in">input</span>(<span class="string">&quot;Please press Enter key to exit&quot;</span>)</span><br></pre></td></tr></table></figure>
-
-<p>这里的W和V前面加了额外的匹配项：<code>[\s]*</code>，是因为文件存在不可见的回车换行等引起，如果不加匹配不到</p>
-
-      
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/03/09/python%E6%AD%A3%E5%88%99%E8%A1%A8%E8%BE%BE%E5%BC%8F/" rel="prev" title="python正则表达式">
+      <i class="fa fa-chevron-left"></i> python正则表达式
+    </a></div>
+      <div class="post-nav-item"></div>
     </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
       </footer>
+    
   </article>
   
   
-  
-
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2022/02/28/%E6%90%AD%E5%BB%BA%E9%AB%98%E5%8F%AF%E7%A7%BB%E6%A4%8D%E7%9A%84Markdown%E5%86%99%E4%BD%9C%E5%92%8C%E5%8D%9A%E5%AE%A2%E7%8E%AF%E5%A2%83%EF%BC%9AObsidian+PicGo+Hexo+Github/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Cursorhu">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="ThinkNotes">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2022/02/28/%E6%90%AD%E5%BB%BA%E9%AB%98%E5%8F%AF%E7%A7%BB%E6%A4%8D%E7%9A%84Markdown%E5%86%99%E4%BD%9C%E5%92%8C%E5%8D%9A%E5%AE%A2%E7%8E%AF%E5%A2%83%EF%BC%9AObsidian+PicGo+Hexo+Github/" class="post-title-link" itemprop="url">搭建高可移植的Markdown写作和博客环境：Obsidian+PicGo+Hexo+Github</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2022-02-28 15:04:18" itemprop="dateCreated datePublished" datetime="2022-02-28T15:04:18+08:00">2022-02-28</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2022-03-04 16:59:17" itemprop="dateModified" datetime="2022-03-04T16:59:17+08:00">2022-03-04</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/markdown/" itemprop="url" rel="index"><span itemprop="name">markdown</span></a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h2 id="0-背景"><a href="#0-背景" class="headerlink" title="0.背景"></a>0.背景</h2><p>写技术笔记并发布博客，通常有以下方式：</p>
-<ul>
-<li>第三方平台CSDN&#x2F;cnblogs，最简单但是最不可控，例如我写过一篇如何使用shadow-sock，直接被删掉，各种广告也是技术洁癖症不能忍的。</li>
-<li>使用云服务器自建Leanote博客系统，我用过几年，最大缺点是服务器续费太贵，且文章数据存在数据库很难导出，优点是自建的Leanote写作发布一体化体验极好。</li>
-<li>使用github+picgo+hexo， github作为图床和博客的云服务，picgo用于建立图床通道，hexo用于发布博客。缺点是github访问慢，用开源CDN可以很好解决；优点是全部免费，数据可移植(图片链接都在github图床)，可长期使用（只要github不倒闭不锁区）</li>
-</ul>
-<p>最终我选择github+picgo+hexo方案。<br>为什么不用gitee: gitee上传图片限制1M, github有25M。有了CDN, github的速度也不是问题</p>
-<p>现在只需要确定Markdown编辑器</p>
-<p>VSCode加Markdown插件试过，体验并不完美<br><a target="_blank" rel="noopener" href="https://www.typora.io/">Typora</a>是很不错的选择，除了收费<br><a target="_blank" rel="noopener" href="https://obsidian.md/">Obsidian</a>免费且优雅：</p>
-<ul>
-<li>支持动态渲染，即写出的Markdown语句自动显示预览</li>
-<li>支持各种快捷键，无需手动输入Markdown语法格式（<a target="_blank" rel="noopener" href="https://markdown.com.cn/basic-syntax/">Markdown 基本语法</a>）。比如标题，链接，列表，引用，可以设置标准的Markdown快捷键。</li>
-<li>支持关联PicGo实现粘贴图片即上传到云端图床，这一点对于写作体验和文章的可迁移性很重要</li>
-<li>特色的Zettelkasten笔记管理方法，本文不描述这部分，参考<a target="_blank" rel="noopener" href="https://sspai.com/post/62414#!">玩转 Obsidian 01：打造知识循环利器</a></li>
-</ul>
-<h2 id="1-搭建可移植的Markdown写作环境"><a href="#1-搭建可移植的Markdown写作环境" class="headerlink" title="1. 搭建可移植的Markdown写作环境"></a>1. 搭建可移植的Markdown写作环境</h2><p>Markdown文档本身是可移植的，但是其图片资源不是, 因为图片不是以二进制嵌入文档，而只是个图片地址的链接。</p>
-<p>如果只是在本地写写Markdown，完全不需要考虑图片的可移植，只需要存本地固定路径即可。<br>如果想在本地写Markdown，且这个文档拿到别的机器，或者放到博客论坛发布，别人都可以看到图片，就要一个云端的图片存储服务，即图床。</p>
-<p>本节讲如何实现一个“一处写作，到处可见”的Markdown写作环境，并优化工具设置，让写作顺滑流程</p>
-<h3 id="1-1-Github-PicGo搭建图床"><a href="#1-1-Github-PicGo搭建图床" class="headerlink" title="1.1 Github+PicGo搭建图床"></a>1.1 Github+PicGo搭建图床</h3><p>完整流程参考<a target="_blank" rel="noopener" href="https://blog.csdn.net/yefcion/article/details/88412025">PicGo + GitHub 搭建个人图床工具</a></p>
-<p>流程包含以下部分：</p>
-<ul>
-<li>一个public的Github仓库，用来存放文章链接的图片，注意单仓库最大容量1GB。</li>
-<li>一个personal access token，用于PicGo免密访问github实现自动上传图片</li>
-<li>一个图片上传工具：PicGo及其插件，用它上连Github图床仓库，下连本地markdown编辑器，实现“图片粘贴即上传”</li>
-<li>一个CDN(推荐，很好用)：使用开源CDN jsdelivr加速Github访问，避免因访问速度造成图片上传失败</li>
-</ul>
-<p>最终我的配置如下：<br><img src="https://cdn.jsdelivr.net/gh/cursorhu/blog-images-on-picgo@master/images/202202281014786.png"></p>
-<p>单元测试：<br>手动上传本地图片，如果上传成功，且图片可预览，则功能正常<br><img src="https://cdn.jsdelivr.net/gh/cursorhu/blog-images-on-picgo@master/images/202202281024870.png"></p>
-<p><img src="https://cdn.jsdelivr.net/gh/cursorhu/blog-images-on-picgo@master/images/202202281024344.png"></p>
-<p>遇到的坑：<br>仓库名必须填&lt;用户名&gt;&lt;仓库名&gt;，不是完整的http或git仓库链接！否则上传图片error404</p>
-<p>PicGo支持log调试，参考：<br><a target="_blank" rel="noopener" href="https://www.shopee6.com/web/web-tutorial/picgo-github-fail.html"><a target="_blank" rel="noopener" href="https://www.shopee6.com/web/web-tutorial/picgo-github-fail.html">PicGo上传图片到GitHub总是失败的特殊解决办法</a></a></p>
-<p><strong>如何删除Github图床的图片：</strong><br>PicGo默认的Github图床不能通过相册删除github仓库的图片，需要使用第三方插件github-plus，建议作为默认图床工具，支持相册删除同步到github仓库:<br><img src="https://cdn.jsdelivr.net/gh/cursorhu/blog-images-on-picgo@master/images/202202281208516.png"></p>
-<p><img src="https://cdn.jsdelivr.net/gh/cursorhu/blog-images-on-picgo@master/images/202202281209075.png"></p>
-<h3 id="1-2-Obsidian链接图床"><a href="#1-2-Obsidian链接图床" class="headerlink" title="1.2 Obsidian链接图床"></a>1.2 Obsidian链接图床</h3><p>流程参考<a target="_blank" rel="noopener" href="https://www.jianshu.com/p/4c30495f4325"># 在Obsidian中使用图床实现“一次上传、多次搬运”省心又省力</a></p>
-<p>重点部分：配置自动上传插件。写Markdown文章时粘贴的图片自动上传到Github+PicGo图床，无需手动上传和写链接<br><img src="https://cdn.jsdelivr.net/gh/cursorhu/blog-images-on-picgo@master/images/202202281029686.png"></p>
-<p><img src="https://cdn.jsdelivr.net/gh/cursorhu/blog-images-on-picgo@master/images/202202281029586.png"></p>
-<p>可以看到，此插件相当于一个PicGo客户端，而本地运行的PicGo Server已开启端口36677的监听。<br><img src="https://cdn.jsdelivr.net/gh/cursorhu/blog-images-on-picgo@master/images/202202281033479.png"></p>
-<p>单元测试：<br>以上配置好后，Obsidian新建一个Markdown文档，粘贴图片会显示updating… ，成功后可在github图床仓库看到该图片，且Markdown本地预览也可以看到。</p>
-<p>遇到的坑：<br>一开始上传的图片，github可预览，Obsidian预览失败<br>在PicGo客户端查看刚才上传图片预览也不正常，PicGo客户端手动上传一张后才正常预览。<br>此后Obsidian再粘贴上传图片，预览正常。<br>可能是PicGo首次链接Obsidian插件的bug。</p>
-<h3 id="1-3-优化Obsidian写作体验"><a href="#1-3-优化Obsidian写作体验" class="headerlink" title="1.3 优化Obsidian写作体验"></a>1.3 优化Obsidian写作体验</h3><h4 id="1-3-1-Markdown快捷键"><a href="#1-3-1-Markdown快捷键" class="headerlink" title="1.3.1 Markdown快捷键"></a>1.3.1 Markdown快捷键</h4><p>很多Markdown编辑器支持各种快捷键，写作时不需要手动输入Markdown语法，例如一个ctrl+h形成标题，一个ctrl+k形成代码格式。<br>Obsidian默认快捷键不完整，需要补全优化<br>我之前用的Leanote写博客，Obsidian也快捷键设置如下。</p>
-<blockquote>
-<p>提升标题 Ctrl + H (header)<br>有序列表 Ctrl + O (Ordered)<br>无序列表 Ctrl + U (Un-Ordered)<br>插入链接 Ctrl + L (Link)<br>插入代码 Ctrl + K (K &#x3D; Code, 因为ctrl+C用于粘贴)<br>加粗 Ctrl + B (Bold)<br>斜体 Ctrl + I (Italian体)<br>引用 Ctrl + Q (Quote)<br>插入图片 Ctrl + G (Graph, 有了“粘贴即上传”，这个实际上用不上)</p>
-</blockquote>
-<p>其他我基本不用的就没设置，例如表格，删除线，分割线等等。<br>如果经常用表格，推荐 Advanced Tables插件。<br>读者也可以参考VS Code的Markdown插件设置。</p>
-<h4 id="1-3-2-实时预览和标题大纲"><a href="#1-3-2-实时预览和标题大纲" class="headerlink" title="1.3.2 实时预览和标题大纲"></a>1.3.2 实时预览和标题大纲</h4><p>实时预览是你写一句Markdown，自动转换成预览格式，而不显示Markdown源码。这样不需要开两个窗口，一个写源码一个看预览。在设置-&gt;编辑器里开启。<br><img src="https://cdn.jsdelivr.net/gh/cursorhu/blog-images-on-picgo@master/images/202202281103907.png"></p>
-<p>标题大纲是侧边栏显示文章标题列表，就像word的导航窗口一样。在设置-核心插件开启。<br><img src="https://cdn.jsdelivr.net/gh/cursorhu/blog-images-on-picgo@master/images/202202281104255.png"></p>
-<h2 id="2-搭建hexo博客发布环境"><a href="#2-搭建hexo博客发布环境" class="headerlink" title="2. 搭建hexo博客发布环境"></a>2. 搭建hexo博客发布环境</h2><h3 id="2-1-环境安装"><a href="#2-1-环境安装" class="headerlink" title="2.1 环境安装"></a>2.1 环境安装</h3><p>整体流程参考：<a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/105715224"># 个人博客第5篇——安装node.js和Hexo</a><br>官方文档参考：<a target="_blank" rel="noopener" href="https://hexo.io/zh-cn/docs/">hexo.io</a></p>
-<p>简单总结一下：</p>
-<ul>
-<li>hexo是一个基于nodeJS的博客框架，nodeJS提供JavaScript实现后端服务的能力。</li>
-<li>hexo可以将本地写好的Markdown文本和图片资源，以JavaScript网页资源的方式打包。hexo可以在本机运行服务，通过浏览器可以在网页访问。</li>
-<li>如果要使博客外网可访问，需要一个云服务存放hexo生成的博客，我们使用github仓库作为博客云端。前面已经搭建了github图床仓库，因此图片并不需要放到此hexo仓库。</li>
-<li>使用git实现hexo博客部署到github仓库</li>
-</ul>
-<p>遇到的坑：<br>如果你以前用过hexo，之后nodeJS升级了版本，一定不要用以前的hexo博客目录，必须新建博客目录，重新<code>hexo init</code>安装相关hexo插件。否则nodeJS和hexo插件可能不兼容导致部署失败。</p>
-<p>hexo插件版本是根据nodeJS版本自动安装的，配置文件是package.json。以nodeJS 16.3为例，自动生成的依赖版本如下：</p>
-<p><code>&#123;   &quot;name&quot;: &quot;hexo-site&quot;,   &quot;version&quot;: &quot;0.0.0&quot;,   &quot;private&quot;: true,   &quot;scripts&quot;: &#123;     &quot;build&quot;: &quot;hexo generate&quot;,     &quot;clean&quot;: &quot;hexo clean&quot;,     &quot;deploy&quot;: &quot;hexo deploy&quot;,     &quot;server&quot;: &quot;hexo server&quot;   &#125;,   &quot;hexo&quot;: &#123;     &quot;version&quot;: &quot;6.0.0&quot;   &#125;,   &quot;dependencies&quot;: &#123;     &quot;hexo&quot;: &quot;^6.0.0&quot;,     &quot;hexo-deployer-git&quot;: &quot;^3.0.0&quot;,     &quot;hexo-generator-archive&quot;: &quot;^1.0.0&quot;,     &quot;hexo-generator-category&quot;: &quot;^1.0.0&quot;,     &quot;hexo-generator-index&quot;: &quot;^2.0.0&quot;,     &quot;hexo-generator-tag&quot;: &quot;^1.0.0&quot;,     &quot;hexo-renderer-ejs&quot;: &quot;^2.0.0&quot;,     &quot;hexo-renderer-marked&quot;: &quot;^5.0.0&quot;,     &quot;hexo-renderer-stylus&quot;: &quot;^2.0.0&quot;,     &quot;hexo-server&quot;: &quot;^3.0.0&quot;,     &quot;hexo-theme-landscape&quot;: &quot;^0.0.3&quot;   &#125; &#125;</code></p>
-<p>博客的github仓库，主题等关键配置都在<code>hexo init</code>对应目录下的<code>_config.yml</code><br>我修改了几个关键配置如下：<br>博客框架的语言一定要配，否则默认德语阿拉伯语…</p>
-<blockquote>
-<p>title: ThinkNotes<br>   subtitle: Simple is not easy<br>   author: Cursorhu<br>   language: zh-CN</p>
-</blockquote>
-<p>Github部署配置</p>
-<blockquote>
-<p>url: <a href="https://cursorhu.github.io/">https://cursorhu.github.io</a><br>deploy:<br>      type: git<br>      repo: <a target="_blank" rel="noopener" href="https://github.com/cursorhu/cursorhu.github.io">https://github.com/cursorhu/cursorhu.github.io</a><br>      branch: master</p>
-</blockquote>
-<h3 id="2-2-发布博客"><a href="#2-2-发布博客" class="headerlink" title="2.2 发布博客"></a>2.2 发布博客</h3><p>hexo new命令可以从0新建markdown写博客，一般不用这么麻烦。</p>
-<p>我们直接将Obsidian写好的Markdown（图片资源是图床链接）放到hexo博客目录的post文件夹，例如我的本地目录是：</p>
-<blockquote>
-<p>F:\HexoBlog\source_posts</p>
-</blockquote>
-<p>在Markdown文件前添加hexo博客特有的头，说明博客的标题时间，分类等属性。这个头如果用<code>hexo new</code>命令会自动生成，可以先new一个然后拷过来。</p>
-<blockquote>
-<p>title: 博客文章名<br>date: 2022-02-28 15:04:18<br>tags: markdown<br>categories: markdown</p>
-</blockquote>
-<p>最后使用git生成网页文件并发布到github博客仓库, 注意不是用node命令行！<br>在hexo博客目录下运行：</p>
-<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">hexo clean   #清除缓存文件 db.json 和已生成的静态文件 public</span><br><span class="line">hexo g       #生成网站静态文件到默认设置的 public 文件夹(hexo generate 的缩写)</span><br><span class="line">hexo d       #自动生成网站静态文件，并部署到设定的仓库(hexo deploy 的缩写)</span><br></pre></td></tr></table></figure>
-
-<h3 id="2-3-博客主题"><a href="#2-3-博客主题" class="headerlink" title="2.3 博客主题"></a>2.3 博客主题</h3><p>博客主题(theme)取决于不同人喜好，github有大量的hexo主题，按需配置<br>推荐几个主流的：<br><a target="_blank" rel="noopener" href="https://github.com/theme-next/hexo-theme-next">Next</a><br><a target="_blank" rel="noopener" href="https://github.com/bollnh/hexo-theme-material">hexo-theme-material</a></p>
-<p>以Next主题为例，安装：</p>
-<blockquote>
-<p>$ cd hexo博客目录<br>   $ git clone <a target="_blank" rel="noopener" href="https://github.com/theme-next/hexo-theme-next">https://github.com/theme-next/hexo-theme-next</a> themes&#x2F;next</p>
-</blockquote>
-<p>已我的配置为例，就会在F:\HexoBlog\themes\next看到next主题的源码和配置文件config.yml</p>
-<p>Next配置可以自定义各种设置，例如子主题:</p>
-<blockquote>
-<p> scheme: Muse<br>#scheme: Mist<br>#scheme: Pisces<br>#scheme: Gemini</p>
-</blockquote>
-<p>我们前面已经用jsdelivr开源CDN为PicGo上传图片加速，可以配置Next主题的网页静态文件的相关库也用jsdelivr加速。最好用到才开启，例如motion enable, 其依赖库velocity就可以设置jsdelivr加速：</p>
-<blockquote>
-<p>motion:<br>      enable: true<br>    velocity: &#x2F;&#x2F;cdn.jsdelivr.net&#x2F;npm&#x2F;velocity-animate@1&#x2F;velocity.min.js<br>    velocity_ui: &#x2F;&#x2F;cdn.jsdelivr.net&#x2F;npm&#x2F;velocity-animate@1&#x2F;velocity.ui.min.js</p>
-</blockquote>
-<p>注意这些配置文件也是Markdown格式，<code># </code> 注释一定要带空格</p>
-<p>hexo要使用next, 在hexo配置文件设置:</p>
-<blockquote>
-<p>theme: next</p>
-</blockquote>
-<p>hexo clean, hexo g, hexo s 跑本地服务，看一下效果：<br><img src="https://cdn.jsdelivr.net/gh/cursorhu/blog-images-on-picgo@master/images/202203041651883.png"></p>
-<p>最后hexo clean, g, d 命令三连部署到github</p>
-<h3 id="2-4-速度优化"><a href="#2-4-速度优化" class="headerlink" title="2.4 速度优化"></a>2.4 速度优化</h3><p>参考<a target="_blank" rel="noopener" href="https://ednovas.gitee.io/2021/09/23/speeduphexo/"># Hexo 网站访问速度优化</a></p>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-
   
 
 
@@ -630,6 +394,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#1-Linux-MMC-%E6%A1%86%E6%9E%B6%E7%8E%B0%E7%8A%B6"><span class="nav-number">1.</span> <span class="nav-text">1. Linux MMC 框架现状</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-1-SD%E5%8D%A1%E7%9A%84%E7%B1%BB%E5%9E%8B%E6%A6%82%E8%BF%B0"><span class="nav-number">1.1.</span> <span class="nav-text">1.1 SD卡的类型概述</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-2-Linux-MMC%E6%A1%86%E6%9E%B6%E5%AF%B9SD%E5%8D%A1%E7%9A%84%E6%94%AF%E6%8C%81"><span class="nav-number">1.2.</span> <span class="nav-text">1.2 Linux MMC框架对SD卡的支持</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-%E7%BC%96%E8%AF%91%E8%BF%87%E7%A8%8B"><span class="nav-number">2.</span> <span class="nav-text">2. 编译过程</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-%E7%9B%B4%E6%8E%A5%E7%BC%96%E8%AF%91%E6%95%B4%E4%B8%AAKernel-%E5%B8%A6UHS-II-Patch"><span class="nav-number">2.1.</span> <span class="nav-text">2.1 直接编译整个Kernel(带UHS-II Patch)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-%E5%90%88%E5%B9%B6UHSII-patch%E5%90%8E%E5%86%8D%E7%BC%96%E8%AF%91%E6%95%B4%E4%B8%AAKernel"><span class="nav-number">2.2.</span> <span class="nav-text">2.2 合并UHSII patch后再编译整个Kernel</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-3-%E5%8D%95%E7%8B%AC%E7%BC%96%E8%AF%91MMC%E6%A8%A1%E5%9D%97"><span class="nav-number">2.3.</span> <span class="nav-text">2.3 单独编译MMC模块</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-4-%E6%89%8B%E5%8A%A8%E6%9B%BF%E6%8D%A2MMC%E6%A8%A1%E5%9D%97"><span class="nav-number">2.4.</span> <span class="nav-text">2.4 手动替换MMC模块</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#2-4-1-UHS-II%E7%9B%B8%E5%85%B3%E6%A8%A1%E5%9D%97%E7%9A%84%E4%BE%9D%E8%B5%96%E5%85%B3%E7%B3%BB"><span class="nav-number">2.4.1.</span> <span class="nav-text">2.4.1 UHS-II相关模块的依赖关系</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-4-2-%E6%89%8B%E5%8A%A8%E5%8D%B8%E8%BD%BD%E5%92%8C%E8%A3%85%E8%BD%BDmodule"><span class="nav-number">2.4.2.</span> <span class="nav-text">2.4.2 手动卸载和装载module</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-%E8%B0%83%E8%AF%95%E8%BF%87%E7%A8%8B"><span class="nav-number">3.</span> <span class="nav-text">3. 调试过程</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-1-%E8%B0%83%E8%AF%95%E5%B7%A5%E5%85%B7"><span class="nav-number">3.1.</span> <span class="nav-text">3.1 调试工具</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-UHSII%E8%B0%83%E8%AF%95"><span class="nav-number">3.2.</span> <span class="nav-text">3.2 UHSII调试</span></a></li></ol></li></ol></div>
       </div>
       <!--/noindex-->
 
