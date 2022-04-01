@@ -146,6 +146,106 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2022/04/01/%E6%B5%85%E8%B0%88Linux%E4%B8%AD%E7%9A%84%E5%87%BD%E6%95%B0%E6%8C%87%E9%92%88/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2022/04/01/%E6%B5%85%E8%B0%88Linux%E4%B8%AD%E7%9A%84%E5%87%BD%E6%95%B0%E6%8C%87%E9%92%88/" class="post-title-link" itemprop="url">浅谈Linux中的函数指针</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2022-04-01 12:30:00 / 修改时间：11:25:53" itemprop="dateCreated datePublished" datetime="2022-04-01T12:30:00+08:00">2022-04-01</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/linux/" itemprop="url" rel="index"><span itemprop="name">linux</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h2 id="1-函数指针基本概念"><a href="#1-函数指针基本概念" class="headerlink" title="1. 函数指针基本概念"></a>1. 函数指针基本概念</h2><p>C语言调用函数的本质是什么？</p>
+<ol>
+<li>CPU PC指针(program counter)跳转到函数的入口地址，传入参数，传入返回位置</li>
+<li>在函数栈内生成临时变量并执行函数内容指令，执行完毕后返回参数</li>
+<li>CPU返回原调用处执行</li>
+</ol>
+<p>这里，函数的入口地址实际上就存储在函数名中，也就是说，C代码中的函数名就是函数的入口地址。<br>既然是地址，就可以用来初始化一个指针，使指针指向该地址。<br>函数指针，就是存放函数首地址的指针。</p>
+<h3 id="1-2-函数指针变量"><a href="#1-2-函数指针变量" class="headerlink" title="1.2 函数指针变量"></a>1.2 函数指针变量</h3><p>首先声明普通函数是如下格式：<br><code>void Func(int);</code><br>定义一个同类型函数的函数指针变量，只需要用<code>*p</code>表示函数名即可：<br><code>void (*p)(int);</code><br>注意，上面是定义了函数指针变量，而不是声明函数。</p>
+<p>函数指针变量的定义，和普通变量格式不一样。</p>
+<ul>
+<li>普通变量： &lt;类型&gt; &lt;变量名&gt;</li>
+<li>函数指针：&lt;函数类型 变量名&gt;，按函数声明的格式定义，变量是包含在类型内部</li>
+</ul>
+<p>那么此函数指针的类型是什么：<br><code>void (*)(int);</code></p>
+<p>怎么使用此函数指针：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">void Func(int x) // 声明一个函数*/</span><br><span class="line">&#123;</span><br><span class="line">    printf(&quot;%d&quot;,x);</span><br><span class="line">&#125;</span><br><span class="line">void (*p)(int); // 定义一个函数指针*/</span><br><span class="line">p = Func; // 将Func函数的首地址赋给函数指针变量p*/</span><br><span class="line">(*p)(100);  // 通过函数指针调用Func函数</span><br></pre></td></tr></table></figure>
+
+<h3 id="1-3-函数指针类型"><a href="#1-3-函数指针类型" class="headerlink" title="1.3 函数指针类型"></a>1.3 函数指针类型</h3><p>typedef可以定义某种类型的别名，例如将unsigned char定义为u8<br><code>typedef unsigned char u8;</code><br>可见其格式是：typedef &lt;原类型&gt; &lt;别名类型&gt;</p>
+<p>那么如何定义函数指针类型：<br>只需要在函数指针声明的格式前加typedef, p就定义为函数指针类型而不是变量:<br><code>typedef void (*p)(int);</code></p>
+<p>这里定义了<code>void (*)(int)</code>类型的函数指针类型，其别名为p</p>
+<p>怎么使用此函数指针类型：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">//定义类型</span><br><span class="line">typedef void (*pFuncType)(int); </span><br><span class="line">//定义变量  </span><br><span class="line">pFuncType p;   </span><br><span class="line"></span><br><span class="line">void Func(int x)</span><br><span class="line">&#123;</span><br><span class="line">	printf(&quot;%d&quot;,x);</span><br><span class="line">&#125; </span><br><span class="line"></span><br><span class="line">void main()   </span><br><span class="line">&#123;   </span><br><span class="line">    p = Func; //初始化变量   </span><br><span class="line">    (*p)(100);   //使用变量</span><br><span class="line">&#125; </span><br></pre></td></tr></table></figure>
+
+<h2 id="2-函数指针的应用"><a href="#2-函数指针的应用" class="headerlink" title="2. 函数指针的应用"></a>2. 函数指针的应用</h2><h3 id="2-1-Linux驱动软件设计的分层"><a href="#2-1-Linux驱动软件设计的分层" class="headerlink" title="2.1 Linux驱动软件设计的分层"></a>2.1 Linux驱动软件设计的分层</h3><p>C++中有多态的概念，父类定义某种函数类型，子类实现具体的函数内容，之后父类对象就可以调用子类的实现内容。<br>这样实现“父类定义格式，子类实现细节”的软件分层设计。</p>
+<p>Linux驱动中也大量使用这种分层设计，C使用结构体和函数指针，分别对应C++的类和方法。<br>例如某驱动模块，顶层框架定义open, read, write, 而底层驱动根据具体硬件，实现xxx_open, xxx_read, xxx_write，然后按结构体成员赋值实现上下层联通：</p>
+<p>以s3c的SDHCI驱动为例：<br>sdhci_ops即父类框架结构体，sdhci_s3c_ops为s3c芯片的具体实现结构体。<br><code>.set_clock = sdhci_s3c_set_clock</code>就实现了父类的set_clock方法被子类sdhci_s3c_set_clock实现的效果。<br>其本质是函数指针的赋值，父类和子类的函数名都指向同一个函数地址，所以父类可以通过调用set_clock来实现调用sdhci_s3c_set_clock的效果。<br>这样，父类设计者根本不关心底层用什么函数名实现set_clock的功能，只需要调用set_clock这个函数名即可。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">static struct sdhci_ops sdhci_s3c_ops = &#123;</span><br><span class="line">	.get_max_clock		= sdhci_s3c_get_max_clk,</span><br><span class="line">	.set_clock		= sdhci_s3c_set_clock,</span><br><span class="line">	.get_min_clock		= sdhci_s3c_get_min_clock,</span><br><span class="line">	.set_bus_width		= sdhci_set_bus_width,</span><br><span class="line">	.reset			= sdhci_reset,</span><br><span class="line">	.set_uhs_signaling	= sdhci_set_uhs_signaling,</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-2-函数指针实现指令跳转"><a href="#2-2-函数指针实现指令跳转" class="headerlink" title="2.2 函数指针实现指令跳转"></a>2.2 函数指针实现指令跳转</h3><p>调用一个函数，其内部就包含跳转操作(jump指令)<br>那么，如何用C语言实现跳转到某个绝对地址去执行？具体场景：<br>在Bootloader过程中，加载完kernel到RAM后，要跳转到kernel首地址开始执行，如何实现？</p>
+<p>方案一：C嵌入汇编<br>以下是基于SPARC CPU的汇编，跳转到0x40000000, 即RAM首地址执行firmware.<br>对于其他CPU，汇编实现也不同，因此此方法不能跨平台。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">void boot_exit()</span><br><span class="line">&#123;</span><br><span class="line">    /* jump to RAM entry to execute firmware. */</span><br><span class="line"></span><br><span class="line">    asm(</span><br><span class="line">        &quot;set 0x40000000, %g2\n&quot;</span><br><span class="line">        &quot;jmp %g2\n&quot;</span><br><span class="line">        &quot;nop&quot;</span><br><span class="line">    );</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>方案二：函数指针<br>Bootloader中很常用的一种跳转方法</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">typedef void (*pFuncType)(); //定义无入参无返回类型的函数指针类型</span><br><span class="line">pFuncType Reset = (pFuncType)0xF000FFF0; //函数指针指向待跳转地址</span><br><span class="line">Reset(); //调用函数，实际上执行了跳转</span><br></pre></td></tr></table></figure>
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2022/03/25/Linux%20MMC%E6%A1%86%E6%9E%B6%E4%B8%8B%E7%9A%84UHS-II%E9%A9%B1%E5%8A%A8%E8%B0%83%E8%AF%95/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -645,7 +745,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">3</span>
+          <span class="site-state-item-count">4</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
