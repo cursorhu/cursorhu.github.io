@@ -345,7 +345,7 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2022/03/25/Linux%20MMC%E6%A1%86%E6%9E%B6%E4%B8%8B%E7%9A%84UHS-II%E9%A9%B1%E5%8A%A8%E8%B0%83%E8%AF%95/">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2022/03/25/20220325/Linux%20MMC%E6%A1%86%E6%9E%B6%E4%B8%8B%E7%9A%84UHS-II%E9%A9%B1%E5%8A%A8%E8%B0%83%E8%AF%95/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/avatar.gif">
@@ -359,7 +359,7 @@
       <header class="post-header">
         <h2 class="post-title" itemprop="name headline">
           
-            <a href="/2022/03/25/Linux%20MMC%E6%A1%86%E6%9E%B6%E4%B8%8B%E7%9A%84UHS-II%E9%A9%B1%E5%8A%A8%E8%B0%83%E8%AF%95/" class="post-title-link" itemprop="url">Linux MMC框架下的UHS-II驱动调试</a>
+            <a href="/2022/03/25/20220325/Linux%20MMC%E6%A1%86%E6%9E%B6%E4%B8%8B%E7%9A%84UHS-II%E9%A9%B1%E5%8A%A8%E8%B0%83%E8%AF%95/" class="post-title-link" itemprop="url">Linux MMC框架下的UHS-II驱动调试</a>
         </h2>
 
         <div class="post-meta">
@@ -376,7 +376,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2022-03-31 11:02:05" itemprop="dateModified" datetime="2022-03-31T11:02:05+08:00">2022-03-31</time>
+                <time title="修改时间：2022-05-09 10:37:15" itemprop="dateModified" datetime="2022-05-09T10:37:15+08:00">2022-05-09</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -441,7 +441,7 @@
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo apt-get install build-essential libncurses-dev bison flex libssl-dev libelf-dev</span><br></pre></td></tr></table></figure>
 </li>
 <li><p>配置，编译和安装 </p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">cd linux-uhs2-gl9755-v3-patch #进入待编译Kernel源码</span><br><span class="line">make menuconfig #配置内核，生成.config文件</span><br><span class="line">make -j4 #以4线程编译内核，等同于make bzImage，make modules</span><br><span class="line">make modules_install #安装各Driver模块</span><br><span class="line">make install #安装内核</span><br></pre></td></tr></table></figure>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">cd linux-uhs2-gl9755-v3-patch #进入待编译Kernel源码</span><br><span class="line">make menuconfig #配置内核，生成.config文件</span><br><span class="line">make -j4 #以4线程编译内核，等同于make bzImage，make modules</span><br><span class="line">make modules_install #安装各Driver模块</span><br><span class="line">make install #安装内核(包括更新模块信息)</span><br></pre></td></tr></table></figure>
 <p>编译完成后会自动update-grub, 重启后选择编译好的kernel版本启动</p>
 </li>
 <li><p>查看内核版本</p>
@@ -468,6 +468,11 @@
 <p>待编译kernel目录是<code>~/linux-5.8-rc4</code></p>
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">#编译模块，&quot;M=&quot;指定待编译源码，编译完拷贝.ko到&quot;-C&quot;指定的目录，此目录为系统存放模块的目录</span><br><span class="line">sudo make -C /lib/modules/`uname -r`/build M=~/linux-5.8-rc4/drivers/mmc</span><br><span class="line"></span><br><span class="line">#安装模块</span><br><span class="line">make -C /lib/modules/`uname -r`/build M=~/linux-5.8-rc4/drivers/mmc modules_install</span><br><span class="line">	</span><br><span class="line">#清除模块,包括.o和.ko文件</span><br><span class="line">sudo make -C /lib/modules/`uname -r`/build M=~/linux-5.8-rc4/drivers/mmc clean</span><br></pre></td></tr></table></figure>
 <p>参考：<a target="_blank" rel="noopener" href="https://www.kernel.org/doc/html/latest/kbuild/modules.html"># Building External Modules</a></p>
+<p>注意，<code>make xxx modules_install</code>是不能让模块自动加载的，只是安装到了&#x2F;lib&#x2F;modules位置。使用<code>modinfo</code>查看模块信息，似乎是使用了&#x2F;lib&#x2F;modules下的，但没有实际加载和生效。<br>要加载模块，两种方法：</p>
+<ol>
+<li>rmmod&#x2F;insmod 手动替换, 参考下一节</li>
+<li>make modules_install 之后再 make install，更新整个kernel, 此后外部模块才会被内核自动加载</li>
+</ol>
 <h3 id="2-4-手动替换MMC模块"><a href="#2-4-手动替换MMC模块" class="headerlink" title="2.4 手动替换MMC模块"></a>2.4 手动替换MMC模块</h3><h4 id="2-4-1-UHS-II相关模块的依赖关系"><a href="#2-4-1-UHS-II相关模块的依赖关系" class="headerlink" title="2.4.1 UHS-II相关模块的依赖关系"></a>2.4.1 UHS-II相关模块的依赖关系</h4><p><img src="https://cdn.jsdelivr.net/gh/cursorhu/blog-images-on-picgo@master/images/202203301640662.png"></p>
 <p>可以从mmc&#x2F;host的Kconfig得知依赖：</p>
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">config MMC_SDHCI_PCI</span><br><span class="line">	tristate &quot;SDHCI support on PCI bus&quot;</span><br><span class="line">	depends on MMC_SDHCI &amp;&amp; PCI</span><br><span class="line">	select MMC_SDHCI_UHS2</span><br><span class="line">	</span><br><span class="line">config MMC_SDHCI_UHS2</span><br><span class="line">	tristate &quot;UHS2 support on SDHCI controller&quot;</span><br><span class="line">	depends on MMC_SDHCI</span><br></pre></td></tr></table></figure>
