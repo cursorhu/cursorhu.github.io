@@ -161,6 +161,551 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2023/03/01/%E6%B5%85%E8%B0%88%E6%95%B0%E5%AD%97%E7%94%B5%E8%B7%AF%E4%B9%8BPLL/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2023/03/01/%E6%B5%85%E8%B0%88%E6%95%B0%E5%AD%97%E7%94%B5%E8%B7%AF%E4%B9%8BPLL/" class="post-title-link" itemprop="url">浅谈数字电路之PLL</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2023-03-01 11:40:15" itemprop="dateCreated datePublished" datetime="2023-03-01T11:40:15+08:00">2023-03-01</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-03-03 15:57:59" itemprop="dateModified" datetime="2023-03-03T15:57:59+08:00">2023-03-03</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/IC/" itemprop="url" rel="index"><span itemprop="name">IC</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <p>本文PLL的基础内容参考了Digital Integrated Circuits一书，下载方式：在 <a target="_blank" rel="noopener" href="https://vdoc.pub/">vdoc</a> 搜索关键字 Digital Integrated Circuits</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303011144938.jpeg" alt="img"></p>
+<h2 id="PLL的应用概述"><a href="#PLL的应用概述" class="headerlink" title="PLL的应用概述"></a>PLL的应用概述</h2><p>两个作用：Clock Synthesis（时钟综合）和 Clock Synchronization（时钟同步）</p>
+<ul>
+<li>Clock Synthesis，Synthesis是综合&#x2F;生成的意思，Clock Synthesis即生成时钟，但此处含义不是作为时钟源，而是在低频晶振时钟的基础上倍频生成高频时钟：其中低频的晶振时钟的特性：10~200MHz， accurate, low-jitter ，高频时钟特性：200MHz ~ GHz级别，通常也称为系统时钟，例如SOC core的基准频率</li>
+<li>Clock Synchronization，不同芯片之间传递时钟信号需要同步时钟相位，例如SOC的CPU和外设之间的通信接口一般是：分频后的时钟信号（reference clock）和数据信号（Date），CPU和外设间的信号传递是需要时间的，高速信号传递到外设侧有相位偏移（可以简单理解为延迟），因此需要PLL同步时钟相位以保证对数据采样的正确性（想象一下，如果reference clock相位偏移过大，可能每个采样时刻得到的data数据都是错位的）</li>
+</ul>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303031043844.png" alt="image-20230303104354744"></p>
+<h2 id="相位的概念"><a href="#相位的概念" class="headerlink" title="相位的概念"></a>相位的概念</h2><p>Digital Integrated Circuits一书对相位的描述：</p>
+<p>Periodic signals of known frequency can be discribed exactly by only one parameter, their<br>phase. More accurately a set of two or more periodic signals of the same frequency can be<br>well defined if we know one of them and its phase with respect to the other signals.  </p>
+<p>翻译下就是：</p>
+<ul>
+<li><p>多个已知频率的周期信号只用一个参数就能精确区分：相位</p>
+</li>
+<li><p>如果这些信号的频率相同，则只需知道相位差就可以从一个信号精确推测另一个信号</p>
+</li>
+</ul>
+<p><img src="C:\Users\thomas.hu\AppData\Roaming\Typora\typora-user-images\image-20230303111433716.png" alt="image-20230303111433716"></p>
+<p>基于以上概念，下面介绍PLL的两个核心功能：</p>
+<ul>
+<li>将输入PLL的时钟和PLL输出时钟的频率精确同步：输出时钟信号频率是输入时钟信号频率的精确的N倍</li>
+<li>将输入PLL的时钟和PLL输出时钟的相位精确同步：输出时钟信号N分频后，其应该和输入信号完全一致，其上升&#x2F;下降沿应该精确对齐输入时钟信号的上升&#x2F;下降沿</li>
+</ul>
+<h2 id="PLL内部实现"><a href="#PLL内部实现" class="headerlink" title="PLL内部实现"></a>PLL内部实现</h2><p>PLL内部结构如下，真正核心的只有两个组件：</p>
+<ul>
+<li>VCO: The voltage-controlled oscillator (VCO) takes an analog control input and generates a clock signal of the desired frequency.  VCO接受电压（模拟信号），转换为频率（数字信号），也就是说，VCO使输出频率是电压的函数(非线性)。Charge pump是控制电压增加和减少的模块，Loop filter是低通滤波器，过滤掉电压信号中的高频正弦噪声，使VCO的输入更“纯粹”（减少毛刺信号，jittery clock）</li>
+<li>Phase Detectors: 为什么带s ? 因为可以有两种实现：XOR Phase Detector  和 Phase-Frequency Detector ，Phase Detectors是相位和频率同步的核心，具体原理下面讲</li>
+</ul>
+<p><img src="C:\Users\thomas.hu\AppData\Roaming\Typora\typora-user-images\image-20230303112656829.png" alt="image-20230303112656829"></p>
+<h3 id="XOR-Phase-Detector"><a href="#XOR-Phase-Detector" class="headerlink" title="XOR Phase Detector"></a>XOR Phase Detector</h3><p>用一个异或门(XOR)就能实现相位检测，是最简单但有缺陷的实现：</p>
+<p>当ref clock和local clock(反馈时钟)有相位差，异或之后输出的就是相位差信号(phase error)，这个信号经过线性函数转换成Vdd, 作为VCO的控制电压。</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303031433820.png" alt="image-20230303143346757"></p>
+<p>XOR的缺陷：当local clock相位和ref clock相位一致，但local clock频率是ref clock的N倍时，XOR检不输出相位差，但此时PLL输出频率不是预期的频率，而是N倍的预期频率。</p>
+<h3 id="Phase-Frequency-Detector-PFD"><a href="#Phase-Frequency-Detector-PFD" class="headerlink" title="Phase-Frequency Detector (PFD)"></a>Phase-Frequency Detector (PFD)</h3><p>为了解决XOR的缺陷，引入了Phase-Frequency Detector (PFD)，看名字就知道，它同时检测相位和频率，以保证PLL输出的正确性</p>
+<p>如下图，UP&#x2F;DN是控制VCO的信号，用于给VCO加压&#x2F;降压；A和B是local clock和ref clock；</p>
+<p>PFD使用触发器(flip-flops)，将UP&#x2F;DN变成A和B的状态机；关于flip-flops的特性，参考 <a target="_blank" rel="noopener" href="https://courses.cs.washington.edu/courses/cse370/03sp/pdfs/lectures/lecture15.pdf">Overview The D latch - University of Washington</a></p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303031532421.png" alt="image-20230303153203366"></p>
+<p>(1) PFD如何检测相位差</p>
+<p>以左侧信号为例，过程如下：</p>
+<ol>
+<li>信号A相位超前于信号B, A上升沿时会触发UP信号输出(D触发器特性，这里A作为D触发器的CLK输入信号)；</li>
+<li>当信号B上升沿变化时, B处的触发器也输出DN脉冲，两个触发器的输出都为1，经过与门后Rst复位信号为1，导致A和B的触发器都被reset, 之后UP和DN都变为低；</li>
+<li>综合下来看，UP信号的宽度就等于相位差，线性转换后就可以作为控制VCO的电压</li>
+</ol>
+<p>右侧波形同理，信号A相位落后于信号B，DN即相位差</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303031500042.png" alt="image-20230303150043973"></p>
+<p>(2) PFD如何检测频率差</p>
+<p>如下图，当B频率比A低，PFD输出更多的UP信号增加VCO电压，提高B的频率；当B频率比A高则相反，PFD输出更多DN信号降低B的频率</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303031517323.png" alt="image-20230303151725271"></p>
+<h2 id="PLL的指标"><a href="#PLL的指标" class="headerlink" title="PLL的指标"></a>PLL的指标</h2><p>PLL structure is a feedback structure and the addition of extra phase shifts, as is done by a high-order filter, may result in instability. </p>
+<p>PLL是能造成相位偏移（矫正）的反馈电路，既然是反馈就得像数学求极限一样不断趋近，这决定PLL不是一上电就能马上稳定工作，因此引入PLL的关键指标如下：</p>
+<p>Important properties of a PLL are：</p>
+<ul>
+<li><p>lock range—the range of input frequencies over which the loop can maintain functionality; PLL能接受的输入时钟不可能太高，一般是OSC晶振低频时钟。想象一下，太高的输入时钟要去同步相位和倍频，对VCO和相位检测器的精度要求也极高</p>
+</li>
+<li><p>the lock time—the time it takes for the PLL to lock onto a given input signal; PLL是反馈环路电路，需要不断递归趋近于目标时钟信号直到稳定，稳定需要的时间称为PLL锁定时间</p>
+</li>
+<li><p>jitter.  毛刺信号，在模拟端称为noise(VCO输入电压)，在数字端称为jitter毛刺(VCO输出时钟)，这是时钟信号相关模块必不可少的指标</p>
+</li>
+</ul>
+<h2 id="PLL的稳定过程"><a href="#PLL的稳定过程" class="headerlink" title="PLL的稳定过程"></a>PLL的稳定过程</h2><p>如下图是Spice 仿真将100Mhz reference clock倍频8倍，VCO最终稳定输出800Mhz system clock的过程：</p>
+<ul>
+<li><p>左侧是VCO控制电压，经过几次反馈调整后最终稳定</p>
+</li>
+<li><p>右侧是时钟信号，ref是输入的100Mhz reference clock，vco是输出的system clock， div是vco输出8分频后的反馈时钟</p>
+</li>
+</ul>
+<p>可见PLL稳定过程是将ref，vco和div时钟信号的相位、频率都收敛到一致</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303031423652.png" alt="image-20230303142344571"></p>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2023/02/02/Ubuntu-SSH%E6%9C%8D%E5%8A%A1%E9%85%8D%E7%BD%AE%E7%AC%94%E8%AE%B0/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2023/02/02/Ubuntu-SSH%E6%9C%8D%E5%8A%A1%E9%85%8D%E7%BD%AE%E7%AC%94%E8%AE%B0/" class="post-title-link" itemprop="url">Ubuntu SSH服务配置笔记</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2023-02-02 11:01:24" itemprop="dateCreated datePublished" datetime="2023-02-02T11:01:24+08:00">2023-02-02</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-02-27 14:17:07" itemprop="dateModified" datetime="2023-02-27T14:17:07+08:00">2023-02-27</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/linux/" itemprop="url" rel="index"><span itemprop="name">linux</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h1 id="SSH配置"><a href="#SSH配置" class="headerlink" title="SSH配置"></a>SSH配置</h1><h2 id="SSH基本概念"><a href="#SSH基本概念" class="headerlink" title="SSH基本概念"></a>SSH基本概念</h2><ul>
+<li>SSH是Secure Shell缩写，实现安全远程登录</li>
+</ul>
+<p>​    SSH的安全性好，原因是其对数据进行加密，方式主要有两种：对称加密（密钥加密）和非对称加密（公钥加密）<br>​    对称加密指加密解密使用的是同一套秘钥。Client端把密钥加密后发送给Server端，Server用同一套密钥解密。对称加密的加密强度比较高，很难破解。但是如果有一个Client端的密钥泄漏，那么整个系统的安全性就存在严重的漏洞。<br>​    为了解决对称加密的漏洞，于是就产生了非对称加密。<br>​    非对称加密有两个密钥：“公钥”和“私钥”。公钥加密后的密文，只能通过对应的私钥进行解密。想从公钥推理出私钥几乎不可能，所以非对称加密的安全性比较高。</p>
+<ul>
+<li>SSH的加密原理中，使用了RSA非对称加密算法。</li>
+</ul>
+<p>​    整个过程：</p>
+<p>​    （1）远程主机收到用户的登录请求，把自己的公钥发给用户。</p>
+<p>​    （2）用户使用这个公钥，将登录密码加密后，发送回来。</p>
+<p>​    （3）远程主机用自己的私钥，解密登录密码，如果密码正确，就同意用户登录。</p>
+<ul>
+<li>关于中间人攻击（Man-in-the-middle attack）</li>
+</ul>
+<p>​    中间人攻击的概念：如果有人冒充远程主机将伪造的公钥发给用户，用户很难辨别公钥真伪，用户    会和伪造主机通信而不是真正的主机。</p>
+<p>​    因为SSH不像https协议，SSH协议的公钥是没有证书中心（CA）公证的，是主机和用户之间自己签    发的，所有SSH从原理上无法彻底防止中间人攻击</p>
+<ul>
+<li><p>SSH使用首次验证方式减少中间人攻击的概率：</p>
+<p>SSH首次连接会下载服务端的公钥，用户确认后公钥将被保存并信任。</p>
+<p>下次访问时客户端将会核对服务端发来的公钥和本地保存的是否相同，如果不同就发出中间人攻击的警告拒绝连接，除非用户手动清除已保存的公钥。</p>
+<p>所以，只要SSH首次连接没有中间人攻击，之后的SSH连接就无需担心中间人攻击</p>
+</li>
+</ul>
+<h2 id="Ubuntu安装SSH服务"><a href="#Ubuntu安装SSH服务" class="headerlink" title="Ubuntu安装SSH服务"></a>Ubuntu安装SSH服务</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">sudo apt install ssh -y</span><br><span class="line">sudo service ssh start</span><br><span class="line">sudo service ssh status</span><br></pre></td></tr></table></figure>
+
+<p>在系统重启后ssh service会自启动，不需要<code>systemctl enable</code>去配置自启动</p>
+<h2 id="Windows访问SSH服务"><a href="#Windows访问SSH服务" class="headerlink" title="Windows访问SSH服务"></a>Windows访问SSH服务</h2><ul>
+<li><p>使用win+R CMD验证SSH连接</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ssh 远程主机用户名@远程主机IP</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>使用putty，xshell等工具访问主机</p>
+</li>
+</ul>
+<p>参考：<a target="_blank" rel="noopener" href="https://www.how2shout.com/how-to/how-to-login-into-ubuntu-using-ssh-from-windows-10-8-7.html#:~:text=How%20do%20I%20SSH%20into%20Ubuntu%20from%20Windows%3F,to%20Ubuntu%20server%20via%20Putty%20SSH%20client%20">how2shout.com&#x2F;how-to&#x2F;how-to-login-into-ubuntu-using-ssh-from-windows-10-8-7</a></p>
+<p>首次登陆会验证RSA公钥（1024位）的MD5 fingerprint（128位）</p>
+<blockquote>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">RSA key fingerprint is 98:2e:d7:e0:de:9f:ac:67:28:c2:42:2d:37:16:58:4d.</span><br><span class="line">Are you sure you want to continue connecting (yes/no)?</span><br></pre></td></tr></table></figure>
+</blockquote>
+<p>当首次连接的公钥被接受以后，会保存在本地文件。下次再连接这台主机会跳过公钥警告，直接提示输入密码。如果以后的连接是中间人攻击，其公钥和本地的首次公钥不同，从而保证安全性。</p>
+<ul>
+<li>使用xftp, filezilla工具传输文件</li>
+</ul>
+<p>和putty，xshell配置类似</p>
+<ul>
+<li>使用scp命令传输文件</li>
+</ul>
+<p>在linux主机之间可以用scp传输文件和目录</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">#从远程cp到本地</span><br><span class="line">scp username@ip_address:/home/username/filename .</span><br><span class="line">#从本地cp到远程</span><br><span class="line">scp filename username@ip_address:/home/username</span><br><span class="line">#拷贝目录</span><br><span class="line">scp -r source_dir username@ip_address:/home/username/target_dir</span><br></pre></td></tr></table></figure>
+
+<h2 id="SSH远程开发"><a href="#SSH远程开发" class="headerlink" title="SSH远程开发"></a>SSH远程开发</h2><p>示例一：在SSH server和客户端建立后，可以使用VSCode和source insight等代码编辑工具改代码，用xftp传输代码到SSH Linux主机，用xshell远程编译。</p>
+<p>示例二：VSCode安装SSH远程开发插件，可以直接远程SSH Linux主机完成代码编辑、编译，<a target="_blank" rel="noopener" href="https://www.how2shout.com/how-to/how-to-login-into-ubuntu-using-ssh-from-windows-10-8-7.html#:~:text=How%20do%20I%20SSH%20into%20Ubuntu%20from%20Windows%3F,to%20Ubuntu%20server%20via%20Putty%20SSH%20client%20">visualstudio.com&#x2F;Remote Development using SSH</a></p>
+<h1 id="远程连接相关的Ubuntu配置"><a href="#远程连接相关的Ubuntu配置" class="headerlink" title="远程连接相关的Ubuntu配置"></a>远程连接相关的Ubuntu配置</h1><h2 id="Ubuntu设置静态IP"><a href="#Ubuntu设置静态IP" class="headerlink" title="Ubuntu设置静态IP"></a>Ubuntu设置静态IP</h2><p>在使用SSH和Samba连远程Ubuntu PC时，发现IP有时候会改变，因此需要配置Ubuntu PC为静态IP</p>
+<p>1.ifconfig查看ethernet接口和当前IP</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">ubuntu@ubuntu-Z390-GAMING-X:~$ ifconfig</span><br><span class="line">eno1: flags=4163&lt;UP,BROADCAST,RUNNING,MULTICAST&gt;  mtu 1500</span><br><span class="line">        inet 10.52.4.71  netmask 255.255.255.0  broadcast 10.52.4.255</span><br></pre></td></tr></table></figure>
+
+<p>2.编辑Ubuntu的netplan配置文件&#x2F;etc&#x2F;netplan&#x2F;*.yaml，用tab补全找到具体的yaml，制定静态IP和DNS</p>
+<p>参考 <a target="_blank" rel="noopener" href="https://linuxconfig.org/netplan-network-configuration-tutorial-for-beginners">Netplan network configuration tutorial for beginners</a></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">network:</span><br><span class="line">  version: 2</span><br><span class="line">  renderer: NetworkManager</span><br><span class="line">  ethernets:</span><br><span class="line">    eno1:</span><br><span class="line">      addresses:</span><br><span class="line">        - 10.52.4.71/24</span><br><span class="line">      nameservers:</span><br><span class="line">         addresses:</span><br><span class="line">            - 10.52.1.1</span><br><span class="line">            - 10.52.1.2</span><br><span class="line">      #gateway4: 10.52.0.1</span><br><span class="line">      routes:</span><br><span class="line">         - to: default</span><br><span class="line">           via: 10.52.0.1</span><br></pre></td></tr></table></figure>
+
+<p>以上IP和nameservers(DNS)是必须的，gateway4是网关，在ubuntu22被废弃（ubuntu22显示 &#96;&#96;gateway4<code> has been deprecated, use default routes instead.</code>）使用routes配置网关，参考 <a target="_blank" rel="noopener" href="https://askubuntu.com/questions/1410750/netplan-gateway-has-been-deprecated">netplan-gateway-has-been-deprecated</a>。怎么获取这三个值，参考以下网络命令：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">#查看所有</span><br><span class="line">nmcli</span><br><span class="line">#查看gateway</span><br><span class="line">netstat -rn 或 route -n</span><br><span class="line">#DNS配置文件</span><br><span class="line">cat /etc/resolv.conf</span><br></pre></td></tr></table></figure>
+
+<p>例如nmcli输出如下，其中 <code> inet4 10.52.4.71/24</code>即当前IP&#x2F;mask， <code>route4 default via 10.52.0.1</code>即默认网关，<code>DNS configuration servers: 10.52.1.1 10.52.1.2</code>即nameservers</p>
+<blockquote>
+<p>eno1: connected to netplan-eno1<br>        “Intel I219-V”<br>        ethernet (e1000e), 18:C0:4D:1F:BA:B7, hw, mtu 1500<br>        ip4 default<br>        inet4 10.52.4.71&#x2F;24<br>        route4 10.52.4.0&#x2F;24 metric 100<br>        route4 10.52.0.1&#x2F;32 metric 100<br>        route4 default via 10.52.0.1 metric 100<br>        inet6 fe80::1ac0:4dff:fe1f:bab7&#x2F;64<br>        route6 fe80::&#x2F;64 metric 256</p>
+<p>virbr0: connected (externally) to virbr0<br>        “virbr0”<br>        bridge, 52:54:00:13:EB:68, sw, mtu 1500<br>        inet4 192.168.122.1&#x2F;24<br>        route4 169.254.0.0&#x2F;16 metric 1000<br>        route4 192.168.122.0&#x2F;24 metric 0</p>
+<p>lo: unmanaged<br>        “lo”<br>        loopback (unknown), 00:00:00:00:00:00, sw, mtu 65536</p>
+<p>DNS configuration:<br>        servers: 10.52.1.1 10.52.1.2<br>        interface: eno1</p>
+</blockquote>
+<p>3.生效</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo netplan apply</span><br></pre></td></tr></table></figure>
+
+<p>ping确认网络正常：</p>
+<blockquote>
+<p>ubuntu@ubuntu-Z390-GAMING-X:~$ ping <a target="_blank" rel="noopener" href="http://www.bing.com/">www.bing.com</a><br>PING china.bing123.com (202.89.233.101) 56(84) bytes of data.<br>64 bytes from 202.89.233.101 (202.89.233.101): icmp_seq&#x3D;1 ttl&#x3D;117 time&#x3D;27.1 ms<br>64 bytes from 202.89.233.101 (202.89.233.101): icmp_seq&#x3D;2 ttl&#x3D;117 time&#x3D;27.2 ms<br>64 bytes from 202.89.233.101 (202.89.233.101): icmp_seq&#x3D;3 ttl&#x3D;117 time&#x3D;27.2 ms</p>
+</blockquote>
+<p>如果DNS server或gateway不符合当前网络状况，ping会失败，输出：</p>
+<blockquote>
+<p>Name or service not known</p>
+</blockquote>
+<h2 id="Ubuntu禁止自动登出"><a href="#Ubuntu禁止自动登出" class="headerlink" title="Ubuntu禁止自动登出"></a>Ubuntu禁止自动登出</h2><p>自动登出会使SSH断开链接，按如下禁用</p>
+<blockquote>
+<p>setting-&gt;Privacy-&gt;Screen-&gt;Automatic Screen Lock (OFF)</p>
+</blockquote>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2023/01/31/Linux%E9%A9%B1%E5%8A%A8%E5%88%86%E6%9E%90%EF%BC%9AMMC%E5%AD%90%E7%B3%BB%E7%BB%9F/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2023/01/31/Linux%E9%A9%B1%E5%8A%A8%E5%88%86%E6%9E%90%EF%BC%9AMMC%E5%AD%90%E7%B3%BB%E7%BB%9F/" class="post-title-link" itemprop="url">Linux驱动分析：MMC子系统</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2023-01-31 16:57:12 / 修改时间：17:00:25" itemprop="dateCreated datePublished" datetime="2023-01-31T16:57:12+08:00">2023-01-31</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/linux/" itemprop="url" rel="index"><span itemprop="name">linux</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h1 id=""><a href="#" class="headerlink" title=""></a></h1>
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2023/01/30/Ubuntu%20Samba%E9%85%8D%E7%BD%AE%E7%AC%94%E8%AE%B0/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2023/01/30/Ubuntu%20Samba%E9%85%8D%E7%BD%AE%E7%AC%94%E8%AE%B0/" class="post-title-link" itemprop="url">Ubuntu Samba配置笔记</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2023-01-30 10:55:24" itemprop="dateCreated datePublished" datetime="2023-01-30T10:55:24+08:00">2023-01-30</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-02-03 16:26:12" itemprop="dateModified" datetime="2023-02-03T16:26:12+08:00">2023-02-03</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/linux/" itemprop="url" rel="index"><span itemprop="name">linux</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h2 id="Samba基本概念"><a href="#Samba基本概念" class="headerlink" title="Samba基本概念"></a>Samba基本概念</h2><p>Samba是SMB protocol的应用程序实现，分为服务端和客户端；</p>
+<p>Samba通常的使用场景：在同一局域网内的的Linux主机安装Samba服务，windows主机可以访问Linux Samba服务指定的共享目录。</p>
+<p>在嵌入式开发中通常在windows 上编辑Samba共享目录下的代码，通过 Linux环境编译代码，而无需在两个主机间拷贝代码文件。</p>
+<h2 id="Ubuntu安装Samba服务"><a href="#Ubuntu安装Samba服务" class="headerlink" title="Ubuntu安装Samba服务"></a>Ubuntu安装Samba服务</h2><p>Ubuntu 20.04和22.04 版本，安装Samba服务参考：</p>
+<p><a target="_blank" rel="noopener" href="https://www.how2shout.com/linux/how-to-install-samba-on-ubuntu-22-04-lts-jammy-linux/#:~:text=Steps%20to%20install%20SAMBA%20on%20Ubuntu%2022.04%20LTS,...%206%206.%20Access%20the%20shared%20folder%20">www.how2shout.com/linux/how-to-install-samba-on-ubuntu-22-04-lts-jammy-linux</a><br>主要流程：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">#install and run samba service</span><br><span class="line">sudo apt install samba -y</span><br><span class="line"></span><br><span class="line">#enable auto start samba service</span><br><span class="line">sudo systemctl enable --now smbd</span><br><span class="line"></span><br><span class="line">#firewall allow samba</span><br><span class="line">sudo ufw allow samba</span><br><span class="line"></span><br><span class="line">#add system user to sambashare group</span><br><span class="line">sudo usermod -aG sambashare $USER</span><br><span class="line"></span><br><span class="line">#set passwd for sambashare</span><br><span class="line">sudo smbpasswd -a $USER</span><br><span class="line"></span><br><span class="line">#check samba service is running</span><br><span class="line">systemctl status smbd</span><br><span class="line"></span><br><span class="line">#share the folder in ubuntu GUI checkbox</span><br></pre></td></tr></table></figure>
+
+<p>Ubuntu 22.10版本，没有右键共享文件的选项，需要<a target="_blank" rel="noopener" href="https://fostips.com/share-folder-ubuntu-21-04-fix-net-share-error-255/#:~:text=How%20to%20Share%20A%20Folder%20over%20Local%20Network,4%204.%20How%20to%20access%20the%20shared%20folder">Install the nautilus-share</a>；如果非root用户要共享&#x2F;home，需要修改smb.conf:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">sudo apt install nautilus-share</span><br><span class="line">reboot后,右键要共享的home文件夹，选中Sharing Options，显示无权共享</span><br><span class="line">vim /etc/samba/smb.conf</span><br><span class="line">在[global]新增usershare owner only = false</span><br><span class="line">sudo systemctl restart smbd</span><br></pre></td></tr></table></figure>
+
+
+
+<h2 id="Windows访问Samba共享目录"><a href="#Windows访问Samba共享目录" class="headerlink" title="Windows访问Samba共享目录"></a>Windows访问Samba共享目录</h2><p>windows下可以在文件浏览器直接访问Linux主机ip查看共享的Linux目录</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202301301103020.png" alt="image-20230130110305978"></p>
+<p>如果windows访问共享目录有权限问题（例如不能写入），需要在Linux修改共享目录的权限：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo chmod 777 共享目录 -R </span><br></pre></td></tr></table></figure>
+
+<h2 id="重装Samba"><a href="#重装Samba" class="headerlink" title="重装Samba"></a>重装Samba</h2><p>Samba的配置文件位于&#x2F;etc&#x2F;samba&#x2F;smb.conf，如果此文件被错误配置或者误删除，需要重装Samba，流程如下:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">sudo apt-get remove samba --purge //删掉samba服务</span><br><span class="line">sudo apt-get remove samba-common --purge //这一步是关键，只重装samba不会恢复smb.conf</span><br><span class="line">sudo apt-get autoremove //删掉其他samba依赖库</span><br><span class="line">sudo apt-get install samba //重装，包括samba和samba-common等</span><br></pre></td></tr></table></figure>
+
+<h2 id="Samba使用示例"><a href="#Samba使用示例" class="headerlink" title="Samba使用示例"></a>Samba使用示例</h2><p>Samba最重要的特性是两个主机之间直接共享目录，不需要用户去拷贝文件。</p>
+<p>在代码开发中，在windows主机的VSCode或其他编辑器直接打开Linux主机共享目录的代码，然后SSH远程Linux主机去编译。</p>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2023/01/30/Windows-CMD-%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4%E7%AC%94%E8%AE%B0/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2023/01/30/Windows-CMD-%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4%E7%AC%94%E8%AE%B0/" class="post-title-link" itemprop="url">Windows CMD 常用命令笔记</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2023-01-30 10:38:16 / 修改时间：10:51:12" itemprop="dateCreated datePublished" datetime="2023-01-30T10:38:16+08:00">2023-01-30</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/windows/" itemprop="url" rel="index"><span itemprop="name">windows</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h1 id="Tree命令生成目录树"><a href="#Tree命令生成目录树" class="headerlink" title="Tree命令生成目录树"></a>Tree命令生成目录树</h1><blockquote>
+<p>tree 命令的目录格式：TREE 【drive：】【path】【&#x2F;F】【&#x2F;A】</p>
+<ul>
+<li>可在cmd内输入（help tree 或 tree &#x2F; ？）查看</li>
+<li>&#x2F;F  显示每个文件夹中文件的名称</li>
+<li>&#x2F;A  使用ASCII字符，而不使用拓展字符</li>
+</ul>
+</blockquote>
+<p>示例一：只显示路径名不显示文件名</p>
+<p><code>TREE 【drive：】【path】</code></p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202301301049746.png" alt="image-20230130104934713"></p>
+<p>示例二：显示路径名和文件名</p>
+<p><code>TREE 【drive：】【path】【/F】</code></p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202301301048851.png" alt="image-20230130104835813"></p>
+<p>示例三：将目录树存入指定文件</p>
+<p><code>TREE 【drive：】【path】 &gt; 文件路径】</code></p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202301301051100.png" alt="image-20230130105102054"></p>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2022/12/08/VSCode%E9%85%8D%E7%BD%AE%E7%AC%94%E8%AE%B0/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -184,10 +729,16 @@
                 <i class="far fa-calendar"></i>
               </span>
               <span class="post-meta-item-text">发表于</span>
-              
 
-              <time title="创建时间：2022-12-08 11:50:24 / 修改时间：12:04:30" itemprop="dateCreated datePublished" datetime="2022-12-08T11:50:24+08:00">2022-12-08</time>
+              <time title="创建时间：2022-12-08 11:50:24" itemprop="dateCreated datePublished" datetime="2022-12-08T11:50:24+08:00">2022-12-08</time>
             </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-02-20 11:04:03" itemprop="dateModified" datetime="2023-02-20T11:04:03+08:00">2023-02-20</time>
+              </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
                 <i class="far fa-folder"></i>
@@ -219,6 +770,18 @@
 <p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081200216.png" alt="image-20221208120051137"></p>
 <p>2.转移已有的workspaceStorage.</p>
 <p>修改完成后，将%AppData%\Code下的所有内容拷贝到设置的目录中;  也可以删除%AppData%\Code，但是需要重新配置VSCode。</p>
+<h1 id="常用快捷键"><a href="#常用快捷键" class="headerlink" title="常用快捷键"></a>常用快捷键</h1><h2 id="代码注释"><a href="#代码注释" class="headerlink" title="代码注释"></a>代码注释</h2><p>以双斜杠&#x2F;&#x2F;注释和取消注释:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">方法一：</span><br><span class="line">注释：ctrl + / </span><br><span class="line">取消注释：ctrl + /</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">方法二：</span><br><span class="line">注释：ctrl + k, ctrl + c </span><br><span class="line">取消注释：ctrl + k, ctrl + u</span><br></pre></td></tr></table></figure>
+
+<p>以星号&#x2F;**&#x2F;注释和取消注释:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">注释：shift + alt + a </span><br><span class="line">取消注释：shift + alt + a</span><br></pre></td></tr></table></figure>
+
+<h2 id="更改快捷键"><a href="#更改快捷键" class="headerlink" title="更改快捷键"></a>更改快捷键</h2><p>File-&gt;Preference-&gt;KeyboardShortCuts</p>
+<p>例如可以把块注释&#x2F;**&#x2F;快捷键改成<code>ctrl+Alt+/</code>，和行注释<code>ctrl+/</code>达成统一：</p>
+<p>选择recording keys，直接录入要修改的快捷键</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202302201101988.png" alt="image-20230220110133891"></p>
 <h1 id="插件配置"><a href="#插件配置" class="headerlink" title="插件配置"></a>插件配置</h1>
       
     </div>
@@ -307,7 +870,7 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2022/04/18/Qt%E5%AD%A6%E4%B9%A0%E4%B9%8B%E8%B7%AF-1.RGB%E8%B0%83%E8%89%B2%E5%99%A8/">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2022/04/18/Qt%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0%EF%BC%9ARGB%E8%B0%83%E8%89%B2%E5%99%A8/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/avatar.gif">
@@ -321,7 +884,7 @@
       <header class="post-header">
         <h2 class="post-title" itemprop="name headline">
           
-            <a href="/2022/04/18/Qt%E5%AD%A6%E4%B9%A0%E4%B9%8B%E8%B7%AF-1.RGB%E8%B0%83%E8%89%B2%E5%99%A8/" class="post-title-link" itemprop="url">Qt学习之路-1.RGB调色器</a>
+            <a href="/2022/04/18/Qt%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0%EF%BC%9ARGB%E8%B0%83%E8%89%B2%E5%99%A8/" class="post-title-link" itemprop="url">Qt学习笔记：RGB调色器</a>
         </h2>
 
         <div class="post-meta">
@@ -338,7 +901,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2022-05-17 14:11:27" itemprop="dateModified" datetime="2022-05-17T14:11:27+08:00">2022-05-17</time>
+                <time title="修改时间：2022-12-12 14:58:40" itemprop="dateModified" datetime="2022-12-12T14:58:40+08:00">2022-12-12</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -443,7 +1006,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2022-08-17 14:43:49" itemprop="dateModified" datetime="2022-08-17T14:43:49+08:00">2022-08-17</time>
+                <time title="修改时间：2023-02-01 10:10:44" itemprop="dateModified" datetime="2023-02-01T10:10:44+08:00">2023-02-01</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -551,6 +1114,7 @@
 <p>使用<code>lsmod</code>可以得知module依赖关系，如下图，sdhci_uhs2被sdhci_pci引用1次, sdhci被sdhci_uhs2和sdhci_pci引用2次<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202203301645712.png"><br><code>modinfo</code>可以得知已加载module的.ko路径<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202203301645737.png"></p>
 <h4 id="2-4-2-手动卸载和装载module"><a href="#2-4-2-手动卸载和装载module" class="headerlink" title="2.4.2 手动卸载和装载module"></a>2.4.2 手动卸载和装载module</h4><p>卸载和装载都要按依赖顺序处理，shell脚本如下.</p>
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">#!/bin/bash</span><br><span class="line"></span><br><span class="line">sudo rmmod sdhci_pci</span><br><span class="line">sudo rmmod sdhci_uhs2</span><br><span class="line">sudo rmmod sdhci</span><br><span class="line"></span><br><span class="line">sudo insmod /lib/modules/`uname -r`/build/drivers/mmc/host/sdhci.ko</span><br><span class="line">sudo insmod /lib/modules/`uname -r`/build/drivers/mmc/host/sdhci-uhs2.ko</span><br><span class="line">sudo insmod /lib/modules/`uname -r`/build/drivers/mmc/host/sdhci-pci.ko </span><br></pre></td></tr></table></figure>
+
 <h2 id="3-调试过程"><a href="#3-调试过程" class="headerlink" title="3. 调试过程"></a>3. 调试过程</h2><h3 id="3-1-调试工具"><a href="#3-1-调试工具" class="headerlink" title="3.1 调试工具"></a>3.1 调试工具</h3><ol>
 <li>printk<br>printk是很常用的driver调试手段，配合dmesg查看kernel log可以定位常见问题。<br>printk如何开启不同打印级别，参考<a target="_blank" rel="noopener" href="https://www.kernel.org/doc/html/latest/core-api/printk-basics.html"># Message logging with printk</a></li>
 </ol>
@@ -567,7 +1131,7 @@
 <li><p>模块加载初始化过程中dmesg显示直接dump<br>基本是空指针问题，例如：</p>
 <ul>
 <li>只编译UHSII host 模块，而不编译kernel的core层，insmod host模块时就会dump, 因为core层相关API不存在。</li>
-<li>获取相关数据结构方法不对导致空指针<br>例如获取slot要使用：<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">  struct sdhci_pci_slot *slot = sdhci_priv(host);</span><br><span class="line"></span><br><span class="line">static inline void *sdhci_priv(struct sdhci_host *host)&#123;</span><br><span class="line">   return host-&gt;private;</span><br><span class="line">   &#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<li>获取相关数据结构方法不对导致空指针<br>例如获取slot要使用：<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">  struct sdhci_pci_slot *slot = sdhci_priv(host);</span><br><span class="line"></span><br><span class="line">static inline void *sdhci_priv(struct sdhci_host *host)&#123;</span><br><span class="line">   return host-&gt;private;</span><br><span class="line">   &#125;</span><br><span class="line">  </span><br></pre></td></tr></table></figure>
 而host-&gt;private实际指向sdhci_host结构体的最后定义的如下0长度数组<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">unsigned long private[] ____cacheline_aligned;</span><br></pre></td></tr></table></figure>
 参考：<a target="_blank" rel="noopener" href="https://stackoverflow.com/questions/17931491/explanation-on-private-variable-in-c-struct"># <a target="_blank" rel="noopener" href="https://stackoverflow.com/questions/17931491/explanation-on-private-variable-in-c-struct">Explanation on private variable in c struct</a></a><br>基本含义是可以获取结构体外部的数据，而host指针本身确实属于slot结构体sdhci_pci_slot的一部分，所以host-&gt;private能访问到slot。</li>
 </ul>
@@ -600,7 +1164,7 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2022/03/09/python%E6%AD%A3%E5%88%99%E8%A1%A8%E8%BE%BE%E5%BC%8F%E4%BD%BF%E7%94%A8%E7%AC%94%E8%AE%B0/">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2022/03/09/python%E4%BD%BF%E7%94%A8%E7%AC%94%E8%AE%B0/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/avatar.gif">
@@ -614,7 +1178,7 @@
       <header class="post-header">
         <h2 class="post-title" itemprop="name headline">
           
-            <a href="/2022/03/09/python%E6%AD%A3%E5%88%99%E8%A1%A8%E8%BE%BE%E5%BC%8F%E4%BD%BF%E7%94%A8%E7%AC%94%E8%AE%B0/" class="post-title-link" itemprop="url">python正则表达式使用笔记</a>
+            <a href="/2022/03/09/python%E4%BD%BF%E7%94%A8%E7%AC%94%E8%AE%B0/" class="post-title-link" itemprop="url">python使用笔记</a>
         </h2>
 
         <div class="post-meta">
@@ -631,7 +1195,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2022-05-18 13:50:24" itemprop="dateModified" datetime="2022-05-18T13:50:24+08:00">2022-05-18</time>
+                <time title="修改时间：2022-12-12 15:03:14" itemprop="dateModified" datetime="2022-12-12T15:03:14+08:00">2022-12-12</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -654,8 +1218,8 @@
     <div class="post-body" itemprop="articleBody">
 
       
-          <h2 id="1-Python正则表达式简介"><a href="#1-Python正则表达式简介" class="headerlink" title="1.Python正则表达式简介"></a>1.Python正则表达式简介</h2><p>参考<a target="_blank" rel="noopener" href="https://www.programiz.com/python-programming/regex"># Python RegEx</a></p>
-<h2 id="2-示例"><a href="#2-示例" class="headerlink" title="2.示例"></a>2.示例</h2><p>芯片ATE测试中，不同ATE平台的测试模式文件格式有不同，需要匹配字符串并按特定转换<br>转换前：</p>
+          <h2 id="Python使用正则表达式示例"><a href="#Python使用正则表达式示例" class="headerlink" title="Python使用正则表达式示例"></a>Python使用正则表达式示例</h2><p>Python的正则表达式比较全面的教程，参考<a target="_blank" rel="noopener" href="https://www.programiz.com/python-programming/regex"># Python RegEx</a></p>
+<p>使用背景：芯片ATE测试中，不同ATE平台的测试模式文件格式有不同，需要匹配字符串并按特定转换<br>转换前：</p>
 <blockquote>
 <p>Pattern “pll_dll_100m_test” {<br>waveform_start:<br>W pll_dll_100m_wft;</p>
 <p>&#x2F;&#x2F;Enter PLL&#x2F;DLL Mode<br>V {pll_dll_100m_group &#x3D; 0 0 1 0 0 1 1 0 X X ;}<br>V {pll_dll_100m_group &#x3D; 0 1 1 0 0 1 1 0 X X ;}<br>V {pll_dll_100m_group &#x3D; 0 0 1 0 0 1 1 0 X X ;}</p>
@@ -684,1278 +1248,10 @@
   
   
 
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2022/02/28/%E6%90%AD%E5%BB%BA%E9%AB%98%E5%8F%AF%E7%A7%BB%E6%A4%8D%E7%9A%84Markdown%E5%86%99%E4%BD%9C%E5%92%8C%E5%8D%9A%E5%AE%A2%E7%8E%AF%E5%A2%83%EF%BC%9AObsidian+PicGo+Hexo+Github/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Cursorhu">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="ThinkNotes">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2022/02/28/%E6%90%AD%E5%BB%BA%E9%AB%98%E5%8F%AF%E7%A7%BB%E6%A4%8D%E7%9A%84Markdown%E5%86%99%E4%BD%9C%E5%92%8C%E5%8D%9A%E5%AE%A2%E7%8E%AF%E5%A2%83%EF%BC%9AObsidian+PicGo+Hexo+Github/" class="post-title-link" itemprop="url">搭建高可移植的Markdown写作和博客环境：Obsidian+PicGo+Hexo+Github</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2022-02-28 15:04:18" itemprop="dateCreated datePublished" datetime="2022-02-28T15:04:18+08:00">2022-02-28</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2022-05-17 14:23:39" itemprop="dateModified" datetime="2022-05-17T14:23:39+08:00">2022-05-17</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/markdown/" itemprop="url" rel="index"><span itemprop="name">markdown</span></a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h2 id="0-背景"><a href="#0-背景" class="headerlink" title="0.背景"></a>0.背景</h2><p>写技术笔记并发布博客，通常有以下方式：</p>
-<ul>
-<li>第三方平台CSDN&#x2F;cnblogs，最简单但是最不可控，例如我写过一篇如何使用shadow-sock，直接被删掉，各种广告也是技术洁癖症不能忍的。</li>
-<li>使用云服务器自建Leanote博客系统，我用过几年，最大缺点是服务器续费太贵，且文章数据存在数据库很难导出，优点是自建的Leanote写作发布一体化体验极好。</li>
-<li>使用github+picgo+hexo， github作为图床和博客的云服务，picgo用于建立图床通道，hexo用于发布博客。缺点是github访问慢，用开源CDN可以很好解决；优点是全部免费，数据可移植(图片链接都在github图床)，可长期使用（只要github不倒闭不锁区）</li>
-</ul>
-<p>最终我选择github+picgo+hexo方案。<br>为什么不用gitee: gitee上传图片限制1M, github有25M。有了CDN, github的速度也不是问题</p>
-<p>现在只需要确定Markdown编辑器</p>
-<p>VSCode加Markdown插件试过，体验并不完美<br><a target="_blank" rel="noopener" href="https://www.typora.io/">Typora</a>是很不错的选择，除了收费<br><a target="_blank" rel="noopener" href="https://obsidian.md/">Obsidian</a>免费且优雅：</p>
-<ul>
-<li>支持动态渲染，即写出的Markdown语句自动显示预览</li>
-<li>支持各种快捷键，无需手动输入Markdown语法格式（<a target="_blank" rel="noopener" href="https://markdown.com.cn/basic-syntax/">Markdown 基本语法</a>）。比如标题，链接，列表，引用，可以设置标准的Markdown快捷键。</li>
-<li>支持关联PicGo实现粘贴图片即上传到云端图床，这一点对于写作体验和文章的可迁移性很重要</li>
-<li>特色的Zettelkasten笔记管理方法，本文不描述这部分，参考<a target="_blank" rel="noopener" href="https://sspai.com/post/62414#!">玩转 Obsidian 01：打造知识循环利器</a></li>
-</ul>
-<h2 id="1-搭建可移植的Markdown写作环境"><a href="#1-搭建可移植的Markdown写作环境" class="headerlink" title="1. 搭建可移植的Markdown写作环境"></a>1. 搭建可移植的Markdown写作环境</h2><p>Markdown文档本身是可移植的，但是其图片资源不是, 因为图片不是以二进制嵌入文档，而只是个图片地址的链接。</p>
-<p>如果只是在本地写写Markdown，完全不需要考虑图片的可移植，只需要存本地固定路径即可。<br>如果想在本地写Markdown，且这个文档拿到别的机器，或者放到博客论坛发布，别人都可以看到图片，就要一个云端的图片存储服务，即图床。</p>
-<p>本节讲如何实现一个“一处写作，到处可见”的Markdown写作环境，并优化工具设置，让写作顺滑流程</p>
-<h3 id="1-1-Github-PicGo搭建图床"><a href="#1-1-Github-PicGo搭建图床" class="headerlink" title="1.1 Github+PicGo搭建图床"></a>1.1 Github+PicGo搭建图床</h3><p>完整流程参考<a target="_blank" rel="noopener" href="https://blog.csdn.net/yefcion/article/details/88412025">PicGo + GitHub 搭建个人图床工具</a></p>
-<p>流程包含以下部分：</p>
-<ul>
-<li>一个public的Github仓库，用来存放文章链接的图片，注意单仓库最大容量1GB。</li>
-<li>一个personal access token，用于PicGo免密访问github实现自动上传图片</li>
-<li>一个图片上传工具：PicGo及其插件，用它上连Github图床仓库，下连本地markdown编辑器，实现“图片粘贴即上传”</li>
-<li>一个CDN(推荐，很好用)：使用开源CDN jsdelivr加速Github访问，避免因访问速度造成图片上传失败</li>
-</ul>
-<p>最终我的配置如下：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202202281014786.png"></p>
-<p>单元测试：<br>手动上传本地图片，如果上传成功，且图片可预览，则功能正常<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202202281024870.png"></p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202202281024344.png"></p>
-<p>遇到的坑：<br>仓库名必须填&lt;用户名&gt;&lt;仓库名&gt;，不是完整的http或git仓库链接！否则上传图片error404</p>
-<p>PicGo支持log调试，参考：<br><a target="_blank" rel="noopener" href="https://www.shopee6.com/web/web-tutorial/picgo-github-fail.html"><a target="_blank" rel="noopener" href="https://www.shopee6.com/web/web-tutorial/picgo-github-fail.html">PicGo上传图片到GitHub总是失败的特殊解决办法</a></a></p>
-<p>2022&#x2F;5&#x2F;17更新：<br>最近发现jsdelivr在大陆挂了，那么只能放弃使用CDN, 直接使用github图床的raw链接</p>
-<p>将Picgo默认图床路径从jsdelivr的<br><a target="_blank" rel="noopener" href="https://cdn.jsdelivr.net/gh/%E8%B4%A6%E6%88%B7%E5%90%8D/%E5%9B%BE%E5%BA%8A%E4%BB%93%E5%BA%93%E5%90%8D@master">https://cdn.jsdelivr.net/gh/账户名/图床仓库名@master</a><br>改为：<br><a target="_blank" rel="noopener" href="https://raw.githubusercontent.com/%E8%B4%A6%E6%88%B7%E5%90%8D/%E5%9B%BE%E5%BA%8A%E4%BB%93%E5%BA%93%E5%90%8D/master">https://raw.githubusercontent.com/账户名/图床仓库名/master</a></p>
-<p>对于已发布的博客的图床链接，直接用VSCode全局查找替换以上前缀即可，后面的图片id是不变的。</p>
-<p><strong>如何删除Github图床的图片：</strong><br>PicGo默认的Github图床不能通过相册删除github仓库的图片，需要使用第三方插件github-plus，建议作为默认图床工具，支持相册删除同步到github仓库:<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202202281208516.png"></p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202202281209075.png"></p>
-<h3 id="1-2-Obsidian链接图床"><a href="#1-2-Obsidian链接图床" class="headerlink" title="1.2 Obsidian链接图床"></a>1.2 Obsidian链接图床</h3><p>流程参考<a target="_blank" rel="noopener" href="https://www.jianshu.com/p/4c30495f4325"># 在Obsidian中使用图床实现“一次上传、多次搬运”省心又省力</a></p>
-<p>重点部分：配置自动上传插件。写Markdown文章时粘贴的图片自动上传到Github+PicGo图床，无需手动上传和写链接<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202202281029686.png"></p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202202281029586.png"></p>
-<p>可以看到，此插件相当于一个PicGo客户端，而本地运行的PicGo Server已开启端口36677的监听。<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202202281033479.png"></p>
-<p>单元测试：<br>以上配置好后，Obsidian新建一个Markdown文档，粘贴图片会显示updating… ，成功后可在github图床仓库看到该图片，且Markdown本地预览也可以看到。</p>
-<p>遇到的坑：<br>一开始上传的图片，github可预览，Obsidian预览失败<br>在PicGo客户端查看刚才上传图片预览也不正常，PicGo客户端手动上传一张后才正常预览。<br>此后Obsidian再粘贴上传图片，预览正常。<br>可能是PicGo首次链接Obsidian插件的bug。</p>
-<h3 id="1-3-优化Obsidian写作体验"><a href="#1-3-优化Obsidian写作体验" class="headerlink" title="1.3 优化Obsidian写作体验"></a>1.3 优化Obsidian写作体验</h3><h4 id="1-3-1-Markdown快捷键"><a href="#1-3-1-Markdown快捷键" class="headerlink" title="1.3.1 Markdown快捷键"></a>1.3.1 Markdown快捷键</h4><p>很多Markdown编辑器支持各种快捷键，写作时不需要手动输入Markdown语法，例如一个ctrl+h形成标题，一个ctrl+k形成代码格式。<br>Obsidian默认快捷键不完整，需要补全优化<br>我之前用的Leanote写博客，Obsidian也快捷键设置如下。</p>
-<blockquote>
-<p>提升标题 Ctrl + H (header)<br>有序列表 Ctrl + O (Ordered)<br>无序列表 Ctrl + U (Un-Ordered)<br>插入链接 Ctrl + L (Link)<br>插入代码 Ctrl + K (K &#x3D; Code, 因为ctrl+C用于粘贴)<br>加粗 Ctrl + B (Bold)<br>斜体 Ctrl + I (Italian体)<br>引用 Ctrl + Q (Quote)<br>插入图片 Ctrl + G (Graph, 有了“粘贴即上传”，这个实际上用不上)</p>
-</blockquote>
-<p>其他我基本不用的就没设置，例如表格，删除线，分割线等等。<br>如果经常用表格，推荐 Advanced Tables插件。<br>读者也可以参考VS Code的Markdown插件设置。</p>
-<h4 id="1-3-2-实时预览和标题大纲"><a href="#1-3-2-实时预览和标题大纲" class="headerlink" title="1.3.2 实时预览和标题大纲"></a>1.3.2 实时预览和标题大纲</h4><p>实时预览是你写一句Markdown，自动转换成预览格式，而不显示Markdown源码。这样不需要开两个窗口，一个写源码一个看预览。在设置-&gt;编辑器里开启。<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202202281103907.png"></p>
-<p>标题大纲是侧边栏显示文章标题列表，就像word的导航窗口一样。在设置-核心插件开启。<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202202281104255.png"></p>
-<h2 id="2-搭建hexo博客发布环境"><a href="#2-搭建hexo博客发布环境" class="headerlink" title="2. 搭建hexo博客发布环境"></a>2. 搭建hexo博客发布环境</h2><h3 id="2-1-环境安装"><a href="#2-1-环境安装" class="headerlink" title="2.1 环境安装"></a>2.1 环境安装</h3><p>整体流程参考：<a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/105715224"># 个人博客第5篇——安装node.js和Hexo</a><br>官方文档参考：<a target="_blank" rel="noopener" href="https://hexo.io/zh-cn/docs/">hexo.io</a></p>
-<p>简单总结一下：</p>
-<ul>
-<li>hexo是一个基于nodeJS的博客框架，nodeJS提供JavaScript实现后端服务的能力。</li>
-<li>hexo可以将本地写好的Markdown文本和图片资源，以JavaScript网页资源的方式打包。hexo可以在本机运行服务，通过浏览器可以在网页访问。</li>
-<li>如果要使博客外网可访问，需要一个云服务存放hexo生成的博客，我们使用github仓库作为博客云端。前面已经搭建了github图床仓库，因此图片并不需要放到此hexo仓库。</li>
-<li>使用git实现hexo博客部署到github仓库</li>
-</ul>
-<p>遇到的坑：<br>如果你以前用过hexo，之后nodeJS升级了版本，一定不要用以前的hexo博客目录，必须新建博客目录，重新<code>hexo init</code>安装相关hexo插件。否则nodeJS和hexo插件可能不兼容导致部署失败。</p>
-<p>hexo插件版本是根据nodeJS版本自动安装的，配置文件是package.json。以nodeJS 16.3为例，自动生成的依赖版本如下：</p>
-<p><code>&#123;   &quot;name&quot;: &quot;hexo-site&quot;,   &quot;version&quot;: &quot;0.0.0&quot;,   &quot;private&quot;: true,   &quot;scripts&quot;: &#123;     &quot;build&quot;: &quot;hexo generate&quot;,     &quot;clean&quot;: &quot;hexo clean&quot;,     &quot;deploy&quot;: &quot;hexo deploy&quot;,     &quot;server&quot;: &quot;hexo server&quot;   &#125;,   &quot;hexo&quot;: &#123;     &quot;version&quot;: &quot;6.0.0&quot;   &#125;,   &quot;dependencies&quot;: &#123;     &quot;hexo&quot;: &quot;^6.0.0&quot;,     &quot;hexo-deployer-git&quot;: &quot;^3.0.0&quot;,     &quot;hexo-generator-archive&quot;: &quot;^1.0.0&quot;,     &quot;hexo-generator-category&quot;: &quot;^1.0.0&quot;,     &quot;hexo-generator-index&quot;: &quot;^2.0.0&quot;,     &quot;hexo-generator-tag&quot;: &quot;^1.0.0&quot;,     &quot;hexo-renderer-ejs&quot;: &quot;^2.0.0&quot;,     &quot;hexo-renderer-marked&quot;: &quot;^5.0.0&quot;,     &quot;hexo-renderer-stylus&quot;: &quot;^2.0.0&quot;,     &quot;hexo-server&quot;: &quot;^3.0.0&quot;,     &quot;hexo-theme-landscape&quot;: &quot;^0.0.3&quot;   &#125; &#125;</code></p>
-<p>博客的github仓库，主题等关键配置都在<code>hexo init</code>对应目录下的<code>_config.yml</code><br>我修改了几个关键配置如下：<br>博客框架的语言一定要配，否则默认德语阿拉伯语…</p>
-<blockquote>
-<p>title: ThinkNotes<br>   subtitle: Simple is not easy<br>   author: Cursorhu<br>   language: zh-CN</p>
-</blockquote>
-<p>Github部署配置</p>
-<blockquote>
-<p>url: <a href="https://cursorhu.github.io/">https://cursorhu.github.io</a><br>deploy:<br>      type: git<br>      repo: <a target="_blank" rel="noopener" href="https://github.com/cursorhu/cursorhu.github.io">https://github.com/cursorhu/cursorhu.github.io</a><br>      branch: master</p>
-</blockquote>
-<h3 id="2-2-发布博客"><a href="#2-2-发布博客" class="headerlink" title="2.2 发布博客"></a>2.2 发布博客</h3><p>hexo new命令可以从0新建markdown写博客，一般不用这么麻烦。</p>
-<p>我们直接将Obsidian写好的Markdown（图片资源是图床链接）放到hexo博客目录的post文件夹，例如我的本地目录是：</p>
-<blockquote>
-<p>F:\HexoBlog\source_posts</p>
-</blockquote>
-<p>在Markdown文件前添加hexo博客特有的头，说明博客的标题时间，分类等属性。这个头如果用<code>hexo new</code>命令会自动生成，可以先new一个然后拷过来。</p>
-<blockquote>
-<p>title: 博客文章名<br>date: 2022-02-28 15:04:18<br>tags: markdown<br>categories: markdown</p>
-</blockquote>
-<p>最后使用git生成网页文件并发布到github博客仓库, 注意不是用node命令行！<br>在hexo博客目录下运行：</p>
-<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">hexo clean   #清除缓存文件 db.json 和已生成的静态文件 public</span><br><span class="line">hexo g       #生成网站静态文件到默认设置的 public 文件夹(hexo generate 的缩写)</span><br><span class="line">hexo d       #自动生成网站静态文件，并部署到设定的仓库(hexo deploy 的缩写)</span><br></pre></td></tr></table></figure>
-
-<h3 id="2-3-博客主题"><a href="#2-3-博客主题" class="headerlink" title="2.3 博客主题"></a>2.3 博客主题</h3><p>博客主题(theme)取决于不同人喜好，github有大量的hexo主题，按需配置<br>推荐几个主流的：<br><a target="_blank" rel="noopener" href="https://github.com/theme-next/hexo-theme-next">Next</a><br><a target="_blank" rel="noopener" href="https://github.com/bollnh/hexo-theme-material">hexo-theme-material</a></p>
-<p>以Next主题为例，安装：</p>
-<blockquote>
-<p>$ cd hexo博客目录<br>   $ git clone <a target="_blank" rel="noopener" href="https://github.com/theme-next/hexo-theme-next">https://github.com/theme-next/hexo-theme-next</a> themes&#x2F;next</p>
-</blockquote>
-<p>已我的配置为例，就会在F:\HexoBlog\themes\next看到next主题的源码和配置文件config.yml</p>
-<p>Next配置可以自定义各种设置，例如子主题:</p>
-<blockquote>
-<p> scheme: Muse<br>#scheme: Mist<br>#scheme: Pisces<br>#scheme: Gemini</p>
-</blockquote>
-<p>我们前面已经用jsdelivr开源CDN为PicGo上传图片加速，可以配置Next主题的网页静态文件的相关库也用jsdelivr加速。最好用到才开启，例如motion enable, 其依赖库velocity就可以设置jsdelivr加速：</p>
-<blockquote>
-<p>motion:<br>      enable: true<br>    velocity: &#x2F;&#x2F;cdn.jsdelivr.net&#x2F;npm&#x2F;velocity-animate@1&#x2F;velocity.min.js<br>    velocity_ui: &#x2F;&#x2F;cdn.jsdelivr.net&#x2F;npm&#x2F;velocity-animate@1&#x2F;velocity.ui.min.js</p>
-</blockquote>
-<p>注意这些配置文件也是Markdown格式，<code># </code> 注释一定要带空格</p>
-<p>hexo要使用next, 在hexo配置文件设置:</p>
-<blockquote>
-<p>theme: next</p>
-</blockquote>
-<p>hexo clean, hexo g, hexo s 跑本地服务，看一下效果：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202203041651883.png"></p>
-<p>最后hexo clean, g, d 命令三连部署到github</p>
-<h3 id="2-4-速度优化"><a href="#2-4-速度优化" class="headerlink" title="2.4 速度优化"></a>2.4 速度优化</h3><p>参考<a target="_blank" rel="noopener" href="https://ednovas.gitee.io/2021/09/23/speeduphexo/"># Hexo 网站访问速度优化</a></p>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2021/09/09/%E6%A0%91%E8%8E%93%E6%B4%BE%E7%AC%94%E8%AE%B0%EF%BC%9A%E4%BD%BF%E7%94%A8ALSA-A2DP-PulseAudio%E8%87%AA%E5%88%B6%E8%93%9D%E7%89%99%E9%9F%B3%E7%AE%B1/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Cursorhu">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="ThinkNotes">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2021/09/09/%E6%A0%91%E8%8E%93%E6%B4%BE%E7%AC%94%E8%AE%B0%EF%BC%9A%E4%BD%BF%E7%94%A8ALSA-A2DP-PulseAudio%E8%87%AA%E5%88%B6%E8%93%9D%E7%89%99%E9%9F%B3%E7%AE%B1/" class="post-title-link" itemprop="url">树莓派笔记：使用ALSA+A2DP+PulseAudio自制蓝牙音箱</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2021-09-09 19:54:39" itemprop="dateCreated datePublished" datetime="2021-09-09T19:54:39+08:00">2021-09-09</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2022-12-08 19:49:24" itemprop="dateModified" datetime="2022-12-08T19:49:24+08:00">2022-12-08</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/raspi/" itemprop="url" rel="index"><span itemprop="name">raspi</span></a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h1 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h1><p>树莓派4B自带蓝牙和Wifi, 无需外接 USB dongle；<br>蓝牙最常见的应用是近距离传输数据，比如蓝牙传文件，蓝牙音箱等。正好家里有个普通的usb供电的便携音箱；</p>
-<p>本文用树莓派蓝牙+普通音箱，实现简单的蓝牙音箱。</p>
-<p>首先需要了解Linux音频系统的整体框架：<br><img src="C:\Users\thomas.hu\AppData\Roaming\Typora\typora-user-images\image-20221208194352559.png" alt="image-20221208194352559"></p>
-<p>大致分为三个部分：</p>
-<ul>
-<li>kernel&#x2F;driver层的ALSA驱动框架</li>
-<li>蓝牙音频协议栈：A2DP, 这是使蓝牙具有传输音频流能力的基石; Linux官方的bluez包实现了A2DP</li>
-<li>音频应用层, Linux最常用的音频服务器是Pulse Audio</li>
-</ul>
-<p>怎样理解这三层：可以类比Linux网络层：<br>ALSA 类似网络驱动框架<br>A2DP 类似TCP&#x2F;UDP层<br>PulseAudio 类似HTTP层的服务器，类比Apache</p>
-<p>而蓝牙连接类似http连接和会话；<br>声卡(输入、输出)类似网卡(Ethernet和wifi)，音频设备(音箱，麦克风)类似具体的网口设备</p>
-<p>深入了解 ALSA 音频驱动和 A2DP 蓝牙音频协议，参考：<br><a target="_blank" rel="noopener" href="https://www.alsa-project.org/wiki/Main_Page">Advanced Linux Sound Architecture (ALSA) project homepage</a><br><a target="_blank" rel="noopener" href="http://www.dslreports.com/r0/download/2285126~a70eb148e16b921dc323dbb977d4b4b1/A2DP_SPEC.pdf">A2DP Spec</a></p>
-<p>本文的环境<br>树莓派4B, 系统: ubuntu-server raspberry pi版本<br>音箱：usb供电，音频线<br>安卓手机：用于配对树莓派的蓝牙音频服务</p>
-<p>连接示意图</p>
-<pre><code> Audio source (i.e. smartphone) 
-                |
-                v
- (((  Wireless Bluetooth Channel  )))
-                |
-                v
-  Raspberry PI (with A2DP service)
-                |
-                v
-         Audio Interface
-                |
-                v
-             Speakers
-</code></pre>
-<h1 id="使用alsa-utils测试音频设备"><a href="#使用alsa-utils测试音频设备" class="headerlink" title="使用alsa-utils测试音频设备"></a>使用alsa-utils测试音频设备</h1><p>首先测试Linux上如何使用普通音箱<br>将音箱USB连到树莓派USB, 音频线连到音频接口</p>
-<h2 id="查看音频设备"><a href="#查看音频设备" class="headerlink" title="查看音频设备"></a>查看音频设备</h2><p>ALSA在应用层提供了alsa-utils包，其含有arecord、aplay等工具来查看和使用音频设备。</p>
-<pre><code>apt-get install alsa-utils
-</code></pre>
-<p>查看声卡列表：</p>
-<pre><code>cat /proc/asound/cards
-</code></pre>
-<p>可以看到当前有两张声卡</p>
-<p>card 0是树莓派的bcm2835集成声卡，card 1 是另外接的USB麦克风</p>
-<p>注意区分声卡和音频设备，一个声卡可以管理多个音频设备，类似于”总线”和”设备”的关系。</p>
-<p>音频设备可以细分为输入和输出两种：例如音箱是播放音频，属于输出；麦克风是录入音频，属于输入。下面分别查看这两类设备。</p>
-<p>查看音频输入设备：</p>
-<pre><code>arecord -l
-</code></pre>
-<p>查看音频输出设备：</p>
-<pre><code>aplay -l
-</code></pre>
-<h2 id="使用音频设备"><a href="#使用音频设备" class="headerlink" title="使用音频设备"></a>使用音频设备</h2><p>(1)测试音频输出：</p>
-<pre><code>aplay test.wav -D plughw:CARD=0,DEV=0
-</code></pre>
-<p>音频设备用 CARD 和 DEV 指定，来自于前文<code>aplay -l</code>查看音频设备的输出<br>测试音频(wav格式)可以在此下载：<a target="_blank" rel="noopener" href="https://www.ape8.cn/wav/">ape8.cn</a></p>
-<p>(2)测试音频输入：</p>
-<p>使用arecord录制音频输入<br>-f 录制音频格式。例如 cd 表示 (16 bit little endian, 44100, stereo)<br>-d 录制时间，单位秒<br>-c 输入通道的个数，如果是麦克风阵列可能有多通道<br>-D 使用的设备：-D hw:1,0 表示使用 card 1 下的device 0设备</p>
-<p>测试如下：</p>
-<pre><code>arecord -f cd -d 5 -c 1 -D hw:1,0 &gt; test.pcm
-</code></pre>
-<p>然后播放此音频：</p>
-<pre><code>aplay test.pcm
-</code></pre>
-<h1 id="蓝牙服务相关配置"><a href="#蓝牙服务相关配置" class="headerlink" title="蓝牙服务相关配置"></a>蓝牙服务相关配置</h1><h2 id="蓝牙协议栈和服务的安装"><a href="#蓝牙协议栈和服务的安装" class="headerlink" title="蓝牙协议栈和服务的安装"></a>蓝牙协议栈和服务的安装</h2><p>首先确保系统软件是最新：</p>
-<pre><code>sudo apt-get update
-sudo apt-get upgrade
-</code></pre>
-<p>安装 bluez，pulseaudio 等蓝牙基础组件，对于树莓派还要安装pi-bluetooth</p>
-<pre><code>sudo apt-get install pi-bluetooth bluez bluez-tools pulseaudio pulseaudio-module-bluetooth
-</code></pre>
-<p>bluez 是Linux官方的蓝牙协议栈，其内部实现 A2DP 蓝牙音频协议，参考<a target="_blank" rel="noopener" href="http://www.bluez.org/about/">bluez.org</a></p>
-<p>PulseAudio 是Linux音频服务器, 其最主要的作用是：<br>PulseAudio clients can send audio to “sinks” and receive audio from “sources”</p>
-<p>参考<a target="_blank" rel="noopener" href="https://www.freedesktop.org/wiki/Software/PulseAudio/About/">PulseAudio&#x2F;About</a></p>
-<p>简单说明下蓝牙的发送、接收的概念：<br>蓝牙的Source端为发送码流的端，Sink端为接收码流的端；可类比生产者和消费者模型</p>
-<h2 id="启动音频服务"><a href="#启动音频服务" class="headerlink" title="启动音频服务"></a>启动音频服务</h2><p>PulseAudio服务需要创建用户名和用户组，示例如下：</p>
-<pre><code>sudo usermod -G bluetooth -a ubuntu
-</code></pre>
-<p>启动服务器</p>
-<pre><code>pulseaudio --start
-</code></pre>
-<h2 id="启动蓝牙配对"><a href="#启动蓝牙配对" class="headerlink" title="启动蓝牙配对"></a>启动蓝牙配对</h2><p>蓝牙首次连接需要配对，使用 bluez 的 <code>bluetoothctl</code>工具</p>
-<p>参考：<a target="_blank" rel="noopener" href="https://www.makeuseof.com/manage-bluetooth-linux-with-bluetoothctl/">How to Manage Bluetooth Devices on Linux Using bluetoothctl</a></p>
-<pre><code>bluetoothctl //进入蓝牙配置模式，会显示用户为[bluetooth]#
-[bluetooth]# list //列出树莓派的蓝牙控制器列表
-[bluetooth]# agent on //注册蓝牙代理
-[bluetooth]# default-agent //使用默认代理
-[bluetooth]# discoverable on //树莓派的蓝牙可被其他设备发现
-[bluetooth]# scan on //开始扫描可连接蓝牙设备
-</code></pre>
-<p>此后选择要连接的蓝牙设备，手机蓝牙打开，<code>scan on</code>列表找到手机的 MAC地址 进行连接配对。<br>手机的MAC可在设置-&gt;系统信息查看</p>
-<pre><code>[bluetooth]# pair &lt;dev&gt; //配对设备，首次需要密码
-[bluetooth]# trust &lt;dev&gt; //信任该设备，此后可以自动配对无需密码
-[bluetooth]# connect &lt;dev&gt; //建立连接
-</code></pre>
-<p>现在可以退出 bluetoothctl模式，然后测试蓝牙音频播放：</p>
-<pre><code>[bluetooth]# quit
-aplay test.wav
-</code></pre>
-<p>关于蓝牙的agent，参考<a target="_blank" rel="noopener" href="https://askubuntu.com/questions/763939/bluetoothctl-what-is-a-bluetooth-agent">bluetoothctl - What is a bluetooth agent?</a></p>
-<h2 id="设置自动配对连接"><a href="#设置自动配对连接" class="headerlink" title="设置自动配对连接"></a>设置自动配对连接</h2><p>为了避免每次pair都要指定设备，可以配置蓝牙打开时，自动pair上次的设备。</p>
-<p>编辑PulseAudio配置文件 <code>/etc/pulse/default.pa</code> </p>
-<pre><code># automatically switch to newly-connected devices
-load-module module-switch-on-connect
-</code></pre>
-<p>编辑bluez配置文件 <code>/etc/bluetooth/main.conf</code></p>
-<pre><code>[Policy]
-AutoEnable=true
-</code></pre>
-<p>系统重启后只需要重启PulseAudio服务：</p>
-<pre><code>pulseaudio --start
-</code></pre>
-<h1 id="调试过程"><a href="#调试过程" class="headerlink" title="调试过程"></a>调试过程</h1><h2 id="找不到蓝牙controller"><a href="#找不到蓝牙controller" class="headerlink" title="找不到蓝牙controller"></a>找不到蓝牙controller</h2><p>最开始bluetoothctl list显示的蓝牙控制器列表是空的，我一度怀疑买了假的raspi-4B</p>
-<p>原因是树莓派需要安装专门的蓝牙包 pi-bluetooth，参考<a target="_blank" rel="noopener" href="https://raspberrypi.stackexchange.com/questions/114586/rpi-4b-bluetooth-unavailable-on-ubuntu-20-04">rpi-4b-bluetooth-unavailable-on-ubuntu</a></p>
-<p>树莓派很多功能都要求系统有定制包，大多数硬件失效都是定制包未安装。</p>
-<h2 id="蓝牙连接正常，播放没声音"><a href="#蓝牙连接正常，播放没声音" class="headerlink" title="蓝牙连接正常，播放没声音"></a>蓝牙连接正常，播放没声音</h2><p>首先确认音频设备物理连接是否正常；</p>
-<p>然后确认PulseAudio音频服务是否正常，检查服务状态和配置文件；</p>
-<pre><code>pacmd info
-pactl info
-</code></pre>
-<p>问题仍没有解决，仔细听似乎有很小的声音，检测音量配置：</p>
-<pre><code>pacmd list-sinks //找到sink设备，即音箱
-pacmd set-sink-volume &lt;sink&gt; &lt;value&gt; //设置音量，value取值 [0, 65536] 代表标准音量 0~100%
-</code></pre>
-<p>参考：<a target="_blank" rel="noopener" href="https://askubuntu.com/questions/219739/adjust-max-possible-volume-in-pulseaudio#:~:text=pactl%20set-sink-volume%200%20100%25%20Where%200%20is%20the,100%25%20to%20get%20audio%20boost%20%28200%25%20for%20example%29.">adjust max possible volume in pulseaudio</a></p>
-<p>此时播放音乐可以听到但声音极小；<br>检查音箱的线控音量调节，调到最大；<br>此时蓝牙音乐只有正常音箱大概 30% 的播放音量。</p>
-<p>原因是树莓派的USB供电驱动能力有限，同一音箱，在PC-USB供电下30%的音量大小等同于树莓派上100%的音量大小。</p>
-<p>自此蓝牙播放音量可以达到正常水平，需要更高音量和音质建议220V供电的音箱。</p>
-<h1 id="参考内容"><a href="#参考内容" class="headerlink" title="参考内容"></a>参考内容</h1><p><a target="_blank" rel="noopener" href="https://www.jianshu.com/p/1b79537da86d">Ubuntu音频设备检测</a><br><a target="_blank" rel="noopener" href="https://www.nicolabs.net/2020/Make-RPi-bluetooth-speaker-part-1">Make-RPi-bluetooth-speaker-part-1</a><br><a target="_blank" rel="noopener" href="https://gist.github.com/actuino/9548329d1bba6663a63886067af5e4cb">actuino&#x2F;bt_speaker-raspberry_pi-zero_w</a><br><a target="_blank" rel="noopener" href="https://gist.github.com/oleq/24e09112b07464acbda1#file-a2dp-autoconnect-L17">A2DP audio streaming using Raspberry PI</a></p>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2021/08/23/%E6%A0%91%E8%8E%93%E6%B4%BE%E7%AC%94%E8%AE%B0%EF%BC%9A%E4%BD%BF%E7%94%A8mjpg-streamer-Apache+SSH%E8%87%AA%E5%88%B6%E7%BD%91%E7%BB%9C%E6%91%84%E5%83%8F%E5%A4%B4/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Cursorhu">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="ThinkNotes">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2021/08/23/%E6%A0%91%E8%8E%93%E6%B4%BE%E7%AC%94%E8%AE%B0%EF%BC%9A%E4%BD%BF%E7%94%A8mjpg-streamer-Apache+SSH%E8%87%AA%E5%88%B6%E7%BD%91%E7%BB%9C%E6%91%84%E5%83%8F%E5%A4%B4/" class="post-title-link" itemprop="url">树莓派笔记：使用mjpg-streamer+Apache+SSH自制网络摄像头</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2021-08-23 23:38:12" itemprop="dateCreated datePublished" datetime="2021-08-23T23:38:12+08:00">2021-08-23</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2022-12-08 19:50:26" itemprop="dateModified" datetime="2022-12-08T19:50:26+08:00">2022-12-08</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/raspi/" itemprop="url" rel="index"><span itemprop="name">raspi</span></a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h1 id="选型"><a href="#选型" class="headerlink" title="选型"></a>选型</h1><ul>
-<li>为什么用树莓派4：</li>
-</ul>
-<p>资料多遇到容易解决问题；<br>性能较强适合作为终端服务器；<br>自带WIFI, BT5.0，GPIO 方便拓展开发IOT相关项目；<br>适配系统丰富，基本PC上linux版本树莓派都有对应版本</p>
-<ul>
-<li>为什么用USB摄像头：</li>
-</ul>
-<p>为了快速实现，Linux对USB设备支持非常好，USB设备基本都是免驱；<br>USB摄像头支持高分辨率，带麦克风，满足其他项目拓展应用；<br>当然CSI接口摄像头也有优势，同等条件下其CPU占用率比USB低；不过本地测试中CPU并不是USB摄像头性能瓶颈<br>关于CSI和USB 摄像头区别：<a target="_blank" rel="noopener" href="https://blog.csdn.net/ZhaoDongyu_AK47/article/details/103981905">CSI摄像头 vs USB摄像头</a></p>
-<ul>
-<li>树莓派用什么系统：</li>
-</ul>
-<p>看个人喜好，我用的ubuntu server的树莓派版本，软件源基本最新；</p>
-<ul>
-<li>用什么云服务器：</li>
-</ul>
-<p>看个人喜好和价格；云服务器最大价值在于公网IP<br>我目前用的Aliyun + CentOS7 系统</p>
-<p>系统实拍：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081944910.png" alt="image-20221208194427802"></p>
-<h1 id="树莓派系统安装"><a href="#树莓派系统安装" class="headerlink" title="树莓派系统安装"></a>树莓派系统安装</h1><p>准备：电源，网线，SD卡<br>安装步骤：</p>
-<ul>
-<li>1.下载ubuntu server for raspi</li>
-</ul>
-<p>注意一定要下载raspi版本的镜像，普通ubuntu server版本安装完不能直接使用SSH<br><a target="_blank" rel="noopener" href="https://ubuntu.com/download/raspberry-pi">Install Ubuntu on a RaspberryPi</a></p>
-<ul>
-<li>2.Win32DiskImager写.img镜像到SD卡，作为系统盘</li>
-</ul>
-<p>参考：<a target="_blank" rel="noopener" href="https://blog.csdn.net/bhniunan/article/details/104790090">使用win32DiskImager为树莓派4B安装系统</a></p>
-<ul>
-<li>3.SSH 登陆</li>
-</ul>
-<p>ubuntu server for raspi系统装机启动后，连接网线到主机局域网后就可以SSH登陆<br>树莓派连到主机网段路由器的LAN口，树莓派系统默认开了dhcp, 用Advanced IP Scanner扫描树莓派IP</p>
-<p>树莓派4b：mac地址“dc-a6-32”开头<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081944582.png" alt="image-20221208194446543"></p>
-<p>SSH 软件看个人喜好，putty, SecureCRT, Xshell都可以，我个人使用的SecureCRT</p>
-<p>ubuntu server for raspi系统的SSH会话初始化如下：<br>新建会话-&gt; SSH2链接-&gt; 树莓派ip -&gt; 账户名(默认ubuntu)<br>初始密码：ubuntu，登陆成功后需要重设密码。</p>
-<p>wifi配置方式参考 <a target="_blank" rel="noopener" href="https://blog.csdn.net/weixin_42378324/article/details/114631521">树莓派安装ubuntu server, 无显示屏和键盘</a></p>
-<ul>
-<li>4.固定树莓派IP</li>
-</ul>
-<p>DHCP方式每次启动树莓派IP可能不一样，有两种方式固定IP</p>
-<ul>
-<li>MAC绑定IP<br>参考<a target="_blank" rel="noopener" href="https://blog.csdn.net/Echozi/article/details/104210167">TL-WR886N路由器+树莓派绑定IP地址</a></li>
-<li>手动配置固定ip<br><a target="_blank" rel="noopener" href="https://blog.csdn.net/u010169607/article/details/111316624">Pi4B 树莓派 ubuntu20.04 设置固定IP地址</a></li>
-</ul>
-<h1 id="USB摄像头测试"><a href="#USB摄像头测试" class="headerlink" title="USB摄像头测试"></a>USB摄像头测试</h1><ul>
-<li>首先主机win10上验证摄usb像头功能正常</li>
-</ul>
-<p>设备管理器禁用笔记本原装摄像头驱动，搜索相机-&gt; 打开视频，视频流应该正常</p>
-<ul>
-<li>在树莓派上验证摄像头设备</li>
-</ul>
-<p>usb摄像头设备既是usb设备又是v4l2设备，应该挂载在&#x2F;dev&#x2F;videoX</p>
-<pre><code>ls /dev/video*
-ls /dev | grep video
-</code></pre>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081945191.png" alt="image-20221208194510165"><br>插拔摄像头确认usb摄像头对应设备是video0</p>
-<h1 id="树莓派安装mjpg-streamer"><a href="#树莓派安装mjpg-streamer" class="headerlink" title="树莓派安装mjpg-streamer"></a>树莓派安装mjpg-streamer</h1><p>mjpg-streamer的作用是将摄像头采集的YUV&#x2F;JPEG数据，封装成流服务，其他设备可以通过http方式获取图片或视频流。<br>mjpg-streamer属于应用层实现流媒体服务端，其底层调用的是Linux V4L2框架接口。</p>
-<p>安装过程：</p>
-<ol>
-<li><p>依赖库安装</p>
-<p>sudo apt-get install subversion libjpeg8-dev imagemagick libv4l-dev cmake git</p>
-</li>
-<li><p>安装mjpg-streamer</p>
-<p>git clone <a target="_blank" rel="noopener" href="https://github.com/jacksonliam/mjpg-streamer.git">https://github.com/jacksonliam/mjpg-streamer.git</a><br>cd mjpg-streamer&#x2F;mjpg-streamer-experimental&#x2F;<br>make all<br>sudo make install</p>
-</li>
-</ol>
-<h1 id="局域网测试mjpg-streamer"><a href="#局域网测试mjpg-streamer" class="headerlink" title="局域网测试mjpg-streamer"></a>局域网测试mjpg-streamer</h1><p>mjpg-streamer&#x2F;mjpg-streamer-experimental目录下有测试脚本：<code>start.sh</code><br>环境变量添加依赖库路径：</p>
-<pre><code>export LD_LIBRARY_PATH=&quot;$(pwd)&quot; 
-</code></pre>
-<p>运行示例：</p>
-<pre><code>./mjpg_streamer -i &quot;./input_uvc.so&quot; -o &quot;./output_http.so -w ./www&quot; 
-</code></pre>
-<p>其YUV&#x2F;MJPEG的输入使用 input_uvc.so， 输出流到 http依赖于 output_http.so，<code>-w ./www</code> 表示http客户端访问时返回www文件夹下的资源，即对应的浏览器页面。</p>
-<p>可以自定义参数，参考：</p>
-<pre><code>mjpg_streamer -i &quot;input_uvc.so --help&quot;
-</code></pre>
-<p>修改start.sh的自定义启动语句如下：</p>
-<pre><code>./mjpg_streamer -i &quot;./input_uvc.so -n -f 30 -r 640x480 -d /dev/video0&quot;  -o &quot; ./output_http.so -w ./www&quot;
-</code></pre>
-<p>-n 用于跳过一些ioctrl请求，我的摄像头如果不用-n，有一些ioctrl会返回错误，尽管不影响流传输功能，还是跳过。<br>-f 设置fps，如果有卡顿考虑降低该值<br>-r 分辨率，1080P摄像头可以支持到1920x1080<br>-d 设备名，默认&#x2F;dev&#x2F;video0</p>
-<p>一般USB摄像头支持直接输出压缩后的MJPEG格式图像，有的只支持YUV格式图像；<br>摄像头优先使用MJPEG格式，因为不用mjpg-streamer软件边采集边做压缩，减少CPU使用</p>
-<p>启动信息：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081945245.png" alt="image-20221208194525192"></p>
-<p>此时流服务已运行，在局域网任意设备用浏览器访问<code>树莓派ip:流服务端口</code>即可获取www目录的网页资源<br>192.168.0.105是我树莓派固定ip, 8080是mjpg-streamer服务默认端口<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081945636.png" alt="image-20221208194549504"><br>局域网下即使是1080p 30fps也非常流畅，看不出卡顿</p>
-<h1 id="公网服务器搭建反向代理"><a href="#公网服务器搭建反向代理" class="headerlink" title="公网服务器搭建反向代理"></a>公网服务器搭建反向代理</h1><h2 id="反向代理的概念"><a href="#反向代理的概念" class="headerlink" title="反向代理的概念"></a>反向代理的概念</h2><p>正向代理和反向代理的概念图：</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081946618.png" alt="image-20221208194609572"></p>
-<p>正向代理：代理的是客户端，例如GFW禁止某用户直接访问目标服务器的8080端口，但没有禁止访问正向代理服务器，客户端访问正向代理服务器，代理服务将用户请求转发给目标服务器，实现“蛙跳式”访问。对于目标服务器来说，正向代理服务器才是其客户端，用户ip对其是不可见的。<br>反向代理：代理的是服务端，应用于以下场景：</p>
-<ul>
-<li>出于安全考虑，目标服务器不直接暴露其ip和端口，用户通过访问反向代理服务器来间接访问目标服务器</li>
-<li>保证系统稳定性：反向代理服务器可以代理多个目标服务器，当用户请求量大时作为负载均衡(<a target="_blank" rel="noopener" href="https://blog.csdn.net/ywd1992/article/details/112858537">负载均衡和反向代理的区别</a>); 支持目标服务器作为集群管理，当某个目标服务器失效时将请求转发到其他服务器, 参考<a target="_blank" rel="noopener" href="https://www.cnblogs.com/jkko123/p/6426857.html">centos7下apache2.4反向代理</a></li>
-</ul>
-<p>对于本项目，树莓派的mjpg-streamer进程是真正提供流媒体服务的目标服务器，阿里云公网服务器上安装apache服务，实现反向代理。</p>
-<h2 id="安装apache服务"><a href="#安装apache服务" class="headerlink" title="安装apache服务"></a>安装apache服务</h2><p>Apache实现http web服务器；没有apache, 客户浏览器页面没办法访问对应服务。<br>阿里云主机 cent-OS 7 上的安装过程：</p>
-<pre><code>//安装Apache
-yum install httpd
-//设置服务器开机自动启动Apache
-systemctl enable httpd.service
-//启动Apache
-systemctl start httpd.service
-//重启
-systemctl restart httpd.service
-//停止
-systemctl stop httpd.service    
-</code></pre>
-<p>启动apache后，直接访问阿里云ip，默认端口 80 即为 apache 进程端口，得到如下页面说明服务正常<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081946493.png" alt="image-20221208194622426"></p>
-<h2 id="配置apache为反向代理"><a href="#配置apache为反向代理" class="headerlink" title="配置apache为反向代理"></a>配置apache为反向代理</h2><p>apache相关配置路径在&#x2F;etc&#x2F;httpd的几个conf目录<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081946576.png" alt="image-20221208194635517"></p>
-<p><code>vim /etc/httpd/conf/httpd.conf</code> 查看关键内容如下:</p>
-<pre><code>Listen 80 //监听80端口
-Include conf.modules.d/*.conf //包含module.d目录的所有conf
-DocumentRoot &quot;/var/www/html&quot; //默认返回该目录的html资源
-IncludeOptional conf.d/*.conf //包含conf.d目录的所有conf
-</code></pre>
-<p><code>/etc/httpd/conf.modules.d</code>目录下的<code>00-proxy.conf</code>是针对代理的配置项，其中有大量LoadModule加载proxy模块。<br>配置内容是XML格式，在此自定义反向代理，追加以下内容：</p>
-<pre><code>&lt;VirtualHost *:80&gt;
-    ProxyRequests off
-    &lt;Proxy raspi&gt;
-        Order allow,deny
-        Allow from all
-    &lt;/Proxy&gt;
-    ProxyPass /raspi http://127.0.0.1:9020
-    ProxyPassReverse /raspi http://127.0.0.1:9020
-&lt;/VirtualHost&gt;
-</code></pre>
-<p>含义：<br><code>&lt;VirtualHost *:80&gt;</code> 定义一个虚拟主机，<em>表示任意命名，端口80<br><code>ProxyRequests off</code> 关闭正向代理<br><code>&lt;Proxy raspi&gt;</code>定义一个代理对象，可以命名为</em>，这里命名为raspi因为后端服务是raspi流服务<br><code>ProxyPass</code> 和 <code>ProxyPassReverse</code> 内容要完全一样，<code>ProxyPassReverse /raspi http://127.0.0.1:9020</code> 表示用户访问&#x2F;raspi资源实际访问的是本地（apache所在云主机）的9020端口。</p>
-<p>注意阿里云端口要支持外部可访问，需要在控制台配置安装组，参考：<a target="_blank" rel="noopener" href="https://developer.aliyun.com/article/767328">阿里云服务器开放端口教程</a></p>
-<p>我个人的配置是直接(1~65535)全部端口打开（不推荐，有风险）<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081946296.png" alt="image-20221208194652256"></p>
-<p>配置完毕重启apache服务</p>
-<h2 id="配置SSH反向隧道"><a href="#配置SSH反向隧道" class="headerlink" title="配置SSH反向隧道"></a>配置SSH反向隧道</h2><p>树莓派的mjpg-streamer服务如何连接到阿里云的apache服务？<br>使用SSH连通。关于SSH，参考<a target="_blank" rel="noopener" href="https://www.ssh.com/academy/ssh">SSH (Secure Shell) Home Page</a></p>
-<p>前文的SecureCRT登陆树莓派就是使用SSH2协议，下面将树莓派的mjpg-streamer服务端口通过SSH反向隧道连接到apache的代理端口</p>
-<pre><code>ssh -fN -R &lt;阿里云apache代理端口&gt;:&lt;树莓派localhost&gt;:&lt;树莓派mjpg-streamer服务端口&gt; &lt;阿里云服务器用户名&gt;@&lt;服务器IP&gt;
-</code></pre>
-<p>例如 <code>ssh -fN -R 9020:localhost:8080 root@47.100.221.149</code><br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081947690.png" alt="image-20221208194724640"></p>
-<p>输入服务器的登录密码完成通道建立，在阿里云可以查看：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081947971.png" alt="image-20221208194733933"></p>
-<h1 id="验证公网可访问-mjpg-streamer-服务"><a href="#验证公网可访问-mjpg-streamer-服务" class="headerlink" title="验证公网可访问 mjpg-streamer 服务"></a>验证公网可访问 mjpg-streamer 服务</h1><ul>
-<li><p>1.验证树莓派到apache的视频流通道：</p>
-<ol>
-<li>阿里云服务器启动apache</li>
-<li>树莓派建立SSH反向隧道</li>
-<li>树莓派启动mjpg-streamer</li>
-<li>在阿里云curl访问本地的代理端口</li>
-</ol>
-<p> curl 127.0.0.1:9020&#x2F;?action&#x3D;stream</p>
-</li>
-</ul>
-<p>如果有大量数据输出，说明连接没问题</p>
-<ul>
-<li>2.验证apache到客户端浏览器的反向代理通道：</li>
-</ul>
-<p>使用处于任意网络的设备的浏览器，访问：</p>
-<pre><code>http://云服务器IP / Apache代理名 / ?action=stream
-</code></pre>
-<p>本文中配置对应的输入是：<code>47.100.221.149/raspi/?action=stream</code>，注意<code>?action=stream</code>不能掉，直接访问<code>/raspi</code>得到的是静态页面，跳转不到<code>action=stream</code>的页面<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081947462.png" alt="image-20221208194745374"></p>
-<p>直接访问 SSH 通道的 9020 端口支持主页面访问和跳转到<code>action=stream</code>页面：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081947787.png" alt="image-20221208194754703"></p>
-<p>自此验证完毕公网可访问树莓派的视频流服务</p>
-<h1 id="性能测试与优化"><a href="#性能测试与优化" class="headerlink" title="性能测试与优化"></a>性能测试与优化</h1><p>实测发现mjpg-streamer启动时使用 640x480分辨率, 30fps，MJPEG格式，延迟卡顿严重</p>
-<p>树莓派 ping 阿里云延迟很小：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081948699.png" alt="image-20221208194803656"><br>可能是阿里云带宽不足以支撑大数据量，只能降低分辨率和帧率</p>
-<p>我的阿里云服务器只有 3M 带宽，计算一下合适的配置：</p>
-<pre><code>3 * 1M/8 = 3 * 128KB = 384KB
-</code></pre>
-<p>理论上当分辨率 640x480 &#x3D; 300KB, fps 要设置为 1 才几乎无延迟</p>
-<p>测试一： 分辨率&#x3D;640x480, fps&#x3D;5<br>结果：初始延迟在 1s 以内，之后延迟增加到几秒；</p>
-<p>测试二： 分辨率&#x3D;640x480, fps&#x3D;1<br>结果：初始延迟在 0.5s 左右，半小时后延迟也稳定在1s以内，效果明显比 fps&#x3D;5 好；<br>测试符合理论预期，分辨率 和 FPS 要满足带宽</p>
-<p>延迟的测试方法：手机计时，网页视频显示，放一起拍照，时间差即视频延迟<br>以下显示都在1分47秒，延迟小于 1s<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081948279.png" alt="image-20221208194813177"></p>
-<p>注意: 树莓派长时间运行发热较明显，需要配散热片。</p>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2021/07/15/%E5%A4%9A%E7%BA%BF%E7%A8%8B%E7%AC%94%E8%AE%B0%EF%BC%9A%E4%BD%BF%E7%94%A8GDB%E8%B0%83%E8%AF%95%E5%A4%9A%E7%BA%BF%E7%A8%8B/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Cursorhu">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="ThinkNotes">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2021/07/15/%E5%A4%9A%E7%BA%BF%E7%A8%8B%E7%AC%94%E8%AE%B0%EF%BC%9A%E4%BD%BF%E7%94%A8GDB%E8%B0%83%E8%AF%95%E5%A4%9A%E7%BA%BF%E7%A8%8B/" class="post-title-link" itemprop="url">多线程笔记：使用GDB调试多线程</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2021-07-15 15:29:31" itemprop="dateCreated datePublished" datetime="2021-07-15T15:29:31+08:00">2021-07-15</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2022-12-08 10:26:47" itemprop="dateModified" datetime="2022-12-08T10:26:47+08:00">2022-12-08</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/linux/" itemprop="url" rel="index"><span itemprop="name">linux</span></a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h1 id="1-GDB简介"><a href="#1-GDB简介" class="headerlink" title="1.GDB简介"></a>1.GDB简介</h1><p>官网文档：<br><a target="_blank" rel="noopener" href="https://www.gnu.org/software/gdb/documentation/">GDB: The GNU Project Debugger</a></p>
-<p>关于GDB的原理：<br><a target="_blank" rel="noopener" href="https://cloud.tencent.com/developer/article/1365186">GDB实现原理和使用范例</a><br><a target="_blank" rel="noopener" href="http://oenhan.com/gdb-principle">GDB工作原理和内核实现</a><br><a target="_blank" rel="noopener" href="http://www.docin.com/p-18618736.html">GDB的基本工作原理</a></p>
-<p>其他教程：<a target="_blank" rel="noopener" href="http://c.biancheng.net/gdb/">GDB调试教程</a></p>
-<p>几个重点：</p>
-<ul>
-<li>多种运行方式：gdb启动程序再调试(独立功能程序)，gdb attach进程再调试(服务端程序)，gdb加载core dump调试(离线调试)</li>
-<li>GDB的本质是“截获”被调试程序，attach用ptrace截获了OS和应用程序之间的通信, 端点本质是trap中断，截获了CPU正常取指执行流程</li>
-</ul>
-<p>本文源码：<a target="_blank" rel="noopener" href="https://github.com/cursorhu/SimpleMultiThread/tree/master/4.gdb_thread">cursorhu&#x2F;SimpleMultiThread&#x2F;4.gdb_thread&#x2F;</a></p>
-<h1 id="2-多线程程序的GDB调试"><a href="#2-多线程程序的GDB调试" class="headerlink" title="2.多线程程序的GDB调试"></a>2.多线程程序的GDB调试</h1><p>待调试代码：</p>
-<pre><code>#include &lt;thread&gt;
-#include &lt;chrono&gt;
-#include &lt;mutex&gt;
-#include &lt;iostream&gt;
-
-int g_mydata = 0;
-std::mutex g_mutex;
-
-void thread_func1()
-&#123;
-    while (true)
-    &#123;
-        g_mutex.lock();
-        ++g_mydata;
-        if(g_mydata == 1024)
-            g_mydata = 0;
-        g_mutex.unlock();
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-    &#125;
-&#125;
-
-void thread_func2()
-&#123;
-    while (true)
-    &#123;
-        g_mutex.lock();
-        std::cout &lt;&lt; &quot;g_mydata = &quot; &lt;&lt; g_mydata &lt;&lt; &quot;, ThreadID = &quot; &lt;&lt; std::this_thread::get_id() &lt;&lt; std::endl;
-        g_mutex.unlock();
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-    &#125;
-&#125;
-
-int main()
-&#123;
-    std::thread t1(thread_func1);
-    std::thread t2(thread_func2);
-    t1.join();
-    t2.join();
-    return 0;
-&#125;
-</code></pre>
-<p>编译：</p>
-<pre><code>g++ -g -std=c++11 cppthread.cpp -o cppthread -lpthread
-</code></pre>
-<p>-g: 带debug信息，gdb要用<br>-lpthread：链接pthread库。当应用直接调用POSIX&#x2F;pthread接口，或Linux环境中运行多线程都需要</p>
-<h2 id="attach方式调试"><a href="#attach方式调试" class="headerlink" title="attach方式调试"></a>attach方式调试</h2><p>(1)后台运行并获取PID</p>
-<ul>
-<li>GDB调试已运行的程序，cppthread线程写成死循环，后台运行。</li>
-<li>ps -ef | grep NAME 获取PID</li>
-<li>pstree可以查看线程关系</li>
-<li>LWP:轻量级进程，是用户线程和内核的中间接口。用户级线程连接LWP上便具有内核线程的所有属性。因此可以认为LWP ID对应线程ID</li>
-</ul>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051534342.png" alt="1"></p>
-<p>(2)gdb attach，管控进程<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051544779.png" alt="2"></p>
-<p>(3)查看所有线程信息<br>*表示当前在1号线程，注意这个ID是GDB attach后分配的，真实线程ID参考LWP<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051534546.png" alt="3"></p>
-<p>(4)查看线程backtrace<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051535566.png" alt="4"></p>
-<p>(5)切换线程<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051535346.png" alt="5"></p>
-<p>(6)单步调试线程</p>
-<ul>
-<li>注意，GDB调试时是支持线程切换的，等同正常执行多线程，也可以禁用切换：<code>set scheduler-locking on</code>。本示例有mutex锁,未见到切换</li>
-<li><code>next</code>: 单步（一步），<code>next n</code>: 单步n步</li>
-<li><code>watch 变量</code>，可见<code>next 6</code>后g_mydata + 1</li>
-<li><code>watch</code>会自动隐式的加断点，后文会看到断点信息</li>
-</ul>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051535751.png" alt="6"></p>
-<p>(7)断点</p>
-<ul>
-<li><code>break i</code>: 在代码i行加断点， <code>break func</code>:在函数加断点</li>
-<li><code>clear i</code>: 清除i行的断点， <code>delete id</code>: 清除指定id的断点</li>
-<li>注意看watch引入了一个断点11</li>
-<li><code>continue</code>：继续执行，通常配合断点使用</li>
-</ul>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051535502.png" alt="7"></p>
-<p>(8)线程外调试+多断点<br>两个工作线程都加断点<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051535139.png" alt="8"><br>一次运行<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051535180.png" alt="9"><br>继续运行<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051536672.png" alt="10"></p>
-<ul>
-<li>Thread2和Thread3即工作线程，Thread1为主线程</li>
-<li>Thread1会切到工作线程，LWP&#x3D;6080或6081</li>
-<li>两次运行,Thread1切到的LWP不一样</li>
-</ul>
-<p>GDB显示主线程切到哪个工作线程，实际是CPU当前在执行哪个工作线程，因此两次运行到断点时，当前执行线程分别是Thread2和Thread3，主线程实际是阻塞的。</p>
-<h2 id="GDB直接运行程序"><a href="#GDB直接运行程序" class="headerlink" title="GDB直接运行程序"></a>GDB直接运行程序</h2><p>用GDB运行程序的调试方式：</p>
-<pre><code> gdb &lt; prog_name &gt;
-</code></pre>
-<p>(1)运行<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051536065.png" alt="11"></p>
-<p>(2)加断点和执行<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051536275.png" alt="12"></p>
-<p>(3)查看变量值<br><code>p 变量</code>：打印变量，和<code>watch</code>相比不会加隐含的断点<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051536108.png" alt="13"></p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051537112.png" alt="14"></p>
-<h2 id="core-dump文件方式调试"><a href="#core-dump文件方式调试" class="headerlink" title="core dump文件方式调试"></a>core dump文件方式调试</h2><p>有关core dump<br><a target="_blank" rel="noopener" href="https://www.cnblogs.com/computer1-2-3/p/11114981.html">Linux 下如何产生core文件（core dump设置）</a><br><a target="_blank" rel="noopener" href="https://linux-audit.com/understand-and-configure-core-dumps-work-on-linux/">Understand and configure core dumps on Linux</a><br><a target="_blank" rel="noopener" href="https://www.cnblogs.com/uhziel/p/cpp_segmentation_fault.html">C++中段错误的常见情况</a><br><a target="_blank" rel="noopener" href="https://blog.csdn.net/xuzhina/category_1322964.html">coredump问题原理探究(Linux版)
-</a></p>
-<p>下面修改前面的程序，制造core dump<br>(1)数组越界<br>cppthread_dump_array.cpp：</p>
-<pre><code>#include &lt;thread&gt;
-#include &lt;chrono&gt;
-#include &lt;mutex&gt;
-#include &lt;iostream&gt;
-#include &lt;cstring&gt;
-
-int g_mydata = 0;
-std::mutex g_mutex;
-
-char test_dump_buf[10] = &#123;0&#125;;
-
-void thread_func1()
-&#123;
-    while (true)
-    &#123;
-        g_mutex.lock();
-        ++g_mydata;
-        char c;
-        sprintf(&amp;c, &quot;%d&quot;, g_mydata);
-        std::strcat(test_dump_buf, &amp;c); //持续追加g_mydata字符串
-        if(g_mydata == 1024)
-            g_mydata = 0;
-        g_mutex.unlock();
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-    &#125;
-&#125;
-
-void thread_func2()
-&#123;
-    while (true)
-    &#123;
-        g_mutex.lock();
-        std::cout &lt;&lt; &quot;g_mydata = &quot; &lt;&lt; g_mydata &lt;&lt; &quot;, ThreadID = &quot; &lt;&lt; std::this_thread::get_id() &lt;&lt; std::endl;
-        std::cout &lt;&lt; &quot;test_dump_buf: &quot; &lt;&lt; test_dump_buf &lt;&lt; std::endl;
-        g_mutex.unlock();
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-    &#125;
-&#125;
-
-int main()
-&#123;
-    std::thread t1(thread_func1);
-    std::thread t2(thread_func2);
-
-    t1.join();
-    t2.join();
-
-    return 0;
-&#125;
-</code></pre>
-<p>运行结果：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051538738.png" alt="15"><br>并未发生段错误，更不谈core dump。因为CPP对数组没有越界限制，这是个“合法”行为</p>
-<p>(2)使用空指针<br>cppthread_dump_nullptr.cpp：</p>
-<pre><code>#include &lt;thread&gt;
-#include &lt;chrono&gt;
-#include &lt;mutex&gt;
-#include &lt;iostream&gt;
-#include &lt;unistd.h&gt; //for linux sleep()
-
-std::mutex g_mutex;
-
-class Foo 
-&#123;
-    public:
-        Foo(int m)
-        &#123;
-            m_data = m;
-        &#125;
-        ~Foo()&#123;&#125;
-        void printval() 
-        &#123;
-            std::cout &lt;&lt; &quot;m_data = &quot; &lt;&lt; m_data &lt;&lt; std::endl;
-        &#125;
-        void increase()
-        &#123;
-            ++m_data;
-        &#125;
-        int getval()
-        &#123;
-            return m_data;
-        &#125;
-        void resetval()
-        &#123;
-            m_data = 0;
-        &#125;
-        
-    private:
-        int m_data;
-&#125;;
-
-void thread_func1(Foo&amp; p)
-&#123;
-    while (true)
-    &#123;
-        g_mutex.lock();
-        p.increase();
-        if(p.getval() == 1024)
-            p.resetval();
-        g_mutex.unlock();
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-    &#125;
-&#125;
-
-void thread_func2(Foo&amp; p)
-&#123;
-    while (true)
-    &#123;
-        g_mutex.lock();
-        p.printval();
-        g_mutex.unlock();
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-    &#125;
-&#125;
-
-int main()
-&#123;    
-    Foo *pFoo = new Foo(0);
-
-    std::thread t1(thread_func1, std::ref(*pFoo)); //std::ref用于std::thread传入参数，以引用的形式
-    std::thread t2(thread_func2, std::ref(*pFoo));
-
-    //t1.join();  //这里故意不join
-    //t2.join();
-    sleep(10);  //sleep等一下thread1,2
-    
-    delete pFoo; 
-    pFoo = NULL;  //这时thread1,2还没执行完，形成了使用空指针的条件
-            
-    return 0;
-&#125;
-</code></pre>
-<p>运行结果：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051538644.png" alt="16"></p>
-<p>下面gdb调试这个core dump</p>
-<ul>
-<li><p>设置core dump文件大小限制为不受限<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051538876.png" alt="17"><br>最好写入配置文件<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051538835.png" alt="18"></p>
-</li>
-<li><p>gdb加载程序和core dump文件<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051538139.png" alt="19"><br>可见siganl 6发生，使进程终止</p>
-</li>
-<li><p>看dump位置，bt或where都可以<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051538557.png" alt="20"></p>
-</li>
-<li><p>看所有线程的栈<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051538027.png" alt="21"></p>
-</li>
-<li><p>直接看dump附近的代码<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051539217.png"></p>
-</li>
-</ul>
-<p>结论：根据bt&#x2F;where, dump发生时，主进程在在执行67行：</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051542767.png" alt="image-20221205154207720"></p>
-<p>根据源码，具体是工作线程调用对象的方法时发生<br>再看dump打印，正好要打印<code>m_data = 10</code>的时候dump，结合main中sleep(10)和工作线程sleep(1)，dump原因是main把对象指针置空了，而两个工作线程还在调用对象的方法，位置是thread_func2的p.printval()处</p>
-<h2 id="一个示例：调试死锁"><a href="#一个示例：调试死锁" class="headerlink" title="一个示例：调试死锁"></a>一个示例：调试死锁</h2><p>最常见的死锁是双重加锁，和双重delete的道理一样，代码复杂了，层层调用的情况下容易出现<br>示例代码cppthread_deadlock.cpp：<br>线程函数和其调用的类方法都加锁了，形成死锁</p>
-<pre><code>#include &lt;thread&gt;
-#include &lt;chrono&gt;
-#include &lt;mutex&gt;
-#include &lt;iostream&gt;
-#include &lt;unistd.h&gt; //for linux sleep()
-
-std::mutex g_mutex;
-
-class Foo 
-&#123;
-    public:
-        Foo(int m)
-        &#123;
-            m_data = m;
-        &#125;
-        ~Foo()&#123;&#125;
-        void printval() 
-        &#123;
-            std::cout &lt;&lt; &quot;m_data = &quot; &lt;&lt; m_data &lt;&lt; std::endl;
-        &#125;
-        void increase()
-        &#123;
-            g_mutex.lock(); //故意制造双重加锁
-            ++m_data;
-            g_mutex.unlock();
-        &#125;
-        int getval()
-        &#123;
-            return m_data;
-        &#125;
-        void resetval()
-        &#123;
-            m_data = 0;    
-        &#125;
-        
-    private:
-        int m_data;
-&#125;;
-
-void thread_func1(Foo&amp; p)
-&#123;
-    while (true)
-    &#123;
-        g_mutex.lock();
-        p.increase();
-        if(p.getval() == 1024)
-            p.resetval();
-        g_mutex.unlock();
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-    &#125;
-&#125;
-
-void thread_func2(Foo&amp; p)
-&#123;
-    while (true)
-    &#123;
-        g_mutex.lock();
-        p.printval();
-        g_mutex.unlock();
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-    &#125;
-&#125;
-
-int main()
-&#123;    
-    Foo *pFoo = new Foo(0);
-
-    std::thread t1(thread_func1, std::ref(*pFoo)); //std::ref用于std::thread传入参数，以引用的形式
-    std::thread t2(thread_func2, std::ref(*pFoo));
-
-    t1.join();
-    t2.join();
-    
-    delete pFoo;
-    pFoo = NULL;
-            
-    return 0;
-&#125;
-</code></pre>
-<p>调试：</p>
-<ul>
-<li>直接运行方式，要run起来才有线程</li>
-</ul>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051542989.png" alt="23"></p>
-<ul>
-<li>backtrace可见两个线程都停止于lock_wait()，其中thread2回溯看到死锁代码在45行</li>
-</ul>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051546645.png" alt="24"></p>
-<p>对于互斥锁推荐用RAII机制的<code>std::lock_guard&lt;mutex&gt; lockGuard(m)</code>，能避免忘记unlock情况。但在此示例中，lock_guard也会双重加锁。</p>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2021/07/12/%E5%A4%9A%E7%BA%BF%E7%A8%8B%E7%AC%94%E8%AE%B0%EF%BC%9A%E7%BA%BF%E7%A8%8B%E6%B1%A0/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Cursorhu">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="ThinkNotes">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2021/07/12/%E5%A4%9A%E7%BA%BF%E7%A8%8B%E7%AC%94%E8%AE%B0%EF%BC%9A%E7%BA%BF%E7%A8%8B%E6%B1%A0/" class="post-title-link" itemprop="url">多线程笔记：线程池</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2021-07-12 15:21:30" itemprop="dateCreated datePublished" datetime="2021-07-12T15:21:30+08:00">2021-07-12</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2022-12-08 10:26:51" itemprop="dateModified" datetime="2022-12-08T10:26:51+08:00">2022-12-08</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/linux/" itemprop="url" rel="index"><span itemprop="name">linux</span></a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h1 id="相关资料"><a href="#相关资料" class="headerlink" title="相关资料"></a>相关资料</h1><p>线程池的概念和相关示例可以参考：<br><a target="_blank" rel="noopener" href="https://blog.csdn.net/MOU_IT/article/details/88712090">C++实现线程池</a><br><a target="_blank" rel="noopener" href="https://www.cnblogs.com/ailumiyana/p/10016965.html">基于C++11实现线程池的工作原理</a></p>
-<p>本代码相关的C++基础，参考：<br><a target="_blank" rel="noopener" href="https://www.cnblogs.com/alantu2018/p/8459250.html">c++拷贝构造函数详解</a><br><a target="_blank" rel="noopener" href="https://www.cnblogs.com/jiayayao/archive/2016/12/03/6128877.html">智能指针shared_ptr的用法</a><br><a target="_blank" rel="noopener" href="https://www.cnblogs.com/harlanc/p/8596211.html">深入解析条件变量</a></p>
-<p>其他相关文章<br><a target="_blank" rel="noopener" href="https://www.jianshu.com/u/9456fecb5f96">jorion&#x2F;c++11 多线程（X）</a><br><a target="_blank" rel="noopener" href="https://github.com/jorionwen/threadtest">jorionwen&#x2F;threadtest</a></p>
-<h1 id="线程池示例"><a href="#线程池示例" class="headerlink" title="线程池示例"></a>线程池示例</h1><h2 id="调用线程池"><a href="#调用线程池" class="headerlink" title="调用线程池"></a>调用线程池</h2><pre><code>#include &quot;TaskPool.h&quot;
-#include &lt;chrono&gt;
-
-int main()
-&#123;
-    TaskPool threadPool;
-    threadPool.init(); //初始化线程对象队列
-
-    Task* task = NULL;
-    for (int i = 0; i &lt; 10; ++i)
-    &#123;
-        task = new Task();
-        threadPool.addTask(task); //初始化任务对象队列，调度线程时会取出执行
-    &#125;
-    
-    std::this_thread::sleep_for(std::chrono::seconds(2));
-
-    threadPool.stop(); //等待所有工作线程结束
-
-    return 0; //析构
-&#125;
-</code></pre>
-<h2 id="线程池的方法"><a href="#线程池的方法" class="headerlink" title="线程池的方法"></a>线程池的方法</h2><pre><code>#include &quot;TaskPool.h&quot;
-
-TaskPool::TaskPool() : m_bRunning(false)
-&#123;
-
-&#125;
-
-TaskPool::~TaskPool()
-&#123;
-    removeAllTasks();
-&#125;
-
-void TaskPool::init(int threadNum/* = 5*/)
-&#123;
-    if (threadNum &lt;= 0)
-        threadNum = 5;
-
-    m_bRunning = true;
-
-    for (int i = 0; i &lt; threadNum; ++i)
-    &#123;
-        std::shared_ptr&lt;std::thread&gt; spThread;
-        //shared_ptr.reset带参数是初始化，指向new出的thread对象
-        //bind绑定了thread对象和其执行函数threadFunc
-        spThread.reset(new std::thread(std::bind(&amp;TaskPool::threadFunc, this))); 
-        m_threads.push_back(spThread); //thread对象入队
-    &#125;
-&#125;
-
-void TaskPool::threadFunc() //thread对象唤醒时执行
-&#123;
-    std::shared_ptr&lt;Task&gt; spTask;
-    while (true)
-    &#123;
-        std::unique_lock&lt;std::mutex&gt; guard(m_mutexList); //RAII实现，作用域结束自动解锁
-        while (m_taskList.empty())
-        &#123;                 
-            if (!m_bRunning)
-                break;
-            
-            //如果获得了互斥锁，但是条件不合适的话，pthread_cond_wait会释放锁，不往下执行。
-            //当发生变化后，条件合适，pthread_cond_wait将直接获得锁。
-            m_cv.wait(guard);
-        &#125;
-
-        if (!m_bRunning)
-            break;
-
-        spTask = m_taskList.front(); //取m_taskList的task对象
-        m_taskList.pop_front(); //更新m_taskList
-
-        if (spTask == NULL)
-            continue;
-
-        spTask-&gt;doIt(); //执行task
-        spTask.reset(); //shared_ptr.reset不带参数，指向对象的计数-1
-    &#125;
-
-    std::unique_lock&lt;std::mutex&gt; guard(m_mutexList); //为了打印的原子性，再加锁
-    &#123;
-        std::cout &lt;&lt; &quot;Exit thread, threadID: &quot; &lt;&lt; std::this_thread::get_id() &lt;&lt; std::endl;
-    &#125;
-    
-&#125;
-
-void TaskPool::stop()
-&#123;
-    m_bRunning = false;
-    m_cv.notify_all(); //唤醒所有等待条件变量的线程
-
-    //等待所有线程退出
-    for (auto&amp; iter : m_threads)
-    &#123;
-        if (iter-&gt;joinable())   //该线程是否可join
-            iter-&gt;join();       //主线程等待该线程
-    &#125;
-&#125;
-
-void TaskPool::addTask(Task* task)
-&#123;
-    std::shared_ptr&lt;Task&gt; spTask;
-    spTask.reset(task); //shared_ptr初始化，指向task
-
-    &#123;
-        std::lock_guard&lt;std::mutex&gt; guard(m_mutexList);       
-        //m_taskList.push_back(std::make_shared&lt;Task&gt;(task));
-        m_taskList.push_back(spTask); //Task对象入队
-        std::cout &lt;&lt; &quot;Add a Task.&quot; &lt;&lt; std::endl;
-    &#125;
-    
-    m_cv.notify_one(); //唤醒随机一个等待条件变量的线程
-&#125;
-
-void TaskPool::removeAllTasks()   //析构时调用
-&#123;
-    &#123;
-        std::lock_guard&lt;std::mutex&gt; guard(m_mutexList);
-        for (auto&amp; iter : m_taskList)
-        &#123;
-            iter.reset();
-        &#125;
-        m_taskList.clear();
-    &#125;
-&#125;
-</code></pre>
-<h2 id="类定义"><a href="#类定义" class="headerlink" title="类定义"></a>类定义</h2><pre><code>#include &lt;thread&gt;
-#include &lt;mutex&gt;
-#include &lt;condition_variable&gt;
-#include &lt;list&gt;
-#include &lt;vector&gt;
-#include &lt;memory&gt;
-#include &lt;iostream&gt;
-#include &lt;functional&gt; //for visual studio build
-
-class Task
-&#123;
-public:
-    virtual void doIt()
-    &#123;
-        std::cout &lt;&lt; &quot;Do a task...&quot; &lt;&lt; std::endl;
-    &#125;
-
-    virtual ~Task()
-    &#123;
-        //为了看到一个task的销毁，这里刻意补上其析构函数
-        std::cout &lt;&lt; &quot;A task destructed...&quot; &lt;&lt; std::endl;
-    &#125;
-&#125;;
-
-class TaskPool final
-&#123;
-public:
-    TaskPool();
-    ~TaskPool();
-    TaskPool(const TaskPool&amp; rhs) = delete;     //delete: 禁用某函数（C++11），阻止拷贝和赋值构造，C++98用private
-    TaskPool&amp; operator=(const TaskPool&amp; rhs) = delete;
-
-public:
-    void init(int threadNum = 5);   //默认初始化
-    void stop();
-
-    void addTask(Task* task);
-    void removeAllTasks();
-
-private:
-    void threadFunc();
-
-private:
-    std::list&lt;std::shared_ptr&lt;Task&gt;&gt;            m_taskList;
-    std::mutex                                  m_mutexList;
-    std::condition_variable                     m_cv;
-    bool                                        m_bRunning;
-    std::vector&lt;std::shared_ptr&lt;std::thread&gt;&gt;   m_threads;
-&#125;;
-</code></pre>
-<h2 id="运行"><a href="#运行" class="headerlink" title="运行"></a>运行</h2><p><img src="C:\Users\thomas.hu\AppData\Roaming\Typora\typora-user-images\image-20221205152435385.png" alt="image-20221205152435385"></p>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
 
   
   <nav class="pagination">
-    <span class="page-number current">1</span><a class="page-number" href="/page/2/">2</a><span class="space">&hellip;</span><a class="page-number" href="/page/5/">5</a><a class="extend next" rel="next" href="/page/2/"><i class="fa fa-angle-right" aria-label="下一页"></i></a>
+    <span class="page-number current">1</span><a class="page-number" href="/page/2/">2</a><span class="space">&hellip;</span><a class="page-number" href="/page/6/">6</a><a class="extend next" rel="next" href="/page/2/"><i class="fa fa-angle-right" aria-label="下一页"></i></a>
   </nav>
 
 
@@ -2021,20 +1317,20 @@ private:
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">43</span>
+          <span class="site-state-item-count">52</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
       <div class="site-state-item site-state-categories">
             <a href="/categories/">
           
-        <span class="site-state-item-count">17</span>
+        <span class="site-state-item-count">20</span>
         <span class="site-state-item-name">分类</span></a>
       </div>
       <div class="site-state-item site-state-tags">
             <a href="/tags/">
           
-        <span class="site-state-item-count">22</span>
+        <span class="site-state-item-count">30</span>
         <span class="site-state-item-name">标签</span></a>
       </div>
   </nav>
@@ -2061,7 +1357,7 @@ private:
 <div class="copyright">
   
   &copy; 
-  <span itemprop="copyrightYear">2022</span>
+  <span itemprop="copyrightYear">2023</span>
   <span class="with-love">
     <i class="fa fa-heart"></i>
   </span>
