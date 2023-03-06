@@ -192,7 +192,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2023-03-03 15:57:59" itemprop="dateModified" datetime="2023-03-03T15:57:59+08:00">2023-03-03</time>
+                <time title="修改时间：2023-03-06 20:19:53" itemprop="dateModified" datetime="2023-03-06T20:19:53+08:00">2023-03-06</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -232,7 +232,7 @@
 <li><p>如果这些信号的频率相同，则只需知道相位差就可以从一个信号精确推测另一个信号</p>
 </li>
 </ul>
-<p><img src="C:\Users\thomas.hu\AppData\Roaming\Typora\typora-user-images\image-20230303111433716.png" alt="image-20230303111433716"></p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303031634330.png" alt="image-20230303163446269"></p>
 <p>基于以上概念，下面介绍PLL的两个核心功能：</p>
 <ul>
 <li>将输入PLL的时钟和PLL输出时钟的频率精确同步：输出时钟信号频率是输入时钟信号频率的精确的N倍</li>
@@ -243,7 +243,7 @@
 <li>VCO: The voltage-controlled oscillator (VCO) takes an analog control input and generates a clock signal of the desired frequency.  VCO接受电压（模拟信号），转换为频率（数字信号），也就是说，VCO使输出频率是电压的函数(非线性)。Charge pump是控制电压增加和减少的模块，Loop filter是低通滤波器，过滤掉电压信号中的高频正弦噪声，使VCO的输入更“纯粹”（减少毛刺信号，jittery clock）</li>
 <li>Phase Detectors: 为什么带s ? 因为可以有两种实现：XOR Phase Detector  和 Phase-Frequency Detector ，Phase Detectors是相位和频率同步的核心，具体原理下面讲</li>
 </ul>
-<p><img src="C:\Users\thomas.hu\AppData\Roaming\Typora\typora-user-images\image-20230303112656829.png" alt="image-20230303112656829"></p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303031635776.png" alt="image-20230303163504732"></p>
 <h3 id="XOR-Phase-Detector"><a href="#XOR-Phase-Detector" class="headerlink" title="XOR Phase Detector"></a>XOR Phase Detector</h3><p>用一个异或门(XOR)就能实现相位检测，是最简单但有缺陷的实现：</p>
 <p>当ref clock和local clock(反馈时钟)有相位差，异或之后输出的就是相位差信号(phase error)，这个信号经过线性函数转换成Vdd, 作为VCO的控制电压。</p>
 <p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303031433820.png" alt="image-20230303143346757"></p>
@@ -284,6 +284,38 @@
 </ul>
 <p>可见PLL稳定过程是将ref，vco和div时钟信号的相位、频率都收敛到一致</p>
 <p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303031423652.png" alt="image-20230303142344571"></p>
+<h2 id="PLL在IC设计IP的示例"><a href="#PLL在IC设计IP的示例" class="headerlink" title="PLL在IC设计IP的示例"></a>PLL在IC设计IP的示例</h2><p>以SMIC的PLL IP S65NLLPLLGS 为例介绍实际IC设计中的PLL模块：</p>
+<p>(1) 简介</p>
+<p>This PLL is developed as an IP block to reduce time to market, risk and cost in the<br>development of Analog Front –End design. This macro cell is mainly for the clock<br>generator. It can generate stable high-speed clock from a slower clock signal with<br>single power supply. The output frequency is adjustable and can be up to 1500MHz.<br>This PLL integrates a Phase Frequency Detector (PFD), a Low Pass Filter (LPF), a<br>Voltage Controlled Oscillator and other associated circuit. All fundamental building<br>blocks as well as fully programmable dividers are integrated in the core. It is useful<br>for clock multiplication of stable crystal oscillator sources and for de-skew clock<br>signals  </p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303061656462.png" alt="image-20230306165657371"></p>
+<p>可见主要模块还是PFD + VCO，输出时钟加了一些逻辑门控制，例如PDRST是PLL时钟复位控制。</p>
+<p>(2) 主要参数</p>
+<p>Technology: SMIC 65nm logic LL process  </p>
+<p>PFD comparison frequency range from 1Mhz to 50Mhz.  </p>
+<p>Output clock frequency range from 62.5MHz to 1500MHz  </p>
+<p>基本体现了PLL的指标：输入输出时钟频率有限制</p>
+<p>(3) PLL reset</p>
+<p>PLL作为实际可用的模块，其输出频率一定是可调的，以下PLL IP的pin中的M, N即调整频率；对于固件、驱动软件开发者，M，N分频的访问接口是作为寄存器来动态配置。</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303061707268.png" alt="image-20230306170709189"></p>
+<p>在M，N调整分配时，必须reset PLL并等待PLL再次稳定（PLL lock time），如下图：</p>
+<p>LKDT: Lock Detection, 表示目前PLL正在lock，即反映PLL是否处于不稳定状态</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303061711496.png" alt="image-20230306171156449"></p>
+<h2 id="PLL在外设时钟配置的使用示例"><a href="#PLL在外设时钟配置的使用示例" class="headerlink" title="PLL在外设时钟配置的使用示例"></a>PLL在外设时钟配置的使用示例</h2><p>SD控制器(SD host)是SOC中常用的外围模块，通过SD specification规定的SD Command通信格式向SD卡通信。</p>
+<p>下面以SD host&#x2F;card的时钟初始化为例，介绍PLL的lock time在外设时钟初始化的影响</p>
+<p>(1) SD 4.0标准的host和card的物理框图如下图，这里重点关注host侧的时钟相关的模块：</p>
+<ul>
+<li>OSC: host 的时钟来源，同时也是PLL的输入</li>
+<li>PLL: host的倍频器，为了给SD UHS-II card提供更高速的工作时钟(UHS-I低速SD card不需要此PLL)</li>
+<li>RCLK: SD card的工作时钟(reference clock)</li>
+</ul>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303061954691.png" alt="image-20230306195458581"></p>
+<p>(2) SD host和card的时钟初始化</p>
+<p>SD host和card的时钟初始化包含三步：</p>
+<p>1.使能internal clock: sd host chip自己的工作时钟(即base clock，来源是OSC)，并等待其稳定，如下图(3)~(4)</p>
+<p>2.enable PLL，并等待其稳定，这个等待稳定超时时间为150ms ，如下图(5)~(6)。</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303062016985.png" alt="image-20230306172758282"></p>
+<p>3.待host PLL输出稳定后，即可enable SD clock开始对SD卡供应reference clock时钟, 注意SD clock是下图(1)~(2)就已经计算好的，如下表Base Clock为internal clock，M可理解为PLL倍频后的频率, 经过2^N分频后给SD card作为reference clock。</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303062013044.png" alt="image-20230306201345998"></p>
 
       
     </div>
