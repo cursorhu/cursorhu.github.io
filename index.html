@@ -192,7 +192,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2023-03-06 20:19:53" itemprop="dateModified" datetime="2023-03-06T20:19:53+08:00">2023-03-06</time>
+                <time title="修改时间：2023-03-07 11:27:11" itemprop="dateModified" datetime="2023-03-07T11:27:11+08:00">2023-03-07</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -284,7 +284,7 @@
 </ul>
 <p>可见PLL稳定过程是将ref，vco和div时钟信号的相位、频率都收敛到一致</p>
 <p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303031423652.png" alt="image-20230303142344571"></p>
-<h2 id="PLL在IC设计IP的示例"><a href="#PLL在IC设计IP的示例" class="headerlink" title="PLL在IC设计IP的示例"></a>PLL在IC设计IP的示例</h2><p>以SMIC的PLL IP S65NLLPLLGS 为例介绍实际IC设计中的PLL模块：</p>
+<h2 id="PLL在IC设计IP的实例"><a href="#PLL在IC设计IP的实例" class="headerlink" title="PLL在IC设计IP的实例"></a>PLL在IC设计IP的实例</h2><p>以SMIC的PLL IP S65NLLPLLGS 为例介绍实际IC设计中的PLL模块：</p>
 <p>(1) 简介</p>
 <p>This PLL is developed as an IP block to reduce time to market, risk and cost in the<br>development of Analog Front –End design. This macro cell is mainly for the clock<br>generator. It can generate stable high-speed clock from a slower clock signal with<br>single power supply. The output frequency is adjustable and can be up to 1500MHz.<br>This PLL integrates a Phase Frequency Detector (PFD), a Low Pass Filter (LPF), a<br>Voltage Controlled Oscillator and other associated circuit. All fundamental building<br>blocks as well as fully programmable dividers are integrated in the core. It is useful<br>for clock multiplication of stable crystal oscillator sources and for de-skew clock<br>signals  </p>
 <p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303061656462.png" alt="image-20230306165657371"></p>
@@ -300,7 +300,7 @@
 <p>在M，N调整分配时，必须reset PLL并等待PLL再次稳定（PLL lock time），如下图：</p>
 <p>LKDT: Lock Detection, 表示目前PLL正在lock，即反映PLL是否处于不稳定状态</p>
 <p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303061711496.png" alt="image-20230306171156449"></p>
-<h2 id="PLL在外设时钟配置的使用示例"><a href="#PLL在外设时钟配置的使用示例" class="headerlink" title="PLL在外设时钟配置的使用示例"></a>PLL在外设时钟配置的使用示例</h2><p>SD控制器(SD host)是SOC中常用的外围模块，通过SD specification规定的SD Command通信格式向SD卡通信。</p>
+<h2 id="PLL在外设时钟配置的实例"><a href="#PLL在外设时钟配置的实例" class="headerlink" title="PLL在外设时钟配置的实例"></a>PLL在外设时钟配置的实例</h2><p>SD控制器(SD host)是SOC中常用的外围模块，通过SD specification规定的SD Command通信格式向SD卡通信。</p>
 <p>下面以SD host&#x2F;card的时钟初始化为例，介绍PLL的lock time在外设时钟初始化的影响</p>
 <p>(1) SD 4.0标准的host和card的物理框图如下图，这里重点关注host侧的时钟相关的模块：</p>
 <ul>
@@ -316,6 +316,44 @@
 <p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303062016985.png" alt="image-20230306172758282"></p>
 <p>3.待host PLL输出稳定后，即可enable SD clock开始对SD卡供应reference clock时钟, 注意SD clock是下图(1)~(2)就已经计算好的，如下表Base Clock为internal clock，M可理解为PLL倍频后的频率, 经过2^N分频后给SD card作为reference clock。</p>
 <p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303062013044.png" alt="image-20230306201345998"></p>
+<h2 id="PLL在电源管理的实例"><a href="#PLL在电源管理的实例" class="headerlink" title="PLL在电源管理的实例"></a>PLL在电源管理的实例</h2><p>所谓电源管理，通俗的讲就是按需管理电源：</p>
+<ul>
+<li>按需，指的是按应用场景的需求，例如在高性能肯定对应高功耗，各种模块全部开启，且时钟频率拉到最大；而睡眠休眠等模式，有时只需要保留能唤醒系统的时钟就行；</li>
+<li>管理电源，涉及到供电和时钟：将低功耗情景下不需要用到的模块直接关电，将要用到但速度要求不高的模块进入低速时钟工作。</li>
+</ul>
+<p>下面以PCIe的电源管理为例，介绍低功耗状态如何影响PLL的状态</p>
+<p>（1）PCIe电源管理基本概念</p>
+<p>PCIe的电源管理基本概念参考 <a target="_blank" rel="noopener" href="https://www.intel.cn/content/www/cn/zh/io/pci-express/pci-express-architecture-power-management-rev-1-1-paper.html">PCI EXPRESS ARCHITECTURE POWER MANAGEMENT</a>, 也可以参考PCIe标准协议PCIe Base Spec</p>
+<p>从上到下包含三层：系统电源状态(S)，PCIe链路电源状态(L)，PCIe设备电源状态(D)</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303071046331.png" alt="Untitled Diagram"></p>
+<ul>
+<li>Sleep state</li>
+</ul>
+<p>S0 (Working): This is the active system state in which the platform appears to be “on.”  </p>
+<p>S1&#x2F;POS, S1 (Microsoft* OS Stand By): These are the lowest wake latency sleeping states.  </p>
+<p>S3 (Microsoft OS Stand By) and S4 (Microsoft OS Hibernate): S3 is a low wake latency sleeping state in which all device contexts are lost except system memory</p>
+<p>S5 (Microsoft OS Soft-off): In this state, the OS does not save any context and requires a complete OS boot when the system wakes  </p>
+<ul>
+<li>Link States</li>
+</ul>
+<p>L0: Active state  </p>
+<p>L1: This link state is a low exit latency link state that is intended to reduce power when the device becomes aware of a lack of outstanding requests or pending transactions  </p>
+<p>L2&#x2F;L3 Ready: This link state prepares the PCI Express link for the removal of power and clock.   </p>
+<p>L3 (link off): Power and clock are removed in this link state  </p>
+<ul>
+<li>Device States</li>
+</ul>
+<p>D0 (Fully-on): The device is completely active and responsive during this D-state  </p>
+<p>D1 and D2: There is no universal definition for these D-states. In general, D1 is expected to save<br>less power but preserve more device context than D2  </p>
+<p>D3 (Off): Primary power may be fully removed from the device (D3cold), or not removed from the device (D3hot). </p>
+<p>S, L, D 三层状态的对应关系如下表</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303071050761.png" alt="image-20230307105034704"></p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303071050372.png" alt="image-20230307105052312"></p>
+<p>注意，Link state是Sleep state对Device state作用的结果，即状态变化的过程是：</p>
+<p>系统发起S3 -&gt; Device sate进入D3-&gt;Link state进入L2&#x2F;L3</p>
+<p>（2）使用PLL控制Device state</p>
+<p>Device sate进入D3, 设备内部操作即包含PLL的disable，将PLL模块整个关掉，保留OSC低速时钟作为退出D3状态的唤醒时钟源（软件上可以理解为heart beat），当PLL关掉后，其他依赖PLL的高速模块通常也断电，整个设备接近（或彻底）断电，因此设备功耗极低。</p>
+<p>Device sate退出D3并进入D0则是相反过程，设备的PLL模块打开，其他依赖PLL的高速模块也打开，整个设备进入Active状态，功耗自然升高。</p>
 
       
     </div>
