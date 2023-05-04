@@ -190,6 +190,652 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2021/08/23/%E6%A0%91%E8%8E%93%E6%B4%BE%E7%AC%94%E8%AE%B0%EF%BC%9A%E4%BD%BF%E7%94%A8mjpg-streamer-Apache+SSH%E8%87%AA%E5%88%B6%E7%BD%91%E7%BB%9C%E6%91%84%E5%83%8F%E5%A4%B4/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2021/08/23/%E6%A0%91%E8%8E%93%E6%B4%BE%E7%AC%94%E8%AE%B0%EF%BC%9A%E4%BD%BF%E7%94%A8mjpg-streamer-Apache+SSH%E8%87%AA%E5%88%B6%E7%BD%91%E7%BB%9C%E6%91%84%E5%83%8F%E5%A4%B4/" class="post-title-link" itemprop="url">树莓派笔记：使用mjpg-streamer+Apache+SSH自制网络摄像头</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2021-08-23 23:38:12" itemprop="dateCreated datePublished" datetime="2021-08-23T23:38:12+08:00">2021-08-23</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2022-12-08 19:50:26" itemprop="dateModified" datetime="2022-12-08T19:50:26+08:00">2022-12-08</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/raspi/" itemprop="url" rel="index"><span itemprop="name">raspi</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h1 id="选型"><a href="#选型" class="headerlink" title="选型"></a>选型</h1><ul>
+<li>为什么用树莓派4：</li>
+</ul>
+<p>资料多遇到容易解决问题；<br>性能较强适合作为终端服务器；<br>自带WIFI, BT5.0，GPIO 方便拓展开发IOT相关项目；<br>适配系统丰富，基本PC上linux版本树莓派都有对应版本</p>
+<ul>
+<li>为什么用USB摄像头：</li>
+</ul>
+<p>为了快速实现，Linux对USB设备支持非常好，USB设备基本都是免驱；<br>USB摄像头支持高分辨率，带麦克风，满足其他项目拓展应用；<br>当然CSI接口摄像头也有优势，同等条件下其CPU占用率比USB低；不过本地测试中CPU并不是USB摄像头性能瓶颈<br>关于CSI和USB 摄像头区别：<a target="_blank" rel="noopener" href="https://blog.csdn.net/ZhaoDongyu_AK47/article/details/103981905">CSI摄像头 vs USB摄像头</a></p>
+<ul>
+<li>树莓派用什么系统：</li>
+</ul>
+<p>看个人喜好，我用的ubuntu server的树莓派版本，软件源基本最新；</p>
+<ul>
+<li>用什么云服务器：</li>
+</ul>
+<p>看个人喜好和价格；云服务器最大价值在于公网IP<br>我目前用的Aliyun + CentOS7 系统</p>
+<p>系统实拍：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081944910.png" alt="image-20221208194427802"></p>
+<h1 id="树莓派系统安装"><a href="#树莓派系统安装" class="headerlink" title="树莓派系统安装"></a>树莓派系统安装</h1><p>准备：电源，网线，SD卡<br>安装步骤：</p>
+<ul>
+<li>1.下载ubuntu server for raspi</li>
+</ul>
+<p>注意一定要下载raspi版本的镜像，普通ubuntu server版本安装完不能直接使用SSH<br><a target="_blank" rel="noopener" href="https://ubuntu.com/download/raspberry-pi">Install Ubuntu on a RaspberryPi</a></p>
+<ul>
+<li>2.Win32DiskImager写.img镜像到SD卡，作为系统盘</li>
+</ul>
+<p>参考：<a target="_blank" rel="noopener" href="https://blog.csdn.net/bhniunan/article/details/104790090">使用win32DiskImager为树莓派4B安装系统</a></p>
+<ul>
+<li>3.SSH 登陆</li>
+</ul>
+<p>ubuntu server for raspi系统装机启动后，连接网线到主机局域网后就可以SSH登陆<br>树莓派连到主机网段路由器的LAN口，树莓派系统默认开了dhcp, 用Advanced IP Scanner扫描树莓派IP</p>
+<p>树莓派4b：mac地址“dc-a6-32”开头<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081944582.png" alt="image-20221208194446543"></p>
+<p>SSH 软件看个人喜好，putty, SecureCRT, Xshell都可以，我个人使用的SecureCRT</p>
+<p>ubuntu server for raspi系统的SSH会话初始化如下：<br>新建会话-&gt; SSH2链接-&gt; 树莓派ip -&gt; 账户名(默认ubuntu)<br>初始密码：ubuntu，登陆成功后需要重设密码。</p>
+<p>wifi配置方式参考 <a target="_blank" rel="noopener" href="https://blog.csdn.net/weixin_42378324/article/details/114631521">树莓派安装ubuntu server, 无显示屏和键盘</a></p>
+<ul>
+<li>4.固定树莓派IP</li>
+</ul>
+<p>DHCP方式每次启动树莓派IP可能不一样，有两种方式固定IP</p>
+<ul>
+<li>MAC绑定IP<br>参考<a target="_blank" rel="noopener" href="https://blog.csdn.net/Echozi/article/details/104210167">TL-WR886N路由器+树莓派绑定IP地址</a></li>
+<li>手动配置固定ip<br><a target="_blank" rel="noopener" href="https://blog.csdn.net/u010169607/article/details/111316624">Pi4B 树莓派 ubuntu20.04 设置固定IP地址</a></li>
+</ul>
+<h1 id="USB摄像头测试"><a href="#USB摄像头测试" class="headerlink" title="USB摄像头测试"></a>USB摄像头测试</h1><ul>
+<li>首先主机win10上验证摄usb像头功能正常</li>
+</ul>
+<p>设备管理器禁用笔记本原装摄像头驱动，搜索相机-&gt; 打开视频，视频流应该正常</p>
+<ul>
+<li>在树莓派上验证摄像头设备</li>
+</ul>
+<p>usb摄像头设备既是usb设备又是v4l2设备，应该挂载在&#x2F;dev&#x2F;videoX</p>
+<pre><code>ls /dev/video*
+ls /dev | grep video
+</code></pre>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081945191.png" alt="image-20221208194510165"><br>插拔摄像头确认usb摄像头对应设备是video0</p>
+<h1 id="树莓派安装mjpg-streamer"><a href="#树莓派安装mjpg-streamer" class="headerlink" title="树莓派安装mjpg-streamer"></a>树莓派安装mjpg-streamer</h1><p>mjpg-streamer的作用是将摄像头采集的YUV&#x2F;JPEG数据，封装成流服务，其他设备可以通过http方式获取图片或视频流。<br>mjpg-streamer属于应用层实现流媒体服务端，其底层调用的是Linux V4L2框架接口。</p>
+<p>安装过程：</p>
+<ol>
+<li><p>依赖库安装</p>
+<p>sudo apt-get install subversion libjpeg8-dev imagemagick libv4l-dev cmake git</p>
+</li>
+<li><p>安装mjpg-streamer</p>
+<p>git clone <a target="_blank" rel="noopener" href="https://github.com/jacksonliam/mjpg-streamer.git">https://github.com/jacksonliam/mjpg-streamer.git</a><br>cd mjpg-streamer&#x2F;mjpg-streamer-experimental&#x2F;<br>make all<br>sudo make install</p>
+</li>
+</ol>
+<h1 id="局域网测试mjpg-streamer"><a href="#局域网测试mjpg-streamer" class="headerlink" title="局域网测试mjpg-streamer"></a>局域网测试mjpg-streamer</h1><p>mjpg-streamer&#x2F;mjpg-streamer-experimental目录下有测试脚本：<code>start.sh</code><br>环境变量添加依赖库路径：</p>
+<pre><code>export LD_LIBRARY_PATH=&quot;$(pwd)&quot; 
+</code></pre>
+<p>运行示例：</p>
+<pre><code>./mjpg_streamer -i &quot;./input_uvc.so&quot; -o &quot;./output_http.so -w ./www&quot; 
+</code></pre>
+<p>其YUV&#x2F;MJPEG的输入使用 input_uvc.so， 输出流到 http依赖于 output_http.so，<code>-w ./www</code> 表示http客户端访问时返回www文件夹下的资源，即对应的浏览器页面。</p>
+<p>可以自定义参数，参考：</p>
+<pre><code>mjpg_streamer -i &quot;input_uvc.so --help&quot;
+</code></pre>
+<p>修改start.sh的自定义启动语句如下：</p>
+<pre><code>./mjpg_streamer -i &quot;./input_uvc.so -n -f 30 -r 640x480 -d /dev/video0&quot;  -o &quot; ./output_http.so -w ./www&quot;
+</code></pre>
+<p>-n 用于跳过一些ioctrl请求，我的摄像头如果不用-n，有一些ioctrl会返回错误，尽管不影响流传输功能，还是跳过。<br>-f 设置fps，如果有卡顿考虑降低该值<br>-r 分辨率，1080P摄像头可以支持到1920x1080<br>-d 设备名，默认&#x2F;dev&#x2F;video0</p>
+<p>一般USB摄像头支持直接输出压缩后的MJPEG格式图像，有的只支持YUV格式图像；<br>摄像头优先使用MJPEG格式，因为不用mjpg-streamer软件边采集边做压缩，减少CPU使用</p>
+<p>启动信息：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081945245.png" alt="image-20221208194525192"></p>
+<p>此时流服务已运行，在局域网任意设备用浏览器访问<code>树莓派ip:流服务端口</code>即可获取www目录的网页资源<br>192.168.0.105是我树莓派固定ip, 8080是mjpg-streamer服务默认端口<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081945636.png" alt="image-20221208194549504"><br>局域网下即使是1080p 30fps也非常流畅，看不出卡顿</p>
+<h1 id="公网服务器搭建反向代理"><a href="#公网服务器搭建反向代理" class="headerlink" title="公网服务器搭建反向代理"></a>公网服务器搭建反向代理</h1><h2 id="反向代理的概念"><a href="#反向代理的概念" class="headerlink" title="反向代理的概念"></a>反向代理的概念</h2><p>正向代理和反向代理的概念图：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081946618.png" alt="image-20221208194609572"></p>
+<p>正向代理：代理的是客户端，例如GFW禁止某用户直接访问目标服务器的8080端口，但没有禁止访问正向代理服务器，客户端访问正向代理服务器，代理服务将用户请求转发给目标服务器，实现“蛙跳式”访问。对于目标服务器来说，正向代理服务器才是其客户端，用户ip对其是不可见的。<br>反向代理：代理的是服务端，应用于以下场景：</p>
+<ul>
+<li>出于安全考虑，目标服务器不直接暴露其ip和端口，用户通过访问反向代理服务器来间接访问目标服务器</li>
+<li>保证系统稳定性：反向代理服务器可以代理多个目标服务器，当用户请求量大时作为负载均衡(<a target="_blank" rel="noopener" href="https://blog.csdn.net/ywd1992/article/details/112858537">负载均衡和反向代理的区别</a>); 支持目标服务器作为集群管理，当某个目标服务器失效时将请求转发到其他服务器, 参考<a target="_blank" rel="noopener" href="https://www.cnblogs.com/jkko123/p/6426857.html">centos7下apache2.4反向代理</a></li>
+</ul>
+<p>对于本项目，树莓派的mjpg-streamer进程是真正提供流媒体服务的目标服务器，阿里云公网服务器上安装apache服务，实现反向代理。</p>
+<h2 id="安装apache服务"><a href="#安装apache服务" class="headerlink" title="安装apache服务"></a>安装apache服务</h2><p>Apache实现http web服务器；没有apache, 客户浏览器页面没办法访问对应服务。<br>阿里云主机 cent-OS 7 上的安装过程：</p>
+<pre><code>//安装Apache
+yum install httpd
+//设置服务器开机自动启动Apache
+systemctl enable httpd.service
+//启动Apache
+systemctl start httpd.service
+//重启
+systemctl restart httpd.service
+//停止
+systemctl stop httpd.service    
+</code></pre>
+<p>启动apache后，直接访问阿里云ip，默认端口 80 即为 apache 进程端口，得到如下页面说明服务正常<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081946493.png" alt="image-20221208194622426"></p>
+<h2 id="配置apache为反向代理"><a href="#配置apache为反向代理" class="headerlink" title="配置apache为反向代理"></a>配置apache为反向代理</h2><p>apache相关配置路径在&#x2F;etc&#x2F;httpd的几个conf目录<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081946576.png" alt="image-20221208194635517"></p>
+<p><code>vim /etc/httpd/conf/httpd.conf</code> 查看关键内容如下:</p>
+<pre><code>Listen 80 //监听80端口
+Include conf.modules.d/*.conf //包含module.d目录的所有conf
+DocumentRoot &quot;/var/www/html&quot; //默认返回该目录的html资源
+IncludeOptional conf.d/*.conf //包含conf.d目录的所有conf
+</code></pre>
+<p><code>/etc/httpd/conf.modules.d</code>目录下的<code>00-proxy.conf</code>是针对代理的配置项，其中有大量LoadModule加载proxy模块。<br>配置内容是XML格式，在此自定义反向代理，追加以下内容：</p>
+<pre><code>&lt;VirtualHost *:80&gt;
+    ProxyRequests off
+    &lt;Proxy raspi&gt;
+        Order allow,deny
+        Allow from all
+    &lt;/Proxy&gt;
+    ProxyPass /raspi http://127.0.0.1:9020
+    ProxyPassReverse /raspi http://127.0.0.1:9020
+&lt;/VirtualHost&gt;
+</code></pre>
+<p>含义：<br><code>&lt;VirtualHost *:80&gt;</code> 定义一个虚拟主机，<em>表示任意命名，端口80<br><code>ProxyRequests off</code> 关闭正向代理<br><code>&lt;Proxy raspi&gt;</code>定义一个代理对象，可以命名为</em>，这里命名为raspi因为后端服务是raspi流服务<br><code>ProxyPass</code> 和 <code>ProxyPassReverse</code> 内容要完全一样，<code>ProxyPassReverse /raspi http://127.0.0.1:9020</code> 表示用户访问&#x2F;raspi资源实际访问的是本地（apache所在云主机）的9020端口。</p>
+<p>注意阿里云端口要支持外部可访问，需要在控制台配置安装组，参考：<a target="_blank" rel="noopener" href="https://developer.aliyun.com/article/767328">阿里云服务器开放端口教程</a></p>
+<p>我个人的配置是直接(1~65535)全部端口打开（不推荐，有风险）<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081946296.png" alt="image-20221208194652256"></p>
+<p>配置完毕重启apache服务</p>
+<h2 id="配置SSH反向隧道"><a href="#配置SSH反向隧道" class="headerlink" title="配置SSH反向隧道"></a>配置SSH反向隧道</h2><p>树莓派的mjpg-streamer服务如何连接到阿里云的apache服务？<br>使用SSH连通。关于SSH，参考<a target="_blank" rel="noopener" href="https://www.ssh.com/academy/ssh">SSH (Secure Shell) Home Page</a></p>
+<p>前文的SecureCRT登陆树莓派就是使用SSH2协议，下面将树莓派的mjpg-streamer服务端口通过SSH反向隧道连接到apache的代理端口</p>
+<pre><code>ssh -fN -R &lt;阿里云apache代理端口&gt;:&lt;树莓派localhost&gt;:&lt;树莓派mjpg-streamer服务端口&gt; &lt;阿里云服务器用户名&gt;@&lt;服务器IP&gt;
+</code></pre>
+<p>例如 <code>ssh -fN -R 9020:localhost:8080 root@47.100.221.149</code><br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081947690.png" alt="image-20221208194724640"></p>
+<p>输入服务器的登录密码完成通道建立，在阿里云可以查看：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081947971.png" alt="image-20221208194733933"></p>
+<h1 id="验证公网可访问-mjpg-streamer-服务"><a href="#验证公网可访问-mjpg-streamer-服务" class="headerlink" title="验证公网可访问 mjpg-streamer 服务"></a>验证公网可访问 mjpg-streamer 服务</h1><ul>
+<li><p>1.验证树莓派到apache的视频流通道：</p>
+<ol>
+<li>阿里云服务器启动apache</li>
+<li>树莓派建立SSH反向隧道</li>
+<li>树莓派启动mjpg-streamer</li>
+<li>在阿里云curl访问本地的代理端口</li>
+</ol>
+<p> curl 127.0.0.1:9020&#x2F;?action&#x3D;stream</p>
+</li>
+</ul>
+<p>如果有大量数据输出，说明连接没问题</p>
+<ul>
+<li>2.验证apache到客户端浏览器的反向代理通道：</li>
+</ul>
+<p>使用处于任意网络的设备的浏览器，访问：</p>
+<pre><code>http://云服务器IP / Apache代理名 / ?action=stream
+</code></pre>
+<p>本文中配置对应的输入是：<code>47.100.221.149/raspi/?action=stream</code>，注意<code>?action=stream</code>不能掉，直接访问<code>/raspi</code>得到的是静态页面，跳转不到<code>action=stream</code>的页面<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081947462.png" alt="image-20221208194745374"></p>
+<p>直接访问 SSH 通道的 9020 端口支持主页面访问和跳转到<code>action=stream</code>页面：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081947787.png" alt="image-20221208194754703"></p>
+<p>自此验证完毕公网可访问树莓派的视频流服务</p>
+<h1 id="性能测试与优化"><a href="#性能测试与优化" class="headerlink" title="性能测试与优化"></a>性能测试与优化</h1><p>实测发现mjpg-streamer启动时使用 640x480分辨率, 30fps，MJPEG格式，延迟卡顿严重</p>
+<p>树莓派 ping 阿里云延迟很小：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081948699.png" alt="image-20221208194803656"><br>可能是阿里云带宽不足以支撑大数据量，只能降低分辨率和帧率</p>
+<p>我的阿里云服务器只有 3M 带宽，计算一下合适的配置：</p>
+<pre><code>3 * 1M/8 = 3 * 128KB = 384KB
+</code></pre>
+<p>理论上当分辨率 640x480 &#x3D; 300KB, fps 要设置为 1 才几乎无延迟</p>
+<p>测试一： 分辨率&#x3D;640x480, fps&#x3D;5<br>结果：初始延迟在 1s 以内，之后延迟增加到几秒；</p>
+<p>测试二： 分辨率&#x3D;640x480, fps&#x3D;1<br>结果：初始延迟在 0.5s 左右，半小时后延迟也稳定在1s以内，效果明显比 fps&#x3D;5 好；<br>测试符合理论预期，分辨率 和 FPS 要满足带宽</p>
+<p>延迟的测试方法：手机计时，网页视频显示，放一起拍照，时间差即视频延迟<br>以下显示都在1分47秒，延迟小于 1s<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081948279.png" alt="image-20221208194813177"></p>
+<p>注意: 树莓派长时间运行发热较明显，需要配散热片。</p>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2021/07/15/%E5%A4%9A%E7%BA%BF%E7%A8%8B%E7%AC%94%E8%AE%B0%EF%BC%9A%E4%BD%BF%E7%94%A8GDB%E8%B0%83%E8%AF%95%E5%A4%9A%E7%BA%BF%E7%A8%8B/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2021/07/15/%E5%A4%9A%E7%BA%BF%E7%A8%8B%E7%AC%94%E8%AE%B0%EF%BC%9A%E4%BD%BF%E7%94%A8GDB%E8%B0%83%E8%AF%95%E5%A4%9A%E7%BA%BF%E7%A8%8B/" class="post-title-link" itemprop="url">多线程笔记：使用GDB调试多线程</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2021-07-15 15:29:31" itemprop="dateCreated datePublished" datetime="2021-07-15T15:29:31+08:00">2021-07-15</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2022-12-08 10:26:47" itemprop="dateModified" datetime="2022-12-08T10:26:47+08:00">2022-12-08</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/linux/" itemprop="url" rel="index"><span itemprop="name">linux</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h1 id="1-GDB简介"><a href="#1-GDB简介" class="headerlink" title="1.GDB简介"></a>1.GDB简介</h1><p>官网文档：<br><a target="_blank" rel="noopener" href="https://www.gnu.org/software/gdb/documentation/">GDB: The GNU Project Debugger</a></p>
+<p>关于GDB的原理：<br><a target="_blank" rel="noopener" href="https://cloud.tencent.com/developer/article/1365186">GDB实现原理和使用范例</a><br><a target="_blank" rel="noopener" href="http://oenhan.com/gdb-principle">GDB工作原理和内核实现</a><br><a target="_blank" rel="noopener" href="http://www.docin.com/p-18618736.html">GDB的基本工作原理</a></p>
+<p>其他教程：<a target="_blank" rel="noopener" href="http://c.biancheng.net/gdb/">GDB调试教程</a></p>
+<p>几个重点：</p>
+<ul>
+<li>多种运行方式：gdb启动程序再调试(独立功能程序)，gdb attach进程再调试(服务端程序)，gdb加载core dump调试(离线调试)</li>
+<li>GDB的本质是“截获”被调试程序，attach用ptrace截获了OS和应用程序之间的通信, 端点本质是trap中断，截获了CPU正常取指执行流程</li>
+</ul>
+<p>本文源码：<a target="_blank" rel="noopener" href="https://github.com/cursorhu/SimpleMultiThread/tree/master/4.gdb_thread">cursorhu&#x2F;SimpleMultiThread&#x2F;4.gdb_thread&#x2F;</a></p>
+<h1 id="2-多线程程序的GDB调试"><a href="#2-多线程程序的GDB调试" class="headerlink" title="2.多线程程序的GDB调试"></a>2.多线程程序的GDB调试</h1><p>待调试代码：</p>
+<pre><code>#include &lt;thread&gt;
+#include &lt;chrono&gt;
+#include &lt;mutex&gt;
+#include &lt;iostream&gt;
+
+int g_mydata = 0;
+std::mutex g_mutex;
+
+void thread_func1()
+&#123;
+    while (true)
+    &#123;
+        g_mutex.lock();
+        ++g_mydata;
+        if(g_mydata == 1024)
+            g_mydata = 0;
+        g_mutex.unlock();
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    &#125;
+&#125;
+
+void thread_func2()
+&#123;
+    while (true)
+    &#123;
+        g_mutex.lock();
+        std::cout &lt;&lt; &quot;g_mydata = &quot; &lt;&lt; g_mydata &lt;&lt; &quot;, ThreadID = &quot; &lt;&lt; std::this_thread::get_id() &lt;&lt; std::endl;
+        g_mutex.unlock();
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    &#125;
+&#125;
+
+int main()
+&#123;
+    std::thread t1(thread_func1);
+    std::thread t2(thread_func2);
+    t1.join();
+    t2.join();
+    return 0;
+&#125;
+</code></pre>
+<p>编译：</p>
+<pre><code>g++ -g -std=c++11 cppthread.cpp -o cppthread -lpthread
+</code></pre>
+<p>-g: 带debug信息，gdb要用<br>-lpthread：链接pthread库。当应用直接调用POSIX&#x2F;pthread接口，或Linux环境中运行多线程都需要</p>
+<h2 id="attach方式调试"><a href="#attach方式调试" class="headerlink" title="attach方式调试"></a>attach方式调试</h2><p>(1)后台运行并获取PID</p>
+<ul>
+<li>GDB调试已运行的程序，cppthread线程写成死循环，后台运行。</li>
+<li>ps -ef | grep NAME 获取PID</li>
+<li>pstree可以查看线程关系</li>
+<li>LWP:轻量级进程，是用户线程和内核的中间接口。用户级线程连接LWP上便具有内核线程的所有属性。因此可以认为LWP ID对应线程ID</li>
+</ul>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051534342.png" alt="1"></p>
+<p>(2)gdb attach，管控进程<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051544779.png" alt="2"></p>
+<p>(3)查看所有线程信息<br>*表示当前在1号线程，注意这个ID是GDB attach后分配的，真实线程ID参考LWP<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051534546.png" alt="3"></p>
+<p>(4)查看线程backtrace<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051535566.png" alt="4"></p>
+<p>(5)切换线程<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051535346.png" alt="5"></p>
+<p>(6)单步调试线程</p>
+<ul>
+<li>注意，GDB调试时是支持线程切换的，等同正常执行多线程，也可以禁用切换：<code>set scheduler-locking on</code>。本示例有mutex锁,未见到切换</li>
+<li><code>next</code>: 单步（一步），<code>next n</code>: 单步n步</li>
+<li><code>watch 变量</code>，可见<code>next 6</code>后g_mydata + 1</li>
+<li><code>watch</code>会自动隐式的加断点，后文会看到断点信息</li>
+</ul>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051535751.png" alt="6"></p>
+<p>(7)断点</p>
+<ul>
+<li><code>break i</code>: 在代码i行加断点， <code>break func</code>:在函数加断点</li>
+<li><code>clear i</code>: 清除i行的断点， <code>delete id</code>: 清除指定id的断点</li>
+<li>注意看watch引入了一个断点11</li>
+<li><code>continue</code>：继续执行，通常配合断点使用</li>
+</ul>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051535502.png" alt="7"></p>
+<p>(8)线程外调试+多断点<br>两个工作线程都加断点<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051535139.png" alt="8"><br>一次运行<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051535180.png" alt="9"><br>继续运行<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051536672.png" alt="10"></p>
+<ul>
+<li>Thread2和Thread3即工作线程，Thread1为主线程</li>
+<li>Thread1会切到工作线程，LWP&#x3D;6080或6081</li>
+<li>两次运行,Thread1切到的LWP不一样</li>
+</ul>
+<p>GDB显示主线程切到哪个工作线程，实际是CPU当前在执行哪个工作线程，因此两次运行到断点时，当前执行线程分别是Thread2和Thread3，主线程实际是阻塞的。</p>
+<h2 id="GDB直接运行程序"><a href="#GDB直接运行程序" class="headerlink" title="GDB直接运行程序"></a>GDB直接运行程序</h2><p>用GDB运行程序的调试方式：</p>
+<pre><code> gdb &lt; prog_name &gt;
+</code></pre>
+<p>(1)运行<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051536065.png" alt="11"></p>
+<p>(2)加断点和执行<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051536275.png" alt="12"></p>
+<p>(3)查看变量值<br><code>p 变量</code>：打印变量，和<code>watch</code>相比不会加隐含的断点<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051536108.png" alt="13"></p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051537112.png" alt="14"></p>
+<h2 id="core-dump文件方式调试"><a href="#core-dump文件方式调试" class="headerlink" title="core dump文件方式调试"></a>core dump文件方式调试</h2><p>有关core dump<br><a target="_blank" rel="noopener" href="https://www.cnblogs.com/computer1-2-3/p/11114981.html">Linux 下如何产生core文件（core dump设置）</a><br><a target="_blank" rel="noopener" href="https://linux-audit.com/understand-and-configure-core-dumps-work-on-linux/">Understand and configure core dumps on Linux</a><br><a target="_blank" rel="noopener" href="https://www.cnblogs.com/uhziel/p/cpp_segmentation_fault.html">C++中段错误的常见情况</a><br><a target="_blank" rel="noopener" href="https://blog.csdn.net/xuzhina/category_1322964.html">coredump问题原理探究(Linux版)
+</a></p>
+<p>下面修改前面的程序，制造core dump<br>(1)数组越界<br>cppthread_dump_array.cpp：</p>
+<pre><code>#include &lt;thread&gt;
+#include &lt;chrono&gt;
+#include &lt;mutex&gt;
+#include &lt;iostream&gt;
+#include &lt;cstring&gt;
+
+int g_mydata = 0;
+std::mutex g_mutex;
+
+char test_dump_buf[10] = &#123;0&#125;;
+
+void thread_func1()
+&#123;
+    while (true)
+    &#123;
+        g_mutex.lock();
+        ++g_mydata;
+        char c;
+        sprintf(&amp;c, &quot;%d&quot;, g_mydata);
+        std::strcat(test_dump_buf, &amp;c); //持续追加g_mydata字符串
+        if(g_mydata == 1024)
+            g_mydata = 0;
+        g_mutex.unlock();
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    &#125;
+&#125;
+
+void thread_func2()
+&#123;
+    while (true)
+    &#123;
+        g_mutex.lock();
+        std::cout &lt;&lt; &quot;g_mydata = &quot; &lt;&lt; g_mydata &lt;&lt; &quot;, ThreadID = &quot; &lt;&lt; std::this_thread::get_id() &lt;&lt; std::endl;
+        std::cout &lt;&lt; &quot;test_dump_buf: &quot; &lt;&lt; test_dump_buf &lt;&lt; std::endl;
+        g_mutex.unlock();
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    &#125;
+&#125;
+
+int main()
+&#123;
+    std::thread t1(thread_func1);
+    std::thread t2(thread_func2);
+
+    t1.join();
+    t2.join();
+
+    return 0;
+&#125;
+</code></pre>
+<p>运行结果：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051538738.png" alt="15"><br>并未发生段错误，更不谈core dump。因为CPP对数组没有越界限制，这是个“合法”行为</p>
+<p>(2)使用空指针<br>cppthread_dump_nullptr.cpp：</p>
+<pre><code>#include &lt;thread&gt;
+#include &lt;chrono&gt;
+#include &lt;mutex&gt;
+#include &lt;iostream&gt;
+#include &lt;unistd.h&gt; //for linux sleep()
+
+std::mutex g_mutex;
+
+class Foo 
+&#123;
+    public:
+        Foo(int m)
+        &#123;
+            m_data = m;
+        &#125;
+        ~Foo()&#123;&#125;
+        void printval() 
+        &#123;
+            std::cout &lt;&lt; &quot;m_data = &quot; &lt;&lt; m_data &lt;&lt; std::endl;
+        &#125;
+        void increase()
+        &#123;
+            ++m_data;
+        &#125;
+        int getval()
+        &#123;
+            return m_data;
+        &#125;
+        void resetval()
+        &#123;
+            m_data = 0;
+        &#125;
+        
+    private:
+        int m_data;
+&#125;;
+
+void thread_func1(Foo&amp; p)
+&#123;
+    while (true)
+    &#123;
+        g_mutex.lock();
+        p.increase();
+        if(p.getval() == 1024)
+            p.resetval();
+        g_mutex.unlock();
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    &#125;
+&#125;
+
+void thread_func2(Foo&amp; p)
+&#123;
+    while (true)
+    &#123;
+        g_mutex.lock();
+        p.printval();
+        g_mutex.unlock();
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    &#125;
+&#125;
+
+int main()
+&#123;    
+    Foo *pFoo = new Foo(0);
+
+    std::thread t1(thread_func1, std::ref(*pFoo)); //std::ref用于std::thread传入参数，以引用的形式
+    std::thread t2(thread_func2, std::ref(*pFoo));
+
+    //t1.join();  //这里故意不join
+    //t2.join();
+    sleep(10);  //sleep等一下thread1,2
+    
+    delete pFoo; 
+    pFoo = NULL;  //这时thread1,2还没执行完，形成了使用空指针的条件
+            
+    return 0;
+&#125;
+</code></pre>
+<p>运行结果：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051538644.png" alt="16"></p>
+<p>下面gdb调试这个core dump</p>
+<ul>
+<li><p>设置core dump文件大小限制为不受限<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051538876.png" alt="17"><br>最好写入配置文件<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051538835.png" alt="18"></p>
+</li>
+<li><p>gdb加载程序和core dump文件<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051538139.png" alt="19"><br>可见siganl 6发生，使进程终止</p>
+</li>
+<li><p>看dump位置，bt或where都可以<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051538557.png" alt="20"></p>
+</li>
+<li><p>看所有线程的栈<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051538027.png" alt="21"></p>
+</li>
+<li><p>直接看dump附近的代码<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051539217.png"></p>
+</li>
+</ul>
+<p>结论：根据bt&#x2F;where, dump发生时，主进程在在执行67行：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051542767.png" alt="image-20221205154207720"></p>
+<p>根据源码，具体是工作线程调用对象的方法时发生<br>再看dump打印，正好要打印<code>m_data = 10</code>的时候dump，结合main中sleep(10)和工作线程sleep(1)，dump原因是main把对象指针置空了，而两个工作线程还在调用对象的方法，位置是thread_func2的p.printval()处</p>
+<h2 id="一个示例：调试死锁"><a href="#一个示例：调试死锁" class="headerlink" title="一个示例：调试死锁"></a>一个示例：调试死锁</h2><p>最常见的死锁是双重加锁，和双重delete的道理一样，代码复杂了，层层调用的情况下容易出现<br>示例代码cppthread_deadlock.cpp：<br>线程函数和其调用的类方法都加锁了，形成死锁</p>
+<pre><code>#include &lt;thread&gt;
+#include &lt;chrono&gt;
+#include &lt;mutex&gt;
+#include &lt;iostream&gt;
+#include &lt;unistd.h&gt; //for linux sleep()
+
+std::mutex g_mutex;
+
+class Foo 
+&#123;
+    public:
+        Foo(int m)
+        &#123;
+            m_data = m;
+        &#125;
+        ~Foo()&#123;&#125;
+        void printval() 
+        &#123;
+            std::cout &lt;&lt; &quot;m_data = &quot; &lt;&lt; m_data &lt;&lt; std::endl;
+        &#125;
+        void increase()
+        &#123;
+            g_mutex.lock(); //故意制造双重加锁
+            ++m_data;
+            g_mutex.unlock();
+        &#125;
+        int getval()
+        &#123;
+            return m_data;
+        &#125;
+        void resetval()
+        &#123;
+            m_data = 0;    
+        &#125;
+        
+    private:
+        int m_data;
+&#125;;
+
+void thread_func1(Foo&amp; p)
+&#123;
+    while (true)
+    &#123;
+        g_mutex.lock();
+        p.increase();
+        if(p.getval() == 1024)
+            p.resetval();
+        g_mutex.unlock();
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    &#125;
+&#125;
+
+void thread_func2(Foo&amp; p)
+&#123;
+    while (true)
+    &#123;
+        g_mutex.lock();
+        p.printval();
+        g_mutex.unlock();
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    &#125;
+&#125;
+
+int main()
+&#123;    
+    Foo *pFoo = new Foo(0);
+
+    std::thread t1(thread_func1, std::ref(*pFoo)); //std::ref用于std::thread传入参数，以引用的形式
+    std::thread t2(thread_func2, std::ref(*pFoo));
+
+    t1.join();
+    t2.join();
+    
+    delete pFoo;
+    pFoo = NULL;
+            
+    return 0;
+&#125;
+</code></pre>
+<p>调试：</p>
+<ul>
+<li>直接运行方式，要run起来才有线程</li>
+</ul>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051542989.png" alt="23"></p>
+<ul>
+<li>backtrace可见两个线程都停止于lock_wait()，其中thread2回溯看到死锁代码在45行</li>
+</ul>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051546645.png" alt="24"></p>
+<p>对于互斥锁推荐用RAII机制的<code>std::lock_guard&lt;mutex&gt; lockGuard(m)</code>，能避免忘记unlock情况。但在此示例中，lock_guard也会双重加锁。</p>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2021/07/12/%E5%A4%9A%E7%BA%BF%E7%A8%8B%E7%AC%94%E8%AE%B0%EF%BC%9A%E7%BA%BF%E7%A8%8B%E6%B1%A0/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -2747,539 +3393,6 @@ void CmyMFCDlg::CloseLogFile()
   
   
 
-      
-  
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/12/03/%E5%BC%80%E6%BA%90%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0%EF%BC%9ATinyhttpd/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Cursorhu">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="ThinkNotes">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2020/12/03/%E5%BC%80%E6%BA%90%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0%EF%BC%9ATinyhttpd/" class="post-title-link" itemprop="url">开源项目学习：Tinyhttpd</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2020-12-03 14:45:44" itemprop="dateCreated datePublished" datetime="2020-12-03T14:45:44+08:00">2020-12-03</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2022-12-12 14:56:31" itemprop="dateModified" datetime="2022-12-12T14:56:31+08:00">2022-12-12</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/open-source/" itemprop="url" rel="index"><span itemprop="name">open source</span></a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h1 id="1-简介"><a href="#1-简介" class="headerlink" title="1.简介"></a>1.简介</h1><p>Tinyhttpd是一个C + CGI实现的简单http server，适合初学者学习。代码许可协议：GPL，copyright 1999, by J. David Blackstone.<br>本文对Tinyhttp稍作注释和改动，验证并理解其主要流程, 本文源码：<br>Github: <a target="_blank" rel="noopener" href="https://github.com/cursorhu/myTinyHttpd">cursorhu&#x2F;myTinyHttpd</a></p>
-<h1 id="2-背景知识"><a href="#2-背景知识" class="headerlink" title="2.背景知识"></a>2.背景知识</h1><h2 id="TCP套接字的通信流程"><a href="#TCP套接字的通信流程" class="headerlink" title="TCP套接字的通信流程"></a>TCP套接字的通信流程</h2><p>网络协议栈的核心是TCP&#x2F;IP协议，HTTP本质上是对TCP的应用层封装，要理解HTTP服务程序，首先要理解TCP层的通信机制，在Linux环境中TCP采用socket接口通信，流程如下图<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212121451104.png" alt="image-20221212145149039"><br>关于Linux网络编程相关知识，参考《Linux网络编程-第二版》<br>TinyHttpd实现服务端的流程。</p>
-<h2 id="HTTP的请求方式"><a href="#HTTP的请求方式" class="headerlink" title="HTTP的请求方式"></a>HTTP的请求方式</h2><p>参考：<br><a target="_blank" rel="noopener" href="https://www.cnblogs.com/williamjie/p/9099940.html">浅谈HTTP中GET、POST用法以及它们的区别</a><br><a target="_blank" rel="noopener" href="https://blog.csdn.net/eson_15/article/details/88083280">99%的人都理解错了HTTP中GET与POST的区别</a><br>理解以下几点：</p>
-<ul>
-<li>GET，POST，PUT，DELETE是http层对数据操作的封装，底层本质还是TCP的read&#x2F;write过程</li>
-<li>http server处理请求的基本流程：读取-拆解-处理-封装-回写，拆解和封装的就是http层的请求和数据格式，处理是指TCP层能理解的数据。就像快递退货时的流程：取件-拆包-查看-装包-寄出</li>
-</ul>
-<h2 id="CGI的时代背景"><a href="#CGI的时代背景" class="headerlink" title="CGI的时代背景"></a>CGI的时代背景</h2><p>参考：<a target="_blank" rel="noopener" href="https://www.jianshu.com/p/c4dc22699a42">CGI是什么</a></p>
-<ul>
-<li>CGI是2000年的web接口标准，后端部署perl-CGI脚本，连接server处理程序和web客户端</li>
-<li>CGI目前还应用在嵌入式web等C-based环境，这个和当前web主流的Java Spring + Vue(JS)是完全不同的应用场景，所以CGI技术本身并无过时一说。</li>
-</ul>
-<h1 id="3-调试httpd"><a href="#3-调试httpd" class="headerlink" title="3.调试httpd"></a>3.调试httpd</h1><h2 id="部署httpd服务"><a href="#部署httpd服务" class="headerlink" title="部署httpd服务"></a>部署httpd服务</h2><p>Aliyun CentOS环境，运行如下deploy.sh：</p>
-<pre><code>#!/bin/bash
-chmod +x htdocs/*.cgi
-yum install -y perl perl-CGI
-make clean &amp;&amp; make
-</code></pre>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212121452836.png" alt="image-20221212145206784"></p>
-<h2 id="浏览器访问httpd"><a href="#浏览器访问httpd" class="headerlink" title="浏览器访问httpd"></a>浏览器访问httpd</h2><p>服务端直接运行httpd，会分配随机可用端口，本地chrome浏览器访问该服务所在的ip:端口<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212121452831.png" alt="image-20221212145218796"></p>
-<p>这里ip即为httpd所在主机ip，默认访问资源是htdocs&#x2F;index.html，原因可见httpd.c的http Get请求解析url的处理<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212121452854.png" alt="image-20221212145227807"></p>
-<p>index.h调用color.cgi脚本：</p>
-<pre><code>&lt;HTML&gt;
-&lt;TITLE&gt;Index&lt;/TITLE&gt;
-&lt;BODY&gt;
-&lt;P&gt;Welcome to J. David&#39;s webserver.
-&lt;H1&gt;CGI demo: get color
-&lt;FORM ACTION=&quot;color.cgi&quot; METHOD=&quot;POST&quot;&gt;
-Enter color(example: red, pink, blue): &lt;INPUT TYPE=&quot;text&quot; NAME=&quot;color&quot;&gt;
-&lt;INPUT TYPE=&quot;submit&quot;&gt;
-&lt;/FORM&gt;
-&lt;/BODY&gt;
-&lt;/HTML&gt;
-</code></pre>
-<p>color.cgi内容：</p>
-<pre><code>#!/usr/bin/perl -Tw
-
-use strict;
-use CGI;
-
-my($cgi) = new CGI;
-
-print $cgi-&gt;header;
-my($color) = &quot;blue&quot;;
-$color = $cgi-&gt;param(&#39;color&#39;) if defined $cgi-&gt;param(&#39;color&#39;);
-
-print $cgi-&gt;start_html(-title =&gt; uc($color),
-                       -BGCOLOR =&gt; $color); 
-print $cgi-&gt;h1(&quot;This is $color&quot;);
-print $cgi-&gt;end_html;
-</code></pre>
-<p>干了两件事：</p>
-<ul>
-<li>html页面的bgcolor参数设置成了用户输入的color变量字符串</li>
-<li>显示字符串：This is $color</li>
-</ul>
-<p>输入“red”, 浏览器显示效果：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212121452042.png" alt="image-20221212145241997"></p>
-<p>F12打开浏览器调试窗口，可见：</p>
-<ul>
-<li>访问资源为color.cgi</li>
-<li>查看http head内容，浏览器客户端的请求是POST，类型是text文本，表单数据(Form data):color的值是red</li>
-<li>查看http response内容，即httpd返回的内容。返回了html文本，即浏览器可见的红色页面</li>
-</ul>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212121452614.png" alt="image-20221212145258548"></p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212121455408.png" alt="image-20221212145533364"></p>
-<p>现在理解以下整个流程：</p>
-<ul>
-<li>服务器上httpd先运行，处于监听(listen)客户端请求的状态</li>
-<li>本地浏览器输入服务器ip：端口，访问httpd，发送的http请求类型是GET,即获取文本</li>
-<li>httpd收到请求，在处理过程中调用cgi脚本，生成response的内容</li>
-<li>httpd打包内容成http层的格式(head+body+…)，返回浏览器客户端</li>
-<li>浏览器客户端解析html文本并显示成可见的页面。</li>
-</ul>
-<p>再看另外一个获取时间的功能：<br>浏览器输入<code>ip:port/date.html</code><br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212121453695.png" alt="image-20221212145316645"><br>访问的资源是date.cgi，返回了显示当前时间的页面<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212121453222.png" alt="image-20221212145338163"><br>看下http请求和响应<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212121453850.png" alt="image-20221212145345780"></p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212121453273.png" alt="image-20221212145353230"></p>
-<p>date.cgi的实现：shell直接调用linux <code>date</code>命令</p>
-<pre><code>#!/bin/bash
-echo &quot;Content-Type: text/html&quot;
-echo
-echo &quot;&lt;HTML&gt;&lt;BODY&gt;&quot;
-echo &quot;&lt;CENTER&gt;Today is:&lt;/CENTER&gt;&quot;
-echo &quot;&lt;CENTER&gt;&lt;B&gt;&quot;
-date
-echo &quot;&lt;/B&gt;&lt;/CENTER&gt;&quot;
-echo &quot;&lt;/BODY&gt;&lt;/HTML&gt;&quot;
-</code></pre>
-<h2 id="TCP-socket访问httpd-测试"><a href="#TCP-socket访问httpd-测试" class="headerlink" title="TCP socket访问httpd(测试)"></a>TCP socket访问httpd(测试)</h2><p>client.c直接使用socket接口访问httpd，这是个测试功能，因此用编译参数控制了该功能, <code>make test_sock=y</code>编译该版本的httpd<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212121454984.png" alt="image-20221212145401934"><br>client和httpd在同一主机，直接访问回环地址127.0.0.1，可见httpd返回了client发送的字符’A’</p>
-<h1 id="4-源码分析"><a href="#4-源码分析" class="headerlink" title="4.源码分析"></a>4.源码分析</h1><h2 id="1-httpd的处理http请求的主要流程"><a href="#1-httpd的处理http请求的主要流程" class="headerlink" title="(1) httpd的处理http请求的主要流程"></a>(1) httpd的处理http请求的主要流程</h2><p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212121454501.png" alt="image-20221212145417431"></p>
-<ol>
-<li>服务器启动，在指定端口或随机选取端口绑定 httpd 服务</li>
-<li>收到一个 HTTP 请求时（其实就是 listen 的端口 accpet 的时候），派生一个线程运行 accept_request 函数</li>
-<li>取出 HTTP 请求中的 method (GET 或 POST) 和 url,。对于 GET 方法，如果有携带参数，则 query_string 指针指向 url 中 ？ 后面的 GET 参数</li>
-<li>格式化 url 到 path 数组，表示浏览器请求的服务器文件路径，在 tinyhttpd 中服务器文件是在 htdocs 文件夹下。当 url 以 &#x2F; 结尾，或 url 是个目录，则默认在 path 中加上 index.html，表示访问主页</li>
-<li>如果文件路径合法，对于无参数的 GET 请求，直接输出服务器文件到浏览器，即用 HTTP 格式写到套接字上，然后跳到（10）。其他情况（带参数 GET，POST 方式，url 为可执行文件），则调用 excute_cgi 函数执行 cgi 脚本</li>
-<li>读取整个 HTTP 请求并丢弃，如果是 POST 则找出 Content-Length. 把 HTTP 200 状态码写到套接字</li>
-<li>建立两个管道，cgi_input 和 cgi_output, 并 fork 一个进程</li>
-<li>在子进程中，把 STDOUT 重定向到 cgi_outputt 的写入端，把 STDIN 重定向到 cgi_input 的读取端，关闭 cgi_input 的写入端 和 cgi_output 的读取端，设置 request_method 的环境变量，GET 的话设置 query_string 的环境变量，POST 的话设置 content_length 的环境变量，这些环境变量都是为了给 cgi 脚本调用，接着用 execl 运行 cgi 程序</li>
-<li>在父进程中，关闭 cgi_input 的读取端 和 cgi_output 的写入端，如果 POST 的话，把 POST 数据写入 cgi_input，已被重定向到 STDIN，读取 cgi_output 的管道输出到客户端，该管道输入是 STDOUT。接着关闭所有管道，等待子进程结束。管道状态参考下图。</li>
-<li>关闭与浏览器的连接，完成了一次 HTTP 请求与回应， HTTP是无连接的。</li>
-</ol>
-<p>管道初始状态：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212121454140.png" alt="image-20221212145427091"><br>管道最终状态：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212121454591.png" alt="image-20221212145432542"></p>
-<p>主要函数：</p>
-<ul>
-<li>startup: 初始化httpd服务，包括建立服务端的套接字，绑定端口，进行监听等</li>
-<li>accept_request: 处理从套接字上监听到的一个 HTTP 请求，是服务器处理请求的主流程</li>
-<li>execute_cgi: 运行cgi程序的处理，对应POST请求</li>
-<li>sever_file: 调用cat把服务器文件返回给浏览器，对应GET请求</li>
-</ul>
-<p>辅助功能函数：</p>
-<ul>
-<li>get_line: 读取套接字的一行，把回车换行等情况都统一为换行符结束</li>
-<li>unimplemented: 返回给浏览器表明收到的HTTP请求所用的method不支持，httpd只支持GET和POST</li>
-<li>headers: 把HTTP响应的头部写到套接字</li>
-<li>cat: 读取服务器上的指定文件写到socket套接字</li>
-</ul>
-<h2 id="2-httpd处理client的socket请求"><a href="#2-httpd处理client的socket请求" class="headerlink" title="(2)httpd处理client的socket请求"></a>(2)httpd处理client的socket请求</h2><p>参考TCP套接字流程，注意一点，server端回写数据后，要close掉，client才能正常close。<br>编译选项的实现讲一下：<br>Makefile根据输入参数，定义宏, 如果编译输入带参<code>make test_sock=y</code>，则定义宏TEST_SOCK，等价于在源码<code>#define TEST_SOCK</code></p>
-<pre><code>#用编译选项定义宏
-ifeq ($(test_sock), y)
-CFLAGS+= -D TEST_SOCK
-endif
-</code></pre>
-<p>httpd.c对宏的处理：</p>
-<pre><code>#ifdef TEST_SOCK
-void test_sock(int);
-#else
-#define test_sock(...)  do&#123;&#125;while(0)
-#endif
-</code></pre>
-<p>这里如果没定义TEST_SOCK，直接把test_sock函数声明成do{}while(0)形式，这种控制在linux kernel源码中很常见，好处是不需要在调用处加宏控制，若TEST_SOCK未定义，调用test_sock()等价于空语句。<code>...</code>代表所有入参</p>
-<p>扩展：httpd能否同时支持浏览器和client程序访问?<br>一个socket描述符只能对应一个客户端，如果server想要一对多的IO复用，需要select-poll机制，参考：<br><a target="_blank" rel="noopener" href="https://www.cnblogs.com/feily/articles/14030297.html">IO多路复用之select、poll、epoll</a><br><a target="_blank" rel="noopener" href="https://blog.csdn.net/zouli415/article/details/79696766">linux下socket编程实现一个服务器连接多个客户端</a></p>
-<h1 id="参考文章"><a href="#参考文章" class="headerlink" title="参考文章"></a>参考文章</h1><p><a target="_blank" rel="noopener" href="https://www.cnblogs.com/nengm1988/p/7816618.html">Tinyhttpd精读解析</a><br><a target="_blank" rel="noopener" href="https://github.com/EZLippi/Tinyhttpd">EZLippi&#x2F;Tinyhttpd</a></p>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-      
-  
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/12/03/Git%E5%B8%B8%E7%94%A8%E6%93%8D%E4%BD%9C%E7%AC%94%E8%AE%B0/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Cursorhu">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="ThinkNotes">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2020/12/03/Git%E5%B8%B8%E7%94%A8%E6%93%8D%E4%BD%9C%E7%AC%94%E8%AE%B0/" class="post-title-link" itemprop="url">Git常用操作笔记</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2020-12-03 12:02:00" itemprop="dateCreated datePublished" datetime="2020-12-03T12:02:00+08:00">2020-12-03</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2023-03-01 14:32:49" itemprop="dateModified" datetime="2023-03-01T14:32:49+08:00">2023-03-01</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/Git/" itemprop="url" rel="index"><span itemprop="name">Git</span></a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h1 id="基础操作"><a href="#基础操作" class="headerlink" title="基础操作"></a>基础操作</h1><h2 id="拉取和同步"><a href="#拉取和同步" class="headerlink" title="拉取和同步"></a>拉取和同步</h2><pre><code>git clone http://xxx.xxx.git //http方式, 从远程clone仓库
-git pull //拉取远程分支
-git branch //查看本地
-git branch -a //查看远程和本地
-git checkout xxxbranch //本地切到某分支
-git checkout xxx/xxx //仅拉取部分目录或文件
-</code></pre>
-<h2 id="推送到远程"><a href="#推送到远程" class="headerlink" title="推送到远程"></a>推送到远程</h2><pre><code>git add -A //推送所有修改到本地仓库
-git commit -m &quot;change logs&quot; //提交到本地仓库（记录修改信息）
-git push //推送本地分支到远程的同名分支，需要先关联
-git push origin &lt;本地分支名&gt; //推送本地分支到远程同名分支
-git push origin &lt;本地分支名&gt;:&lt;远程分支名&gt; //推送本地分支到远程指定分支
-</code></pre>
-<h2 id="加tag-x2F-删tag"><a href="#加tag-x2F-删tag" class="headerlink" title="加tag&#x2F;删tag"></a>加tag&#x2F;删tag</h2><pre><code>git tag -a TAGNAME -m &quot;TAG LOG&quot; //加tag
-git push origin TAGNAME //推送tag到远程
-git tag -d TAGNAME //删除本地tag
-git push origin :refs/tags/TAGNAME //删除远程tag
-</code></pre>
-<h2 id="创建-x2F-删除-x2F-修改分支"><a href="#创建-x2F-删除-x2F-修改分支" class="headerlink" title="创建&#x2F;删除&#x2F;修改分支"></a>创建&#x2F;删除&#x2F;修改分支</h2><p>创建分支并关联远程</p>
-<pre><code>git checkout -b BRANCH_NAME //本地创建分支
-git push origin BRANCH_NAME //推送到远程
-git push --set-upstream origin BRANCH_NAME //关联远程，便于以后分支pull/push
-</code></pre>
-<p>删除本地分支    </p>
-<pre><code>git branch -d branch_name
-git branch -D branch_name //强制删除
-</code></pre>
-<p>删除远程分支</p>
-<pre><code>git push origin -d branch_name
-</code></pre>
-<p>分支重命名(本地)</p>
-<pre><code>git branch -m OLD_NAME NEW_NAME
-</code></pre>
-<h2 id="版本比较"><a href="#版本比较" class="headerlink" title="版本比较"></a>版本比较</h2><p>可以用<code>git diff --help</code>直接查看git diff的Manual Page</p>
-<pre><code>git diff COMMIT_ID //比较本地和某commit_id的内容
-git diff ID1 ID2 //比较两个提交的内容，比较新增时，旧版本在前，新版本在后
-git diff &lt;path of file&gt; //比较本地某文件的内容
-git diff --name-only ID1 ID2 //只显示有差异的文件名列表
-git diff &lt;commit&gt;..&lt;commit&gt; [&lt;path&gt;…​] //比较两个提交中指定文件名或者路径的差异
-</code></pre>
-<h2 id="版本回退"><a href="#版本回退" class="headerlink" title="版本回退"></a>版本回退</h2><pre><code>git reset --hard HEAD^ //回退到上个版本
-git reset --hard HEAD^^ //回退到上上个版本
-git reset --hard COMMIT_ID //回退到指定提交
-git push -f //强制提交，覆盖远程，使远程也回退
-git push origin master -f //强制推送到远程的master分支
-</code></pre>
-<h2 id="合并分支"><a href="#合并分支" class="headerlink" title="合并分支"></a>合并分支</h2><p>两个分支A和B，要把分支B的所有提交合并到A分支上</p>
-<pre><code>git checkout &lt;branch A&gt; //切到待合并分支A
-git merge &lt;branch B&gt; //拉取分支B，合并到当前分支A
-git merge &lt;branch B&gt;  --squash //合并分支，将B的多个提交融合成一个再合并到A，而不是B的所有提交记录都照搬到A（这个更常用）
-git merge --abort //终止合并
-</code></pre>
-<p>如果有<code>merge conflict</code>,手动修改冲突文件-&gt;保存文件-&gt;<code>git add -A</code>提交修改-&gt;<code>git commit -m &quot;xxx&quot;</code>提交该合并</p>
-<p>如果本地仓库已经处于待merge状态，又想取消merge,同步成远程仓库状态，只需要reset本地仓库到当前commit-id</p>
-<pre><code>git reset --hard HEAD
-</code></pre>
-<p>也可以reset到指定commit-id:</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git reflog &amp;&amp; git reset --hard commit-id</span><br></pre></td></tr></table></figure>
-
-<h2 id="合并提交"><a href="#合并提交" class="headerlink" title="合并提交"></a>合并提交</h2><h3 id="合并当前提交"><a href="#合并当前提交" class="headerlink" title="合并当前提交"></a>合并当前提交</h3><p>如果当前修改还未提交, 想合并到最近的一次提交里，例如最近提交有个错误，可以用<code>--amend</code>修订提交</p>
-<pre><code>git add -A
-git commit --amend
-git push -f //amend后通常强制推送，因为没有新增commit
-</code></pre>
-<h3 id="合并历史提交"><a href="#合并历史提交" class="headerlink" title="合并历史提交"></a>合并历史提交</h3><p>有时同一个功能分多次提交，提交过于频繁，需要合并成一个提交。<br>如下有三次提交</p>
-<pre><code>$git log
-commit_3: xxxxx
-    message_3 ....
-commit_2: xxxxx
-    message_2 ....
-commit_1: xxxxx
-    message_1 ....
-</code></pre>
-<p>现在想把commit_3 和 commit_2合并成一个commit.</p>
-<pre><code>git rebase -i commit_1 //重定位到要合并的前一个提交
-</code></pre>
-<p>进入commit信息编辑模式：</p>
-<pre><code>pick commit_2 message_2...
-pick commit_3 message_3...
-</code></pre>
-<p>将要合并的commit_3前的属性<code>pick</code>（选用）改为<code>squash</code>（压扁），<code>wq</code>保存，进入当前合并commit的信息提交界面，再次<code>wq</code>保存, 查看合并后提交记录如下：</p>
-<pre><code>$git log
-commit_4: xxxxx
-    message_3 ....
-    message_2 ....
-commit_1: xxxxx
-    message_1 ....
-</code></pre>
-<p>两次提交已合成一次（新的）提交</p>
-<h1 id="多人提交的冲突解决办法"><a href="#多人提交的冲突解决办法" class="headerlink" title="多人提交的冲突解决办法"></a>多人提交的冲突解决办法</h1><p>A和B同时开发某项目的同一个分支，A拉取最新版本1.0后，在本地新增功能，此时B也在1.0上修改并提交到了新版本1.1到远程仓库。A在B提交之后再提交，发现自己本地的修改已是旧版本，无法直接提交，如下图是A的add,commit,push三连的结果</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051005366.png" alt="1631249531971_115"></p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051006842.png" alt="image-20221205100655798"></p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051007268.png" alt="image-20221205100726224"></p>
-<h3 id="手动解决conflict"><a href="#手动解决conflict" class="headerlink" title="手动解决conflict"></a>手动解决conflict</h3><p><code>git pull</code> 拉取远程仓库最新版本，此时有两种情况</p>
-<ul>
-<li>代码有冲突，需手动修改冲突区域的代码块，二选一，然后重新add-commit-push三连提交</li>
-<li>无冲突，pull代码会自动合并，直接重新三连提交即可</li>
-</ul>
-<p>以下是有冲突的情况<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051008610.png" alt="image-20221205100836563"></p>
-<p>找到冲突源码，冲突的符号定义如下：</p>
-<ul>
-<li><code>&lt;&lt;&lt;&lt;&lt; HEAD</code>：当前本地的代码块</li>
-<li><code>======</code>：分割冲突块</li>
-<li><code>&gt;&gt;&gt;&gt;&gt;&gt;b699a7fc</code>：远程最新hash版本号的代码块</li>
-</ul>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051008970.png" alt="image-20221205100855921"></p>
-<p>修改方法：先拷贝冲突关键语句，再删除所有冲突域符号，最后只保留如下代码<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051019814.png" alt="image-20221205101900769"></p>
-<p>修改完后，<code>git add, git commit, git push</code>，成功提交<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051020311.png" alt="image-20221205102021265"></p>
-<p>查看提交后版本：<code>git log</code></p>
-<h3 id="修改某次提交的commit信息"><a href="#修改某次提交的commit信息" class="headerlink" title="修改某次提交的commit信息"></a>修改某次提交的commit信息</h3><p>有时需要修改commit信息便于区分哪个是解决冲突后的提交<br>解决方案：</p>
-<ul>
-<li>修改最新的commit，只需要amend修改commit信息后，再push</li>
-<li>修改历史的commit，需要先rebase修改属性为edit后，再commit –amend</li>
-</ul>
-<p>下面讲修改历史commit<br>如下图，想修改9877的commit信息<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051023197.png" alt="image-20221205102348131"></p>
-<p>先rebase到之前的commit<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051024479.png" alt="image-20221205102432433"><br>显示其后的版本属性如下<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051024531.png" alt="image-20221205102447476"><br>修改9877的属性为edit(待编辑模式)，将原始commit改成如下内容,<code>:wq</code>保存:</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051026868.png" alt="image-20221205102658821"></p>
-<p>然后<code>commit --amend, rebase --continue</code><br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051027201.png" alt="image-20221205102751155"><br>再查看下git og修改成功<br>最后<code>git push</code>同步到远程仓库</p>
-<h1 id="从另一个分支拉取指定的几个commit内容"><a href="#从另一个分支拉取指定的几个commit内容" class="headerlink" title="从另一个分支拉取指定的几个commit内容"></a>从另一个分支拉取指定的几个commit内容</h1><p>A和B都在git的master分支提交代码，一天发现master某个版本有问题，回退n各版本都找不到是谁提交引起的问题，由于master还要作稳定测试等其他用途，决定先回退master分支到较早的指定版本，而master最新版和稳定版之间提交的内容，分别由各自A和B“认领”，拉取master上自己提交的功能到自己的分支，debug好以后在合并回master。<br>需求：<br>如何在开发者分支上拉取master分支的指定几个commit的内容，注意不是某个commit以前的内容，是commit内的内容？</p>
-<h2 id="创建自己分支，回退master"><a href="#创建自己分支，回退master" class="headerlink" title="创建自己分支，回退master"></a>创建自己分支，回退master</h2><p>首先切到master分支上，创建一个自己的分支thomas，自己分支是master的拷贝</p>
-<pre><code>git checkout master //当前在那个分支，决定创建分支的内容
-git checkout -b thomas //做两件事：在本地创建thomas分支，内容和master一样；切到thomas分支
-git push --set-upstream origin thomas //推送分支到远程，这步很容易漏掉
-git branch //查看当前在哪个分支
-git branch -a //查看所有分支
-</code></pre>
-<p>以上操作完成后，自己分支就创建好了，注意动作只影响到本地仓库的.git文件，要同步远程仓库还要push到远程<br>下面备份master, 再回退master</p>
-<pre><code>git checkout master
-git checkout -b master_backup //先备份master,上面有自己分支要拉取的内容
-git checkout master //切到master,准备回退
-git reset --hard COMMIT_ID //回退到稳定版本commit_id
-git push -f //由于是回退，提交比远程的还早，一般需要强制提交，这个操作也会把本地的.git修改一同提交到远程
-</code></pre>
-<p>这样就有三个分支：</p>
-<pre><code>master: 包含稳定版本的旧代码
-master_backup: master的备份，包含稳定版和之后的A、B的一些提交
-thomas: 开发者A的个人分支，现在和master稳定版完全一样
-</code></pre>
-<p>下面只需要从master_backup拉取自己相关的提交到thomas分支即可。</p>
-<h2 id="cherry-pick拉取指定commit"><a href="#cherry-pick拉取指定commit" class="headerlink" title="cherry-pick拉取指定commit"></a>cherry-pick拉取指定commit</h2><p>先把要拉取的commit id存起来：</p>
-<pre><code>git checkout master_backup
-git log &gt; ../master_backup.log
-</code></pre>
-<p>截取commit log片段如图<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051038438.png" alt="image-20221205103857374"></p>
-<p>切到thomas分支，拉取master_backup的commit</p>
-<pre><code>git checkout thomas
-git cherry-pick 3d6b3be
-</code></pre>
-<p>这种方法只拉了一个commit, 更好的方式是按功能，一次拉多个commit,甚至一次把所有的commit都拉完。<br>cherry-pick支持多个pick一步到位<br>例如git log如下</p>
-<pre><code>commit4 id4
-commit3 id3
-commit2 id2
-commit1 id1
-</code></pre>
-<p>离散拉取：只拉取id1和id4：</p>
-<pre><code>git cherry-pick id1 id4
-</code></pre>
-<p>！注意，提交顺序很重要，旧版本写在前新版本写在后<br>如果是区间拉取,即全部的id1，id2, id3，id4</p>
-<pre><code>git cherry-pick id1..id4 //加两个点即为区间拉取
-</code></pre>
-<p>为了验证是不是真的拉取了多个版本，可以<code>git diff --name-only id1 id4</code>看下拉取后的修改哪些文件，对比被拉取分支的修改，如果一致，说明确实拉取多个commit<br>对于上图的commit，建议按功能多次cherry-pick并commit+push，便于后续debug。</p>
-<h2 id="cherry-pick的冲突问题"><a href="#cherry-pick的冲突问题" class="headerlink" title="cherry-pick的冲突问题"></a>cherry-pick的冲突问题</h2><p>cherry-pick也是合并，只要是合并代码，就可能有冲突<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051039238.png" alt="image-20221205103926181"><br>合并单个commit,使用使用常规的冲突解决办法即可：</p>
-<ul>
-<li>到源码改冲突， <code>&lt;&lt;&lt;&lt; ===== &gt;&gt;&gt;&gt;</code>三个标记之间代码块二选一</li>
-<li><code>git status</code>查看哪些待提交</li>
-<li><code>git add -A</code>提交修改后的源码到本地.git</li>
-</ul>
-<h3 id="单个提交的冲突解决"><a href="#单个提交的冲突解决" class="headerlink" title="单个提交的冲突解决"></a>单个提交的冲突解决</h3><p>由于是从其他分支的commit id合并到当前分支（HEAD）,可以不加考虑的删掉<code>&lt;&lt;&lt;&lt;HEAD</code>和<code>====</code>之间的内容，采用<code>====</code>和<code>commit_id</code>之间的内容，随后删掉三个标记即可。<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051039681.png" alt="image-20221205103951579"><br>有可能出现冲突代码块有重叠区的情况</p>
-<pre><code>&lt;&lt;&lt;&lt; HEAD
-code 1
-=====
-&lt;&lt;&lt;&lt; commit_id 1
-code 2
-&gt;&gt;&gt;&gt; commit_id 2
-code 3
-=====
-code 4
-&gt;&gt;&gt;&gt; commit_id 3
-</code></pre>
-<p>只要确定一个原则：&lt;&lt;&lt;&lt;是冲突块的起始点，&#x3D;&#x3D;&#x3D;&#x3D;是分界，&gt;&gt;&gt;&gt;是终止点，分两步删代码就可以了。</p>
-<h3 id="多个提交的冲突解决："><a href="#多个提交的冲突解决：" class="headerlink" title="多个提交的冲突解决："></a>多个提交的冲突解决：</h3><p>如果是cherry-pick多个commit，冲突的解决方法就不一样了。<br>其区别在于，多个commit_id的cherry-pick，一旦遇到冲突，就会停下pick,需要手动解决冲突后，用<code>cherry-pick --continue</code>继续接下来的commit合并，直到由遇到冲突，再次手动解决。也就是说冲突会阻塞多个commit的cherry-pick，它不会一次性合并所有commit,让你一次性解决冲突。具体流程如下：</p>
-<ul>
-<li><code>cherry-pick id1 id2 id3 id4 .... idn</code></li>
-<li>冲突报错，到源码手动解决</li>
-<li><code>git add -A</code> 添加解决冲突后的文件到.git</li>
-<li><code>cherry-pick --continue</code> 继续后面的合并,cherry-pick成功会自动提交commit信息</li>
-<li>再遇到冲突，再次解决….</li>
-<li>所有id1 … idn全部pick完成</li>
-</ul>
-<p>批量cherry-pick每次成功后都会有一次commit信息，有时候会报错，需要手动commit之后再continue</p>
-<h3 id="特殊的冲突情况"><a href="#特殊的冲突情况" class="headerlink" title="特殊的冲突情况"></a>特殊的冲突情况</h3><p>提示有一个commit是合并的提交，即这个提交是两个分支的交汇，cherry-pick不知道以哪个分支为准<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051040545.png" alt="image-20221205104005491"><br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051040453.png" alt="image-20221205104017399"></p>
-<p>如何解决：cherry-pick添加-m 1选项</p>
-<pre><code>For example, if your commit tree is like below:
-
-- A - D - E - F -   master
-   \     /
-    B - C           branch one
-then git cherry-pick E will produce the issue you faced.
-
-git cherry-pick E -m 1 means using D-E, while git cherry-pick E -m 2 means using B-C-E
-</code></pre>
-<p>例如选择cherry-pick commid_id -m 1, 结果如下，可手动解决冲突了<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051040782.png" alt="image-20221205104053730"><br>注意有merge的commit,会包含其他人的更新，如果只是pick自己的代码，不需要pick带merge的commit.</p>
-<h1 id="跨仓库合并代码"><a href="#跨仓库合并代码" class="headerlink" title="跨仓库合并代码"></a>跨仓库合并代码</h1><p>假设某公司windows driver主线仓库为storport, 为了某产品定制的driver仓库为gg8, 现在gg8的所有feature已充分测试，准备合并到主线仓库storport, 这两个仓库的代码差异非常大，维护者众多，如何处理？</p>
-<p>首先划分代码各部分归谁负责：<br>每个人用git，找出其在gg8仓库的个人修改，用winmerge手动合并到主线仓库storport<br>那么具体如何高效，可靠的合并：</p>
-<p>git部分：<br>用git只找差异部分，具体操作：</p>
-<pre><code>git diff commit_a commit_b //找所有文件+代码差异
-git diff commit_a commit_b --stat //只显示有差异的文件名，这个信息对应winmerge手动合并很重要
-git diff commit_a commit_b 指定文件路径 //只显示指定文件的内容差异，这个信息对应winmerge手动合并很重要
-</code></pre>
-<p>winmerge部分：<br>winmerge可以比较两个仓库所有差异，但是有些差异可能不需要合并，例如换行，修改时间等。总之winmerge的差异有很多“误报”<br>如果只一个个打开有差异的文件去比效率太低，需要借助git定位到哪些该开发者负责的文件有改变，以及文件内哪些代码是该开发者改变的。</p>
-<p>找出某开发者A的提交改了哪些文件：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051046241.png" alt="image-20221205104623191"></p>
-<p>找出具体代码：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051046320.png"></p>
-<p>winmerge直接合并：<br>只是一句打印差异，但是如果不用git先定位，要从左侧差异栏找出此代码，相当困难<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051046886.png" alt="image-20221205104642794"></p>
-<p>这样，开发者A在代码合并过程中，完全不受其他开发者B, C的差异代码干扰</p>
-<h1 id="强制覆盖本地代码"><a href="#强制覆盖本地代码" class="headerlink" title="强制覆盖本地代码"></a>强制覆盖本地代码</h1><p>git本地代码有时checkout到旧版本代码，想回到最新版本时，直接pull无法成功，且强制pull也不行。有以下两种方式解决：</p>
-<h2 id="重新克隆"><a href="#重新克隆" class="headerlink" title="重新克隆"></a>重新克隆</h2><p>最简单是直接删掉本地项目，再重新<code>git clone</code></p>
-<h2 id="fetch覆盖"><a href="#fetch覆盖" class="headerlink" title="fetch覆盖"></a>fetch覆盖</h2><pre><code>git fetch --all //拉取远程repo所有branch到本地，但不合并到本地repo
-git reset --hard origin/master //本地repo强制同步远程repo的master分支
-git pull -f //强制拉取远程repo最新代码
-</code></pre>
-<p>注意，如果本地旧版本代码有xxx.c，而远程最新代码没这个文件，本地需要手动删掉这个文件。因为以上操作不会删除本地文件，只会拉取本地没有的，或者覆盖不同的文件到本地。为了确保旧版本多出的文件删除，直接删除目录下除了<code>.git</code>以外的所有项目文件，再<code>fetch,reset,pull</code></p>
-<h1 id="将本地未初始化git的项目上传到远程已初始化的git仓库"><a href="#将本地未初始化git的项目上传到远程已初始化的git仓库" class="headerlink" title="将本地未初始化git的项目上传到远程已初始化的git仓库"></a>将本地未初始化git的项目上传到远程已初始化的git仓库</h1><p>有一些项目代码是基于开源的庞大项目基础上开发，例如UEFI EDK2, Linux kernel.</p>
-<p>项目开发时，可能基于不同的开源项目版本，例如：</p>
-<p>远程git仓库是EDK2版本A0 + 自定义功能B0；本地的新功能是基于EDK2版本A1 + 自定义功能B1，且本地项目还没有初始化git。这种情况如何将本地项目直接上传到远程已有的项目上面去？</p>
-<p>1.首先在本地建立git仓库</p>
-<p>在本地新项目目录初始化git仓库：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">git init</span><br><span class="line">git add .</span><br><span class="line">git commit -m &quot;commit信息&quot;</span><br></pre></td></tr></table></figure>
-
-<p>2.将本地git仓库关联到远程已有的git仓库</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git remote add origin http://远程仓库地址.git</span><br></pre></td></tr></table></figure>
-
-<p>3.拉取远程仓库到本地 (如果远程仓库为空不需要此步)</p>
-<p>注意<code>--allow-unrelated-histories</code>是忽略本地项目和远程项目没有历史关联的关键参数，否则不能pull成功</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git pull origin master --allow-unrelated-histories</span><br></pre></td></tr></table></figure>
-
-<p>合并代码通常会有冲突，手动解决冲突后再<code>git add, git commit -m &quot;fix merge conflict&quot;</code></p>
-<p>4.最后推送本地仓库到远程</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git push -u origin master</span><br></pre></td></tr></table></figure>
-
-
-
-<h1 id="链接外部repo作为子模块"><a href="#链接外部repo作为子模块" class="headerlink" title="链接外部repo作为子模块"></a>链接外部repo作为子模块</h1><p>在github的项目仓库中，通常看到如下有@符号的外部仓库链接，点进去可能打开其他的项目仓库。这种外部仓库相当于当前项目仓库的子模块。</p>
-<p>类似于Linux的软链接，子模块方式可以链接到其他项目仓库，并自动同步其他仓库最新的代码。</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212091106114.png" alt="image-20221209110659056"></p>
-<p>1.如何创建外部repo的链接:</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git submodule add &quot;外部repo地址.git&quot; 外部repo文件夹名</span><br></pre></td></tr></table></figure>
-
-<p>本地就clone了外部仓库到外部repo文件夹名中, 提交本项目和正常的提交流程相同</p>
-<p>2.如何clone带外部repo的项目：</p>
-<p>git clone 的时候需要加上<code>--recursive</code>，否则外部repo文件夹是空文件夹</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git clone --recursive &quot;项目地址.git&quot;</span><br></pre></td></tr></table></figure>
-
-<p>如果已经忘记加<code>--recursive</code>，可以手动初始化子模块</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git submodule update --init --recursive</span><br></pre></td></tr></table></figure>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
 
   
   <nav class="pagination">
@@ -3349,20 +3462,20 @@ git pull -f //强制拉取远程repo最新代码
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">57</span>
+          <span class="site-state-item-count">59</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
       <div class="site-state-item site-state-categories">
             <a href="/categories/">
           
-        <span class="site-state-item-count">23</span>
+        <span class="site-state-item-count">24</span>
         <span class="site-state-item-name">分类</span></a>
       </div>
       <div class="site-state-item site-state-tags">
             <a href="/tags/">
           
-        <span class="site-state-item-count">34</span>
+        <span class="site-state-item-count">36</span>
         <span class="site-state-item-name">标签</span></a>
       </div>
   </nav>

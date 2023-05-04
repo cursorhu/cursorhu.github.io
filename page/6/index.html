@@ -190,6 +190,1194 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/03/21/C-%E9%9D%A2%E5%90%91%E5%AF%B9%E8%B1%A1%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%A8%A1%E6%9D%BF%E3%80%81%E6%B3%9B%E5%9E%8B%E4%B8%8ESTL/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2020/03/21/C-%E9%9D%A2%E5%90%91%E5%AF%B9%E8%B1%A1%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%A8%A1%E6%9D%BF%E3%80%81%E6%B3%9B%E5%9E%8B%E4%B8%8ESTL/" class="post-title-link" itemprop="url">C++面向对象笔记：模板、泛型与STL</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-03-21 16:53:38" itemprop="dateCreated datePublished" datetime="2020-03-21T16:53:38+08:00">2020-03-21</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2022-12-08 16:55:43" itemprop="dateModified" datetime="2022-12-08T16:55:43+08:00">2022-12-08</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/C/" itemprop="url" rel="index"><span itemprop="name">C++</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h1 id="0-概述"><a href="#0-概述" class="headerlink" title="0.概述"></a>0.概述</h1><p>C++除了支持面向对象，也支持函数的扩展和重用。继承类和多态充分支持了扩展，即基类进行概括抽象的设计，派生类实现具体的设计。那么重用呢，如何写一个函数，能在多种情况不加修改的套用？<br>考虑以下问题：</p>
+<pre><code>交换两个整型变量的值的Swap函数：
+void Swap(int &amp; x,int &amp; y)
+&#123;
+    int tmp = x;
+    x = y;
+    y = tmp;
+&#125;
+交换两个double型变量的值的Swap函数:
+void Swap(double &amp; x,double &amp; y)
+&#123;
+    double tmp = x;
+    x = y;
+    y = tmp;
+&#125;
+</code></pre>
+<p>这两个函数除了入参类型不同，函数名，参数个数，返回类型都相同。函数体的处理流程也完全一样。能否只写一个Swap，就能交换各种类型的变量？<br>模板（template）将解决这种问题。</p>
+<h1 id="函数模板"><a href="#函数模板" class="headerlink" title="函数模板"></a>函数模板</h1><h2 id="函数模板的概念"><a href="#函数模板的概念" class="headerlink" title="函数模板的概念"></a>函数模板的概念</h2><p>用函数模板，设计仅数据类型不同的一组函数的通用模板：</p>
+<pre><code>template &lt;class 类型参数1，class 类型参数2,……&gt;
+返回值类型 模板名 (形参表)
+&#123;
+    函数体
+&#125;;
+
+template &lt;class T&gt; //在函数前声明模板，参数类型（class）是T
+void Swap(T &amp; x,T &amp; y)
+&#123;
+    T tmp = x;
+    x = y;
+    y = tmp;
+&#125;
+</code></pre>
+<p>在普通函数前，先用template&lt; class T &gt;声明参数类型T，就可以在函数体使用T，就像使用普通变量一样。在运行时，T传入的类型不同，函数处理的数据类型也不同。<br>函数模板是如何实现的？它是一种函数吗？</p>
+<pre><code>int main()
+&#123;
+    int n = 1,m = 2;
+    Swap(n,m); //编译器自动生成 void Swap(int &amp; ,int &amp; )函数
+    double f = 1.2,g = 2.3;
+    Swap(f,g); //编译器自动生成 void Swap(double &amp; ,double &amp; )函数
+    return 0;
+&#125;
+</code></pre>
+<p>函数模板只是个模子，编译器通过模板和具体参数类型产生不同的函数。编译器会进行两次编译，第一次检测模板代码，第二次检测加参数后的具体函数代码。<br>在调用以上函数模板时，实际会生成两个具体函数：</p>
+<pre><code>void Swap(int &amp; x,int &amp; y)
+&#123;
+    int tmp = x;
+    x = y;
+    y = tmp;
+&#125;
+void Swap(double &amp; x,double &amp; y)
+&#123;
+    double tmp = x;
+    x = y;
+    y = tmp;
+&#125;
+</code></pre>
+<p>函数模板，可以理解为一种函数的宏，编译期在宏被调用的地方，全部替换成宏所对应的具体值。<br>函数模板和运行时函数，也类似于类和对象的关系，类只是类型，对象是给类分配了内存的实例。函数模板只是通用的类型，函数实例是函数模板的实例化对象。</p>
+<h2 id="函数模板的特性"><a href="#函数模板的特性" class="headerlink" title="函数模板的特性"></a>函数模板的特性</h2><p>函数模板中可以有不止一个类型参数</p>
+<pre><code>template &lt;class T1, class T2&gt;
+T2 print(T1 arg1, T2 arg2)
+&#123;
+    cout&lt;&lt; arg1 &lt;&lt; &quot; &quot;&lt;&lt; arg2&lt;&lt;endl;
+    return arg2;
+&#125;
+</code></pre>
+<p>不通过参数也能实例化函数模板</p>
+<pre><code>template &lt;class T&gt;
+T Inc(T n)
+&#123;
+    return 1 + n;
+&#125;
+int main()
+&#123;
+    cout &lt;&lt; Inc&lt;double&gt;(4)/2; //显式实例化模板，输出 2.5
+    return 0;
+&#125;
+</code></pre>
+<h2 id="函数模板与重载"><a href="#函数模板与重载" class="headerlink" title="函数模板与重载"></a>函数模板与重载</h2><p>函数模板和函数重载，在写法上很接近，都是一组参数不同的同名函数。它们有什么联系和区别？</p>
+<ul>
+<li>函数重载，关键在参数个数</li>
+<li>函数模板，关键在参数类型</li>
+</ul>
+<p>函数模板可以重载，只要它们的形参表或类型参数表不同即可</p>
+<pre><code>template&lt;class T1, class T2&gt;
+void print(T1 arg1, T2 arg2) &#123;
+    cout&lt;&lt; arg1 &lt;&lt; &quot; &quot;&lt;&lt; arg2&lt;&lt;endl;
+&#125;
+template&lt;class T&gt;
+void print(T arg1, T arg2) &#123;
+    cout&lt;&lt; arg1 &lt;&lt; &quot; &quot;&lt;&lt; arg2&lt;&lt;endl;
+&#125;
+template&lt;class T,class T2&gt;
+void print(T arg1, T arg2) &#123;
+    cout&lt;&lt; arg1 &lt;&lt; &quot; &quot;&lt;&lt; arg2&lt;&lt;endl;
+&#125;
+</code></pre>
+<p>在有多个函数和函数模板名字相同的情况下，编译器如下处理一条函数调用语句:</p>
+<ol>
+<li><p>先找参数完全匹配的普通函数(非由模板实例化而得的函数)</p>
+</li>
+<li><p>再找参数完全匹配的模板函数。</p>
+</li>
+<li><p>再找实参数经过自动类型转换后能够匹配的普通函数。</p>
+</li>
+</ol>
+<ol start="4">
+<li><p>上面的都找不到，则报错<br>如果有函数重载，在第（1）步就找到，如果没有，才找（2）的函数模板</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">template &lt;class T&gt;</span><br><span class="line"> T Max( T a, T b) &#123;</span><br><span class="line">     cout &lt;&lt; &quot;TemplateMax&quot; &lt;&lt;endl; return 0;</span><br><span class="line"> &#125;</span><br><span class="line"> template &lt;class T,class T2&gt;</span><br><span class="line"> T Max( T a, T2 b) &#123;</span><br><span class="line">     cout &lt;&lt; &quot;TemplateMax2&quot; &lt;&lt;endl; return 0;</span><br><span class="line"> &#125;</span><br><span class="line"> double Max(double a, double b)&#123;</span><br><span class="line">     cout &lt;&lt; &quot;MyMax&quot; &lt;&lt; endl;</span><br><span class="line"> return 0;</span><br><span class="line"> &#125;</span><br><span class="line"></span><br><span class="line"> int main() &#123;</span><br><span class="line">     int i=4, j=5;</span><br><span class="line">     Max( 1.2,3.4); // 输出MyMax</span><br><span class="line">     Max(i, j); //输出TemplateMax</span><br><span class="line">     Max( 1.2, 3); //输出TemplateMax2</span><br><span class="line">     return 0;</span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure></li>
+</ol>
+<p>注意上文的步骤（2）（3）是分开的，匹配模板函数时，是不进行类型自动转换的，不匹配就是不匹配。输入参数有二义性时。编译器不会为开发者做决定</p>
+<pre><code>template&lt;class T&gt;
+T myFunction( T arg1, T arg2)
+&#123; cout&lt;&lt;arg1&lt;&lt;&quot; &quot;&lt;&lt;arg2&lt;&lt;&quot;\n&quot;; return arg1;&#125;
+……
+myFunction( 5, 7); //ok： replace T with int
+myFunction( 5.8, 8.4); //ok： replace T with double
+myFunction( 5, 8.4); //error， no matching function for call to &#39;myFunction(int, double)&#39;
+</code></pre>
+<h1 id="类模板"><a href="#类模板" class="headerlink" title="类模板"></a>类模板</h1><h2 id="类模板的概念"><a href="#类模板的概念" class="headerlink" title="类模板的概念"></a>类模板的概念</h2><p>类也能使用模板，来生成不同成员类型的类<br>类模板：在定义类的时候，加上一个&#x2F;多个类型参数。在使用类模板时，指定类型参数应该如何替换成具体类型，编译器据此生成相应的模板类</p>
+<pre><code>template &lt;class 类型参数1， class 类型参数2， ……&gt; //类型参数表
+class 类模板名
+&#123;
+    成员函数和成员变量
+&#125;;
+</code></pre>
+<p>类模板的成员函数的定义写法：</p>
+<pre><code>template &lt;class 类型参数1， class 类型参数2， ……&gt; //类型参数表
+返回值类型 类模板名&lt;类型参数名列表&gt;::成员函数名（ 参数表）
+&#123;
+    ……
+&#125;
+</code></pre>
+<p>用类模板实例化对象的写法：</p>
+<pre><code>类模板名 &lt;真实类型参数表&gt; 对象名(构造函数实参表);
+</code></pre>
+<p>一个例子：map类型中的pair类的实现：</p>
+<pre><code>template &lt;class T1,class T2&gt;    //pair是类模板
+class Pair
+&#123;
+public:
+    T1 key; //关键字
+    T2 value; //值
+    Pair(T1 k,T2 v):key(k),value(v) &#123; &#125;; //构造函数
+    bool operator &lt; ( const Pair&lt;T1,T2&gt; &amp; p) const; //运算符重载函数
+&#125;;
+
+template&lt;class T1,class T2&gt;
+bool Pair&lt;T1,T2&gt;::operator &lt; ( const Pair&lt;T1,T2&gt; &amp; p) const
+//Pair的运算符重载函数的定义
+&#123;
+    return key &lt; p.key;
+&#125;
+
+ int main()
+&#123;
+    Pair&lt;string,int&gt; student(&quot;Tom&quot;,19); //实例化出一个类 Pair&lt;string,int&gt;
+    cout &lt;&lt; student.key &lt;&lt; &quot; &quot; &lt;&lt; student.value;
+    return 0;
+&#125;
+</code></pre>
+<p>输出：Tom 19<br>编译器由类模板生成类的过程叫类模板的实例化。 由类模板实例化得到的类， 叫模板类<br>同一个类模板的两个模板类是不兼容的，即两个不同的类</p>
+<pre><code>Pair&lt;string,int&gt; * p;
+Pair&lt;string,double&gt; a;
+p = &amp; a; //错误，不是同类也不是继承类，不能赋值
+</code></pre>
+<p>函数模版可以作为类模板成员</p>
+<pre><code>template &lt;class T&gt;
+class A
+&#123;
+public:
+    template&lt;class T2&gt;
+    void Func( T2 t) &#123; cout &lt;&lt; t; &#125; //成员函数模板
+&#125;;
+int main()
+&#123;
+    A&lt;int&gt; a;
+    a.Func(&#39;K&#39;); //成员函数模板 Func被实例化
+    a.Func(&quot;hello&quot;); //成员函数模板 Func再次被实例化
+    return 0;
+&#125; //输出： KHello
+</code></pre>
+<p>类模板的“&lt;类型参数表&gt;”中可以出现非类型参数：</p>
+<pre><code>template &lt;class T, int size&gt;
+class CArray&#123;
+    T array[size];
+    public:
+    void Print( )
+    &#123;
+        for( int i = 0;i &lt; size; ++i)
+        cout &lt;&lt; array[i] &lt;&lt; endl;
+    &#125;
+&#125;;
+
+CArray&lt;double,40&gt; a2;
+CArray&lt;int,50&gt; a3;
+</code></pre>
+<h2 id="类模板的派生"><a href="#类模板的派生" class="headerlink" title="类模板的派生"></a>类模板的派生</h2><p>类模板也支持类的派生：<br>• 类模板从类模板派生<br>• 类模板从模板类派生<br>• 类模板从普通类派生<br>• 普通类从模板类派生</p>
+<p>(1)类模板从类模板派生</p>
+<pre><code>template &lt;class T1,class T2&gt;
+class A &#123;
+    T1 v1; T2 v2;
+&#125;;
+
+template &lt;class T1,class T2&gt;
+class B:public A&lt;T2,T1&gt; &#123;
+    T1 v3; T2 v4;
+&#125;;
+
+template &lt;class T&gt;
+class C:public B&lt;T,T&gt; &#123;
+    T v5;
+&#125;;
+
+int main() &#123;
+    B&lt;int,double&gt; obj1;
+    C&lt;int&gt; obj2;
+    return 0;
+&#125;
+</code></pre>
+<p>(2)类模板从模板类派生</p>
+<pre><code>template &lt;class T1,class T2&gt;
+class A &#123;
+    T1 v1; T2 v2;
+&#125;;
+
+template &lt;class T&gt;
+class B:public A&lt;int,double&gt; &#123;
+    T v;
+&#125;;
+
+int main() &#123;
+    B&lt;char&gt; obj1; //自动生成两个模板类：A&lt;int,double&gt; 和 B&lt;char&gt;
+    return 0;
+&#125;
+</code></pre>
+<p>(3)类模板从普通类派生</p>
+<pre><code>class A &#123;
+    int v1;
+&#125;;
+
+template &lt;class T&gt;
+class B:public A &#123; //所有从B实例化得到的类， 都以A为基类
+    T v;
+&#125;;
+
+int main() &#123;
+    B&lt;char&gt; obj1;
+    return 0;
+&#125;
+</code></pre>
+<p>(4)普通类从模板类派生</p>
+<pre><code>template &lt;class T&gt;
+class A &#123;
+    T v1;
+    int n;
+&#125;;
+
+class B:public A&lt;int&gt; &#123;
+    double v;
+&#125;;
+int main() &#123;
+    B obj1;
+    return 0;
+&#125;
+</code></pre>
+<h2 id="类模板与友元"><a href="#类模板与友元" class="headerlink" title="类模板与友元"></a>类模板与友元</h2><p>• 函数、类、类的成员函数作为类模板的友元<br>• 函数模板作为类模板的友元<br>• 函数模板作为类的友元<br>• 类模板作为类模板的友元</p>
+<p>(1)函数、类、类的成员函数作为类模板的友元</p>
+<pre><code>void Func1() &#123; &#125;
+class A &#123; &#125;;
+class B
+&#123;
+    public:
+    void Func() &#123; &#125;
+&#125;;
+
+template &lt;class T&gt;
+class Tmpl
+&#123;
+    friend void Func1();
+    friend class A;
+    friend void B::Func();
+&#125;; //任何从Tmp1实例化来的类， 都有以上三个友元
+</code></pre>
+<p>(2)函数模板作为类模板的友元</p>
+<pre><code>template &lt;class T1,class T2&gt;
+class Pair
+&#123;
+private:
+    T1 key; //关键字
+    T2 value; //值
+public:
+    Pair(T1 k,T2 v):key(k),value(v) &#123; &#125;;
+    bool operator &lt; ( const Pair&lt;T1,T2&gt; &amp; p) const;
+    template &lt;class T3,class T4&gt;
+    friend ostream &amp; operator&lt;&lt; ( ostream &amp; o,
+    const Pair&lt;T3,T4&gt; &amp; p);
+&#125;;
+
+template&lt;class T1,class T2&gt;
+bool Pair&lt;T1,T2&gt;::operator &lt; ( const Pair&lt;T1,T2&gt; &amp; p) const
+&#123; //&quot;小&quot;的意思就是关键字小
+    return key &lt; p.key;
+&#125;
+template &lt;class T1,class T2&gt;
+ostream &amp; operator&lt;&lt; (ostream &amp; o,const Pair&lt;T1,T2&gt; &amp; p)
+&#123;
+    o &lt;&lt; &quot;(&quot; &lt;&lt; p.key &lt;&lt; &quot;,&quot; &lt;&lt; p.value &lt;&lt; &quot;)&quot; ;
+    return o;
+&#125;
+
+int main()
+&#123;
+    Pair&lt;string,int&gt; student(&quot;Tom&quot;,29);
+    Pair&lt;int,double&gt; obj(12,3.14);
+    cout &lt;&lt; student &lt;&lt; &quot; &quot; &lt;&lt; obj;
+    return 0;
+&#125;
+
+输出：
+(Tom,29) (12,3.14)
+</code></pre>
+<p>任意从 <code>template &lt;class T1,class T2&gt; ostream &amp; operator&lt;&lt; (ostream &amp; o,const Pair&lt;T1,T2&gt; &amp; p)</code>生成的函数，都是任意Pair摸板类的友元</p>
+<p>(3)函数模板作为类的友元</p>
+<pre><code>class A
+&#123;
+    int v;
+    public:
+    A(int n):v(n) &#123; &#125;
+    template &lt;class T&gt;
+    friend void Print(const T &amp; p);
+&#125;;
+template &lt;class T&gt;
+void Print(const T &amp; p)
+&#123;
+    cout &lt;&lt; p.v;
+&#125;
+
+int main() &#123;
+    A a(4);
+    Print(a);
+    return 0;
+&#125;
+
+输出：
+4
+</code></pre>
+<p>所有从 <code>template &lt;class T&gt; void Print(const T &amp; p)</code><br>生成的函数，都成为 A 的友元</p>
+<p>(4)类模板作为类模板的友元</p>
+<pre><code>template &lt;class T&gt;
+class B &#123;
+    T v;
+    public:
+    B(T n):v(n) &#123; &#125;
+    template &lt;class T2&gt;
+    friend class A;
+&#125;;
+
+template &lt;class T&gt;
+class A &#123;
+public:
+    void Func( ) &#123;
+        B&lt;int&gt; o(10);
+        cout &lt;&lt; o.v &lt;&lt; endl;
+    &#125;
+&#125;;
+
+int main()
+&#123;
+    A&lt; double &gt; a;
+    a.Func ();
+    return 0;
+&#125;
+
+输出：
+10
+</code></pre>
+<p>A&lt; double&gt;类，成了B<int>类的友元。任何从A模版实例化出来的类，都是任何B实例化出来的类的友元</p>
+<h2 id="类模板与静态成员"><a href="#类模板与静态成员" class="headerlink" title="类模板与静态成员"></a>类模板与静态成员</h2><p>类模板中可以定义静态成员，那么从该类模板实例化得到的所有类，都包含同样的静态成员</p>
+<pre><code>template &lt;class T&gt;
+class A
+&#123;
+private:
+    static int count;
+    public:
+    A() &#123; count ++; &#125;
+    ~A() &#123; count -- ; &#125;;
+    A( A &amp; ) &#123; count ++ ; &#125;
+    static void PrintCount() &#123; cout &lt;&lt; count &lt;&lt; endl; &#125;
+&#125;;
+
+template&lt;&gt; int A&lt;int&gt;::count = 0;
+template&lt;&gt; int A&lt;double&gt;::count = 0;
+int main()
+&#123;
+    A&lt;int&gt; ia;
+    A&lt;double&gt; da;
+    ia.PrintCount();
+    da.PrintCount();
+    return 0;
+&#125;
+
+输出：
+1 1
+</code></pre>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/03/20/C-%E9%9D%A2%E5%90%91%E5%AF%B9%E8%B1%A1%E7%AC%94%E8%AE%B0%EF%BC%9A%E7%BB%A7%E6%89%BF%E4%B8%8E%E5%A4%9A%E6%80%81/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2020/03/20/C-%E9%9D%A2%E5%90%91%E5%AF%B9%E8%B1%A1%E7%AC%94%E8%AE%B0%EF%BC%9A%E7%BB%A7%E6%89%BF%E4%B8%8E%E5%A4%9A%E6%80%81/" class="post-title-link" itemprop="url">C++面向对象笔记：继承与多态</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-03-20 16:49:06" itemprop="dateCreated datePublished" datetime="2020-03-20T16:49:06+08:00">2020-03-20</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2022-12-08 16:55:25" itemprop="dateModified" datetime="2022-12-08T16:55:25+08:00">2022-12-08</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/C/" itemprop="url" rel="index"><span itemprop="name">C++</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h1 id="0-概述"><a href="#0-概述" class="headerlink" title="0.概述"></a>0.概述</h1><p>前文分析了C++类内成员的关系，本文讨论类和类之间的关系。<br>考虑用C++对现实世界的交通工具进行描述。</p>
+<ul>
+<li>汽车可能包含各种类型，小汽车，公交车，但他们能抽象出四个轮子，烧油这些基本属性</li>
+<li>飞机也有各种类型，但也能抽象出机翼，机身等基本属性</li>
+<li>轮船…</li>
+</ul>
+<p>如果自顶向下设计，如何设计这些对象的类？</p>
+<ul>
+<li>提炼这些交通工具的共有属性，如材质，耗油量，价格，设计成一个交通工具基础类；然后设计一些操作方法，比如制造，启动，停止。</li>
+<li>分别设计汽车、飞机、轮船等更具体的类的属性，比如轮子、排水量等，注意，他们也包含基础类的材质，耗油量，价格等基本属性；然后也设计一些方法，比如制造汽车、开汽车和造飞机、开飞机等</li>
+<li>然后再设计更细节的类，作为汽车、飞机、轮船类的细化，比如A品牌的汽车，B品牌汽车，作为两个具体类。</li>
+</ul>
+<p>仔细考虑以上步骤，有以下问题：</p>
+<ul>
+<li>这些类的属性（成员变量）是相互独立的吗？</li>
+<li>这些类的方法（成员函数）是相互独立的吗？</li>
+</ul>
+<p>C++用类的“继承”描述层层细化的类及其成员变量的关系，用“多态”描述各层方法的实现关系。</p>
+<h1 id="类的继承"><a href="#类的继承" class="headerlink" title="类的继承"></a>类的继承</h1><h2 id="继承关系的概念"><a href="#继承关系的概念" class="headerlink" title="继承关系的概念"></a>继承关系的概念</h2><p>继承：在定义一个新的类B时，如果该类与某个已有的类A相似(指的是B拥有A的全部特点)，那么就可以把A作为一个<strong>基类</strong>（也叫父类），而把B作为基类的一个<strong>派生类</strong>(也叫子类)。</p>
+<ul>
+<li>派生类是通过对基类进行修改和扩充得到的。在派生类中，可以扩充新的成员变量和成员函数</li>
+<li>派生类一经定义后，可以独立使用，不依赖于基类。</li>
+<li>派生类拥有基类的全部成员函数和成员变量，不论是private、 protected、 public。但是派生类的成员函数不能访问基类中的private成员</li>
+</ul>
+<p>一个管理学生的类继承：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081651314.png" alt="image-20221208165130260"><br>派生类语法:</p>
+<pre><code>class 派生类名： public 基类名
+&#123;
+&#125;;
+</code></pre>
+<p>学生类的派生:</p>
+<pre><code>class CStudent &#123;
+    private:
+    string sName;
+    int nAge;
+    public:
+    bool IsThreeGood() &#123; &#125;;
+    void SetName( const string &amp; name )
+    &#123; sName = name; &#125;
+        //......
+&#125;;
+
+class CUndergraduateStudent: public CStudent &#123;
+    private:
+    int nDepartment;
+    public:
+    bool IsThreeGood() &#123; ...... &#125;; //覆盖
+    bool CanBaoYan() &#123; .... &#125;;
+&#125;; // 派生类的写法是：类名: public 基类名
+</code></pre>
+<h2 id="类继承的存储空间"><a href="#类继承的存储空间" class="headerlink" title="类继承的存储空间"></a>类继承的存储空间</h2><p>在类与对象一文讲过，类对象的存储空间，实际就是成员变量的空间，成员函数不在对象空间内（虚函数包含一个虚函数表指针）。那么基类和派生类的对象空间有什么相关性？<br>派生类对象的体积，等于基类对象的体积，再加上派生类对象自己的成员变量的体积。 在派生类对象中，包含着基类对象，而且基类对象的存储位置位于派生类对象新增的成员变量之前。<br>一个示例：</p>
+<pre><code>class CBase
+&#123;
+    int v1, v2;
+&#125;;
+class CDerived:public CBase
+&#123;
+    int v3;
+&#125;;
+</code></pre>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081651715.png" alt="image-20221208165140659"></p>
+<h2 id="类继承的覆盖"><a href="#类继承的覆盖" class="headerlink" title="类继承的覆盖"></a>类继承的覆盖</h2><p>类内的同名非同参的函数叫函数重载，那么基类与派生类的同名函数呢？<br>派生类可以定义和基类成员同名的成员，这叫<strong>覆盖</strong>。在派生类中访问这类成员时，默认访问派生类中定义的成员，基类的成员函数或变量被“覆盖”掉了。如果要在派生类中访问基类定义的同名成员时，要使用作用域符号::<br>一个例子：</p>
+<pre><code>class base &#123;    //基类
+    int j;  //默认private
+    public:
+    int i;
+    void func();
+&#125;;
+class derived : public base&#123;    //派生类
+    public:
+    int i;  //覆盖基类i
+    void access();
+    void func(); //覆盖基类func()
+&#125;;
+
+void derived::access() &#123; //访问派生类成员
+    j = 5; //error
+    i = 5; //引用的是派生类的 i
+    base::i = 5; //引用的是基类的 i
+    func(); //派生类的
+    base::func(); //基类的
+&#125;
+</code></pre>
+<p>调用函数:</p>
+<pre><code>derived obj;
+obj.i = 1;  //访问派生类成员i
+obj.base::i = 1; //访问基类成员i
+</code></pre>
+<p>内存分布:<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081651894.png" alt="image-20221208165150851"><br>以上只是示例，一般来说，基类和派生类不定义同名成员变量，但经常有同名成员函数，所以覆盖通常用于成员函数覆盖。</p>
+<h2 id="类继承的成员访问控制"><a href="#类继承的成员访问控制" class="headerlink" title="类继承的成员访问控制"></a>类继承的成员访问控制</h2><ul>
+<li>基类的private成员：可以被下列函数访问<br>– 基类的成员函数<br>– 基类的友元函数</li>
+<li>基类的public成员：可以被下列函数访问<br>– 基类的成员函数<br>– 基类的友元函数<br>– 派生类的成员函数<br>– 派生类的友元函数<br>– 其他的函数</li>
+<li>基类的protected成员：可以被下列函数访问<br>– 基类的成员函数<br>– 基类的友元函数<br>– 派生类的成员函数可以访问当前对象的基类的保护成员</li>
+</ul>
+<p>一个示例：</p>
+<pre><code>class Father &#123;
+    private: int nPrivate; //私有成员
+    public: int nPublic; //公有成员
+    protected: int nProtected; // 保护成员
+&#125;;
+class Son :public Father&#123;
+    void AccessFather () &#123;
+        nPublic = 1; // ok;
+        nPrivate = 1; // wrong
+        nProtected = 1; // OK，访问从基类继承的protected成员
+        Son f;
+        f.nProtected = 1; //wrong ， f不是当前对象
+    &#125;
+&#125;;
+
+int main()
+&#123;
+    Father f;
+    Son s;
+    f.nPublic = 1; // Ok
+    s.nPublic = 1; // Ok
+    f.nProtected = 1; // error
+    f.nPrivate = 1; // error
+    s.nProtected = 1; //error
+    s.nPrivate = 1; // error
+    return 0;
+&#125;
+</code></pre>
+<h2 id="类继承的构造函数"><a href="#类继承的构造函数" class="headerlink" title="类继承的构造函数"></a>类继承的构造函数</h2><p>类似于嵌套类（封闭类）的构造函数，使用初始化列表来实现层层构造，基类和派生类只初始化他们能访问的成员</p>
+<pre><code>class Bug &#123;
+private :
+    int nLegs; int nColor;
+    public:
+    int nType;
+    Bug ( int legs, int color);
+    void PrintBug ()&#123; &#125;;
+&#125;;
+
+class FlyBug: public Bug // FlyBug是Bug的派生类
+&#123;
+    int nWings;
+    public:
+    FlyBug( int legs,int color, int wings);
+&#125;;
+
+Bug::Bug( int legs, int color) //Bug类的构造函数
+&#123;
+    nLegs = legs;
+    nColor = color;
+&#125;
+
+//错误的FlyBug构造函数！
+FlyBug::FlyBug ( int legs,int color, int wings)
+&#123;
+    nLegs = legs; // 不能访问
+    nColor = color; // 不能访问
+    nType = 1; // ok
+    nWings = wings;
+&#125;
+
+//正确的FlyBug构造函数：使用初始化列表
+FlyBug::FlyBug ( int legs, int color, int wings):Bug( legs, color)
+&#123;
+    nWings = wings;
+&#125;
+
+int main() &#123;
+    FlyBug fb ( 2,3,4);
+    fb.PrintBug();
+    fb.nType = 1;
+    fb.nLegs = 2 ; // error. nLegs is private
+    return 0;
+&#125;
+</code></pre>
+<h2 id="类继承的构造析构时序"><a href="#类继承的构造析构时序" class="headerlink" title="类继承的构造析构时序"></a>类继承的构造析构时序</h2><p>在创建派生类的对象时，需要调用基类的构造函数：初始化派生类对象中从基类继承的成员。在执行一个派生类的构造函数之前，总是先执行基类的构造函数。<br>调用基类构造函数的两种方式:</p>
+<ul>
+<li><p>显式方式：在派生类的构造函数中，为基类的构造函数提供参数.</p>
+<p> derived::derived(arg_derived-list):base(arg_base-list)</p>
+</li>
+<li><p>隐式方式：在派生类的构造函数中，省略基类构造函数时，派生类的构造函数则自动调用基类的默认构造函数</p>
+</li>
+</ul>
+<p>析构函数执行时序:<br>派生类的析构函数被执行时，执行完派生类的析构函数后，自动调用基类的析构函数。<br>一个例子：</p>
+<pre><code>class Base &#123;
+    public:
+    int n;
+    Base(int i):n(i)
+    &#123; cout &lt;&lt; &quot;Base &quot; &lt;&lt; n &lt;&lt; &quot; constructed&quot; &lt;&lt; endl;&#125;
+    ~Base()
+    &#123; cout &lt;&lt; &quot;Base &quot; &lt;&lt; n &lt;&lt; &quot; destructed&quot; &lt;&lt; endl; &#125;
+&#125;;
+    
+class Derived:public Base &#123;
+    public:
+    Derived(int i):Base(i)
+    &#123; cout &lt;&lt; &quot;Derived constructed&quot; &lt;&lt; endl; &#125;
+    ~Derived()
+    &#123; cout &lt;&lt; &quot;Derived destructed&quot; &lt;&lt; endl;&#125;
+&#125;;
+int main() &#123; Derived Obj(3); return 0; &#125;
+</code></pre>
+<p>输出结果:</p>
+<pre><code>Base 3 constructed
+Derived constructed
+Derived destructed
+Base 3 destructed
+</code></pre>
+<p>##封闭派生类的构造函数<br>封闭类的构造用初始化列表，派生类也用初始化列表，那么封闭派生类呢？<br>还是初始化列表</p>
+<pre><code>class Bug &#123;
+    private :
+    int nLegs; int nColor;
+    public:
+    int nType;
+    Bug ( int legs, int color);
+    void PrintBug ()&#123; &#125;;
+&#125;;
+
+class Skill &#123;
+    public:
+    Skill(int n) &#123; &#125;
+&#125;;
+class FlyBug: public Bug &#123;
+    int nWings;
+    Skill sk1, sk2;
+    public:
+    FlyBug( int legs, int color, int wings);
+&#125;;
+FlyBug::FlyBug( int legs, int color, int wings):
+    Bug(legs,color),sk1(5),sk2(color) ,nWings(wings) &#123; //初始化列表，不能访问的通通交给下层构造函数
+&#125;
+</code></pre>
+<h2 id="封闭派生类的构造析构时序"><a href="#封闭派生类的构造析构时序" class="headerlink" title="封闭派生类的构造析构时序"></a>封闭派生类的构造析构时序</h2><p>在创建派生类的对象时:</p>
+<ol>
+<li>先执行基类的构造函数，用以初始化派生类对象中从基类继承的成员</li>
+<li>再执行成员对象类的构造函数，用以初始化派生类对象中成员对象</li>
+<li>最后执行派生类自己的构造函数<br>在派生类对象消亡时：</li>
+<li>先执行派生类自己的析构函数</li>
+<li>再依次执行各成员对象类的析构函数</li>
+<li>最后执行基类的析构函数<br>析构函数的调用顺序与构造函数的调用顺序相反<h1 id="类的复合"><a href="#类的复合" class="headerlink" title="类的复合"></a>类的复合</h1>在数学上，两个集合有无关、相交和包含的关系。对于多个类来说，也应该有以上三种关系。无关类&#x3D;两个成员不相关的类；继承类&#x3D;类成员间有继承关系的类；那么相交的类呢？<h2 id="复合关系的概念"><a href="#复合关系的概念" class="headerlink" title="复合关系的概念"></a>复合关系的概念</h2>C++用“复合”表示类的相交关系。</li>
+</ol>
+<p>1)继承：“是”的关系<br>基类是A， B是基类A的派生类，逻辑上要求：“一个B对象也是一个A对象”<br>2)复合：“有”的关系<br>类C中“有” 成员变量k，k是类D的对象，则C和D是复合关系，逻辑上要求：“D对象是C对象的固有属性或组成部分</p>
+<p>下面比较一下继承和复合在具体设计的实例：<br>继承关系顶层设计例子:</p>
+<ul>
+<li>写了一个 CMan 类代表男人</li>
+<li>后来又发现需要一个CWoman类来代表女人</li>
+<li>CWoman类和CMan类有共同之处,让CWoman类从CMan类派生而来，是否合适？</li>
+<li>错！从一开始就应该设计CHuman类，代表“人” ,然后CMan和CWoman都从<br>CHuman派生</li>
+</ul>
+<p>继承逻辑关系：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081652246.png" alt="image-20221208165210195"></p>
+<p>复合关系顶层设计例子：</p>
+<ul>
+<li>几何形体程序中，需要写“点”类，也需要写“圆”类</li>
+<li>每个圆都有圆心，那么点类应该从圆类派生出来吗？</li>
+<li>错！”点“不仅在圆内有，在其他图形也有，不是圆独有，非继承关系</li>
+<li>实际上，圆和点是复合关系，每一个“圆”对象里都包含(<strong>有</strong>)一个“点”对象</li>
+<li>逻辑上，复合关系就是，我的一部分可以看成是你的，但是我的全部东西不都属于你</li>
+</ul>
+<p>复合关系的类通常用友元实现：</p>
+<pre><code>class CPoint
+&#123;
+    double x,y;
+    friend class CCircle;
+    //便于Ccirle类操作其圆心
+&#125;;
+
+class CCircle
+&#123;
+    double r;
+    CPoint center;
+&#125;;
+</code></pre>
+<h2 id="复合关系的典型示例"><a href="#复合关系的典型示例" class="headerlink" title="复合关系的典型示例"></a>复合关系的典型示例</h2><p>如果要写一个小区养狗管理程序，需要写一个“业主”类，还需要写一个“狗” 类<br>狗是归宿于业主的，一个业主可以有多条狗，狗也可以随时脱离业主<br>考虑以下设计方法：<br>设计人和狗两个类，相互包含对方类</p>
+<pre><code>class CDog;
+class CMaster
+&#123;
+    CDog dogs[10];
+&#125;;
+class CDog
+&#123;
+    CMaster m;
+&#125;;
+</code></pre>
+<p> 这样有循环定义错误！且逻辑上，狗和人并非相互包含关系<br> 这种关系上相互相关，对象本身又完全独立的情况，用对象指针表示</p>
+<pre><code>class CMaster; //CMaster必须提前声明，不能先写CMaster类后写Cdog类
+class CDog &#123;
+    CMaster * pm;
+&#125;;
+class CMaster &#123;
+    CDog * dogs[10];
+&#125;;
+</code></pre>
+<p>逻辑关系:<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081652390.png" alt="image-20221208165220338"></p>
+<h1 id="继承的不足"><a href="#继承的不足" class="headerlink" title="继承的不足"></a>继承的不足</h1><h2 id="继承方式的访问限制"><a href="#继承方式的访问限制" class="headerlink" title="继承方式的访问限制"></a>继承方式的访问限制</h2><p>基类和派生类是包含的关系，那么基类对象和派生类对象是什么关系？<br>对于类的public派生方式:</p>
+<pre><code>class base &#123; &#125;;
+class derived : public base &#123; &#125;;
+base b;
+derived d;
+</code></pre>
+<p>1）派生类的对象可以赋值给基类对象<br>b &#x3D; d;<br>2）派生类对象可以初始化基类引用<br>base &amp; br &#x3D; d;<br>3）派生类对象的地址可以赋值给基类指针<br>base * pb &#x3D; &amp; d;<br>如果派生方式是 private或protected，则上述三条不可行</p>
+<p>对于类的protected和private派生方式:</p>
+<pre><code>class base &#123;&#125;;
+class derived : protected base &#123;&#125;;
+base b;
+derived d;
+</code></pre>
+<p>• protected继承时，基类的public成员和protected成员成为派生类的protected成员。<br>• private继承时，基类的public成员成为派生类的private成员，基类的protected成员成为派生类的不可访问成员。<br>• protected和private继承不是“是”的关系</p>
+<h2 id="派生类的对象指针转换"><a href="#派生类的对象指针转换" class="headerlink" title="派生类的对象指针转换"></a>派生类的对象指针转换</h2><p>public派生的情况下,派生类对象的指针可以直接赋值给基类指针</p>
+<pre><code>Base * ptrBase = &amp;objDerived;
+//ptrBase指向的是一个Derived类的对象；
+</code></pre>
+<p>*ptrBase可以看作一个Base类的对象，访问它的public成员直接通过ptrBase即可，但不能通过ptrBase访问objDerived对象中属于Derived类而不属于Base类的成员<br>过强制指针类型转换，可以把ptrBase转换成Derived类的指针</p>
+<pre><code>Base * ptrBase = &amp;objDerived;
+Derived *ptrDerived = (Derived * ) ptrBase;
+</code></pre>
+<p>程序员要保证ptrBase指向的是一个Derived类的对象，否则很容易会错</p>
+<p>派生类的指针赋值给基类后，基类指针也不能访问派生类的特有成员</p>
+<pre><code>#include &lt;iostream&gt;
+using namespace std;
+class Base &#123;
+    protected:
+    int n;
+    public:
+    Base(int i):n(i)&#123;cout &lt;&lt; &quot;Base &quot; &lt;&lt; n &lt;&lt;&quot; constructed&quot; &lt;&lt; endl; &#125;
+    ~Base() &#123;cout &lt;&lt; &quot;Base &quot; &lt;&lt; n &lt;&lt;&quot; destructed&quot; &lt;&lt; endl;&#125;
+    void Print() &#123; cout &lt;&lt; &quot;Base:n=&quot; &lt;&lt; n &lt;&lt; endl;&#125;
+&#125;;
+
+class Derived:public Base &#123;
+    public:
+    int v;
+    Derived(int i):Base(i),v(2 * i) &#123;
+    cout &lt;&lt; &quot;Derived constructed&quot; &lt;&lt; endl;
+&#125;
+
+~Derived() &#123;
+    cout &lt;&lt; &quot;Derived destructed&quot; &lt;&lt; endl;
+&#125;
+
+void Func() &#123; &#125; ;
+    void Print() &#123;
+        cout &lt;&lt; &quot;Derived:v=&quot; &lt;&lt; v &lt;&lt; endl;
+        cout &lt;&lt; &quot;Derived:n=&quot; &lt;&lt; n &lt;&lt; endl;
+    &#125;
+&#125;;
+
+int main() &#123;
+    Base objBase(5);
+    Derived objDerived(3);
+    Base * pBase = &amp; objDerived ;
+    //pBase-&gt;Func(); //err;Base类没有Func()成员函数
+    //pBase-&gt;v = 5; //err; Base类没有v成员变量
+    pBase-&gt;Print();
+    //Derived * pDerived = &amp; objBase; //error
+    Derived * pDerived = (Derived *)(&amp; objBase);
+    pDerived-&gt;Print(); //慎用，可能出现不可预期的错误
+    pDerived-&gt;v = 128; //往别人的空间里写入数据，会有问题
+    objDerived.Print();
+    return 0;
+&#125;
+</code></pre>
+<p>输出：</p>
+<pre><code>Base 5 constructed
+Base 3 constructed
+Derived constructed
+Base:n=3
+Derived:v=1245104 //pDerived-&gt;n 位于别人的空间里
+Derived:n=5
+Derived:v=6
+Derived:n=3
+Derived destructed
+Base 3 destructed
+Base 5 destructed
+</code></pre>
+<p>从逻辑上来说，派生类指针既然能被赋值给基类指针，那么通过基类指针，应该能调用派生类的成员函数，获取派生类的成员变量。在下一章，继承类的多态将实现这个目的。</p>
+<h2 id="多级继承"><a href="#多级继承" class="headerlink" title="多级继承"></a>多级继承</h2><p>类A派生类B，类B派生类C，类C派生类D……<br>– 类A是类B的直接基类<br>– 类B是类C的直接基类，类A是类C的间接基类<br>– 类C是类D的直接基类，类A、 B是类D的间接基类<br>在声明派生类时， 只需要列出它的直接基类<br>– 派生类沿着类的层次自动向上继承它的间接基类<br>– 派生类的成员包括<br>• 派生类自己定义的成员<br>• 直接基类中的所有成员<br>• 所有间接基类的全部成员</p>
+<h1 id="多态：在继承上更进一步"><a href="#多态：在继承上更进一步" class="headerlink" title="多态：在继承上更进一步"></a>多态：在继承上更进一步</h1><p>前面派生类的对象指针转换一节，基类指针强转后也不能访问派生类私有对象。考虑一下本文开始讲的交通工具顶层设计思路，在顶层设计时就要设计类的成员函数，在派生类也要设计成员函数，这些函数会有重合的情况吗？如果有重合，基类指针也不能访问派生类成员，这样基类和派生类不就失去联系了吗？多级继承这种情况不是更加严重？<br>为了解决这种问题，本节引入继承类的“多态”<br>多态能够增强程序的可扩充性，即程序需要修改或增加功能的时候，需要改动和增加的代码较少</p>
+<h2 id="虚函数与多态"><a href="#虚函数与多态" class="headerlink" title="虚函数与多态"></a>虚函数与多态</h2><p>在类的定义中，前面有 virtual 关键字的成员函数就是虚函数</p>
+<pre><code>class base &#123;
+    virtual int get() ;
+&#125;;
+int base::get()&#123; &#125;
+</code></pre>
+<p>virtual关键字只用在类定义里的函数声明中使用，定义函数体时不用。<br>使用虚函数，来实现“多态”效果。多态有通过指针和引用两种表现形式:</p>
+<ul>
+<li>能通过基类的指针调用派生类虚函数，访问其特有成员变量</li>
+</ul>
+<p>派生类的指针可以赋给基类指针<br>通过基类指针调用基类和派生类中的同名虚函数时:<br>（1）若该指针指向一个基类的对象，那么被调用是<br>基类的虚函数；<br>（2）若该指针指向一个派生类的对象，那么被调用<br>的是派生类的虚函数</p>
+<pre><code>class CBase &#123;
+public:
+    virtual void SomeVirtualFunction() &#123; &#125;
+&#125;;
+class CDerived:public CBase &#123;
+public :
+    virtual void SomeVirtualFunction() &#123; &#125;
+&#125;;
+int main() &#123;
+    CDerived ODerived;
+    CBase * p = &amp; ODerived;
+    p -&gt; SomeVirtualFunction(); //调用哪个虚函数取决于p指向哪种类型的对象
+    return 0;
+&#125; 
+</code></pre>
+<ul>
+<li>能通过基类的引用调用派生类虚函数</li>
+</ul>
+<p>派生类的对象可以赋给基类引用<br>通过基类引用调用基类和派生类中的同名虚函数时:<br>（1）若该引用引用的是一个基类的对象，那么被调<br>用是基类的虚函数；<br>（2）若该引用引用的是一个派生类的对象，那么被<br>调用的是派生类的虚函数。</p>
+<pre><code>class CBase &#123;
+public:
+    virtual void SomeVirtualFunction() &#123; &#125;
+&#125;;
+class CDerived:public CBase &#123;
+public :
+    virtual void SomeVirtualFunction() &#123; &#125;
+&#125;;
+int main() &#123;
+    CDerived ODerived;
+    CBase &amp; r = ODerived;
+    r.SomeVirtualFunction(); //调用哪个虚函数取决于r引用哪种类型的对象
+    return 0;
+&#125; 
+</code></pre>
+<p>是不是所有成员函数加virtual都是多态？不是！</p>
+<ul>
+<li>在非构造或析构函数的成员函数中调用虚函数，是多态。在运行时才确定到底调用哪一层派生类函数</li>
+<li>在构造函数和析构函数中调用虚函数，不是多态。调用的函数是当前类的函数，编译时即确定</li>
+</ul>
+<p>多层继承实现多态，每一层都要加virtual关键字吗？</p>
+<ul>
+<li>派生类中和基类中虚函数同名同参数表的函数，不加virtual也自动成为虚函数</li>
+</ul>
+<h2 id="多态与对象指针"><a href="#多态与对象指针" class="headerlink" title="多态与对象指针"></a>多态与对象指针</h2><p>一个变量有两方面属性：类型、值<br>那么多态把derived类的地址值，赋值给base类的指针，访问对象成员时是什么效果？<br>以下例子的this指针指向什么？</p>
+<pre><code>class Base &#123;
+public:
+    void fun1() &#123; this-&gt;fun2(); &#125; //this是基类指针， fun2是虚函数，所以是多态
+    virtual void fun2() &#123; cout &lt;&lt; &quot;Base::fun2()&quot; &lt;&lt; endl; &#125;
+&#125;;
+class Derived:public Base &#123;
+public:
+    virtual void fun2() &#123; cout &lt;&lt; &quot;Derived:fun2()&quot; &lt;&lt; endl; &#125;
+&#125;;
+int main() &#123;
+    Derived d;
+    Base * pBase = &amp; d;
+    pBase-&gt;fun1();
+    return 0;
+&#125;
+</code></pre>
+<p>pBase被Derived对象的地址赋值后，其值为Derived对象的地址，但类型还是Base的指针（多态指针赋值不会强转）。pBase-&gt;fun1()会先在Base类访问其fun1()，传入this指针（指向fun2）,而this-&gt;fun2()会调用Derived类的fun2()<br>输出： </p>
+<pre><code>Derived:fun2()
+</code></pre>
+<p>虚函数也可以定义为private：</p>
+<pre><code>class Base &#123;
+private:
+    virtual void fun2() &#123; cout &lt;&lt; &quot;Base::fun2()&quot; &lt;&lt; endl; &#125;
+&#125;;
+class Derived:public Base &#123;
+public:
+    virtual void fun2() &#123; cout &lt;&lt; &quot;Derived:fun2()&quot; &lt;&lt; endl; &#125;
+&#125;;
+Derived d;
+Base * pBase = &amp; d;
+pBase -&gt; fun2(); // 编译出错
+</code></pre>
+<p>pBase已经被赋值为指向derived d的指针，不能调用base类的private函数。</p>
+<h2 id="多态的实例-游戏开发"><a href="#多态的实例-游戏开发" class="headerlink" title="多态的实例:游戏开发"></a>多态的实例:游戏开发</h2><p>游戏中有很多种怪物，每种怪物都有一个类与之对应。某个玩家创建的具体怪物就是对象<br>怪物的主要动作（成员函数）有：</p>
+<ul>
+<li>攻击（Attack），针对不同的被攻击者有不同的函数</li>
+<li>反击（FightBack），被某个怪物攻击时做出的相应动作</li>
+<li>掉血（Hurted），被攻击时会掉血，血量值不同有不同处理，如死亡</li>
+</ul>
+<p>现在的需求是：已经有CWolf、CGhost两种怪物，需要设计新的怪物CThunderBird，并能满足和其他怪物的交互<br>顶层设计:<br>设置基类 CCreature，并且使CDragon, CWolf等其他类都从CCreature派生而来<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081652097.png" alt="image-20221208165241029"><br>非多态的派生类设计：<br>由于每个怪物对于其他怪物的攻击和反击都是不同的，每个怪物类都要设计一组Attack和FightBack：</p>
+<pre><code>class class CCreature &#123;
+    protected: int nPower ; //代表攻击力
+    int nLifeValue ; //代表生命值
+&#125;;
+class CThunderBird : public CCreature &#123;
+    public:
+    void Attack(CWolf * pWolf) &#123;
+        ．．．表现攻击动作的代码
+        pWolf-&gt;Hurted( nPower);
+        pWolf-&gt;FightBack( this);
+    &#125;
+    void Attack( CDragon * pDragon) &#123;
+        ．．．表现攻击动作的代码
+        pDragon-&gt;Hurted( nPower);
+        pDragon-&gt;FightBack( this);
+    &#125;
+    void FightBack( CWolf * pWolf) &#123;
+        ．．．．表现反击动作的代码
+        pWolf -&gt;Hurted( nPower / 2);
+    &#125;
+    void FightBack( CDragon * pDragon) &#123;
+        ．．．．表现反击动作的代码
+        pDragon-&gt;Hurted( nPower / 2 );
+    &#125;
+    void Hurted ( int nPower) &#123;
+        ．．．．表现受伤动作的代码
+        nLifeValue -= nPower;
+    &#125;
+&#125;
+</code></pre>
+<p>现有n种怪物，CThunderBird类中就得有n个Attack 和n个FightBack成员函数，对于其他类也得新增针对CThunderBird的Attack和FightBack。这种设计工作量过于巨大。原因就在于要区分传入的对象指针。<br>那么能否传入基类的指针呢，这样就不存在为各种类型写几个函数。基类指针要访问派生类的成员，得用虚函数形成多态。多态实现如下：</p>
+<pre><code>//基类 CCreature：
+class CCreature &#123;
+protected :
+    int m_nLifeValue, m_nPower;
+    public:
+    virtual void Attack( CCreature * pCreature) &#123;&#125;
+    virtual void Hurted( int nPower) &#123; &#125;
+    virtual void FightBack( CCreature * pCreature) &#123;&#125;
+&#125;;
+//派生类 CDragon:
+class CDragon : public CCreature &#123;
+public:
+    virtual void Attack( CCreature * pCreature);
+    virtual void Hurted( int nPower);
+    virtual void FightBack( CCreature * pCreature);
+&#125;;
+
+//派生类的成员函数实现具体操作
+void CDragon::Attack(CCreature * p) //传入基类指针
+&#123; …表现攻击动作的代码
+    p-&gt;Hurted(m_nPower); //多态
+    p-&gt;FightBack(this); //多态
+&#125;
+void CDragon::Hurted( int nPower)
+&#123; …表现受伤动作的代码
+    m_nLifeValue -= nPower;
+&#125;
+void CDragon::FightBack(CCreature * p)
+&#123; …表现反击动作的代码
+    p-&gt;Hurted(m_nPower/2); //多态
+&#125;
+
+//多态的调用
+CDragon Dragon; CWolf Wolf; CGhost Ghost;
+CThunderBird Bird；
+Dragon.Attack( &amp; Wolf); //调用CWolf::Hurted
+Dragon.Attack( &amp; Ghost); //调用CGhost::Hurted
+Dragon.Attack( &amp; Bird); //调用CBird::Hurted
+</code></pre>
+<p>使用多态，新增某个派生类时，已有的类可以原封不动，因为传入基类指针，会“自动”调用正确的派生类函数，开发者只需要设计新增的派生类和其成员函数即可</p>
+<h2 id="多态的原理：虚函数表指针"><a href="#多态的原理：虚函数表指针" class="headerlink" title="多态的原理：虚函数表指针"></a>多态的原理：虚函数表指针</h2><p>多态” 的关键在于通过基类指针或引用调用一个虚函数时，编译时不确定到底调用的是基类还是派生类的函数，运行时才确定，这叫“动态联编”<br>首先分析包含虚函数的类对象的内存分布：</p>
+<pre><code>class Base &#123;
+public:
+int i;
+    virtual void Print() &#123; cout &lt;&lt; &quot;Base:Print&quot; ; &#125;
+&#125;;
+
+class Derived : public Base&#123;
+public:
+int n;
+    virtual void Print() &#123; cout &lt;&lt;&quot;Drived:Print&quot; &lt;&lt; endl; &#125;
+&#125;;
+
+int main() &#123;
+    Derived d;
+    cout &lt;&lt; sizeof( Base) &lt;&lt; &quot;,&quot;&lt;&lt; sizeof( Derived ) ;
+    return 0;
+&#125;
+</code></pre>
+<p>输出：8, 12<br>为什么类对象的size比成员变量int（4字节）还多4字节？<br>因为包含虚函数的基类，实例化的对象除了成员变量，还包含一个指针（一般4字节），指向虚函数的入口地址，如果有多个虚函数，这些地址连续排列形成虚函数表，指针指向首个虚函数地址。如果这个指针指向基类，就能找到基类的所有虚函数入口，如果指针指向派生类，就能找到派生类的的所有虚函数入口。基类和派生类对象的指针赋值，实际会导致虚函数表指针指向的虚函数入口地址不同，从而调用时不同。<br>如果当前指针指向基类，则调用基类自己的虚函数：</p>
+<pre><code>Base b;
+pBase = &amp;b;
+pBase-&gt;Print();
+</code></pre>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081652980.png" alt="image-20221208165259927"><br>如果当前指针指向派生类，则调用派生类的虚函数：</p>
+<pre><code>Derived d;
+pDerived = &amp;d;
+pBase = pDerived;
+pBase-&gt;Print();
+</code></pre>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081653211.png" alt="image-20221208165311145"><br>动态联编的实现：<br>多态的函数调用语句被编译成一系列根据基类指针所指向的（或基类引用所引用的)对象中存放的虚函数表的地址，在虚函数表中查找虚函数地址，并调用虚函数的指令<br>而普通函数是编译过程中确定了成员函数的入口地址，不存在运行时根据对象来改变某个函数的入口地址。</p>
+<h2 id="虚函数与抽象类"><a href="#虚函数与抽象类" class="headerlink" title="虚函数与抽象类"></a>虚函数与抽象类</h2><p>可以想象得到，前文的游戏使用虚函数的例子是通用的，先设计基类，提炼对象属性，定义虚函数；再派生子类，在子类实现局函数的具体操作。那么问题来了，基类的虚函数有必要实现函数体吗？<br>很多情况，基类只是一个抽象，定义了函数的名称和参数，不需要在基类实现虚函数，全部交给派生类实现。</p>
+<ul>
+<li>纯虚函数：没有函数体的虚函数</li>
+<li>抽象类：包含纯虚函数的类</li>
+</ul>
+<p>纯虚函数写法：没函数体{}，直接&#x3D;0</p>
+<pre><code>class A &#123;
+private: int a;
+public:
+    virtual void Print( ) = 0 ; //纯虚函数
+    void fun() &#123; cout &lt;&lt; &quot;fun&quot;; &#125;
+&#125;;
+</code></pre>
+<p>抽象类特点：</p>
+<ul>
+<li>抽象类只能作为基类来派生新类使用，不能创建抽象类的对象</li>
+<li>可以创建抽象类的指针和引用，它们可以指向派生类的对象</li>
+</ul>
+<p>抽象类的指针：</p>
+<pre><code>A a ; // 错， A 是抽象类，不能创建对象
+A * pa ; // ok,可以定义抽象类的指针和引用
+pa = new A ; //错误, A 是抽象类，不能创建对象
+</code></pre>
+<p>如果一个类从抽象类派生而来，那么当且仅当它实现了基类中的所有纯虚函数，它才能成为非抽象类<br>抽象类的成员函数可以调用纯虚函数，但是构造函数或析构函数内不能调用纯虚函数</p>
+<pre><code>class A &#123;
+public:
+    virtual void f() = 0; //纯虚函数
+    void g( ) &#123; 
+        this-&gt;f( ) ; //ok
+    &#125;
+    A( )&#123; 
+        f( ); // 错误
+    &#125;
+&#125;;
+class B:public A&#123;
+public:
+    void f()&#123;cout&lt;&lt;&quot;B:f()&quot;&lt;&lt;endl; &#125;
+&#125;;
+</code></pre>
+<h2 id="虚函数与构造析构函数"><a href="#虚函数与构造析构函数" class="headerlink" title="虚函数与构造析构函数"></a>虚函数与构造析构函数</h2><p>前面考虑了普通成员函数加virtual，可以形成虚函数达到继承类的多态效果。那么构造函数和析构函数呢？</p>
+<ul>
+<li>不允许以虚函数作为构造函数</li>
+<li>类继承需要把基类的析构函数设为虚函数</li>
+</ul>
+<p>对于常规析构函数，通过基类指针删除派生类对象时，只能调用基类的析构函数。但是合理的做法是，应该先调用派生类的析构函数，然后调用基类的析构函数。解决的方法：把析构函数定义为virtual，由于基类析构函数是虚函数，派生类的同名析构函数自然也是虚函数。<br>什么时候定义虚析构函数</p>
+<ul>
+<li>一个类只要定义了虚函数，则应该将析构函数也定义成虚函数</li>
+<li>一个类打算作为基类使用，则应该将析构函数定义成虚函数</li>
+</ul>
+<p>虚析构函数用法：通过基类的指针删除派生类对象，会首先调用派生类的析构函数，然后调用基类的析构函数</p>
+<pre><code>class son&#123;
+public:
+    virtual ~son() &#123;cout&lt;&lt;&quot;bye from son&quot;&lt;&lt;endl;&#125;;
+&#125;;
+class grandson:public son&#123;
+public:
+    ~grandson()&#123;cout&lt;&lt;&quot;bye from grandson&quot;&lt;&lt;endl;&#125;;
+&#125;;
+int main() &#123;
+    son *pson;
+    pson= new grandson(); //pson指向派生类grandson
+    delete pson;
+    return 0;
+&#125;
+</code></pre>
+<p>输出： </p>
+<pre><code>bye from grandson
+bye from son
+</code></pre>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/03/18/C-%E9%9D%A2%E5%90%91%E5%AF%B9%E8%B1%A1%E7%AC%94%E8%AE%B0%EF%BC%9A%E7%B1%BB%E5%92%8C%E5%AF%B9%E8%B1%A1/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -2803,20 +3991,20 @@ read(fd, &amp;val, 1);  //读fd文件（设备）的值到val变量
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">57</span>
+          <span class="site-state-item-count">59</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
       <div class="site-state-item site-state-categories">
             <a href="/categories/">
           
-        <span class="site-state-item-count">23</span>
+        <span class="site-state-item-count">24</span>
         <span class="site-state-item-name">分类</span></a>
       </div>
       <div class="site-state-item site-state-tags">
             <a href="/tags/">
           
-        <span class="site-state-item-count">34</span>
+        <span class="site-state-item-count">36</span>
         <span class="site-state-item-name">标签</span></a>
       </div>
   </nav>
