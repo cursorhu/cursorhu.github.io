@@ -10807,75 +10807,6 @@ cat ~/.ssh/id_rsa.pub
       </tags>
   </entry>
   <entry>
-    <title>esp32环境搭建笔记</title>
-    <url>/2023/05/04/esp32%E7%8E%AF%E5%A2%83%E6%90%AD%E5%BB%BA%E7%AC%94%E8%AE%B0/</url>
-    <content><![CDATA[<p>esp32是乐鑫的SOC，支持Wifi, BLE等IOT功能；官方教程：<a href="https://docs.espressif.com/projects/esp-idf/zh_CN/latest/esp32/get-started/index.html">ESP-IDF编程指南</a></p>
-<h1 id="ESP-IDF环境搭建"><a href="#ESP-IDF环境搭建" class="headerlink" title="ESP-IDF环境搭建"></a>ESP-IDF环境搭建</h1><p>按官方教程在Linux ubuntu搭建ESP-IDF开发环境，有clone idf一直失败的问题</p>
-<p>本文记录不用翻墙搭建环境的过程，视频参考：<a href="https://b23.tv/VCYbC2m">Linux 如何安装 ESP-IDF ESP32 开发环境搭建</a></p>
-<h2 id="版本发布、下载"><a href="#版本发布、下载" class="headerlink" title="版本发布、下载"></a>版本发布、下载</h2><p><a href="https://github.com/espressif/esp-idf/releases">https://github.com/espressif/esp-idf/releases</a></p>
-<p>手动下载release版本的idf压缩包，例如下载esp-idf-v5.0.1.zip</p>
-<p>解压到 ~&#x2F;esp&#x2F;esp-idf</p>
-<h2 id="安装依赖"><a href="#安装依赖" class="headerlink" title="安装依赖"></a>安装依赖</h2><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">sudo apt-get install git wget flex bison gperf python3 python3-pip python3-setuptools cmake ninja-build ccache libffi-dev libssl-dev dfu-util libusb-1.0-0</span><br></pre></td></tr></table></figure>
-
-<h2 id="安装-ESP-IDF"><a href="#安装-ESP-IDF" class="headerlink" title="安装 ESP-IDF"></a>安装 ESP-IDF</h2><p>安装 ESP-IDF 使用的各种工具，比如编译器、调试器、Python 包等</p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">./install.sh esp32 #esp32 chip</span><br><span class="line">./install.sh all #所有esp chips</span><br></pre></td></tr></table></figure>
-
-<p>如果安装遇到网络问题，需要设置下载服务器：</p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">cd ~/esp/esp-idf</span><br><span class="line">export IDF_GITHUB_ASSETS=&quot;dl.espressif.com/github_assets&quot;</span><br><span class="line">./install.sh</span><br></pre></td></tr></table></figure>
-
-<p>如果遇到 Python 包安装问题则需要设置 Python 源</p>
-<h2 id="设置环境变量："><a href="#设置环境变量：" class="headerlink" title="设置环境变量："></a>设置环境变量：</h2><p>每次运行都export环境变量</p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">. $HOME/esp/esp-idf/export.sh</span><br></pre></td></tr></table></figure>
-
-<p>或把将以下语句加入 .bashrc，每次执行只需要 <code>get_idf</code>：</p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">alias get_idf=&#x27;. $HOME/esp/esp-idf/export.sh&#x27;</span><br></pre></td></tr></table></figure>
-
-<h2 id="串口相关设置"><a href="#串口相关设置" class="headerlink" title="串口相关设置"></a>串口相关设置</h2><p><a href="https://docs.espressif.com/projects/esp-idf/zh_CN/latest/esp32/get-started/establish-serial-connection.html">与 ESP32 创建串口连接</a></p>
-<p>查看串口: ls &#x2F;dev&#x2F;tty* (esp32应该是ttyUSB0)</p>
-<p>必须将将用户添加到 <code>dialout</code> 组，从而获许串口读写权限，否则串口无法连接</p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">sudo usermod -a -G dialout $USER</span><br></pre></td></tr></table></figure>
-
-<h2 id="编译和烧录"><a href="#编译和烧录" class="headerlink" title="编译和烧录"></a>编译和烧录</h2><ul>
-<li>设置：idf.py menuconfig</li>
-<li>编译：idf.py build</li>
-<li>烧录：idf.py -p PORT 【-b BAUD】 flash</li>
-<li>监视：idf.py -p PORT monitor，使用快捷键 <code>Ctrl+]</code>，退出 IDF 监视器</li>
-<li>一次性执行构建、烧录和监视过程：idf.py -p PORT flash monitor</li>
-</ul>
-<h1 id="MicroPython环境搭建"><a href="#MicroPython环境搭建" class="headerlink" title="MicroPython环境搭建"></a>MicroPython环境搭建</h1><p>分为esp32侧的Firmware和PC侧的IDE两部分。</p>
-<p>本文是Linux环境，windows环境参考：<a href="https://doc.itprojects.cn/0006.zhishi.esp32/02.doc/index.html#/01.dajianhuanjing">Thonny+MicroPython+ESP32开发环境搭建</a></p>
-<h2 id="ESP32安装MicroPython"><a href="#ESP32安装MicroPython" class="headerlink" title="ESP32安装MicroPython"></a>ESP32安装MicroPython</h2><p>下载和安装Firmware参考：<a href="https://micropython.org/download/esp32/">Installation instructions</a></p>
-<p>先擦除flash, 其中esptool.py已经被esp-idf&#x2F;export.sh导出到环境变量</p>
-<p>If you are putting MicroPython on your board for the first time then you should first erase the entire flash using:</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">esptool.py --chip esp32 --port /dev/ttyUSB0 erase_flash</span><br></pre></td></tr></table></figure>
-
-<p>From then on program the firmware starting at address 0x1000:</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">esptool.py --chip esp32 --port /dev/ttyUSB0 --baud 460800 write_flash -z 0x1000 esp32-XXXX-vXXXX.bin</span><br></pre></td></tr></table></figure>
-
-<p>例如我的Firmware使用的是：</p>
-<p><strong><a href="https://micropython.org/resources/firmware/esp32-20230426-v1.20.0.bin">v1.20.0 (2023-04-26) .bin</a></strong> [<a href="https://micropython.org/resources/firmware/esp32-20230426-v1.20.0.elf">.elf]</a> [<a href="https://micropython.org/resources/firmware/esp32-20230426-v1.20.0.map">.map]</a> [<a href="https://github.com/micropython/micropython/releases/tag/v1.20.0">Release notes]</a> (latest)</p>
-<h2 id="使用VScode-Pymakr搭建Micropython开发环境"><a href="#使用VScode-Pymakr搭建Micropython开发环境" class="headerlink" title="使用VScode+Pymakr搭建Micropython开发环境"></a>使用VScode+Pymakr搭建Micropython开发环境</h2><p>总体的安装流程参考：<a href="https://randomnerdtutorials.com/micropython-esp32-esp8266-vs-code-pymakr/">MicroPython: Program ESP32&#x2F;ESP8266 using VS Code and Pymakr</a></p>
-<p>Pymakr如何使用，参考<a href="https://github.com/pycom/pymakr-vsc/blob/next/GET_STARTED.md">Pymakr Getting Started</a></p>
-<p>写一个LED闪烁的sample code</p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">from machine import Pin</span><br><span class="line">from time import sleep</span><br><span class="line"></span><br><span class="line">led = Pin(2, Pin.OUT) #GPIO2, output mode</span><br><span class="line"></span><br><span class="line">while True:</span><br><span class="line">  led.value(not led.value())</span><br><span class="line">  sleep(0.5)</span><br></pre></td></tr></table></figure>
-
-<p>LED如何控制，要根据esp32具体开发板的电路图找到LED相关的GPIO，以及配什么输入&#x2F;输出模式使GPIO导通&#x2F;关闭。</p>
-<p>如下图，我的esp32 LED连接到GPIO2(IO2)，并且GPIO2输出高电平时LED导通</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202305042003091.png" alt="image-20230504200335998"></p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202305042004848.png" alt="image-20230504200411499"></p>
-<p>选择VSCode的Pymakr Project -&gt; connect device -&gt; ’sync project to device‘，上传该LED python代码到esp32上运行；右键Pymakr Project的Hard reset device以后执行python代码</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202305051116409.png" alt="image-20230505111655320"></p>
-<p>esp32 GPIO2的LED不停闪烁</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202305051156061.gif" alt="mmexport1683202673677"></p>
-]]></content>
-      <categories>
-        <category>esp32</category>
-      </categories>
-      <tags>
-        <tag>esp32</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>浅谈信号完整性和ReDriver</title>
     <url>/2023/04/10/%E6%B5%85%E8%B0%88%E4%BF%A1%E5%8F%B7%E5%AE%8C%E6%95%B4%E6%80%A7%E5%92%8CReDriver/</url>
     <content><![CDATA[<h2 id="信号完整性"><a href="#信号完整性" class="headerlink" title="信号完整性"></a>信号完整性</h2><p>在讨论ReDriver之前，先说明信号完整性（Signal Integrity, SI）的相关背景。<br>电子信号在传输过程中(无线或有线)都会受到环境噪声干扰，信号功率也会随着传输距离衰减(signal attenuation)。<br>通信系统中用信噪比表达的信号的好坏:</p>
@@ -10936,6 +10867,117 @@ cat ~/.ssh/id_rsa.pub
       </categories>
       <tags>
         <tag>ubuntu</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>esp32笔记之PWM实现LED呼吸灯</title>
+    <url>/2023/05/05/esp32%E7%AC%94%E8%AE%B0%E4%B9%8BPWM%E5%AE%9E%E7%8E%B0LED%E5%91%BC%E5%90%B8%E7%81%AF/</url>
+    <content><![CDATA[<h2 id="PWM简介"><a href="#PWM简介" class="headerlink" title="PWM简介"></a>PWM简介</h2><p>参考：<a href="https://circuitdigest.com/tutorial/what-is-pwm-pulse-width-modulation">What is PWM: Pulse Width Modulation</a></p>
+<p>一句话讲PWM：用数字信号的占空比和频率，调制模拟信号的电压。</p>
+<p>脉冲宽度(pulse width)是指单位时间的总高电平的时间，脉冲宽度越大被调制的模拟信号电压越大。</p>
+<ul>
+<li>在一定的频率下，通过不同的(高电平)占空比即可得到不同的输出模拟电压</li>
+<li>在一定的占空比下，通过不同的频率即可得到不同的输出模拟电压；注意频率不能任意设置，要适配不同设备，例如电机频率6-16kHZ，MCU外设可以接近500 Hz</li>
+</ul>
+<p>PWM的数字信号如下：</p>
+<p><img src="https://circuitdigest.com/sites/default/files/inlineimages/pulse-width-modulation-duty-cycle.gif" alt="img"></p>
+<p>PWM调制电路通常用RC filter实现：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202305051659127.jpg" alt="Converting-PWM-signals-into-Analog"></p>
+<p>PWM一般使用固定频率，再调整高电平的占空比决定模拟信号的幅度，从原理上讲就是单位时间的电荷积分更多：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202305051657299.png" alt="image-20230505165748199"></p>
+<h2 id="MicroPython控制PWM"><a href="#MicroPython控制PWM" class="headerlink" title="MicroPython控制PWM"></a>MicroPython控制PWM</h2><p>官方tutorial参考：</p>
+<p><a href="https://docs.micropython.org/en/latest/esp32/quickref.html">Quick reference for the ESP32</a> PWM (pulse width modulation)</p>
+<p><a href="https://docs.micropython.org/en/latest/esp32/tutorial/pwm.html#esp32-pwm">Pulse Width Modulation</a> 其中有调整频率和占空比的sample code:</p>
+<ul>
+<li><p>Example of a smooth frequency change:</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">from utime import sleep</span><br><span class="line">from machine import Pin, PWM</span><br><span class="line"></span><br><span class="line">F_MIN = 500</span><br><span class="line">F_MAX = 1000</span><br><span class="line"></span><br><span class="line">f = F_MIN</span><br><span class="line">delta_f = 1</span><br><span class="line"></span><br><span class="line">p = PWM(Pin(5), f)</span><br><span class="line">print(p)</span><br><span class="line"></span><br><span class="line">while True:</span><br><span class="line">    p.freq(f)</span><br><span class="line"></span><br><span class="line">    sleep(10 / F_MIN)</span><br><span class="line"></span><br><span class="line">    f += delta_f</span><br><span class="line">    if f &gt;= F_MAX or f &lt;= F_MIN:</span><br><span class="line">        delta_f = -delta_f</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>Example of a smooth duty change:</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">from utime import sleep</span><br><span class="line">from machine import Pin, PWM</span><br><span class="line"></span><br><span class="line">DUTY_MAX = 2**16 - 1</span><br><span class="line"></span><br><span class="line">duty_u16 = 0</span><br><span class="line">delta_d = 16</span><br><span class="line"></span><br><span class="line">p = PWM(Pin(5), 1000, duty_u16=duty_u16)</span><br><span class="line">print(p)</span><br><span class="line"></span><br><span class="line">while True:</span><br><span class="line">    p.duty_u16(duty_u16)</span><br><span class="line"></span><br><span class="line">    sleep(1 / 1000)</span><br><span class="line"></span><br><span class="line">    duty_u16 += delta_d</span><br><span class="line">    if duty_u16 &gt;= DUTY_MAX:</span><br><span class="line">        duty_u16 = DUTY_MAX</span><br><span class="line">        delta_d = -delta_d</span><br><span class="line">    elif duty_u16 &lt;= 0:</span><br><span class="line">        duty_u16 = 0</span><br><span class="line">        delta_d = -delta_d</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="呼吸灯示例"><a href="#呼吸灯示例" class="headerlink" title="呼吸灯示例"></a>呼吸灯示例</h2><p>参考：<a href="https://doc.itprojects.cn/0006.zhishi.esp32/02.doc/index.html#/03.PWMhuxideng">itproject.cn&#x2F;Python+ESP32快速上手&#x2F;3.PWM呼吸灯</a></p>
+<p>esp32的micropython代码以script形式执行，主程序必须命名为main.py:</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">from machine import Pin, PWM</span><br><span class="line">import time</span><br><span class="line"></span><br><span class="line">led2 = PWM(Pin(2))</span><br><span class="line">led2.freq(1000)</span><br><span class="line"></span><br><span class="line">while True:</span><br><span class="line">    for i in range(0, 1024):</span><br><span class="line">        led2.duty(i)</span><br><span class="line">        time.sleep_ms(1)</span><br><span class="line">        </span><br><span class="line">    for i in range(1023, -1, -1):</span><br><span class="line">        led2.duty(i)</span><br><span class="line">        time.sleep_ms(1)</span><br></pre></td></tr></table></figure>
+
+<p>LED渐变呼吸闪烁：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202305052003803.gif" alt="mmexport1683287925729"></p>
+<p>如果将led duty调整为512，最大亮度会变小，验证了最大占空比决定最大电压<br>如果将led freq调整为50，最大亮度不变，但led渐变过程中会闪烁，也就是说电压被调制得”不稳定”，更“离散”</p>
+]]></content>
+      <categories>
+        <category>esp32</category>
+      </categories>
+      <tags>
+        <tag>esp32</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>esp32笔记之环境搭建</title>
+    <url>/2023/05/04/esp32%E7%AC%94%E8%AE%B0%E4%B9%8B%E7%8E%AF%E5%A2%83%E6%90%AD%E5%BB%BA/</url>
+    <content><![CDATA[<p>esp32是乐鑫的SOC，支持Wifi, BLE等IOT功能；官方教程：<a href="https://docs.espressif.com/projects/esp-idf/zh_CN/latest/esp32/get-started/index.html">ESP-IDF编程指南</a></p>
+<h1 id="ESP-IDF环境搭建"><a href="#ESP-IDF环境搭建" class="headerlink" title="ESP-IDF环境搭建"></a>ESP-IDF环境搭建</h1><p>按官方教程在Linux ubuntu搭建ESP-IDF开发环境，有clone idf一直失败的问题</p>
+<p>本节记录不用翻墙搭建ESP-ID环境的过程，视频参考：<a href="https://b23.tv/VCYbC2m">Linux 如何安装 ESP-IDF ESP32 开发环境搭建</a></p>
+<h2 id="版本发布、下载"><a href="#版本发布、下载" class="headerlink" title="版本发布、下载"></a>版本发布、下载</h2><p><a href="https://github.com/espressif/esp-idf/releases">https://github.com/espressif/esp-idf/releases</a></p>
+<p>手动下载release版本的idf压缩包，例如下载esp-idf-v5.0.1.zip</p>
+<p>解压到 ~&#x2F;esp&#x2F;esp-idf</p>
+<h2 id="安装依赖"><a href="#安装依赖" class="headerlink" title="安装依赖"></a>安装依赖</h2><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">sudo apt-get install git wget flex bison gperf python3 python3-pip python3-setuptools cmake ninja-build ccache libffi-dev libssl-dev dfu-util libusb-1.0-0</span><br></pre></td></tr></table></figure>
+
+<h2 id="安装-ESP-IDF"><a href="#安装-ESP-IDF" class="headerlink" title="安装 ESP-IDF"></a>安装 ESP-IDF</h2><p>安装 ESP-IDF 使用的各种工具，比如编译器、调试器、Python 包等</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">./install.sh esp32 #esp32 chip</span><br><span class="line">./install.sh all #所有esp chips</span><br></pre></td></tr></table></figure>
+
+<p>如果安装遇到网络问题，需要设置下载服务器：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">cd ~/esp/esp-idf</span><br><span class="line">export IDF_GITHUB_ASSETS=&quot;dl.espressif.com/github_assets&quot;</span><br><span class="line">./install.sh</span><br></pre></td></tr></table></figure>
+
+<p>如果遇到 Python 包安装问题则需要设置 Python 源</p>
+<h2 id="设置环境变量："><a href="#设置环境变量：" class="headerlink" title="设置环境变量："></a>设置环境变量：</h2><p>每次运行都export环境变量</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">. $HOME/esp/esp-idf/export.sh</span><br></pre></td></tr></table></figure>
+
+<p>或把将以下语句加入 .bashrc，每次执行只需要 <code>get_idf</code>：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">alias get_idf=&#x27;. $HOME/esp/esp-idf/export.sh&#x27;</span><br></pre></td></tr></table></figure>
+
+<h2 id="串口相关设置"><a href="#串口相关设置" class="headerlink" title="串口相关设置"></a>串口相关设置</h2><p><a href="https://docs.espressif.com/projects/esp-idf/zh_CN/latest/esp32/get-started/establish-serial-connection.html">与 ESP32 创建串口连接</a></p>
+<p>查看串口: ls &#x2F;dev&#x2F;tty* (esp32应该是ttyUSB0)</p>
+<p>必须将将用户添加到 <code>dialout</code> 组，从而获许串口读写权限，否则串口无法连接</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">sudo usermod -a -G dialout $USER</span><br></pre></td></tr></table></figure>
+
+<h2 id="编译和烧录"><a href="#编译和烧录" class="headerlink" title="编译和烧录"></a>编译和烧录</h2><ul>
+<li>设置：idf.py menuconfig</li>
+<li>编译：idf.py build</li>
+<li>烧录：idf.py -p PORT 【-b BAUD】 flash</li>
+<li>监视：idf.py -p PORT monitor，使用快捷键 <code>Ctrl+]</code>，退出 IDF 监视器</li>
+<li>一次性执行构建、烧录和监视过程：idf.py -p PORT flash monitor</li>
+</ul>
+<h1 id="MicroPython环境搭建"><a href="#MicroPython环境搭建" class="headerlink" title="MicroPython环境搭建"></a>MicroPython环境搭建</h1><p>分为esp32侧的Firmware和PC侧的IDE两部分。</p>
+<p>本文是Linux环境，windows环境参考：<a href="https://doc.itprojects.cn/0006.zhishi.esp32/02.doc/index.html#/01.dajianhuanjing">Thonny+MicroPython+ESP32开发环境搭建</a></p>
+<h2 id="ESP32安装MicroPython"><a href="#ESP32安装MicroPython" class="headerlink" title="ESP32安装MicroPython"></a>ESP32安装MicroPython</h2><p>Micropython是在嵌入式平台上运行Python的基础库，参考：<a href="https://docs.micropython.org/en/latest/">https://docs.micropython.org/en/latest/</a></p>
+<p>下载和安装esp32的Micropython，参考：<a href="https://micropython.org/download/esp32/">Installation instructions</a></p>
+<p>先擦除flash, 其中esptool.py已经被esp-idf&#x2F;export.sh导出到环境变量</p>
+<p>If you are putting MicroPython on your board for the first time then you should first erase the entire flash using:</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">esptool.py --chip esp32 --port /dev/ttyUSB0 erase_flash</span><br></pre></td></tr></table></figure>
+
+<p>From then on program the firmware starting at address 0x1000:</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">esptool.py --chip esp32 --port /dev/ttyUSB0 --baud 460800 write_flash -z 0x1000 esp32-XXXX-vXXXX.bin</span><br></pre></td></tr></table></figure>
+
+<p>例如我的Firmware使用的是：</p>
+<p><strong><a href="https://micropython.org/resources/firmware/esp32-20230426-v1.20.0.bin">v1.20.0 (2023-04-26) .bin</a></strong> [<a href="https://micropython.org/resources/firmware/esp32-20230426-v1.20.0.elf">.elf]</a> [<a href="https://micropython.org/resources/firmware/esp32-20230426-v1.20.0.map">.map]</a> [<a href="https://github.com/micropython/micropython/releases/tag/v1.20.0">Release notes]</a> (latest)</p>
+<h2 id="使用VScode-Pymakr搭建Micropython开发环境"><a href="#使用VScode-Pymakr搭建Micropython开发环境" class="headerlink" title="使用VScode+Pymakr搭建Micropython开发环境"></a>使用VScode+Pymakr搭建Micropython开发环境</h2><p>总体的安装流程参考：<a href="https://randomnerdtutorials.com/micropython-esp32-esp8266-vs-code-pymakr/">MicroPython: Program ESP32&#x2F;ESP8266 using VS Code and Pymakr</a></p>
+<p>Pymakr如何使用，参考<a href="https://github.com/pycom/pymakr-vsc/blob/next/GET_STARTED.md">Pymakr Getting Started</a></p>
+<p>写一个LED闪烁的sample code验证开发环境</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">from machine import Pin</span><br><span class="line">from time import sleep</span><br><span class="line"></span><br><span class="line">led = Pin(2, Pin.OUT) #GPIO2, output mode</span><br><span class="line"></span><br><span class="line">while True:</span><br><span class="line">  led.value(not led.value())</span><br><span class="line">  sleep(0.5)</span><br></pre></td></tr></table></figure>
+
+<p>LED如何控制，要根据esp32具体开发板的电路图找到LED相关的GPIO，以及配什么输入&#x2F;输出模式使GPIO导通&#x2F;关闭。</p>
+<p>如下图，我的esp32 LED连接到GPIO2(IO2)，并且GPIO2输出高电平时LED导通</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202305042003091.png" alt="image-20230504200335998"></p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202305042004848.png" alt="image-20230504200411499"></p>
+<p>选择VSCode的Pymakr Project -&gt; connect device -&gt; ’sync project to device‘，上传该LED python代码到esp32上运行；右键Pymakr Project的Hard reset device以后执行python代码</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202305051116409.png" alt="image-20230505111655320"></p>
+<p>esp32 GPIO2的LED不停闪烁</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202305051156061.gif" alt="mmexport1683202673677"></p>
+]]></content>
+      <categories>
+        <category>esp32</category>
+      </categories>
+      <tags>
+        <tag>esp32</tag>
       </tags>
   </entry>
 </search>

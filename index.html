@@ -190,7 +190,7 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2023/05/04/esp32%E7%8E%AF%E5%A2%83%E6%90%AD%E5%BB%BA%E7%AC%94%E8%AE%B0/">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2023/05/05/esp32%E7%AC%94%E8%AE%B0%E4%B9%8BPWM%E5%AE%9E%E7%8E%B0LED%E5%91%BC%E5%90%B8%E7%81%AF/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/avatar.gif">
@@ -204,7 +204,105 @@
       <header class="post-header">
         <h2 class="post-title" itemprop="name headline">
           
-            <a href="/2023/05/04/esp32%E7%8E%AF%E5%A2%83%E6%90%AD%E5%BB%BA%E7%AC%94%E8%AE%B0/" class="post-title-link" itemprop="url">esp32环境搭建笔记</a>
+            <a href="/2023/05/05/esp32%E7%AC%94%E8%AE%B0%E4%B9%8BPWM%E5%AE%9E%E7%8E%B0LED%E5%91%BC%E5%90%B8%E7%81%AF/" class="post-title-link" itemprop="url">esp32笔记之PWM实现LED呼吸灯</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2023-05-05 16:50:16 / 修改时间：20:18:45" itemprop="dateCreated datePublished" datetime="2023-05-05T16:50:16+08:00">2023-05-05</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/esp32/" itemprop="url" rel="index"><span itemprop="name">esp32</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h2 id="PWM简介"><a href="#PWM简介" class="headerlink" title="PWM简介"></a>PWM简介</h2><p>参考：<a target="_blank" rel="noopener" href="https://circuitdigest.com/tutorial/what-is-pwm-pulse-width-modulation">What is PWM: Pulse Width Modulation</a></p>
+<p>一句话讲PWM：用数字信号的占空比和频率，调制模拟信号的电压。</p>
+<p>脉冲宽度(pulse width)是指单位时间的总高电平的时间，脉冲宽度越大被调制的模拟信号电压越大。</p>
+<ul>
+<li>在一定的频率下，通过不同的(高电平)占空比即可得到不同的输出模拟电压</li>
+<li>在一定的占空比下，通过不同的频率即可得到不同的输出模拟电压；注意频率不能任意设置，要适配不同设备，例如电机频率6-16kHZ，MCU外设可以接近500 Hz</li>
+</ul>
+<p>PWM的数字信号如下：</p>
+<p><img src="https://circuitdigest.com/sites/default/files/inlineimages/pulse-width-modulation-duty-cycle.gif" alt="img"></p>
+<p>PWM调制电路通常用RC filter实现：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202305051659127.jpg" alt="Converting-PWM-signals-into-Analog"></p>
+<p>PWM一般使用固定频率，再调整高电平的占空比决定模拟信号的幅度，从原理上讲就是单位时间的电荷积分更多：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202305051657299.png" alt="image-20230505165748199"></p>
+<h2 id="MicroPython控制PWM"><a href="#MicroPython控制PWM" class="headerlink" title="MicroPython控制PWM"></a>MicroPython控制PWM</h2><p>官方tutorial参考：</p>
+<p><a target="_blank" rel="noopener" href="https://docs.micropython.org/en/latest/esp32/quickref.html">Quick reference for the ESP32</a> PWM (pulse width modulation)</p>
+<p><a target="_blank" rel="noopener" href="https://docs.micropython.org/en/latest/esp32/tutorial/pwm.html#esp32-pwm">Pulse Width Modulation</a> 其中有调整频率和占空比的sample code:</p>
+<ul>
+<li><p>Example of a smooth frequency change:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">from utime import sleep</span><br><span class="line">from machine import Pin, PWM</span><br><span class="line"></span><br><span class="line">F_MIN = 500</span><br><span class="line">F_MAX = 1000</span><br><span class="line"></span><br><span class="line">f = F_MIN</span><br><span class="line">delta_f = 1</span><br><span class="line"></span><br><span class="line">p = PWM(Pin(5), f)</span><br><span class="line">print(p)</span><br><span class="line"></span><br><span class="line">while True:</span><br><span class="line">    p.freq(f)</span><br><span class="line"></span><br><span class="line">    sleep(10 / F_MIN)</span><br><span class="line"></span><br><span class="line">    f += delta_f</span><br><span class="line">    if f &gt;= F_MAX or f &lt;= F_MIN:</span><br><span class="line">        delta_f = -delta_f</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>Example of a smooth duty change:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">from utime import sleep</span><br><span class="line">from machine import Pin, PWM</span><br><span class="line"></span><br><span class="line">DUTY_MAX = 2**16 - 1</span><br><span class="line"></span><br><span class="line">duty_u16 = 0</span><br><span class="line">delta_d = 16</span><br><span class="line"></span><br><span class="line">p = PWM(Pin(5), 1000, duty_u16=duty_u16)</span><br><span class="line">print(p)</span><br><span class="line"></span><br><span class="line">while True:</span><br><span class="line">    p.duty_u16(duty_u16)</span><br><span class="line"></span><br><span class="line">    sleep(1 / 1000)</span><br><span class="line"></span><br><span class="line">    duty_u16 += delta_d</span><br><span class="line">    if duty_u16 &gt;= DUTY_MAX:</span><br><span class="line">        duty_u16 = DUTY_MAX</span><br><span class="line">        delta_d = -delta_d</span><br><span class="line">    elif duty_u16 &lt;= 0:</span><br><span class="line">        duty_u16 = 0</span><br><span class="line">        delta_d = -delta_d</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="呼吸灯示例"><a href="#呼吸灯示例" class="headerlink" title="呼吸灯示例"></a>呼吸灯示例</h2><p>参考：<a target="_blank" rel="noopener" href="https://doc.itprojects.cn/0006.zhishi.esp32/02.doc/index.html#/03.PWMhuxideng">itproject.cn&#x2F;Python+ESP32快速上手&#x2F;3.PWM呼吸灯</a></p>
+<p>esp32的micropython代码以script形式执行，主程序必须命名为main.py:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">from machine import Pin, PWM</span><br><span class="line">import time</span><br><span class="line"></span><br><span class="line">led2 = PWM(Pin(2))</span><br><span class="line">led2.freq(1000)</span><br><span class="line"></span><br><span class="line">while True:</span><br><span class="line">    for i in range(0, 1024):</span><br><span class="line">        led2.duty(i)</span><br><span class="line">        time.sleep_ms(1)</span><br><span class="line">        </span><br><span class="line">    for i in range(1023, -1, -1):</span><br><span class="line">        led2.duty(i)</span><br><span class="line">        time.sleep_ms(1)</span><br></pre></td></tr></table></figure>
+
+<p>LED渐变呼吸闪烁：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202305052003803.gif" alt="mmexport1683287925729"></p>
+<p>如果将led duty调整为512，最大亮度会变小，验证了最大占空比决定最大电压<br>如果将led freq调整为50，最大亮度不变，但led渐变过程中会闪烁，也就是说电压被调制得”不稳定”，更“离散”</p>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2023/05/04/esp32%E7%AC%94%E8%AE%B0%E4%B9%8B%E7%8E%AF%E5%A2%83%E6%90%AD%E5%BB%BA/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2023/05/04/esp32%E7%AC%94%E8%AE%B0%E4%B9%8B%E7%8E%AF%E5%A2%83%E6%90%AD%E5%BB%BA/" class="post-title-link" itemprop="url">esp32笔记之环境搭建</a>
         </h2>
 
         <div class="post-meta">
@@ -221,7 +319,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2023-05-05 12:06:53" itemprop="dateModified" datetime="2023-05-05T12:06:53+08:00">2023-05-05</time>
+                <time title="修改时间：2023-05-05 16:48:40" itemprop="dateModified" datetime="2023-05-05T16:48:40+08:00">2023-05-05</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -246,7 +344,7 @@
       
           <p>esp32是乐鑫的SOC，支持Wifi, BLE等IOT功能；官方教程：<a target="_blank" rel="noopener" href="https://docs.espressif.com/projects/esp-idf/zh_CN/latest/esp32/get-started/index.html">ESP-IDF编程指南</a></p>
 <h1 id="ESP-IDF环境搭建"><a href="#ESP-IDF环境搭建" class="headerlink" title="ESP-IDF环境搭建"></a>ESP-IDF环境搭建</h1><p>按官方教程在Linux ubuntu搭建ESP-IDF开发环境，有clone idf一直失败的问题</p>
-<p>本文记录不用翻墙搭建环境的过程，视频参考：<a target="_blank" rel="noopener" href="https://b23.tv/VCYbC2m">Linux 如何安装 ESP-IDF ESP32 开发环境搭建</a></p>
+<p>本节记录不用翻墙搭建ESP-ID环境的过程，视频参考：<a target="_blank" rel="noopener" href="https://b23.tv/VCYbC2m">Linux 如何安装 ESP-IDF ESP32 开发环境搭建</a></p>
 <h2 id="版本发布、下载"><a href="#版本发布、下载" class="headerlink" title="版本发布、下载"></a>版本发布、下载</h2><p><a target="_blank" rel="noopener" href="https://github.com/espressif/esp-idf/releases">https://github.com/espressif/esp-idf/releases</a></p>
 <p>手动下载release版本的idf压缩包，例如下载esp-idf-v5.0.1.zip</p>
 <p>解压到 ~&#x2F;esp&#x2F;esp-idf</p>
@@ -279,7 +377,8 @@
 </ul>
 <h1 id="MicroPython环境搭建"><a href="#MicroPython环境搭建" class="headerlink" title="MicroPython环境搭建"></a>MicroPython环境搭建</h1><p>分为esp32侧的Firmware和PC侧的IDE两部分。</p>
 <p>本文是Linux环境，windows环境参考：<a target="_blank" rel="noopener" href="https://doc.itprojects.cn/0006.zhishi.esp32/02.doc/index.html#/01.dajianhuanjing">Thonny+MicroPython+ESP32开发环境搭建</a></p>
-<h2 id="ESP32安装MicroPython"><a href="#ESP32安装MicroPython" class="headerlink" title="ESP32安装MicroPython"></a>ESP32安装MicroPython</h2><p>下载和安装Firmware参考：<a target="_blank" rel="noopener" href="https://micropython.org/download/esp32/">Installation instructions</a></p>
+<h2 id="ESP32安装MicroPython"><a href="#ESP32安装MicroPython" class="headerlink" title="ESP32安装MicroPython"></a>ESP32安装MicroPython</h2><p>Micropython是在嵌入式平台上运行Python的基础库，参考：<a target="_blank" rel="noopener" href="https://docs.micropython.org/en/latest/">https://docs.micropython.org/en/latest/</a></p>
+<p>下载和安装esp32的Micropython，参考：<a target="_blank" rel="noopener" href="https://micropython.org/download/esp32/">Installation instructions</a></p>
 <p>先擦除flash, 其中esptool.py已经被esp-idf&#x2F;export.sh导出到环境变量</p>
 <p>If you are putting MicroPython on your board for the first time then you should first erase the entire flash using:</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">esptool.py --chip esp32 --port /dev/ttyUSB0 erase_flash</span><br></pre></td></tr></table></figure>
@@ -291,7 +390,7 @@
 <p><strong><a target="_blank" rel="noopener" href="https://micropython.org/resources/firmware/esp32-20230426-v1.20.0.bin">v1.20.0 (2023-04-26) .bin</a></strong> [<a target="_blank" rel="noopener" href="https://micropython.org/resources/firmware/esp32-20230426-v1.20.0.elf">.elf]</a> [<a target="_blank" rel="noopener" href="https://micropython.org/resources/firmware/esp32-20230426-v1.20.0.map">.map]</a> [<a target="_blank" rel="noopener" href="https://github.com/micropython/micropython/releases/tag/v1.20.0">Release notes]</a> (latest)</p>
 <h2 id="使用VScode-Pymakr搭建Micropython开发环境"><a href="#使用VScode-Pymakr搭建Micropython开发环境" class="headerlink" title="使用VScode+Pymakr搭建Micropython开发环境"></a>使用VScode+Pymakr搭建Micropython开发环境</h2><p>总体的安装流程参考：<a target="_blank" rel="noopener" href="https://randomnerdtutorials.com/micropython-esp32-esp8266-vs-code-pymakr/">MicroPython: Program ESP32&#x2F;ESP8266 using VS Code and Pymakr</a></p>
 <p>Pymakr如何使用，参考<a target="_blank" rel="noopener" href="https://github.com/pycom/pymakr-vsc/blob/next/GET_STARTED.md">Pymakr Getting Started</a></p>
-<p>写一个LED闪烁的sample code</p>
+<p>写一个LED闪烁的sample code验证开发环境</p>
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">from machine import Pin</span><br><span class="line">from time import sleep</span><br><span class="line"></span><br><span class="line">led = Pin(2, Pin.OUT) #GPIO2, output mode</span><br><span class="line"></span><br><span class="line">while True:</span><br><span class="line">  led.value(not led.value())</span><br><span class="line">  sleep(0.5)</span><br></pre></td></tr></table></figure>
 
 <p>LED如何控制，要根据esp32具体开发板的电路图找到LED相关的GPIO，以及配什么输入&#x2F;输出模式使GPIO导通&#x2F;关闭。</p>
@@ -1412,112 +1511,6 @@
   
   
 
-      
-  
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2023/01/30/Ubuntu%20Samba%E9%85%8D%E7%BD%AE%E7%AC%94%E8%AE%B0/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Cursorhu">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="ThinkNotes">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2023/01/30/Ubuntu%20Samba%E9%85%8D%E7%BD%AE%E7%AC%94%E8%AE%B0/" class="post-title-link" itemprop="url">Ubuntu Samba配置笔记</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2023-01-30 10:55:24" itemprop="dateCreated datePublished" datetime="2023-01-30T10:55:24+08:00">2023-01-30</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2023-04-28 16:40:24" itemprop="dateModified" datetime="2023-04-28T16:40:24+08:00">2023-04-28</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/linux/" itemprop="url" rel="index"><span itemprop="name">linux</span></a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h2 id="Samba基本概念"><a href="#Samba基本概念" class="headerlink" title="Samba基本概念"></a>Samba基本概念</h2><p>Samba是SMB protocol的应用程序实现，分为服务端和客户端；</p>
-<p>Samba通常的使用场景：在同一局域网内的的Linux主机安装Samba服务，windows主机可以访问Linux Samba服务指定的共享目录。</p>
-<p>在嵌入式开发中通常在windows 上编辑Samba共享目录下的代码，通过 Linux环境编译代码，而无需在两个主机间拷贝代码文件。</p>
-<h2 id="Ubuntu安装Samba服务"><a href="#Ubuntu安装Samba服务" class="headerlink" title="Ubuntu安装Samba服务"></a>Ubuntu安装Samba服务</h2><p>Ubuntu 20.04和22.04 版本，安装Samba服务参考：</p>
-<p><a target="_blank" rel="noopener" href="https://www.how2shout.com/linux/how-to-install-samba-on-ubuntu-22-04-lts-jammy-linux/#:~:text=Steps%20to%20install%20SAMBA%20on%20Ubuntu%2022.04%20LTS,...%206%206.%20Access%20the%20shared%20folder%20">www.how2shout.com/linux/how-to-install-samba-on-ubuntu-22-04-lts-jammy-linux</a><br>主要流程：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">#install and run samba service</span><br><span class="line">sudo apt install samba -y</span><br><span class="line"></span><br><span class="line">#enable auto start samba service</span><br><span class="line">sudo systemctl enable --now smbd</span><br><span class="line"></span><br><span class="line">#firewall allow samba</span><br><span class="line">sudo ufw allow samba</span><br><span class="line"></span><br><span class="line">#add system user to sambashare group</span><br><span class="line">sudo usermod -aG sambashare $USER</span><br><span class="line"></span><br><span class="line">#set passwd for sambashare</span><br><span class="line">sudo smbpasswd -a $USER</span><br><span class="line"></span><br><span class="line">#check samba service is running</span><br><span class="line">systemctl status smbd</span><br><span class="line"></span><br><span class="line">#share the folder in ubuntu GUI checkbox</span><br></pre></td></tr></table></figure>
-
-<p>Ubuntu 22.10版本，没有右键共享文件的选项，需要<a target="_blank" rel="noopener" href="https://fostips.com/share-folder-ubuntu-21-04-fix-net-share-error-255/#:~:text=How%20to%20Share%20A%20Folder%20over%20Local%20Network,4%204.%20How%20to%20access%20the%20shared%20folder">Install the nautilus-share</a>并reboot；</p>
-<p>右键要共享的home文件夹, 选中Sharing Options设置共享</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo apt install nautilus-share</span><br></pre></td></tr></table></figure>
-
-<p>Ubuntu 20.04 直接右键要共享的home文件夹properties -&gt; local Network Share</p>
-<p>显示无权共享：非root用户要共享&#x2F;home，需要修改smb.conf:</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">sudo vim /etc/samba/smb.conf</span><br><span class="line">在[global]新增usershare owner only = false</span><br><span class="line">sudo systemctl restart smbd</span><br></pre></td></tr></table></figure>
-
-
-
-<h2 id="Windows访问Samba共享目录"><a href="#Windows访问Samba共享目录" class="headerlink" title="Windows访问Samba共享目录"></a>Windows访问Samba共享目录</h2><p>windows下可以在文件浏览器直接访问Linux主机ip查看共享的Linux目录</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202301301103020.png" alt="image-20230130110305978"></p>
-<p>如果windows访问共享目录有权限问题（例如不能写入），需要在Linux修改共享目录&#x2F;home的权限：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo chmod 777 /home -R </span><br></pre></td></tr></table></figure>
-
-<p>如果一个主机有两个samba共享目录，windows不允许多重连接；</p>
-<p>要更改连接目录，操作如下：</p>
-<p>win10系统在搜索框搜索【凭据管理器】，然后删除已有的windows samba网络连接凭据</p>
-<p><code>win+R</code> CMD输入 <code>net use * /del /y</code>断开所有远程链接，包括samba网络连接</p>
-<p>重新配置windows samba网络连接</p>
-<h2 id="重装Samba"><a href="#重装Samba" class="headerlink" title="重装Samba"></a>重装Samba</h2><p>Samba的配置文件位于&#x2F;etc&#x2F;samba&#x2F;smb.conf，如果此文件被错误配置或者误删除，需要重装Samba，流程如下:</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">sudo apt-get remove samba --purge //删掉samba服务</span><br><span class="line">sudo apt-get remove samba-common --purge //这一步是关键，只重装samba不会恢复smb.conf</span><br><span class="line">sudo apt-get autoremove //删掉其他samba依赖库</span><br><span class="line">sudo apt-get install samba //重装，包括samba和samba-common等</span><br></pre></td></tr></table></figure>
-
-<h2 id="Samba使用示例"><a href="#Samba使用示例" class="headerlink" title="Samba使用示例"></a>Samba使用示例</h2><p>Samba最重要的特性是两个主机之间直接共享目录，不需要用户去拷贝文件。</p>
-<p>在代码开发中，在windows主机的VSCode或其他编辑器直接打开Linux主机共享目录的代码，然后SSH远程Linux主机去编译。</p>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
 
   
   <nav class="pagination">
@@ -1587,7 +1580,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">59</span>
+          <span class="site-state-item-count">60</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
