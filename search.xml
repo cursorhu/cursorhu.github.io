@@ -5907,6 +5907,8 @@ pm2 delete all         // 杀死全部进程
 <p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202302091145967.png" alt="image-20230209114508910"></p>
 </li>
 </ol>
+<h2 id="冻结首行"><a href="#冻结首行" class="headerlink" title="冻结首行"></a>冻结首行</h2><p>筛选行一般需要固定显示，因此设置冻结首行：</p>
+<p>选中要固定显示行的下一行, 视图 -&gt; 冻结窗格 -&gt; 冻结首行</p>
 ]]></content>
       <categories>
         <category>Office</category>
@@ -10873,17 +10875,20 @@ cat ~/.ssh/id_rsa.pub
     <title>esp32笔记之PWM实现LED呼吸灯</title>
     <url>/2023/05/05/esp32%E7%AC%94%E8%AE%B0%E4%B9%8BPWM%E5%AE%9E%E7%8E%B0LED%E5%91%BC%E5%90%B8%E7%81%AF/</url>
     <content><![CDATA[<h2 id="PWM简介"><a href="#PWM简介" class="headerlink" title="PWM简介"></a>PWM简介</h2><p>参考：<a href="https://circuitdigest.com/tutorial/what-is-pwm-pulse-width-modulation">What is PWM: Pulse Width Modulation</a></p>
-<p>一句话讲PWM：用数字信号的占空比和频率，调制模拟信号的电压。</p>
-<p>脉冲宽度(pulse width)是指单位时间的总高电平的时间，脉冲宽度越大被调制的模拟信号电压越大。</p>
+<p>一句话讲PWM：用数字信号的占空比，调制模拟信号的电压。</p>
+<p>脉冲宽度(pulse width)是指单位时间的高电平的持续时间，脉冲宽度越大被调制的模拟信号电压越大。</p>
 <ul>
-<li>在一定的频率下，通过不同的(高电平)占空比即可得到不同的输出模拟电压</li>
-<li>在一定的占空比下，通过不同的频率即可得到不同的输出模拟电压；注意频率不能任意设置，要适配不同设备，例如电机频率6-16kHZ，MCU外设可以接近500 Hz</li>
+<li>在一定的频率下，通过不同的(高电平)占空比即可得到不同脉冲宽度，进而调节输出的模拟电压信号</li>
+<li>在一定的占空比下，通过不同的频率实现不同的调节速度；频率要适配不同设备，不能任意设置，例如电机频率50HZ，MCU外设1000Hz。频率不决定被调制电压的幅度。</li>
 </ul>
-<p>PWM的数字信号如下：</p>
+<p>PWM的调制信号如下：</p>
 <p><img src="https://circuitdigest.com/sites/default/files/inlineimages/pulse-width-modulation-duty-cycle.gif" alt="img"></p>
 <p>PWM调制电路通常用RC filter实现：</p>
 <p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202305051659127.jpg" alt="Converting-PWM-signals-into-Analog"></p>
-<p>PWM一般使用固定频率，再调整高电平的占空比决定模拟信号的幅度，从原理上讲就是单位时间的电荷积分更多：</p>
+<p>PWM一般对具体设备使用固定频率，再调整高电平的占空比决定模拟信号的幅度。</p>
+<p>如下图，占空比从0%调节到100%，对应输出电压为0V~5V</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202305061100234.jpg" alt="Pulse-Width-Modulation"></p>
+<p>从原理上讲就是开关控制，在一个周期内调制信号的高电平时间越长，RC电荷积分更多，输出电压越大：</p>
 <p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202305051657299.png" alt="image-20230505165748199"></p>
 <h2 id="MicroPython控制PWM"><a href="#MicroPython控制PWM" class="headerlink" title="MicroPython控制PWM"></a>MicroPython控制PWM</h2><p>官方tutorial参考：</p>
 <p><a href="https://docs.micropython.org/en/latest/esp32/quickref.html">Quick reference for the ESP32</a> PWM (pulse width modulation)</p>
@@ -10896,7 +10901,7 @@ cat ~/.ssh/id_rsa.pub
 <figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">from utime import sleep</span><br><span class="line">from machine import Pin, PWM</span><br><span class="line"></span><br><span class="line">DUTY_MAX = 2**16 - 1</span><br><span class="line"></span><br><span class="line">duty_u16 = 0</span><br><span class="line">delta_d = 16</span><br><span class="line"></span><br><span class="line">p = PWM(Pin(5), 1000, duty_u16=duty_u16)</span><br><span class="line">print(p)</span><br><span class="line"></span><br><span class="line">while True:</span><br><span class="line">    p.duty_u16(duty_u16)</span><br><span class="line"></span><br><span class="line">    sleep(1 / 1000)</span><br><span class="line"></span><br><span class="line">    duty_u16 += delta_d</span><br><span class="line">    if duty_u16 &gt;= DUTY_MAX:</span><br><span class="line">        duty_u16 = DUTY_MAX</span><br><span class="line">        delta_d = -delta_d</span><br><span class="line">    elif duty_u16 &lt;= 0:</span><br><span class="line">        duty_u16 = 0</span><br><span class="line">        delta_d = -delta_d</span><br></pre></td></tr></table></figure></li>
 </ul>
 <h2 id="呼吸灯示例"><a href="#呼吸灯示例" class="headerlink" title="呼吸灯示例"></a>呼吸灯示例</h2><p>参考：<a href="https://doc.itprojects.cn/0006.zhishi.esp32/02.doc/index.html#/03.PWMhuxideng">itproject.cn&#x2F;Python+ESP32快速上手&#x2F;3.PWM呼吸灯</a></p>
-<p>esp32的micropython代码以script形式执行，主程序必须命名为main.py:</p>
+<p>esp32的micropython代码以script形式执行，主程序必须命名为main.py(参考 <a href="https://docs.micropython.org/en/v1.9.3/pyboard/pyboard/tutorial/script.html">Running your first script</a>):</p>
 <figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">from machine import Pin, PWM</span><br><span class="line">import time</span><br><span class="line"></span><br><span class="line">led2 = PWM(Pin(2))</span><br><span class="line">led2.freq(1000)</span><br><span class="line"></span><br><span class="line">while True:</span><br><span class="line">    for i in range(0, 1024):</span><br><span class="line">        led2.duty(i)</span><br><span class="line">        time.sleep_ms(1)</span><br><span class="line">        </span><br><span class="line">    for i in range(1023, -1, -1):</span><br><span class="line">        led2.duty(i)</span><br><span class="line">        time.sleep_ms(1)</span><br></pre></td></tr></table></figure>
 
 <p>LED渐变呼吸闪烁：</p>
