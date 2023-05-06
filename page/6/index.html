@@ -190,6 +190,141 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/04/16/%E6%B5%85%E8%B0%88C%E7%9A%84%E5%AE%8F%E5%87%BD%E6%95%B0/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2020/04/16/%E6%B5%85%E8%B0%88C%E7%9A%84%E5%AE%8F%E5%87%BD%E6%95%B0/" class="post-title-link" itemprop="url">浅谈C的宏函数</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-04-16 15:07:37" itemprop="dateCreated datePublished" datetime="2020-04-16T15:07:37+08:00">2020-04-16</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2022-12-06 15:18:54" itemprop="dateModified" datetime="2022-12-06T15:18:54+08:00">2022-12-06</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/c-c/" itemprop="url" rel="index"><span itemprop="name">c/c++</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h1 id="1-连接操作符"><a href="#1-连接操作符" class="headerlink" title="1. 连接操作符:##"></a>1. 连接操作符:##</h1><pre><code>#define Conn(x,y) x##y
+</code></pre>
+<p><code>##</code> 表示连接 , <code>x##y</code> 表示x连接y</p>
+<p>示例：</p>
+<pre><code>int n = Conn(123,456);
+     ==&gt; int n=123456;
+char* str = Conn(&quot;asdf&quot;, &quot;adf&quot;);
+     ==&gt; char* str = &quot;asdfadf&quot;;
+</code></pre>
+<p><code>##</code> 的左右符号必须能够组成一个有意义的符号，否则预处理器会报错</p>
+<h1 id="2-字符串化和字符化"><a href="#2-字符串化和字符化" class="headerlink" title="2.字符串化和字符化: #, #@"></a>2.字符串化和字符化: #, #@</h1><p>(1) # 把任意类型的宏入参转化成字符串：</p>
+<pre><code>#define ToString(x) #x
+</code></pre>
+<p>符号 # 表示字符串化操作符（stringification）。<br>其作用是：将宏定义中的传入参数名转换成用一对双引号括起来参数名字符串。<br>其只能用于有传入参数的宏定义中，且必须置于宏定义体中的参数名前。</p>
+<p>示例：</p>
+<pre><code> char* str = ToString(123132);
+ ==&gt; char* str=&quot;123132&quot;;
+</code></pre>
+<p>如果要对展开后的宏参数进行字符串化，则需要使用两层宏。</p>
+<pre><code>#define xstr(s) str(s)
+#define str(s) #s
+#define foo 4
+
+str (foo)
+     ==&gt; &quot;foo&quot;
+xstr (foo)
+     ==&gt; xstr (4)
+     ==&gt; str (4)
+     ==&gt; &quot;4&quot;
+</code></pre>
+<p>(2) #@ 把任意类型的宏入参转化成单字符：</p>
+<pre><code>#define ToChar(x) #@x
+</code></pre>
+<p>示例：</p>
+<pre><code>char a = ToChar(1);
+     ==&gt; char a=&#39;1&#39;
+</code></pre>
+<h1 id="3-不定参数宏-VA-ARGS"><a href="#3-不定参数宏-VA-ARGS" class="headerlink" title="3. 不定参数宏: __VA_ARGS__"></a>3. 不定参数宏: <code>__VA_ARGS__</code></h1><p><code>__VA_ARGS__</code>宏用来接受不定数量的参数。例如：</p>
+<pre><code>#define eprintf(...) fprintf (stderr, __VA_ARGS__)
+
+eprintf (&quot;%s:%d: &quot;, input_file, lineno)
+==&gt;  fprintf (stderr, &quot;%s:%d: &quot;, input_file, lineno)
+</code></pre>
+<p>当<code>__VA_ARGS__</code>宏前面加 <code>##</code> 时，可以省略参数输入。<br>例如：</p>
+<pre><code>#define eprintf(format, ...) fprintf (stderr, format, ##__VA_ARGS__)
+
+eprintf (&quot;success!\n&quot;)
+==&gt; fprintf(stderr, &quot;success!\n&quot;);
+</code></pre>
+<h1 id="4-宏函数定义-do-while-0-与换行"><a href="#4-宏函数定义-do-while-0-与换行" class="headerlink" title="4. 宏函数定义: do-while(0)与换行"></a>4. 宏函数定义: do-while(0)与换行</h1><p>(1) 用 do{}while(0) 定义宏函数</p>
+<pre><code>#define foo() do&#123;...&#125;while(0)
+</code></pre>
+<p>宏函数可能在任意地方被调用，如果在if-else语句中，为了确保宏函数作为整体单元被编译器替换后不产生歧义，一般用do-while(0)包起来定义<br>这种定义有点像其他语言的“闭包函数”，纯粹是C语言中为了避免语法歧义的可靠性定义。</p>
+<p>(2) 用显式换行符</p>
+<p>宏函数定义不能直接回车换行，需要在回车换行前，用\（反斜线）表示下一行继续此宏的定义<br>预处理器在编译之前会自动将\与换行回车去掉。</p>
+<p>例如：</p>
+<pre><code>#define PRINT_INT(a)    \
+do&#123;                     \
+    printf(&quot;%d \n&quot;, a); \
+&#125;while(0)
+</code></pre>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/04/01/%E6%B5%85%E8%B0%88C%E7%9A%84%E5%87%BD%E6%95%B0%E6%8C%87%E9%92%88/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -3923,118 +4058,10 @@ read(fd, &amp;val, 1);  //读fd文件（设备）的值到val变量
   
   
 
-      
-  
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2019/07/06/Office%E5%B8%B8%E7%94%A8%E6%93%8D%E4%BD%9C%E7%AC%94%E8%AE%B0/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Cursorhu">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="ThinkNotes">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2019/07/06/Office%E5%B8%B8%E7%94%A8%E6%93%8D%E4%BD%9C%E7%AC%94%E8%AE%B0/" class="post-title-link" itemprop="url">Office常用操作笔记</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2019-07-06 14:19:23" itemprop="dateCreated datePublished" datetime="2019-07-06T14:19:23+08:00">2019-07-06</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2023-05-06 10:05:05" itemprop="dateModified" datetime="2023-05-06T10:05:05+08:00">2023-05-06</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/Office/" itemprop="url" rel="index"><span itemprop="name">Office</span></a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h1 id="Word"><a href="#Word" class="headerlink" title="Word"></a>Word</h1><h2 id="Word设置自动推导的标题列表"><a href="#Word设置自动推导的标题列表" class="headerlink" title="Word设置自动推导的标题列表"></a>Word设置自动推导的标题列表</h2><p>word自动标题列表的是写文档必不可少的，自动标题能自动推导更新各级标题的序号，增删改查任何标题都不需要手动的写标题序号。</p>
-<p>（1）创建多级列表<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061423943.png" alt="image-20221206142307899"></p>
-<p>（2）设置一级标题</p>
-<ul>
-<li>设置一级标题的序号样式为1,2,3</li>
-<li>链接一级标题的字体样式到word文档的一级标题字体样式<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061423121.png" alt="image-20221206142315070"></li>
-</ul>
-<p>（2）设置二级、三级、n级标题</p>
-<p>需要设置列表序号，标题字体两部分。注意列表序号的正确设置是序号自动推导的关键。<br>以二级标题为例，其他子级类推。</p>
-<ul>
-<li><p>设置二级标题中的一级序号来自于level1。这一步保证二级标题中的一级序号是自动推导的。<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061423795.png" alt="image-20221206142327739"></p>
-</li>
-<li><p>设置二级标题中的二级序号的样式，二级标题中的一、二级序号用.号隔开<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061424185.png" alt="image-20221206142401132"></p>
-</li>
-<li><p>二级标题最终的序号样式如下<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061424492.png" alt="image-20221206142411436"></p>
-</li>
-<li><p>然后设置二级标题的字体风格，直接链接到word的二级标题字体风格<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061424730.png" alt="image-20221206142420685"></p>
-</li>
-<li><p>二级标题列表的所有设置完毕，如下<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061424880.png" alt="image-20221206142428828"></p>
-</li>
-</ul>
-<p>(3)依次完成所有标题列表设置，例如三级标题，前两级的值来自于level1,level2，第三级设置数字格式即可，中间用.号隔开。完成以后各级标题就可以自动推导。</p>
-<h2 id="Word导出原图"><a href="#Word导出原图" class="headerlink" title="Word导出原图"></a>Word导出原图</h2><p>Word默认图片如果直接复制出来，不是原图是压缩后的图。<br>保存原图方法： 文档另存为html网页格式，会把word文档转换成资源文件夹，里面有原始图片。</p>
-<h1 id="Excel"><a href="#Excel" class="headerlink" title="Excel"></a>Excel</h1><h2 id="excel设置筛选"><a href="#excel设置筛选" class="headerlink" title="excel设置筛选"></a>excel设置筛选</h2><p>参考<a target="_blank" rel="noopener" href="https://support.microsoft.com/zh-cn/office/%E7%AD%9B%E9%80%89%E5%8C%BA%E5%9F%9F%E6%88%96%E8%A1%A8%E4%B8%AD%E7%9A%84%E6%95%B0%E6%8D%AE-01832226-31b5-4568-8806-38c37dcc180e#:~:text=%E5%AF%B9%E8%A1%A8%E4%B8%AD%E7%9A%84%E6%95%B0%E6%8D%AE%E8%BF%9B%E8%A1%8C%E7%AD%9B%E9%80%89%201%20%E9%80%89%E6%8B%A9%E8%A6%81%E7%AD%9B%E9%80%89%20%E5%88%97%E7%9A%84%E5%88%97%E6%A0%87%E9%A2%98%E7%AE%AD%E5%A4%B4%E3%80%82%202%20%E5%8F%96%E6%B6%88%20%28%E9%80%89%E6%8B%A9%22%29%20%22%EF%BC%8C,%E5%8D%95%E5%87%BB%E2%80%9C%20%E7%A1%AE%E5%AE%9A%20%E2%80%9D%E3%80%82%20%E5%88%97%E6%A0%87%E9%A2%98%E7%AE%AD%E5%A4%B4%20%22%E7%AD%9B%E9%80%89%20%E6%9B%B4%E6%94%B9%20%E3%80%82%20%E9%80%89%E6%8B%A9%E6%AD%A4%E5%9B%BE%E6%A0%87%E5%8F%AF%E6%9B%B4%E6%94%B9%E6%88%96%E6%B8%85%E9%99%A4%E7%AD%9B%E9%80%89%E3%80%82">筛选区域或表中的数据</a></p>
-<ol>
-<li><p>选中列，点击筛选</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202302091144706.png" alt="image-20230209114432580"></p>
-</li>
-<li><p>可以按文字或者颜色筛选</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202302091145967.png" alt="image-20230209114508910"></p>
-</li>
-</ol>
-<h2 id="冻结首行"><a href="#冻结首行" class="headerlink" title="冻结首行"></a>冻结首行</h2><p>筛选行一般需要固定显示，因此设置冻结首行：</p>
-<p>选中要固定显示行的下一行, 视图 -&gt; 冻结窗格 -&gt; 冻结首行</p>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
 
   
   <nav class="pagination">
-    <a class="extend prev" rel="prev" href="/page/5/"><i class="fa fa-angle-left" aria-label="上一页"></i></a><a class="page-number" href="/">1</a><span class="space">&hellip;</span><a class="page-number" href="/page/5/">5</a><span class="page-number current">6</span>
+    <a class="extend prev" rel="prev" href="/page/5/"><i class="fa fa-angle-left" aria-label="上一页"></i></a><a class="page-number" href="/">1</a><span class="space">&hellip;</span><a class="page-number" href="/page/5/">5</a><span class="page-number current">6</span><a class="page-number" href="/page/7/">7</a><a class="extend next" rel="next" href="/page/7/"><i class="fa fa-angle-right" aria-label="下一页"></i></a>
   </nav>
 
 
@@ -4100,20 +4127,20 @@ read(fd, &amp;val, 1);  //读fd文件（设备）的值到val变量
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">60</span>
+          <span class="site-state-item-count">61</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
       <div class="site-state-item site-state-categories">
             <a href="/categories/">
           
-        <span class="site-state-item-count">24</span>
+        <span class="site-state-item-count">25</span>
         <span class="site-state-item-name">分类</span></a>
       </div>
       <div class="site-state-item site-state-tags">
             <a href="/tags/">
           
-        <span class="site-state-item-count">36</span>
+        <span class="site-state-item-count">37</span>
         <span class="site-state-item-name">标签</span></a>
       </div>
   </nav>

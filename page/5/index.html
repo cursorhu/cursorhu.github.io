@@ -190,6 +190,118 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/09/06/Git%E5%A4%9A%E4%BA%BA%E5%8D%8F%E4%BD%9C%E4%B8%8B%E7%9A%84%E6%8D%A2%E8%A1%8C%E7%AC%A6%E9%97%AE%E9%A2%98/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2020/09/06/Git%E5%A4%9A%E4%BA%BA%E5%8D%8F%E4%BD%9C%E4%B8%8B%E7%9A%84%E6%8D%A2%E8%A1%8C%E7%AC%A6%E9%97%AE%E9%A2%98/" class="post-title-link" itemprop="url">Git多人协作下的换行符问题</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-09-06 11:23:00" itemprop="dateCreated datePublished" datetime="2020-09-06T11:23:00+08:00">2020-09-06</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2022-12-05 15:01:43" itemprop="dateModified" datetime="2022-12-05T15:01:43+08:00">2022-12-05</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Git/" itemprop="url" rel="index"><span itemprop="name">Git</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h1 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h1><p>项目文件中有如下类型文件：</p>
+<pre><code>Makefile, .sh, .bat, .cfg, .exe
+</code></pre>
+<p>源码用git管理，客户端用cygwin实现windows内的linux环境</p>
+<p>问题：如何解决git多人协作下的linux、windows换行符差异问题？</p>
+<p>(1)什么是换行符<br>LF：”\n”，Linux的换行符, 只包含“换行”；<br>CRLF：”\r\n”，Windows的换行符，包含“回车+换行”;</p>
+<p>(2)不同换行符带来什么问题<br>用git管理代码，必定有远程端和本地端两个仓库，两端的操作系统不同，换行符可能有差异;</p>
+<p>多人协作时，本地端可能有linux环境和windows, 如果所有人都是linux就不存在换行符差异的问题；如果有windows和linux就有该问题;<br>例如A上传了Linux换行符LF的代码到远程，B 本地环境是windows, B git pull下来，其git-config设置了自动转换成本地换行，将代码换行全成了CRLF，B上传后，远程仓库变成CRLF换行。此时A git diff查看，所有代码都有换行差异，扰乱真正的代码diff。</p>
+<p>不仅是影响git diff， 换行差异还影响脚本执行</p>
+<ul>
+<li>例如LF换行的.sh，git pull到windows环境后换行转换成CRLF, 导致sh无法正常执行；</li>
+<li>.bat调用.exe读取.cfg内的一行，.exe是windows程序，其readline方法只能识别CRLF换行，无法读取LF换行的.cfg文件内容</li>
+</ul>
+<h1 id="git的自动换行符转换配置"><a href="#git的自动换行符转换配置" class="headerlink" title="git的自动换行符转换配置"></a>git的自动换行符转换配置</h1><p>参考：<a target="_blank" rel="noopener" href="https://git-scm.com/book/zh/v2/%E8%87%AA%E5%AE%9A%E4%B9%89-Git-%E9%85%8D%E7%BD%AE-Git">core.autocrlf</a></p>
+<p>假如你正在 Windows 上写程序，而其他人用的是其他系统（或相反），你可能会遇到 CRLF 问题。 这是因为 Windows 使用回车（CR）和换行（LF）两个字符来结束一行，而 macOS 和 Linux 只使用换行（LF）一个字符。 虽然这是小问题，但它会极大地扰乱跨平台协作。许多 Windows 上的编辑器会悄悄把行尾的换行字符转换成回车和换行， 或在用户按下 Enter 键时，插入回车和换行两个字符。</p>
+<p>Git 可以在你提交时自动地把回车和换行转换成换行，而在检出代码时把换行转换成回车和换行。 你可以用 core.autocrlf 来打开此项功能。 如果是在 Windows 系统上，把它设置成 true，这样在检出代码时，换行会被转换成回车和换行：</p>
+<pre><code>$ git config --global core.autocrlf true
+</code></pre>
+<p>如果使用以换行作为行结束符的 Linux 或 macOS，你不需要 Git 在检出文件时进行自动的转换； 然而当一个以回车加换行作为行结束符的文件不小心被引入时，你肯定想让 Git 修正。 你可以把 core.autocrlf 设置成 input 来告诉 Git 在提交时把回车和换行转换成换行，检出时不转换：</p>
+<pre><code>$ git config --global core.autocrlf input
+</code></pre>
+<p>这样在 Windows 上的检出文件中会保留回车和换行，而在 macOS 和 Linux 上，以及版本库中会保留换行。</p>
+<p>如果你是 Windows 程序员，且正在开发仅运行在 Windows 上的项目，可以设置 false 取消此功能，把回车保留在版本库中：</p>
+<pre><code>$ git config --global core.autocrlf false
+</code></pre>
+<p><strong>使用<code>git config --global core.autocrlf input</code>就可以做到windows的CRLF换行自动转换成LF换行存储在git远程仓库，且git pull&#x2F;clone到本地时维持LF换行，不影响.sh等linux shell script执行。</strong></p>
+<h1 id="手动换行符转换"><a href="#手动换行符转换" class="headerlink" title="手动换行符转换"></a>手动换行符转换</h1><ul>
+<li><p>dos2unix FilePath</p>
+</li>
+<li><p>unix2dos FilePath</p>
+</li>
+<li><p>windows2linux</p>
+<p> sed -i ‘s&#x2F;.$&#x2F;&#x2F;‘ FilePath</p>
+</li>
+<li><p>linux2windows</p>
+<p> sed -i ‘s&#x2F;$&#x2F;\r&#x2F;‘ FilePath</p>
+</li>
+</ul>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/09/05/Linux-Shell%E7%AC%94%E8%AE%B0%EF%BC%9ASSD%E7%9A%84S3-S4-S5%E5%8E%8B%E5%8A%9B%E6%B5%8B%E8%AF%95%E8%84%9A%E6%9C%AC/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -2276,145 +2388,10 @@ git push -u origin master
   
   
 
-      
-  
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/04/16/%E6%B5%85%E8%B0%88C%E7%9A%84%E5%AE%8F%E5%87%BD%E6%95%B0/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Cursorhu">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="ThinkNotes">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2020/04/16/%E6%B5%85%E8%B0%88C%E7%9A%84%E5%AE%8F%E5%87%BD%E6%95%B0/" class="post-title-link" itemprop="url">浅谈C的宏函数</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2020-04-16 15:07:37" itemprop="dateCreated datePublished" datetime="2020-04-16T15:07:37+08:00">2020-04-16</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2022-12-06 15:18:54" itemprop="dateModified" datetime="2022-12-06T15:18:54+08:00">2022-12-06</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/c-c/" itemprop="url" rel="index"><span itemprop="name">c/c++</span></a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h1 id="1-连接操作符"><a href="#1-连接操作符" class="headerlink" title="1. 连接操作符:##"></a>1. 连接操作符:##</h1><pre><code>#define Conn(x,y) x##y
-</code></pre>
-<p><code>##</code> 表示连接 , <code>x##y</code> 表示x连接y</p>
-<p>示例：</p>
-<pre><code>int n = Conn(123,456);
-     ==&gt; int n=123456;
-char* str = Conn(&quot;asdf&quot;, &quot;adf&quot;);
-     ==&gt; char* str = &quot;asdfadf&quot;;
-</code></pre>
-<p><code>##</code> 的左右符号必须能够组成一个有意义的符号，否则预处理器会报错</p>
-<h1 id="2-字符串化和字符化"><a href="#2-字符串化和字符化" class="headerlink" title="2.字符串化和字符化: #, #@"></a>2.字符串化和字符化: #, #@</h1><p>(1) # 把任意类型的宏入参转化成字符串：</p>
-<pre><code>#define ToString(x) #x
-</code></pre>
-<p>符号 # 表示字符串化操作符（stringification）。<br>其作用是：将宏定义中的传入参数名转换成用一对双引号括起来参数名字符串。<br>其只能用于有传入参数的宏定义中，且必须置于宏定义体中的参数名前。</p>
-<p>示例：</p>
-<pre><code> char* str = ToString(123132);
- ==&gt; char* str=&quot;123132&quot;;
-</code></pre>
-<p>如果要对展开后的宏参数进行字符串化，则需要使用两层宏。</p>
-<pre><code>#define xstr(s) str(s)
-#define str(s) #s
-#define foo 4
-
-str (foo)
-     ==&gt; &quot;foo&quot;
-xstr (foo)
-     ==&gt; xstr (4)
-     ==&gt; str (4)
-     ==&gt; &quot;4&quot;
-</code></pre>
-<p>(2) #@ 把任意类型的宏入参转化成单字符：</p>
-<pre><code>#define ToChar(x) #@x
-</code></pre>
-<p>示例：</p>
-<pre><code>char a = ToChar(1);
-     ==&gt; char a=&#39;1&#39;
-</code></pre>
-<h1 id="3-不定参数宏-VA-ARGS"><a href="#3-不定参数宏-VA-ARGS" class="headerlink" title="3. 不定参数宏: __VA_ARGS__"></a>3. 不定参数宏: <code>__VA_ARGS__</code></h1><p><code>__VA_ARGS__</code>宏用来接受不定数量的参数。例如：</p>
-<pre><code>#define eprintf(...) fprintf (stderr, __VA_ARGS__)
-
-eprintf (&quot;%s:%d: &quot;, input_file, lineno)
-==&gt;  fprintf (stderr, &quot;%s:%d: &quot;, input_file, lineno)
-</code></pre>
-<p>当<code>__VA_ARGS__</code>宏前面加 <code>##</code> 时，可以省略参数输入。<br>例如：</p>
-<pre><code>#define eprintf(format, ...) fprintf (stderr, format, ##__VA_ARGS__)
-
-eprintf (&quot;success!\n&quot;)
-==&gt; fprintf(stderr, &quot;success!\n&quot;);
-</code></pre>
-<h1 id="4-宏函数定义-do-while-0-与换行"><a href="#4-宏函数定义-do-while-0-与换行" class="headerlink" title="4. 宏函数定义: do-while(0)与换行"></a>4. 宏函数定义: do-while(0)与换行</h1><p>(1) 用 do{}while(0) 定义宏函数</p>
-<pre><code>#define foo() do&#123;...&#125;while(0)
-</code></pre>
-<p>宏函数可能在任意地方被调用，如果在if-else语句中，为了确保宏函数作为整体单元被编译器替换后不产生歧义，一般用do-while(0)包起来定义<br>这种定义有点像其他语言的“闭包函数”，纯粹是C语言中为了避免语法歧义的可靠性定义。</p>
-<p>(2) 用显式换行符</p>
-<p>宏函数定义不能直接回车换行，需要在回车换行前，用\（反斜线）表示下一行继续此宏的定义<br>预处理器在编译之前会自动将\与换行回车去掉。</p>
-<p>例如：</p>
-<pre><code>#define PRINT_INT(a)    \
-do&#123;                     \
-    printf(&quot;%d \n&quot;, a); \
-&#125;while(0)
-</code></pre>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
 
   
   <nav class="pagination">
-    <a class="extend prev" rel="prev" href="/page/4/"><i class="fa fa-angle-left" aria-label="上一页"></i></a><a class="page-number" href="/">1</a><span class="space">&hellip;</span><a class="page-number" href="/page/4/">4</a><span class="page-number current">5</span><a class="page-number" href="/page/6/">6</a><a class="extend next" rel="next" href="/page/6/"><i class="fa fa-angle-right" aria-label="下一页"></i></a>
+    <a class="extend prev" rel="prev" href="/page/4/"><i class="fa fa-angle-left" aria-label="上一页"></i></a><a class="page-number" href="/">1</a><span class="space">&hellip;</span><a class="page-number" href="/page/4/">4</a><span class="page-number current">5</span><a class="page-number" href="/page/6/">6</a><a class="page-number" href="/page/7/">7</a><a class="extend next" rel="next" href="/page/6/"><i class="fa fa-angle-right" aria-label="下一页"></i></a>
   </nav>
 
 
@@ -2480,20 +2457,20 @@ do&#123;                     \
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">60</span>
+          <span class="site-state-item-count">61</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
       <div class="site-state-item site-state-categories">
             <a href="/categories/">
           
-        <span class="site-state-item-count">24</span>
+        <span class="site-state-item-count">25</span>
         <span class="site-state-item-name">分类</span></a>
       </div>
       <div class="site-state-item site-state-tags">
             <a href="/tags/">
           
-        <span class="site-state-item-count">36</span>
+        <span class="site-state-item-count">37</span>
         <span class="site-state-item-name">标签</span></a>
       </div>
   </nav>
