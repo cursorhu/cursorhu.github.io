@@ -5968,13 +5968,8 @@ pm2 delete all         // 杀死全部进程
 <p>在嵌入式开发中通常在windows 上编辑Samba共享目录下的代码，通过 Linux环境编译代码，而无需在两个主机间拷贝代码文件。</p>
 <h2 id="Ubuntu安装Samba服务"><a href="#Ubuntu安装Samba服务" class="headerlink" title="Ubuntu安装Samba服务"></a>Ubuntu安装Samba服务</h2><p>Ubuntu 20.04和22.04 版本，安装Samba服务参考：</p>
 <p><a href="https://www.how2shout.com/linux/how-to-install-samba-on-ubuntu-22-04-lts-jammy-linux/#:~:text=Steps%20to%20install%20SAMBA%20on%20Ubuntu%2022.04%20LTS,...%206%206.%20Access%20the%20shared%20folder%20">www.how2shout.com/linux/how-to-install-samba-on-ubuntu-22-04-lts-jammy-linux</a><br>主要流程：</p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">#install and run samba service</span><br><span class="line">sudo apt install samba -y</span><br><span class="line"></span><br><span class="line">#enable auto start samba service</span><br><span class="line">sudo systemctl enable --now smbd</span><br><span class="line"></span><br><span class="line">#firewall allow samba</span><br><span class="line">sudo ufw allow samba</span><br><span class="line"></span><br><span class="line">#add system user to sambashare group</span><br><span class="line">sudo usermod -aG sambashare $USER</span><br><span class="line"></span><br><span class="line">#set passwd for sambashare</span><br><span class="line">sudo smbpasswd -a $USER</span><br><span class="line"></span><br><span class="line">#check samba service is running</span><br><span class="line">systemctl status smbd</span><br><span class="line"></span><br><span class="line">#share the folder in ubuntu GUI checkbox</span><br></pre></td></tr></table></figure>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">#install and run samba service</span><br><span class="line">sudo apt install samba -y</span><br><span class="line"></span><br><span class="line">#enable auto start samba service</span><br><span class="line">sudo systemctl enable --now smbd</span><br><span class="line"></span><br><span class="line">#firewall allow samba</span><br><span class="line">sudo ufw allow samba</span><br><span class="line"></span><br><span class="line">#add system user to sambashare group</span><br><span class="line">sudo usermod -aG sambashare $USER</span><br><span class="line"></span><br><span class="line">#set passwd for sambashare</span><br><span class="line">sudo smbpasswd -a $USER</span><br><span class="line"></span><br><span class="line">#check samba service is running</span><br><span class="line">systemctl status smbd</span><br><span class="line"></span><br><span class="line">#share the folder in ubuntu GUI checkbox</span><br><span class="line">右键要共享的home文件夹properties -&gt; local Network Share -&gt; share this folder -&gt;share name不能直接用用户名，可以用&#x27;用户名+Home&#x27;</span><br></pre></td></tr></table></figure>
 
-<p>Ubuntu 22.10版本，没有右键共享文件的选项，需要<a href="https://fostips.com/share-folder-ubuntu-21-04-fix-net-share-error-255/#:~:text=How%20to%20Share%20A%20Folder%20over%20Local%20Network,4%204.%20How%20to%20access%20the%20shared%20folder">Install the nautilus-share</a>并reboot；</p>
-<p>右键要共享的home文件夹, 选中Sharing Options设置共享</p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">sudo apt install nautilus-share</span><br></pre></td></tr></table></figure>
-
-<p>Ubuntu 20.04 直接右键要共享的home文件夹properties -&gt; local Network Share</p>
 <p>显示无权共享：非root用户要共享&#x2F;home，需要修改smb.conf:</p>
 <figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">sudo vim /etc/samba/smb.conf</span><br><span class="line">在[global]新增usershare owner only = false</span><br><span class="line">sudo systemctl restart smbd</span><br></pre></td></tr></table></figure>
 
@@ -5982,9 +5977,10 @@ pm2 delete all         // 杀死全部进程
 
 <h2 id="Windows访问Samba共享目录"><a href="#Windows访问Samba共享目录" class="headerlink" title="Windows访问Samba共享目录"></a>Windows访问Samba共享目录</h2><p>windows下可以在文件浏览器直接访问Linux主机ip查看共享的Linux目录</p>
 <p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202301301103020.png" alt="image-20230130110305978"></p>
-<p>如果windows访问共享目录有权限问题（例如不能写入），需要在Linux修改共享目录&#x2F;home的权限：</p>
+<p>首次windows访问共享目录有权限问题（不能写入），需要在Linux修改共享目录&#x2F;home的权限：</p>
 <figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">sudo chmod 777 /home -R </span><br></pre></td></tr></table></figure>
 
+<p>为了以后方便连接，可以创建网络位置，参考：<a href="www.how2shout.com/linux/how-to-install-samba-on-ubuntu-22-04-lts-jammy-linux">6. Access the shared folder On Windows 11 or 10</a></p>
 <p>如果一个主机有两个samba共享目录，windows不允许多重连接；</p>
 <p>要更改连接目录，操作如下：</p>
 <p>win10系统在搜索框搜索【凭据管理器】，然后删除已有的windows samba网络连接凭据</p>
@@ -10847,6 +10843,31 @@ cat ~/.ssh/id_rsa.pub
     <title>Ubuntu使用笔记</title>
     <url>/2023/04/28/Ubuntu%E4%BD%BF%E7%94%A8%E7%AC%94%E8%AE%B0/</url>
     <content><![CDATA[<p>本文基于Ubuntu 22.04 LTS</p>
+<h2 id="软件下载源"><a href="#软件下载源" class="headerlink" title="软件下载源"></a>软件下载源</h2><p>使用国内软件源下载：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">software&amp;updates -&gt; Ubuntu Software -&gt; download from -&gt; cn99.com或aliyun.com</span><br></pre></td></tr></table></figure>
+
+<h2 id="中文输入法"><a href="#中文输入法" class="headerlink" title="中文输入法"></a>中文输入法</h2><p>安装中文输入法(pinyin)的步骤：</p>
+<p>安装中文支持：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">Settings -&gt; Region&amp;language -&gt; Manage Installed Languages -&gt; Install/Remove Languages -&gt; 安装chinese simplified</span><br></pre></td></tr></table></figure>
+
+<p>设置系统语言为中文：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">Settings -&gt; Region&amp;language -&gt; Language改成Chinese</span><br></pre></td></tr></table></figure>
+
+<p>安装Fcitx框架和中文输入法：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">fcitx --version</span><br><span class="line">sudo apt-get install fcitx-bin #安装fcitx框架</span><br><span class="line">sudo apt-get install fcitx-table #安装输入法栏，其中自动安装拼音输入法fcitx-pinyin</span><br></pre></td></tr></table></figure>
+
+<p>使用Fcitx框架</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">Settings -&gt; Region&amp;language -&gt; Manage Installed Languages -&gt; Keyboard input method system 选择Fcitx 4</span><br></pre></td></tr></table></figure>
+
+<p>添加输入法</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">Ubuntu右上角的小键盘图标 -&gt; configure -&gt; 添加pinyin（只有系统语言为中文时才能添加中文输入法）</span><br></pre></td></tr></table></figure>
+
+<p>切换中英文输入法：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">ctrl + space</span><br></pre></td></tr></table></figure>
+
+<p>设置系统语言改回英文：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">Settings -&gt; Region&amp;language -&gt; Language改成English</span><br></pre></td></tr></table></figure>
+
 <h2 id="snap包管理工具"><a href="#snap包管理工具" class="headerlink" title="snap包管理工具"></a>snap包管理工具</h2><p><a href="https://snapcraft.io/store">Snap</a>是Canonical开发的Linux包管理和软件部署工具。 </p>
 <p>安装和使用参考 <a href="https://phoenixnap.com/kb/install-snap-ubuntu#:~:text=1%20Start%20by%20updating%20packages%3A%0Asudo%20apt,update%202%20Enter%20the%20following%20command%3A"><strong>How to Install Snap on Ubuntu</strong></a></p>
 <p>特点：丰富的第三方工具库，包括开源工具和闭源工具；二进制安装，不是源码编译</p>
@@ -10863,6 +10884,24 @@ cat ~/.ssh/id_rsa.pub
 <p>以截图工具flameshot为例，设置快捷键的command为调用flameshot的命令，截图默认保存到~&#x2F;Pictures</p>
 <p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202305051055723.png" alt="image-20230505105544618"></p>
 <p>要配置其他flameshot命令的快捷键，用 <code>man flameshot</code> 查看，参考 <a href="https://flameshot.org/docs/guide/key-bindings/">Keyboard shortcuts for Flameshot</a></p>
+<h2 id="Timeshift系统备份"><a href="#Timeshift系统备份" class="headerlink" title="Timeshift系统备份"></a>Timeshift系统备份</h2><p>22.04系统似乎比较容易挂，进不了系统显示”Oh no… system can’t recover…”，比如：</p>
+<p>Nvdia驱动选择开源版本xserver就挂了一次, recovery模式看&#x2F;var&#x2F;log&#x2F;message有nouveau和nvidia module相关问题</p>
+<p>学习xv6时安装qemu的基础包也挂了一次，recovery模式dpkg report显示failure log：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">symbol lookup error: /lib/x86_64-linux-gnu/libgnutls.so.30: undefined symbol: __gmpz_limbs_write </span><br></pre></td></tr></table></figure>
+
+<p>都是找遍办法都修复不了，只能重装…</p>
+<p>为了解决此问题，使用Timeshift将系统备份，参考: <a href="https://itsfoss.com/backup-restore-linux-timeshift/">How to Backup and Restore Linux System Settings With Timeshift</a></p>
+<p>安装timeshift：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">sudo apt install timeshift</span><br></pre></td></tr></table></figure>
+
+<p>备份整个系统，包括&#x2F;root和&#x2F;home&#x2F;user，设置定时备份</p>
+<p>如何恢复：</p>
+<p>情景一：系统无法进入桌面，但是可以进入recovery模式root操作：</p>
+<p>如下图，用<code>timeshift --help</code>查看各种命令，使用<code>timeshift --restore</code>恢复指定snapshot</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202305081931009.png" alt="image-20230508193100794"></p>
+<p>情景二：系统无法进入recovery模式，但是备份的snapshot数据还在</p>
+<p>使用<a href="https://www.ubuntu.com/download/desktop/create-a-usb-stick-on-windows?ref=itsfoss.com">Ubuntu Live USB</a> ，即装系统的USB的try ubuntu环境，安装timeshift，再恢复系统盘中的snapshot数据</p>
+<p>情景三：磁盘中的snapshot数据损害：只能重装系统，为了避免此情况发生，应该将系统备份到其他硬盘而不仅仅在当前系统盘</p>
 ]]></content>
       <categories>
         <category>linux</category>
@@ -10928,11 +10967,11 @@ cat ~/.ssh/id_rsa.pub
 <p>本节记录不用翻墙搭建ESP-ID环境的过程，视频参考：<a href="https://b23.tv/VCYbC2m">Linux 如何安装 ESP-IDF ESP32 开发环境搭建</a></p>
 <h2 id="版本发布、下载"><a href="#版本发布、下载" class="headerlink" title="版本发布、下载"></a>版本发布、下载</h2><p><a href="https://github.com/espressif/esp-idf/releases">https://github.com/espressif/esp-idf/releases</a></p>
 <p>手动下载release版本的idf压缩包，例如下载esp-idf-v5.0.1.zip</p>
-<p>解压到 ~&#x2F;esp&#x2F;esp-idf</p>
+<p>解压到 ~&#x2F;esp&#x2F;esp-idf (<code>mv esp-idf-v5.0.1 esp-idf</code>)</p>
 <h2 id="安装依赖"><a href="#安装依赖" class="headerlink" title="安装依赖"></a>安装依赖</h2><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">sudo apt-get install git wget flex bison gperf python3 python3-pip python3-setuptools cmake ninja-build ccache libffi-dev libssl-dev dfu-util libusb-1.0-0</span><br></pre></td></tr></table></figure>
 
 <h2 id="安装-ESP-IDF"><a href="#安装-ESP-IDF" class="headerlink" title="安装 ESP-IDF"></a>安装 ESP-IDF</h2><p>安装 ESP-IDF 使用的各种工具，比如编译器、调试器、Python 包等</p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">./install.sh esp32 #esp32 chip</span><br><span class="line">./install.sh all #所有esp chips</span><br></pre></td></tr></table></figure>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">cd ~/esp/esp-idf</span><br><span class="line">./install.sh esp32 #esp32 chip,用此命令即可</span><br><span class="line">./install.sh all #所有esp chips</span><br></pre></td></tr></table></figure>
 
 <p>如果安装遇到网络问题，需要设置下载服务器：</p>
 <figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">cd ~/esp/esp-idf</span><br><span class="line">export IDF_GITHUB_ASSETS=&quot;dl.espressif.com/github_assets&quot;</span><br><span class="line">./install.sh</span><br></pre></td></tr></table></figure>
@@ -10941,7 +10980,7 @@ cat ~/.ssh/id_rsa.pub
 <h2 id="设置环境变量："><a href="#设置环境变量：" class="headerlink" title="设置环境变量："></a>设置环境变量：</h2><p>每次运行都export环境变量</p>
 <figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">. $HOME/esp/esp-idf/export.sh</span><br></pre></td></tr></table></figure>
 
-<p>或把将以下语句加入 .bashrc，每次执行只需要 <code>get_idf</code>：</p>
+<p>或把将以下语句加入 ~&#x2F;.bashrc，每次执行只需要 <code>get_idf</code>：</p>
 <figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">alias get_idf=&#x27;. $HOME/esp/esp-idf/export.sh&#x27;</span><br></pre></td></tr></table></figure>
 
 <h2 id="串口相关设置"><a href="#串口相关设置" class="headerlink" title="串口相关设置"></a>串口相关设置</h2><p><a href="https://docs.espressif.com/projects/esp-idf/zh_CN/latest/esp32/get-started/establish-serial-connection.html">与 ESP32 创建串口连接</a></p>
@@ -11011,12 +11050,15 @@ cat ~/.ssh/id_rsa.pub
 <p>2.编译Toolchain中的问题：</p>
 <p>(1)所有make install都要sudo</p>
 <p>(2)编译gcc时报错：<code>configure: error: cannot compute suffix of object files: cannot compile</code></p>
-<p>需要export PATH，由于所有编译包都安装在&#x2F;usr&#x2F;local&#x2F;，所以export PATH也为&#x2F;usr&#x2F;local&#x2F;，保存为export-path.sh方便重启后使用：</p>
+<p>需要export PATH，由于所有编译包都安装在&#x2F;usr&#x2F;local&#x2F;，所以export PATH也为&#x2F;usr&#x2F;local&#x2F;，保存为export-path.sh方便重启后使用，也可以加到~&#x2F;.bashrc：</p>
 <figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">export PATH=/usr/local/bin:$PATH</span><br><span class="line">export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH</span><br></pre></td></tr></table></figure>
 
 <p>(3)编译gdb时报错：<code>error: no termcap library found</code></p>
 <p>要手动下载termcap包并编译，操作过程和toolchain一样：</p>
 <figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">wget https://ftp.gnu.org/gnu/termcap/termcap-1.3.1.tar.gz</span><br><span class="line">tar xzf termcap-1.3.1.tar.gz</span><br><span class="line">cd termcap-1.3.1/</span><br><span class="line">./configure --prefix=/usr/local</span><br><span class="line">make &amp;&amp; sudo make install</span><br><span class="line">cd ..</span><br></pre></td></tr></table></figure>
+
+<p>完整的编译脚本:</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">#!/bin/bash</span><br><span class="line"></span><br><span class="line">#install a development environment.</span><br><span class="line">sudo apt-get install -y build-essential gdb</span><br><span class="line">sudo apt-get install gcc-multilib</span><br><span class="line"></span><br><span class="line">#Building Your Own Compiler Toolchain</span><br><span class="line">#wget容易失败，因此最好手动输入确保全部下载成功</span><br><span class="line">wget https://www.mirrorservice.org/pub/gnu/gmp/gmp-5.0.2.tar.bz2</span><br><span class="line">wget https://www.mpfr.org/mpfr-3.1.2/mpfr-3.1.2.tar.bz2</span><br><span class="line">wget http://www.multiprecision.org/downloads/mpc-0.9.tar.gz</span><br><span class="line">wget http://ftpmirror.gnu.org/binutils/binutils-2.21.1.tar.bz2</span><br><span class="line">wget http://ftpmirror.gnu.org/gcc/gcc-4.6.4/gcc-core-4.6.4.tar.bz2</span><br><span class="line">wget http://ftpmirror.gnu.org/gdb/gdb-7.3.1.tar.bz2</span><br><span class="line"></span><br><span class="line">export PATH=/usr/local/bin:$PATH</span><br><span class="line">export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH</span><br><span class="line"></span><br><span class="line">tar xjf gmp-5.0.2.tar.bz2</span><br><span class="line">cd gmp-5.0.2</span><br><span class="line">./configure --prefix=/usr/local</span><br><span class="line">make</span><br><span class="line">sudo make install             # This step may require privilege (sudo make install)</span><br><span class="line">cd ..</span><br><span class="line"></span><br><span class="line">tar xjf mpfr-3.1.2.tar.bz2</span><br><span class="line">cd mpfr-3.1.2</span><br><span class="line">./configure --prefix=/usr/local</span><br><span class="line">make</span><br><span class="line">sudo make install             # This step may require privilege (sudo make install)</span><br><span class="line">cd ..</span><br><span class="line"></span><br><span class="line">tar xzf mpc-0.9.tar.gz</span><br><span class="line">cd mpc-0.9</span><br><span class="line">./configure --prefix=/usr/local</span><br><span class="line">make</span><br><span class="line">sudo make install             # This step may require privilege (sudo make install)</span><br><span class="line">cd ..</span><br><span class="line"></span><br><span class="line">tar xjf binutils-2.21.1.tar.bz2</span><br><span class="line">cd binutils-2.21.1</span><br><span class="line">./configure --prefix=/usr/local --target=i386-jos-elf --disable-werror</span><br><span class="line">make</span><br><span class="line">sudo make install             # This step may require privilege (sudo make install)</span><br><span class="line">cd ..</span><br><span class="line"></span><br><span class="line">tar xjf gcc-core-4.6.4.tar.bz2</span><br><span class="line">cd gcc-4.6.4</span><br><span class="line">mkdir build              # GCC will not compile correctly unless you build in a separate directory</span><br><span class="line">cd build</span><br><span class="line">../configure --prefix=/usr/local \</span><br><span class="line">    --target=i386-jos-elf --disable-werror \</span><br><span class="line">    --disable-libssp --disable-libmudflap --with-newlib \</span><br><span class="line">    --without-headers --enable-languages=c MAKEINFO=missing</span><br><span class="line">make all-gcc</span><br><span class="line">sudo make install-gcc         # This step may require privilege (sudo make install-gcc)</span><br><span class="line">make all-target-libgcc</span><br><span class="line">sudo make install-target-libgcc     # This step may require privilege (sudo make install-target-libgcc)</span><br><span class="line">cd ../..</span><br><span class="line"></span><br><span class="line">wget https://ftp.gnu.org/gnu/termcap/termcap-1.3.1.tar.gz</span><br><span class="line">tar xzf termcap-1.3.1.tar.gz</span><br><span class="line">cd termcap-1.3.1/</span><br><span class="line">./configure --prefix=/usr/local</span><br><span class="line">make &amp;&amp; sudo make install</span><br><span class="line">cd ..</span><br><span class="line"></span><br><span class="line">tar xjf gdb-7.3.1.tar.bz2</span><br><span class="line">cd gdb-7.3.1</span><br><span class="line">./configure --prefix=/usr/local --target=i386-jos-elf --program-prefix=i386-jos-elf- \</span><br><span class="line">    --disable-werror</span><br><span class="line">make all</span><br><span class="line">sudo make install             # This step may require privilege (sudo make install)</span><br><span class="line">cd ..</span><br><span class="line"></span><br><span class="line">i386-jos-elf-objdump -i</span><br><span class="line"># Should produce output like:</span><br><span class="line"># BFD header file version (GNU Binutils) 2.21.1</span><br><span class="line"># elf32-i386</span><br><span class="line">#  (header little endian, data little endian)</span><br><span class="line">#   i386...</span><br><span class="line"></span><br><span class="line">i386-jos-elf-gcc -v</span><br><span class="line"># Should produce output like:</span><br><span class="line"># Using built-in specs.</span><br><span class="line"># COLLECT_GCC=i386-jos-elf-gcc</span><br><span class="line"># COLLECT_LTO_WRAPPER=/usr/local/libexec/gcc/i386-jos-elf/4.6.4/lto-wrapper</span><br><span class="line"># Target: i386-jos-elf</span><br></pre></td></tr></table></figure>
 
 <h2 id="交叉编译的参数"><a href="#交叉编译的参数" class="headerlink" title="交叉编译的参数"></a>交叉编译的参数</h2><p>在交叉编译configure时，通常会需要设置–build、–host和–target选项。各个选项的含义如下：</p>
 <ul>
