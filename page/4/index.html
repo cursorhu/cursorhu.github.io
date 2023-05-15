@@ -627,7 +627,7 @@ void test_sock(int);
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2023-04-25 17:05:32" itemprop="dateModified" datetime="2023-04-25T17:05:32+08:00">2023-04-25</time>
+                <time title="修改时间：2023-05-15 15:13:47" itemprop="dateModified" datetime="2023-05-15T15:13:47+08:00">2023-05-15</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -688,7 +688,7 @@ git branch -D branch_name //强制删除
 git diff ID1 ID2 //比较两个提交的内容，比较新增时，旧版本在前，新版本在后
 git diff &lt;path of file&gt; //比较本地某文件的内容
 git diff --name-only ID1 ID2 //只显示有差异的文件名列表
-git diff &lt;commit&gt;..&lt;commit&gt; [&lt;path&gt;…​] //比较两个提交中指定文件名或者路径的差异
+git diff &lt;commit&gt;..&lt;commit&gt; [&lt;path&gt;…] //比较两个提交中指定文件名或者路径的差异
 </code></pre>
 <h2 id="版本回退"><a href="#版本回退" class="headerlink" title="版本回退"></a>版本回退</h2><pre><code>git reset --hard HEAD^ //回退到上个版本
 git reset --hard HEAD^^ //回退到上上个版本
@@ -970,6 +970,21 @@ git pull -f //强制拉取远程repo最新代码
 <p>一个项目既有windows的bat脚本又有Linux的sh脚本，在全局的core.autocrlf 为true的基础上，配置如下attribute 使这些文件不自动转换：</p>
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">*.bat	text eol=crlf</span><br><span class="line">*.sh	text eol=lf</span><br><span class="line">*/*.cfg	text eol=crlf</span><br></pre></td></tr></table></figure>
 
+<h1 id="合并时有二进制文件冲突如何处理"><a href="#合并时有二进制文件冲突如何处理" class="headerlink" title="合并时有二进制文件冲突如何处理"></a>合并时有二进制文件冲突如何处理</h1><p>Git merge产生冲突：对于文本文件的冲突有强制处理要求，不解决完冲突无法提交；而对二进制文件的冲突只有提醒，没有强制处理要求。</p>
+<p>对于文本文件，提交者可以直接修改冲突的内容；而对于二进制文件，提交者不能直接修改二进制冲突的内容，很容易漏过对二进制文件冲突的处理。</p>
+<p>二进制文件冲突，git处理不了内容，应该使用覆盖的方式处理。手动覆盖可以解决此问题，但更合理的方法是用git命令自动解决。</p>
+<p>git命令方法：在冲突发生后，使用命令<code>git checkout --ours|--theirs &lt;Paths&gt;</code>来选择是使用“Ours，即当前分支”的二进制文件，还是“Theirs，即合并进来的分支”的二进制文件直接替换掉本地的冲突二进制文件，其中<code>&lt;Paths&gt;</code>是冲突二进制文件的路径。</p>
+<p>示例如下：</p>
+<p>本地版本为branch-A，要合并进来branch-B</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git merge branch-B --squash</span><br></pre></td></tr></table></figure>
+
+<p>项目中的exe文件产生的冲突：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">warning: Cannot merge binary files: fw_parameter_edit_tool/flash_header_parameter_update_tool.exe (HEAD vs. branch-B)</span><br><span class="line">Auto-merging fw_parameter_edit_tool/flash_header_parameter_update_tool.exe</span><br><span class="line">CONFLICT (content): Merge conflict in fw_parameter_edit_tool/flash_header_parameter_update_tool.exe</span><br></pre></td></tr></table></figure>
+
+<p>此时使用checkout –theirs将branch-B版本的二进制覆盖掉本地branch-A版本的二进制。即完成了此exe的合并（使用branch-B版本）</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">&gt; git checkout --theirs fw_parameter_edit_tool/flash_header_parameter_update_tool.exe</span><br><span class="line">Updated 1 path from the index</span><br></pre></td></tr></table></figure>
+
+<p>合并完以后用beyond compare确认一下两个版本的exe是完全一致的，也可以用git diff看一下合并前后二进制文件是否有差异。</p>
 
       
     </div>
