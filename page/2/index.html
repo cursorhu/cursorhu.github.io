@@ -190,6 +190,384 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2023/03/01/%E6%B5%85%E8%B0%88%E6%95%B0%E5%AD%97%E7%94%B5%E8%B7%AF%E4%B9%8BPLL/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2023/03/01/%E6%B5%85%E8%B0%88%E6%95%B0%E5%AD%97%E7%94%B5%E8%B7%AF%E4%B9%8BPLL/" class="post-title-link" itemprop="url">浅谈数字电路之PLL</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2023-03-01 11:40:15" itemprop="dateCreated datePublished" datetime="2023-03-01T11:40:15+08:00">2023-03-01</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-03-07 12:07:29" itemprop="dateModified" datetime="2023-03-07T12:07:29+08:00">2023-03-07</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/IC/" itemprop="url" rel="index"><span itemprop="name">IC</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <p>本文PLL的基础内容参考了Digital Integrated Circuits一书，下载方式：在 <a target="_blank" rel="noopener" href="https://vdoc.pub/">vdoc</a> 搜索关键字 Digital Integrated Circuits</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303011144938.jpeg" alt="img"></p>
+<h2 id="PLL的应用概述"><a href="#PLL的应用概述" class="headerlink" title="PLL的应用概述"></a>PLL的应用概述</h2><p>两个作用：Clock Synthesis（时钟综合）和 Clock Synchronization（时钟同步）</p>
+<ul>
+<li>Clock Synthesis，Synthesis是综合&#x2F;生成的意思，Clock Synthesis即生成时钟，但此处含义不是作为时钟源，而是在低频晶振时钟的基础上倍频生成高频时钟：其中低频的晶振时钟的特性：10~200MHz， accurate, low-jitter ，高频时钟特性：200MHz ~ GHz级别，通常也称为系统时钟，例如SOC core的基准频率</li>
+<li>Clock Synchronization，不同芯片之间传递时钟信号需要同步时钟相位，例如SOC的CPU和外设之间的通信接口一般是：分频后的时钟信号（reference clock）和数据信号（Date），CPU和外设间的信号传递是需要时间的，高速信号传递到外设侧有相位偏移（可以简单理解为延迟），因此需要PLL同步时钟相位以保证对数据采样的正确性（想象一下，如果reference clock相位偏移过大，可能每个采样时刻得到的data数据都是错位的）</li>
+</ul>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303031043844.png" alt="image-20230303104354744"></p>
+<h2 id="相位的概念"><a href="#相位的概念" class="headerlink" title="相位的概念"></a>相位的概念</h2><p>Digital Integrated Circuits一书对相位的描述：</p>
+<p>Periodic signals of known frequency can be discribed exactly by only one parameter, their<br>phase. More accurately a set of two or more periodic signals of the same frequency can be<br>well defined if we know one of them and its phase with respect to the other signals.  </p>
+<p>翻译下就是：</p>
+<ul>
+<li><p>多个已知频率的周期信号只用一个参数就能精确区分：相位</p>
+</li>
+<li><p>如果这些信号的频率相同，则只需知道相位差就可以从一个信号精确推测另一个信号</p>
+</li>
+</ul>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303031634330.png" alt="image-20230303163446269"></p>
+<p>基于以上概念，下面介绍PLL的两个核心功能：</p>
+<ul>
+<li>将输入PLL的时钟和PLL输出时钟的频率精确同步：输出时钟信号频率是输入时钟信号频率的精确的N倍</li>
+<li>将输入PLL的时钟和PLL输出时钟的相位精确同步：输出时钟信号N分频后，其应该和输入信号完全一致，其上升&#x2F;下降沿应该精确对齐输入时钟信号的上升&#x2F;下降沿</li>
+</ul>
+<h2 id="PLL内部实现"><a href="#PLL内部实现" class="headerlink" title="PLL内部实现"></a>PLL内部实现</h2><p>PLL内部结构如下，真正核心的只有两个组件：</p>
+<ul>
+<li>VCO: The voltage-controlled oscillator (VCO) takes an analog control input and generates a clock signal of the desired frequency.  VCO接受电压（模拟信号），转换为频率（数字信号），也就是说，VCO使输出频率是电压的函数(非线性)。Charge pump是控制电压增加和减少的模块，Loop filter是低通滤波器，过滤掉电压信号中的高频正弦噪声，使VCO的输入更“纯粹”（减少毛刺信号，jittery clock）</li>
+<li>Phase Detectors: 为什么带s ? 因为可以有两种实现：XOR Phase Detector  和 Phase-Frequency Detector ，Phase Detectors是相位和频率同步的核心，具体原理下面讲</li>
+</ul>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303031635776.png" alt="image-20230303163504732"></p>
+<h3 id="XOR-Phase-Detector"><a href="#XOR-Phase-Detector" class="headerlink" title="XOR Phase Detector"></a>XOR Phase Detector</h3><p>用一个异或门(XOR)就能实现相位检测，是最简单但有缺陷的实现：</p>
+<p>当ref clock和local clock(反馈时钟)有相位差，异或之后输出的就是相位差信号(phase error)，这个信号经过线性函数转换成Vdd, 作为VCO的控制电压。</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303031433820.png" alt="image-20230303143346757"></p>
+<p>XOR的缺陷：当local clock相位和ref clock相位一致，但local clock频率是ref clock的N倍时，XOR检不输出相位差，但此时PLL输出频率不是预期的频率，而是N倍的预期频率。</p>
+<h3 id="Phase-Frequency-Detector-PFD"><a href="#Phase-Frequency-Detector-PFD" class="headerlink" title="Phase-Frequency Detector (PFD)"></a>Phase-Frequency Detector (PFD)</h3><p>为了解决XOR的缺陷，引入了Phase-Frequency Detector (PFD)，看名字就知道，它同时检测相位和频率，以保证PLL输出的正确性</p>
+<p>如下图，UP&#x2F;DN是控制VCO的信号，用于给VCO加压&#x2F;降压；A和B是local clock和ref clock；</p>
+<p>PFD使用触发器(flip-flops)，将UP&#x2F;DN变成A和B的状态机；关于flip-flops的特性，参考 <a target="_blank" rel="noopener" href="https://courses.cs.washington.edu/courses/cse370/03sp/pdfs/lectures/lecture15.pdf">Overview The D latch - University of Washington</a></p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303031532421.png" alt="image-20230303153203366"></p>
+<p>(1) PFD如何检测相位差</p>
+<p>以左侧信号为例，过程如下：</p>
+<ol>
+<li>信号A相位超前于信号B, A上升沿时会触发UP信号输出(D触发器特性，这里A作为D触发器的CLK输入信号)；</li>
+<li>当信号B上升沿变化时, B处的触发器也输出DN脉冲，两个触发器的输出都为1，经过与门后Rst复位信号为1，导致A和B的触发器都被reset, 之后UP和DN都变为低；</li>
+<li>综合下来看，UP信号的宽度就等于相位差，线性转换后就可以作为控制VCO的电压</li>
+</ol>
+<p>右侧波形同理，信号A相位落后于信号B，DN即相位差</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303031500042.png" alt="image-20230303150043973"></p>
+<p>(2) PFD如何检测频率差</p>
+<p>如下图，当B频率比A低，PFD输出更多的UP信号增加VCO电压，提高B的频率；当B频率比A高则相反，PFD输出更多DN信号降低B的频率</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303031517323.png" alt="image-20230303151725271"></p>
+<h2 id="PLL的指标"><a href="#PLL的指标" class="headerlink" title="PLL的指标"></a>PLL的指标</h2><p>PLL structure is a feedback structure and the addition of extra phase shifts, as is done by a high-order filter, may result in instability. </p>
+<p>PLL是能造成相位偏移（矫正）的反馈电路，既然是反馈就得像数学求极限一样不断趋近，这决定PLL不是一上电就能马上稳定工作，因此引入PLL的关键指标如下：</p>
+<p>Important properties of a PLL are：</p>
+<ul>
+<li><p>lock range—the range of input frequencies over which the loop can maintain functionality; PLL能接受的输入时钟不可能太高，一般是OSC晶振低频时钟。想象一下，太高的输入时钟要去同步相位和倍频，对VCO和相位检测器的精度要求也极高</p>
+</li>
+<li><p>the lock time—the time it takes for the PLL to lock onto a given input signal; PLL是反馈环路电路，需要不断递归趋近于目标时钟信号直到稳定，稳定需要的时间称为PLL锁定时间</p>
+</li>
+<li><p>jitter.  毛刺信号，在模拟端称为noise(VCO输入电压)，在数字端称为jitter毛刺(VCO输出时钟)，这是时钟信号相关模块必不可少的指标</p>
+</li>
+</ul>
+<h2 id="PLL的稳定过程"><a href="#PLL的稳定过程" class="headerlink" title="PLL的稳定过程"></a>PLL的稳定过程</h2><p>如下图是Spice 仿真将100Mhz reference clock倍频8倍，VCO最终稳定输出800Mhz system clock的过程：</p>
+<ul>
+<li><p>左侧是VCO控制电压，经过几次反馈调整后最终稳定</p>
+</li>
+<li><p>右侧是时钟信号，ref是输入的100Mhz reference clock，vco是输出的system clock， div是vco输出8分频后的反馈时钟</p>
+</li>
+</ul>
+<p>可见PLL稳定过程是将ref，vco和div时钟信号的相位、频率都收敛到一致</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303031423652.png" alt="image-20230303142344571"></p>
+<h2 id="PLL在IC设计IP的实例"><a href="#PLL在IC设计IP的实例" class="headerlink" title="PLL在IC设计IP的实例"></a>PLL在IC设计IP的实例</h2><p>以SMIC的PLL IP S65NLLPLLGS 为例介绍实际IC设计中的PLL模块：</p>
+<p>(1) 简介</p>
+<p>This PLL is developed as an IP block to reduce time to market, risk and cost in the<br>development of Analog Front –End design. This macro cell is mainly for the clock<br>generator. It can generate stable high-speed clock from a slower clock signal with<br>single power supply. The output frequency is adjustable and can be up to 1500MHz.<br>This PLL integrates a Phase Frequency Detector (PFD), a Low Pass Filter (LPF), a<br>Voltage Controlled Oscillator and other associated circuit. All fundamental building<br>blocks as well as fully programmable dividers are integrated in the core. It is useful<br>for clock multiplication of stable crystal oscillator sources and for de-skew clock<br>signals  </p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303061656462.png" alt="image-20230306165657371"></p>
+<p>可见主要模块还是PFD + VCO，输出时钟加了一些逻辑门控制，例如PDRST是PLL时钟复位控制。</p>
+<p>(2) 主要参数</p>
+<p>Technology: SMIC 65nm logic LL process  </p>
+<p>PFD comparison frequency range from 1Mhz to 50Mhz.  </p>
+<p>Output clock frequency range from 62.5MHz to 1500MHz  </p>
+<p>基本体现了PLL的指标：输入输出时钟频率有限制</p>
+<p>(3) PLL reset</p>
+<p>PLL作为实际可用的模块，其输出频率一定是可调的，以下PLL IP的pin中的M, N即调整频率；对于固件、驱动软件开发者，M，N分频的访问接口是作为寄存器来动态配置。</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303061707268.png" alt="image-20230306170709189"></p>
+<p>在M，N调整分配时，必须reset PLL并等待PLL再次稳定（PLL lock time），如下图：</p>
+<p>LKDT: Lock Detection, 表示目前PLL正在lock，即反映PLL是否处于不稳定状态</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303061711496.png" alt="image-20230306171156449"></p>
+<h2 id="PLL在外设时钟配置的实例"><a href="#PLL在外设时钟配置的实例" class="headerlink" title="PLL在外设时钟配置的实例"></a>PLL在外设时钟配置的实例</h2><p>SD控制器(SD host)是SOC中常用的外围模块，通过SD specification规定的SD Command通信格式向SD卡通信。</p>
+<p>下面以SD host&#x2F;card的时钟初始化为例，介绍PLL的lock time在外设时钟初始化的影响</p>
+<p>(1) SD 4.0标准的host和card的物理框图如下图，这里重点关注host侧的时钟相关的模块：</p>
+<ul>
+<li>OSC: host 的时钟来源，同时也是PLL的输入</li>
+<li>PLL: host的倍频器，为了给SD UHS-II card提供更高速的工作时钟(UHS-I低速SD card不需要此PLL)</li>
+<li>RCLK: SD card的工作时钟(reference clock)</li>
+</ul>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303061954691.png" alt="image-20230306195458581"></p>
+<p>(2) SD host和card的时钟初始化</p>
+<p>SD host和card的时钟初始化包含三步：</p>
+<p>1.使能internal clock: sd host chip自己的工作时钟(即base clock，来源是OSC)，并等待其稳定，如下图(3)~(4)</p>
+<p>2.enable PLL，并等待其稳定，这个等待稳定超时时间为150ms ，如下图(5)~(6)。</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303062016985.png" alt="image-20230306172758282"></p>
+<p>3.待host PLL输出稳定后，即可enable SD clock开始对SD卡供应reference clock时钟, 注意SD clock是下图(1)~(2)就已经计算好的，如下表Base Clock为internal clock，M可理解为PLL倍频后的频率, 经过2^N分频后给SD card作为reference clock。</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303062013044.png" alt="image-20230306201345998"></p>
+<h2 id="PLL在电源管理的实例"><a href="#PLL在电源管理的实例" class="headerlink" title="PLL在电源管理的实例"></a>PLL在电源管理的实例</h2><p>所谓电源管理，通俗的讲就是按需管理电源：</p>
+<ul>
+<li>按需，指的是按应用场景的需求，例如在高性能肯定对应高功耗，各种模块全部开启，且时钟频率拉到最大；而睡眠休眠等模式，有时只需要保留能唤醒系统的时钟就行；</li>
+<li>管理电源，涉及到供电和时钟：将低功耗情景下不需要用到的模块直接关电，将要用到但速度要求不高的模块进入低速时钟工作。</li>
+</ul>
+<p>下面以PCIe的电源管理为例，介绍低功耗状态如何影响PLL的状态</p>
+<p>（1）PCIe电源管理基本概念</p>
+<p>PCIe的电源管理基本概念参考 <a target="_blank" rel="noopener" href="https://www.intel.cn/content/www/cn/zh/io/pci-express/pci-express-architecture-power-management-rev-1-1-paper.html">PCI EXPRESS ARCHITECTURE POWER MANAGEMENT</a>, 也可以参考PCIe标准协议PCIe Base Spec</p>
+<p>从上到下包含三层：系统电源状态(S)，PCIe链路电源状态(L)，PCIe设备电源状态(D)</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303071046331.png" alt="Untitled Diagram"></p>
+<ul>
+<li>Sleep state</li>
+</ul>
+<p>S0 (Working): This is the active system state in which the platform appears to be “on.”  </p>
+<p>S1&#x2F;POS, S1 (Microsoft* OS Stand By): These are the lowest wake latency sleeping states.  </p>
+<p>S3 (Microsoft OS Stand By) and S4 (Microsoft OS Hibernate): S3 is a low wake latency sleeping state in which all device contexts are lost except system memory</p>
+<p>S5 (Microsoft OS Soft-off): In this state, the OS does not save any context and requires a complete OS boot when the system wakes  </p>
+<ul>
+<li>Link States</li>
+</ul>
+<p>L0: Active state  </p>
+<p>L1: This link state is a low exit latency link state that is intended to reduce power when the device becomes aware of a lack of outstanding requests or pending transactions  </p>
+<p>L2&#x2F;L3 Ready: This link state prepares the PCI Express link for the removal of power and clock.   </p>
+<p>L3 (link off): Power and clock are removed in this link state  </p>
+<ul>
+<li>Device States</li>
+</ul>
+<p>D0 (Fully-on): The device is completely active and responsive during this D-state  </p>
+<p>D1 and D2: There is no universal definition for these D-states. In general, D1 is expected to save<br>less power but preserve more device context than D2  </p>
+<p>D3 (Off): Primary power may be fully removed from the device (D3cold), or not removed from the device (D3hot). </p>
+<p>S, L, D 三层状态的对应关系如下表</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303071050761.png" alt="image-20230307105034704"></p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303071050372.png" alt="image-20230307105052312"></p>
+<p>注意，Link state是Sleep state对Device state作用的结果，即状态变化的过程是：</p>
+<p>系统发起S3 -&gt; Device sate进入D3-&gt;Link state进入L2&#x2F;L3</p>
+<p>（2）使用PLL控制Device state</p>
+<p>Device sate进入D3, 设备内部操作即包含PLL的disable，将PLL模块整个关掉，保留OSC低速时钟作为退出D3状态的唤醒时钟源（软件上可以理解为heart beat），当PLL关掉后，其他依赖PLL的高速模块通常也断电，整个设备接近（或彻底）断电，因此设备功耗极低。</p>
+<p>Device sate退出D3并进入D0则是相反过程，设备的PLL模块打开，其他依赖PLL的高速模块也打开，整个设备进入Active状态，功耗自然升高。</p>
+<p>（3）使用PLL控制Link state</p>
+<p>参考chapter11 of <a target="_blank" rel="noopener" href="https://vdoc.pub/download/introduction-to-pci-express-a-hardware-and-software-developers-guide-1r2bcv8l7e6o">Introduction to PCI Express: A Hardware and Software Developer’s Guide</a></p>
+<p>当PCIe link改变时，本质是PCIe时钟改变；PCIe host侧（bridge&#x2F;Root Complex）的时钟也是低速clock source经PLL倍频后的2.5GHz，如下图：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303071202081.png" alt="image-20230307120222026"></p>
+<p>L1 link state的本质：The L1 Link state is an idle state with the internal Phase Lock Loop Circuit turned off. The source clock is still feeding a 100-megahertz differential clock signal to the PCI Express component.</p>
+<p>L2 link state的本质：The L2 Link state is an optional auxiliary idle state with the internal Phase Lock Loop Circuit, the external clock source, and the main device power turned off (auxiliary power remains on)</p>
+<p>总结就是：PCIe Link State本质是通过关闭PCIe host侧的PLL甚至clock source来实现的。</p>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2023/02/02/Ubuntu-SSH%E6%9C%8D%E5%8A%A1%E9%85%8D%E7%BD%AE%E7%AC%94%E8%AE%B0/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2023/02/02/Ubuntu-SSH%E6%9C%8D%E5%8A%A1%E9%85%8D%E7%BD%AE%E7%AC%94%E8%AE%B0/" class="post-title-link" itemprop="url">Ubuntu SSH服务配置笔记</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2023-02-02 11:01:24" itemprop="dateCreated datePublished" datetime="2023-02-02T11:01:24+08:00">2023-02-02</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-05-04 09:53:12" itemprop="dateModified" datetime="2023-05-04T09:53:12+08:00">2023-05-04</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/linux/" itemprop="url" rel="index"><span itemprop="name">linux</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h1 id="SSH配置"><a href="#SSH配置" class="headerlink" title="SSH配置"></a>SSH配置</h1><h2 id="SSH基本概念"><a href="#SSH基本概念" class="headerlink" title="SSH基本概念"></a>SSH基本概念</h2><ul>
+<li>SSH是Secure Shell缩写，实现安全远程登录</li>
+</ul>
+<p>​    SSH的安全性好，原因是其对数据进行加密，方式主要有两种：对称加密（密钥加密）和非对称加密（公钥加密）<br>​    对称加密指加密解密使用的是同一套秘钥。Client端把密钥加密后发送给Server端，Server用同一套密钥解密。对称加密的加密强度比较高，很难破解。但是如果有一个Client端的密钥泄漏，那么整个系统的安全性就存在严重的漏洞。<br>​    为了解决对称加密的漏洞，于是就产生了非对称加密。<br>​    非对称加密有两个密钥：“公钥”和“私钥”。公钥加密后的密文，只能通过对应的私钥进行解密。想从公钥推理出私钥几乎不可能，所以非对称加密的安全性比较高。</p>
+<ul>
+<li>SSH的加密原理中，使用了RSA非对称加密算法。</li>
+</ul>
+<p>​    整个过程：</p>
+<p>​    （1）远程主机收到用户的登录请求，把自己的公钥发给用户。</p>
+<p>​    （2）用户使用这个公钥，将登录密码加密后，发送回来。</p>
+<p>​    （3）远程主机用自己的私钥，解密登录密码，如果密码正确，就同意用户登录。</p>
+<ul>
+<li>关于中间人攻击（Man-in-the-middle attack）</li>
+</ul>
+<p>​    中间人攻击的概念：如果有人冒充远程主机将伪造的公钥发给用户，用户很难辨别公钥真伪，用户    会和伪造主机通信而不是真正的主机。</p>
+<p>​    因为SSH不像https协议，SSH协议的公钥是没有证书中心（CA）公证的，是主机和用户之间自己签    发的，所有SSH从原理上无法彻底防止中间人攻击</p>
+<ul>
+<li><p>SSH使用首次验证方式减少中间人攻击的概率：</p>
+<p>SSH首次连接会下载服务端的公钥，用户确认后公钥将被保存并信任。</p>
+<p>下次访问时客户端将会核对服务端发来的公钥和本地保存的是否相同，如果不同就发出中间人攻击的警告拒绝连接，除非用户手动清除已保存的公钥。</p>
+<p>所以，只要SSH首次连接没有中间人攻击，之后的SSH连接就无需担心中间人攻击</p>
+</li>
+</ul>
+<h2 id="Ubuntu安装SSH服务"><a href="#Ubuntu安装SSH服务" class="headerlink" title="Ubuntu安装SSH服务"></a>Ubuntu安装SSH服务</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">sudo apt install ssh -y</span><br><span class="line">sudo service ssh start</span><br><span class="line">sudo service ssh status</span><br></pre></td></tr></table></figure>
+
+<p>在系统重启后ssh service会自启动，不需要<code>systemctl enable</code>去配置自启动</p>
+<h2 id="Windows访问SSH服务"><a href="#Windows访问SSH服务" class="headerlink" title="Windows访问SSH服务"></a>Windows访问SSH服务</h2><ul>
+<li><p>使用win+R CMD验证SSH连接</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ssh 远程主机用户名@远程主机IP</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>使用putty，xshell等工具访问主机</p>
+</li>
+</ul>
+<p>参考：<a target="_blank" rel="noopener" href="https://www.how2shout.com/how-to/how-to-login-into-ubuntu-using-ssh-from-windows-10-8-7.html#:~:text=How%20do%20I%20SSH%20into%20Ubuntu%20from%20Windows%3F,to%20Ubuntu%20server%20via%20Putty%20SSH%20client%20">how2shout.com&#x2F;how-to&#x2F;how-to-login-into-ubuntu-using-ssh-from-windows-10-8-7</a></p>
+<p>首次登陆会验证RSA公钥（1024位）的MD5 fingerprint（128位）</p>
+<blockquote>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">RSA key fingerprint is 98:2e:d7:e0:de:9f:ac:67:28:c2:42:2d:37:16:58:4d.</span><br><span class="line">Are you sure you want to continue connecting (yes/no)?</span><br></pre></td></tr></table></figure>
+</blockquote>
+<p>当首次连接的公钥被接受以后，会保存在本地文件。下次再连接这台主机会跳过公钥警告，直接提示输入密码。如果以后的连接是中间人攻击，其公钥和本地的首次公钥不同，从而保证安全性。</p>
+<ul>
+<li>使用xftp, filezilla工具传输文件</li>
+</ul>
+<p>和putty，xshell配置类似</p>
+<ul>
+<li>使用scp命令传输文件</li>
+</ul>
+<p>在linux主机之间可以用scp传输文件和目录</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">#从远程cp到本地</span><br><span class="line">scp username@ip_address:/home/username/filename .</span><br><span class="line">#从本地cp到远程</span><br><span class="line">scp filename username@ip_address:/home/username</span><br><span class="line">#拷贝目录</span><br><span class="line">scp -r source_dir username@ip_address:/home/username/target_dir</span><br></pre></td></tr></table></figure>
+
+<h2 id="SSH远程开发"><a href="#SSH远程开发" class="headerlink" title="SSH远程开发"></a>SSH远程开发</h2><p>示例一：在SSH server和客户端建立后，可以使用VSCode和source insight等代码编辑工具改代码，用xftp传输代码到SSH Linux主机，用xshell远程编译。</p>
+<p>示例二：VSCode安装SSH远程开发插件，可以直接远程SSH Linux主机完成代码编辑、编译，<a target="_blank" rel="noopener" href="https://www.how2shout.com/how-to/how-to-login-into-ubuntu-using-ssh-from-windows-10-8-7.html#:~:text=How%20do%20I%20SSH%20into%20Ubuntu%20from%20Windows%3F,to%20Ubuntu%20server%20via%20Putty%20SSH%20client%20">visualstudio.com&#x2F;Remote Development using SSH</a></p>
+<h1 id="远程连接相关的Ubuntu配置"><a href="#远程连接相关的Ubuntu配置" class="headerlink" title="远程连接相关的Ubuntu配置"></a>远程连接相关的Ubuntu配置</h1><h2 id="Ubuntu设置静态IP"><a href="#Ubuntu设置静态IP" class="headerlink" title="Ubuntu设置静态IP"></a>Ubuntu设置静态IP</h2><p>在使用SSH和Samba连远程Ubuntu PC时，发现IP有时候会改变，因此需要配置Ubuntu PC为静态IP</p>
+<p>1.ifconfig查看ethernet接口和当前IP</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">ubuntu@ubuntu-Z390-GAMING-X:~$ ifconfig</span><br><span class="line">eno1: flags=4163&lt;UP,BROADCAST,RUNNING,MULTICAST&gt;  mtu 1500</span><br><span class="line">        inet 10.52.4.71  netmask 255.255.255.0  broadcast 10.52.4.255</span><br></pre></td></tr></table></figure>
+
+<p>2.编辑Ubuntu的netplan配置文件&#x2F;etc&#x2F;netplan&#x2F;*.yaml，用tab补全找到具体的yaml，制定静态IP和DNS</p>
+<p>参考 <a target="_blank" rel="noopener" href="https://linuxconfig.org/netplan-network-configuration-tutorial-for-beginners">Netplan network configuration tutorial for beginners</a></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">network:</span><br><span class="line">  version: 2</span><br><span class="line">  renderer: NetworkManager</span><br><span class="line">  ethernets:</span><br><span class="line">    eno1:</span><br><span class="line">      addresses:</span><br><span class="line">        - 10.52.4.71/24</span><br><span class="line">      nameservers:</span><br><span class="line">         addresses:</span><br><span class="line">            - 10.52.1.1</span><br><span class="line">            - 10.52.1.2</span><br><span class="line">      #gateway4: 10.52.0.1</span><br><span class="line">      routes:</span><br><span class="line">         - to: default</span><br><span class="line">           via: 10.52.0.1</span><br></pre></td></tr></table></figure>
+
+<p>以上IP和nameservers(DNS)是必须的，gateway4是网关，在ubuntu22被废弃（ubuntu22显示 &#96;&#96;gateway4<code> has been deprecated, use default routes instead.</code>）使用routes配置网关，参考 <a target="_blank" rel="noopener" href="https://askubuntu.com/questions/1410750/netplan-gateway-has-been-deprecated">netplan-gateway-has-been-deprecated</a>。怎么获取这三个值，参考以下网络命令：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">#查看所有</span><br><span class="line">nmcli</span><br><span class="line">#查看gateway</span><br><span class="line">netstat -rn 或 route -n</span><br><span class="line">#DNS配置文件</span><br><span class="line">cat /etc/resolv.conf</span><br></pre></td></tr></table></figure>
+
+<p>例如nmcli输出如下，其中 <code> inet4 10.52.4.71/24</code>即当前IP&#x2F;mask， <code>route4 default via 10.52.0.1</code>即默认网关，<code>DNS configuration servers: 10.52.1.1 10.52.1.2</code>即nameservers</p>
+<blockquote>
+<p>eno1: connected to netplan-eno1<br>        “Intel I219-V”<br>        ethernet (e1000e), 18:C0:4D:1F:BA:B7, hw, mtu 1500<br>        ip4 default<br>        inet4 10.52.4.71&#x2F;24<br>        route4 10.52.4.0&#x2F;24 metric 100<br>        route4 10.52.0.1&#x2F;32 metric 100<br>        route4 default via 10.52.0.1 metric 100<br>        inet6 fe80::1ac0:4dff:fe1f:bab7&#x2F;64<br>        route6 fe80::&#x2F;64 metric 256</p>
+<p>virbr0: connected (externally) to virbr0<br>        “virbr0”<br>        bridge, 52:54:00:13:EB:68, sw, mtu 1500<br>        inet4 192.168.122.1&#x2F;24<br>        route4 169.254.0.0&#x2F;16 metric 1000<br>        route4 192.168.122.0&#x2F;24 metric 0</p>
+<p>lo: unmanaged<br>        “lo”<br>        loopback (unknown), 00:00:00:00:00:00, sw, mtu 65536</p>
+<p>DNS configuration:<br>        servers: 10.52.1.1 10.52.1.2<br>        interface: eno1</p>
+</blockquote>
+<p>3.生效</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo netplan apply</span><br></pre></td></tr></table></figure>
+
+<p>ping确认网络正常：</p>
+<blockquote>
+<p>ubuntu@ubuntu-Z390-GAMING-X:~$ ping <a target="_blank" rel="noopener" href="http://www.bing.com/">www.bing.com</a><br>PING china.bing123.com (202.89.233.101) 56(84) bytes of data.<br>64 bytes from 202.89.233.101 (202.89.233.101): icmp_seq&#x3D;1 ttl&#x3D;117 time&#x3D;27.1 ms<br>64 bytes from 202.89.233.101 (202.89.233.101): icmp_seq&#x3D;2 ttl&#x3D;117 time&#x3D;27.2 ms<br>64 bytes from 202.89.233.101 (202.89.233.101): icmp_seq&#x3D;3 ttl&#x3D;117 time&#x3D;27.2 ms</p>
+</blockquote>
+<p>如果DNS server或gateway不符合当前网络状况，ping会失败，输出：</p>
+<blockquote>
+<p>Name or service not known</p>
+</blockquote>
+<h2 id="Ubuntu禁止自动登出"><a href="#Ubuntu禁止自动登出" class="headerlink" title="Ubuntu禁止自动登出"></a>Ubuntu禁止自动登出</h2><p>自动登出会使SSH断开链接，按如下禁用</p>
+<blockquote>
+<p>setting-&gt;Privacy-&gt;Screen-&gt;Automatic Screen Lock (OFF)</p>
+</blockquote>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2023/01/31/Linux%E9%A9%B1%E5%8A%A8%E5%88%86%E6%9E%90%EF%BC%9AMMC%E5%AD%90%E7%B3%BB%E7%BB%9F/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -991,292 +1369,6 @@
   
   
 
-      
-  
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2022/02/28/%E6%90%AD%E5%BB%BA%E9%AB%98%E5%8F%AF%E7%A7%BB%E6%A4%8D%E7%9A%84Markdown%E5%86%99%E4%BD%9C%E5%92%8C%E5%8D%9A%E5%AE%A2%E7%8E%AF%E5%A2%83%EF%BC%9AObsidian+PicGo+Hexo+Github/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Cursorhu">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="ThinkNotes">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2022/02/28/%E6%90%AD%E5%BB%BA%E9%AB%98%E5%8F%AF%E7%A7%BB%E6%A4%8D%E7%9A%84Markdown%E5%86%99%E4%BD%9C%E5%92%8C%E5%8D%9A%E5%AE%A2%E7%8E%AF%E5%A2%83%EF%BC%9AObsidian+PicGo+Hexo+Github/" class="post-title-link" itemprop="url">搭建高可移植的Markdown写作和博客环境：Obsidian+PicGo+Hexo+Github</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2022-02-28 15:04:18" itemprop="dateCreated datePublished" datetime="2022-02-28T15:04:18+08:00">2022-02-28</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2022-05-17 14:23:39" itemprop="dateModified" datetime="2022-05-17T14:23:39+08:00">2022-05-17</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/markdown/" itemprop="url" rel="index"><span itemprop="name">markdown</span></a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h2 id="0-背景"><a href="#0-背景" class="headerlink" title="0.背景"></a>0.背景</h2><p>写技术笔记并发布博客，通常有以下方式：</p>
-<ul>
-<li>第三方平台CSDN&#x2F;cnblogs，最简单但是最不可控，例如我写过一篇如何使用shadow-sock，直接被删掉，各种广告也是技术洁癖症不能忍的。</li>
-<li>使用云服务器自建Leanote博客系统，我用过几年，最大缺点是服务器续费太贵，且文章数据存在数据库很难导出，优点是自建的Leanote写作发布一体化体验极好。</li>
-<li>使用github+picgo+hexo， github作为图床和博客的云服务，picgo用于建立图床通道，hexo用于发布博客。缺点是github访问慢，用开源CDN可以很好解决；优点是全部免费，数据可移植(图片链接都在github图床)，可长期使用（只要github不倒闭不锁区）</li>
-</ul>
-<p>最终我选择github+picgo+hexo方案。<br>为什么不用gitee: gitee上传图片限制1M, github有25M。有了CDN, github的速度也不是问题</p>
-<p>现在只需要确定Markdown编辑器</p>
-<p>VSCode加Markdown插件试过，体验并不完美<br><a target="_blank" rel="noopener" href="https://www.typora.io/">Typora</a>是很不错的选择，除了收费<br><a target="_blank" rel="noopener" href="https://obsidian.md/">Obsidian</a>免费且优雅：</p>
-<ul>
-<li>支持动态渲染，即写出的Markdown语句自动显示预览</li>
-<li>支持各种快捷键，无需手动输入Markdown语法格式（<a target="_blank" rel="noopener" href="https://markdown.com.cn/basic-syntax/">Markdown 基本语法</a>）。比如标题，链接，列表，引用，可以设置标准的Markdown快捷键。</li>
-<li>支持关联PicGo实现粘贴图片即上传到云端图床，这一点对于写作体验和文章的可迁移性很重要</li>
-<li>特色的Zettelkasten笔记管理方法，本文不描述这部分，参考<a target="_blank" rel="noopener" href="https://sspai.com/post/62414#!">玩转 Obsidian 01：打造知识循环利器</a></li>
-</ul>
-<h2 id="1-搭建可移植的Markdown写作环境"><a href="#1-搭建可移植的Markdown写作环境" class="headerlink" title="1. 搭建可移植的Markdown写作环境"></a>1. 搭建可移植的Markdown写作环境</h2><p>Markdown文档本身是可移植的，但是其图片资源不是, 因为图片不是以二进制嵌入文档，而只是个图片地址的链接。</p>
-<p>如果只是在本地写写Markdown，完全不需要考虑图片的可移植，只需要存本地固定路径即可。<br>如果想在本地写Markdown，且这个文档拿到别的机器，或者放到博客论坛发布，别人都可以看到图片，就要一个云端的图片存储服务，即图床。</p>
-<p>本节讲如何实现一个“一处写作，到处可见”的Markdown写作环境，并优化工具设置，让写作顺滑流程</p>
-<h3 id="1-1-Github-PicGo搭建图床"><a href="#1-1-Github-PicGo搭建图床" class="headerlink" title="1.1 Github+PicGo搭建图床"></a>1.1 Github+PicGo搭建图床</h3><p>完整流程参考<a target="_blank" rel="noopener" href="https://blog.csdn.net/yefcion/article/details/88412025">PicGo + GitHub 搭建个人图床工具</a></p>
-<p>流程包含以下部分：</p>
-<ul>
-<li>一个public的Github仓库，用来存放文章链接的图片，注意单仓库最大容量1GB。</li>
-<li>一个personal access token，用于PicGo免密访问github实现自动上传图片</li>
-<li>一个图片上传工具：PicGo及其插件，用它上连Github图床仓库，下连本地markdown编辑器，实现“图片粘贴即上传”</li>
-<li>一个CDN(推荐，很好用)：使用开源CDN jsdelivr加速Github访问，避免因访问速度造成图片上传失败</li>
-</ul>
-<p>最终我的配置如下：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202202281014786.png"></p>
-<p>单元测试：<br>手动上传本地图片，如果上传成功，且图片可预览，则功能正常<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202202281024870.png"></p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202202281024344.png"></p>
-<p>遇到的坑：<br>仓库名必须填&lt;用户名&gt;&lt;仓库名&gt;，不是完整的http或git仓库链接！否则上传图片error404</p>
-<p>PicGo支持log调试，参考：<br><a target="_blank" rel="noopener" href="https://www.shopee6.com/web/web-tutorial/picgo-github-fail.html"><a target="_blank" rel="noopener" href="https://www.shopee6.com/web/web-tutorial/picgo-github-fail.html">PicGo上传图片到GitHub总是失败的特殊解决办法</a></a></p>
-<p>2022&#x2F;5&#x2F;17更新：<br>最近发现jsdelivr在大陆挂了，那么只能放弃使用CDN, 直接使用github图床的raw链接</p>
-<p>将Picgo默认图床路径从jsdelivr的<br><a target="_blank" rel="noopener" href="https://cdn.jsdelivr.net/gh/%E8%B4%A6%E6%88%B7%E5%90%8D/%E5%9B%BE%E5%BA%8A%E4%BB%93%E5%BA%93%E5%90%8D@master">https://cdn.jsdelivr.net/gh/账户名/图床仓库名@master</a><br>改为：<br><a target="_blank" rel="noopener" href="https://raw.githubusercontent.com/%E8%B4%A6%E6%88%B7%E5%90%8D/%E5%9B%BE%E5%BA%8A%E4%BB%93%E5%BA%93%E5%90%8D/master">https://raw.githubusercontent.com/账户名/图床仓库名/master</a></p>
-<p>对于已发布的博客的图床链接，直接用VSCode全局查找替换以上前缀即可，后面的图片id是不变的。</p>
-<p><strong>如何删除Github图床的图片：</strong><br>PicGo默认的Github图床不能通过相册删除github仓库的图片，需要使用第三方插件github-plus，建议作为默认图床工具，支持相册删除同步到github仓库:<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202202281208516.png"></p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202202281209075.png"></p>
-<h3 id="1-2-Obsidian链接图床"><a href="#1-2-Obsidian链接图床" class="headerlink" title="1.2 Obsidian链接图床"></a>1.2 Obsidian链接图床</h3><p>流程参考<a target="_blank" rel="noopener" href="https://www.jianshu.com/p/4c30495f4325"># 在Obsidian中使用图床实现“一次上传、多次搬运”省心又省力</a></p>
-<p>重点部分：配置自动上传插件。写Markdown文章时粘贴的图片自动上传到Github+PicGo图床，无需手动上传和写链接<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202202281029686.png"></p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202202281029586.png"></p>
-<p>可以看到，此插件相当于一个PicGo客户端，而本地运行的PicGo Server已开启端口36677的监听。<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202202281033479.png"></p>
-<p>单元测试：<br>以上配置好后，Obsidian新建一个Markdown文档，粘贴图片会显示updating… ，成功后可在github图床仓库看到该图片，且Markdown本地预览也可以看到。</p>
-<p>遇到的坑：<br>一开始上传的图片，github可预览，Obsidian预览失败<br>在PicGo客户端查看刚才上传图片预览也不正常，PicGo客户端手动上传一张后才正常预览。<br>此后Obsidian再粘贴上传图片，预览正常。<br>可能是PicGo首次链接Obsidian插件的bug。</p>
-<h3 id="1-3-优化Obsidian写作体验"><a href="#1-3-优化Obsidian写作体验" class="headerlink" title="1.3 优化Obsidian写作体验"></a>1.3 优化Obsidian写作体验</h3><h4 id="1-3-1-Markdown快捷键"><a href="#1-3-1-Markdown快捷键" class="headerlink" title="1.3.1 Markdown快捷键"></a>1.3.1 Markdown快捷键</h4><p>很多Markdown编辑器支持各种快捷键，写作时不需要手动输入Markdown语法，例如一个ctrl+h形成标题，一个ctrl+k形成代码格式。<br>Obsidian默认快捷键不完整，需要补全优化<br>我之前用的Leanote写博客，Obsidian也快捷键设置如下。</p>
-<blockquote>
-<p>提升标题 Ctrl + H (header)<br>有序列表 Ctrl + O (Ordered)<br>无序列表 Ctrl + U (Un-Ordered)<br>插入链接 Ctrl + L (Link)<br>插入代码 Ctrl + K (K &#x3D; Code, 因为ctrl+C用于粘贴)<br>加粗 Ctrl + B (Bold)<br>斜体 Ctrl + I (Italian体)<br>引用 Ctrl + Q (Quote)<br>插入图片 Ctrl + G (Graph, 有了“粘贴即上传”，这个实际上用不上)</p>
-</blockquote>
-<p>其他我基本不用的就没设置，例如表格，删除线，分割线等等。<br>如果经常用表格，推荐 Advanced Tables插件。<br>读者也可以参考VS Code的Markdown插件设置。</p>
-<h4 id="1-3-2-实时预览和标题大纲"><a href="#1-3-2-实时预览和标题大纲" class="headerlink" title="1.3.2 实时预览和标题大纲"></a>1.3.2 实时预览和标题大纲</h4><p>实时预览是你写一句Markdown，自动转换成预览格式，而不显示Markdown源码。这样不需要开两个窗口，一个写源码一个看预览。在设置-&gt;编辑器里开启。<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202202281103907.png"></p>
-<p>标题大纲是侧边栏显示文章标题列表，就像word的导航窗口一样。在设置-核心插件开启。<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202202281104255.png"></p>
-<h2 id="2-搭建hexo博客发布环境"><a href="#2-搭建hexo博客发布环境" class="headerlink" title="2. 搭建hexo博客发布环境"></a>2. 搭建hexo博客发布环境</h2><h3 id="2-1-环境安装"><a href="#2-1-环境安装" class="headerlink" title="2.1 环境安装"></a>2.1 环境安装</h3><p>整体流程参考：<a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/105715224"># 个人博客第5篇——安装node.js和Hexo</a><br>官方文档参考：<a target="_blank" rel="noopener" href="https://hexo.io/zh-cn/docs/">hexo.io</a></p>
-<p>简单总结一下：</p>
-<ul>
-<li>hexo是一个基于nodeJS的博客框架，nodeJS提供JavaScript实现后端服务的能力。</li>
-<li>hexo可以将本地写好的Markdown文本和图片资源，以JavaScript网页资源的方式打包。hexo可以在本机运行服务，通过浏览器可以在网页访问。</li>
-<li>如果要使博客外网可访问，需要一个云服务存放hexo生成的博客，我们使用github仓库作为博客云端。前面已经搭建了github图床仓库，因此图片并不需要放到此hexo仓库。</li>
-<li>使用git实现hexo博客部署到github仓库</li>
-</ul>
-<p>遇到的坑：<br>如果你以前用过hexo，之后nodeJS升级了版本，一定不要用以前的hexo博客目录，必须新建博客目录，重新<code>hexo init</code>安装相关hexo插件。否则nodeJS和hexo插件可能不兼容导致部署失败。</p>
-<p>hexo插件版本是根据nodeJS版本自动安装的，配置文件是package.json。以nodeJS 16.3为例，自动生成的依赖版本如下：</p>
-<p><code>&#123;   &quot;name&quot;: &quot;hexo-site&quot;,   &quot;version&quot;: &quot;0.0.0&quot;,   &quot;private&quot;: true,   &quot;scripts&quot;: &#123;     &quot;build&quot;: &quot;hexo generate&quot;,     &quot;clean&quot;: &quot;hexo clean&quot;,     &quot;deploy&quot;: &quot;hexo deploy&quot;,     &quot;server&quot;: &quot;hexo server&quot;   &#125;,   &quot;hexo&quot;: &#123;     &quot;version&quot;: &quot;6.0.0&quot;   &#125;,   &quot;dependencies&quot;: &#123;     &quot;hexo&quot;: &quot;^6.0.0&quot;,     &quot;hexo-deployer-git&quot;: &quot;^3.0.0&quot;,     &quot;hexo-generator-archive&quot;: &quot;^1.0.0&quot;,     &quot;hexo-generator-category&quot;: &quot;^1.0.0&quot;,     &quot;hexo-generator-index&quot;: &quot;^2.0.0&quot;,     &quot;hexo-generator-tag&quot;: &quot;^1.0.0&quot;,     &quot;hexo-renderer-ejs&quot;: &quot;^2.0.0&quot;,     &quot;hexo-renderer-marked&quot;: &quot;^5.0.0&quot;,     &quot;hexo-renderer-stylus&quot;: &quot;^2.0.0&quot;,     &quot;hexo-server&quot;: &quot;^3.0.0&quot;,     &quot;hexo-theme-landscape&quot;: &quot;^0.0.3&quot;   &#125; &#125;</code></p>
-<p>博客的github仓库，主题等关键配置都在<code>hexo init</code>对应目录下的<code>_config.yml</code><br>我修改了几个关键配置如下：<br>博客框架的语言一定要配，否则默认德语阿拉伯语…</p>
-<blockquote>
-<p>title: ThinkNotes<br>   subtitle: Simple is not easy<br>   author: Cursorhu<br>   language: zh-CN</p>
-</blockquote>
-<p>Github部署配置</p>
-<blockquote>
-<p>url: <a href="https://cursorhu.github.io/">https://cursorhu.github.io</a><br>deploy:<br>      type: git<br>      repo: <a target="_blank" rel="noopener" href="https://github.com/cursorhu/cursorhu.github.io">https://github.com/cursorhu/cursorhu.github.io</a><br>      branch: master</p>
-</blockquote>
-<h3 id="2-2-发布博客"><a href="#2-2-发布博客" class="headerlink" title="2.2 发布博客"></a>2.2 发布博客</h3><p>hexo new命令可以从0新建markdown写博客，一般不用这么麻烦。</p>
-<p>我们直接将Obsidian写好的Markdown（图片资源是图床链接）放到hexo博客目录的post文件夹，例如我的本地目录是：</p>
-<blockquote>
-<p>F:\HexoBlog\source_posts</p>
-</blockquote>
-<p>在Markdown文件前添加hexo博客特有的头，说明博客的标题时间，分类等属性。这个头如果用<code>hexo new</code>命令会自动生成，可以先new一个然后拷过来。</p>
-<blockquote>
-<p>title: 博客文章名<br>date: 2022-02-28 15:04:18<br>tags: markdown<br>categories: markdown</p>
-</blockquote>
-<p>最后使用git生成网页文件并发布到github博客仓库, 注意不是用node命令行！<br>在hexo博客目录下运行：</p>
-<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">hexo clean   #清除缓存文件 db.json 和已生成的静态文件 public</span><br><span class="line">hexo g       #生成网站静态文件到默认设置的 public 文件夹(hexo generate 的缩写)</span><br><span class="line">hexo d       #自动生成网站静态文件，并部署到设定的仓库(hexo deploy 的缩写)</span><br></pre></td></tr></table></figure>
-
-<h3 id="2-3-博客主题"><a href="#2-3-博客主题" class="headerlink" title="2.3 博客主题"></a>2.3 博客主题</h3><p>博客主题(theme)取决于不同人喜好，github有大量的hexo主题，按需配置<br>推荐几个主流的：<br><a target="_blank" rel="noopener" href="https://github.com/theme-next/hexo-theme-next">Next</a><br><a target="_blank" rel="noopener" href="https://github.com/bollnh/hexo-theme-material">hexo-theme-material</a></p>
-<p>以Next主题为例，安装：</p>
-<blockquote>
-<p>$ cd hexo博客目录<br>   $ git clone <a target="_blank" rel="noopener" href="https://github.com/theme-next/hexo-theme-next">https://github.com/theme-next/hexo-theme-next</a> themes&#x2F;next</p>
-</blockquote>
-<p>已我的配置为例，就会在F:\HexoBlog\themes\next看到next主题的源码和配置文件config.yml</p>
-<p>Next配置可以自定义各种设置，例如子主题:</p>
-<blockquote>
-<p> scheme: Muse<br>#scheme: Mist<br>#scheme: Pisces<br>#scheme: Gemini</p>
-</blockquote>
-<p>我们前面已经用jsdelivr开源CDN为PicGo上传图片加速，可以配置Next主题的网页静态文件的相关库也用jsdelivr加速。最好用到才开启，例如motion enable, 其依赖库velocity就可以设置jsdelivr加速：</p>
-<blockquote>
-<p>motion:<br>      enable: true<br>    velocity: &#x2F;&#x2F;cdn.jsdelivr.net&#x2F;npm&#x2F;velocity-animate@1&#x2F;velocity.min.js<br>    velocity_ui: &#x2F;&#x2F;cdn.jsdelivr.net&#x2F;npm&#x2F;velocity-animate@1&#x2F;velocity.ui.min.js</p>
-</blockquote>
-<p>注意这些配置文件也是Markdown格式，<code># </code> 注释一定要带空格</p>
-<p>hexo要使用next, 在hexo配置文件设置:</p>
-<blockquote>
-<p>theme: next</p>
-</blockquote>
-<p>hexo clean, hexo g, hexo s 跑本地服务，看一下效果：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202203041651883.png"></p>
-<p>最后hexo clean, g, d 命令三连部署到github</p>
-<h3 id="2-4-速度优化"><a href="#2-4-速度优化" class="headerlink" title="2.4 速度优化"></a>2.4 速度优化</h3><p>参考<a target="_blank" rel="noopener" href="https://ednovas.gitee.io/2021/09/23/speeduphexo/"># Hexo 网站访问速度优化</a></p>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-      
-  
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2022/01/25/%E6%B5%85%E8%B0%88%E5%8A%A0%E5%AF%86%E5%92%8C%E7%BC%96%E7%A0%81%EF%BC%9AMD5/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Cursorhu">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="ThinkNotes">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2022/01/25/%E6%B5%85%E8%B0%88%E5%8A%A0%E5%AF%86%E5%92%8C%E7%BC%96%E7%A0%81%EF%BC%9AMD5/" class="post-title-link" itemprop="url">浅谈加密和编码：MD5</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2022-01-25 14:28:58" itemprop="dateCreated datePublished" datetime="2022-01-25T14:28:58+08:00">2022-01-25</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2022-12-12 14:35:40" itemprop="dateModified" datetime="2022-12-12T14:35:40+08:00">2022-12-12</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/encrypt/" itemprop="url" rel="index"><span itemprop="name">encrypt</span></a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h1 id="1-MD5简介"><a href="#1-MD5简介" class="headerlink" title="1.MD5简介"></a>1.MD5简介</h1><p>MD5的全称是Message-Digest Algorithm 5（<strong>信息摘要算法</strong>），经MD2、MD3和MD4发展而来。<br>所谓信息摘要，就是包含数据关键特性，能（唯一）识别原数据的关键信息。</p>
-<p>MD5也称为<strong>单向散列算法</strong>，这是从其实现方式命名，因为：</p>
-<ul>
-<li>MD5能对大量数据，进行哈希映射，输出固定长度(128bit)的数据，输出数据也称为原数据的信息摘要。</li>
-<li>不能由摘要推测出原数据，即MD5算法是单向的，当加密来用的话，只能加密不能解密。</li>
-</ul>
-<p>MD5的特点：</p>
-<ul>
-<li>固定长度：输入任意长度的信息，经过MD5处理，输出总是128位的信息。</li>
-<li>唯一性：不同的输入得到的不同的结果；同样的输入一定得到相同的结果。</li>
-<li>不可逆：根据128位的输出结果不可能反推出输入的信息。</li>
-</ul>
-<h1 id="2-MD5的应用"><a href="#2-MD5的应用" class="headerlink" title="2.MD5的应用"></a>2.MD5的应用</h1><p>1、防止被篡改：<br>1）比如A和B发送一个电子文档，发送前，A先自己计算出数据的MD5输出结果a。<br>然后在B收到电子文档后，B计算得到一个MD5的输出结果b。<br>如果a与b一样就代表传输中途数据未被篡改。<br>2）比如A提供文件下载，为了防止不法分子在文件中添加木马，伪装成A的文件。A可以在网站上公布由安装文件得到的MD5输出结果。<br>要下载文件的人只需要下载后，验证MD5是否和A一致，如果不一致，就是被其他人修改过。</p>
-<p>2、防止暴露明文：<br>基本上存储用户密码的场景，都用到MD5加密明文。<br>1）例如网站服务器在其数据库存储用户的密码，都是存储用户密码的MD5值。就算不法分子得用户密码的MD5值，也无法知道用户的密码。<br>2）在UNIX、Linux系统中，用户密码就是以MD5（或其它类似的算法）经加密后存储在文件系统中。当用户登录的时候，系统把用户输入的密码计算成MD5值，然后再去和保存在文件系统中的MD5值进行比较，进而确定输入的密码是否正确。通过这样的步骤，系统在并不知道用户密码的明码的情况下就可以确定用户登录系统的合法性。这不但可以避免用户的密码被具有系统管理员权限的用户知道，而且还在一定程度上增加了密码被破解的难度。</p>
-<p>3、防止抵赖（数字签名）：<br>这需要一个存储MD5值的第三方认证机构。例如A写了一个文件，认证机构对此文件用MD5算法产生摘要信息并做好记录。若以后A说这文件不是他写的，权威机构只需对此文件重新产生摘要信息，然后跟记录在册的摘要信息进行比对，相同的话，就证明是A写的了。这就是所谓的“数字签名”。</p>
-<h1 id="3-MD5算法实现"><a href="#3-MD5算法实现" class="headerlink" title="3.MD5算法实现"></a>3.MD5算法实现</h1><p>对MD5算法简要的叙述可以为：<br>MD5以512位分组来处理输入的信息，且每一分组又被划分为16个32位子分组，经过了一系列的处理后，算法的输出由四个32位分组组成，将这四个32位分组级联后将生成一个128位散列值。</p>
-<p>第一步、填充：如果输入信息的长度(bit)对512求余的结果不等于448，就需要填充使得对512求余的结果等于448。填充的方法是填充一个1和n个0。填充完后，信息的长度就为N<em>512+448(bit)；<br>第二步、记录信息长度：用64位来存储填充前信息长度。这64位加在第一步结果的后面，这样信息长度就变为N</em>512+448+64&#x3D;(N+1)*512位。<br>第三步、装入标准的幻数（四个整数）：标准的幻数（物理顺序）是（A&#x3D;(01234567) 16 ，B&#x3D;(89ABCDEF) 16 ，C&#x3D;(FEDCBA98) 16 ，D&#x3D;(76543210) 16 ）。如果在程序中定义应该考虑大小端（A&#x3D;0X67452301L，B&#x3D;0XEFCDAB89L，C&#x3D;0X98BADCFEL，D&#x3D;0X10325476L）。<br>第四步、四轮循环运算：循环的次数是分组的个数（N+1）。 最终由4个32bit数据拼成128bit的结果。</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212121430277.png" alt="image-20221212143002209"></p>
-<h1 id="4-MD5的安全性"><a href="#4-MD5的安全性" class="headerlink" title="4.MD5的安全性"></a>4.MD5的安全性</h1><p>普遍认为MD5是很安全，因为哈希散列是强抗碰撞的：已知原数据和其MD5值，想通过枚举找到一个相同MD5值的数据，基本不可能。如果暴力破解MD5，其运算时间是不可想象的。</p>
-<p>但是实际应用上，如果把用户密码仅仅MD5处理后再存储到数据库，其实是很不安全的。因为用户的密码的固有特征，让枚举集合变小了许多，原因：</p>
-<ul>
-<li>用户密码是比较短的一般8位左右。</li>
-<li>很多用户的密码有规律，例如使用生日，手机号码，或者使用常用数字组合，或某个英文单词。</li>
-<li>许多用户的常用密码只有一个，也就是说，泄漏了微信的密码，也很有可能QQ,支付宝密码也泄漏了</li>
-</ul>
-<p>如果把常用的密码先MD5处理后存储结果，然后再跟用户的MD5结果匹配，这时就有较大概率“碰撞”，得到明文。这种预先存储的MD5表称为rainbow-table。<br>因此MD5作为“信息摘要”的用途多一些，作为加密，还需要配合其他的算法（例如AES等几种公钥算法），或者“加盐”。<br>安全性比较好的网站，都会用一种叫做 “加盐”(salt)的方式来存储密码:</p>
-<ul>
-<li>先将用户输入的密码进行一次MD5（或其它哈希算法）加密。</li>
-<li>将得到的MD5值前后加上一些只有管理员自己知道的随机串，再进行一次MD5加密。</li>
-<li>这个随机串中可以包括某些固定的串，也可以包括用户名（用来保证每个用户加密使用的密钥都不一样）。</li>
-<li>在管理员和用户的两个salt没有泄露的情况下，黑客拿到加密串，就几乎不可能推算出原始的密码是什么了。</li>
-</ul>
-<h1 id="5-MD5库"><a href="#5-MD5库" class="headerlink" title="5.MD5库"></a>5.MD5库</h1><p>在涉及到文件传输的场景，通常用MD5校验文件的一致性，openSSL库提供MD5计算函数：</p>
-<p><a target="_blank" rel="noopener" href="https://www.openssl.org/docs/man3.0/man3/MD5_Update.html">MD5_Update</a></p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">int MD5_Init(MD5_CTX *c);</span><br><span class="line">int MD5_Update(MD5_CTX *c, const void *data, unsigned long len);</span><br><span class="line">int MD5_Final(unsigned char *md, MD5_CTX *c);</span><br></pre></td></tr></table></figure>
-
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
 
   
   <nav class="pagination">
@@ -1346,7 +1438,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">61</span>
+          <span class="site-state-item-count">63</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
