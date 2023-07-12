@@ -190,6 +190,345 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/05/30/Linux-Shell%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%96%87%E6%9C%AC%E7%BC%96%E8%BE%91%E5%88%A9%E5%99%A8sed-awk-grep/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2020/05/30/Linux-Shell%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%96%87%E6%9C%AC%E7%BC%96%E8%BE%91%E5%88%A9%E5%99%A8sed-awk-grep/" class="post-title-link" itemprop="url">Linux Shell笔记：文本编辑利器sed+awk+grep</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-05-30 14:50:22" itemprop="dateCreated datePublished" datetime="2020-05-30T14:50:22+08:00">2020-05-30</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2022-12-05 15:00:29" itemprop="dateModified" datetime="2022-12-05T15:00:29+08:00">2022-12-05</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/linux/" itemprop="url" rel="index"><span itemprop="name">linux</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h1 id="shell增删改查概述"><a href="#shell增删改查概述" class="headerlink" title="shell增删改查概述"></a>shell增删改查概述</h1><p>Linux Shell环境对文本增删改查，可以通过sed，awk和grep命令完成。</p>
+<ul>
+<li>sed: 支持特定模式匹配的增加、插入、删除、替换、提取等操作</li>
+<li>awk: 支持特定模式匹配的过滤查找，如提取某行列的字符串</li>
+<li>grep: 支持包含特定字符串的结果提取，可配合find和awk实现过滤查找</li>
+</ul>
+<p>这几种命令都支持流输入和文本输入，支持管道传递参数，也可以命令行传参。对于多个步骤的处理，可以几个命令串行使用。</p>
+<h1 id="shell的输入参数概述"><a href="#shell的输入参数概述" class="headerlink" title="shell的输入参数概述"></a>shell的输入参数概述</h1><p>Shell的命令，如<code>cat, echo, sed, awk, grep</code>, 管道命令<code>|</code>等，都要有输入参数，即待处理的数据。<br>输入参数有两种类型：</p>
+<ul>
+<li>标准输入：本质是stdin文件，即读取该文件的内容作为命令的输入参数，该文件内容可由其他命令的输出，或者用户输入来产生</li>
+<li>命令行输入：直接接受用户在命令行输入的字符串，一次性使用,不存储在stdin</li>
+</ul>
+<p>支持标准输入作为参数的命令：<code>cat, sed, awk, grep, |</code> 等<br>只支持命令行输入字符串的命令：<code>echo, ls</code>等<br>标准输入示例：</p>
+<pre><code>cat /etc/passwd | grep root
+</code></pre>
+<p>上面的代码使用了管道命令<code>|</code>，管道命令的作用是将左侧命令<code>cat /etc/passwd</code>的标准输出转换为标准输入，提供给右侧命令<code>grep root</code>作为参数。<br>以上命令也可以写成命令行输入形式：</p>
+<pre><code>grep root /etc/passwd
+</code></pre>
+<p>不支持标准输入的示例：</p>
+<pre><code>echo &quot;hello world&quot; | echo
+</code></pre>
+<p>输出为空，管道右侧的echo不接受管道传来的标准输入作为参数。<br>xargs的作用：将标准输入转为命令行参数</p>
+<pre><code>echo &quot;hello world&quot; | xargs echo
+</code></pre>
+<p>输出“hello world”，xargs和管道配合使用，能使管道也支持非标准输入命令。<br>xargs支持一些选项做进一步细化处理，如-p(打印), -d(分割) 等。</p>
+<h1 id="sed命令"><a href="#sed命令" class="headerlink" title="sed命令"></a>sed命令</h1><h2 id="sed命令概述"><a href="#sed命令概述" class="headerlink" title="sed命令概述"></a>sed命令概述</h2><p>sed支持文本编辑，实现增、删、改的功能。<br>sed命令格式：</p>
+<pre><code>sed [options] &#39;command&#39; filename
+</code></pre>
+<p>sed的输入参数可以用命令行，管道和xargs传入：</p>
+<pre><code>//命令行传入文件名参数
+sed [options] &#39;command&#39; filename 
+//管道传入文件名参数
+cat filename | sed [options] &#39;command&#39;
+//xargs传入文件名参数
+cat filename | xargs sed [options] &#39;command&#39;
+</code></pre>
+<p>sed对文件的编辑在缓冲区，不直接修改文本。要直接修改文本有以下方法：</p>
+<ul>
+<li>重定向覆盖文本， <code>sed - x &#39;XXX&#39; file.txt &gt; file.txt</code></li>
+<li>特定的sed命令支持直接修改文本，如<code>sed -i &#39;XXX&#39; file.txt</code></li>
+</ul>
+<p>sed的常用选项：</p>
+<pre><code>-n ：关闭默认输出,只显示匹配的行
+-i ：直接修改读取的文件内容，而不是输出到终端。
+-e ：直接在命令列模式上进行sed的动作编辑；
+-f ：直接将sed的动作写在一个文件内，-f filename 则可以运行filename内的sed动作；
+-r ：启用扩展的正则表达式
+</code></pre>
+<p>sed的常用命令：</p>
+<pre><code>a ：新增行，在指定行的后面附加一行，[address]a\新文本内容
+i ：插入行，在指定行的前面插入一行，[address]i\新文本内容
+s ：替换特定模式匹配的字符串, [address]s/pattern/replacement/flags
+c ：将指定行中的所有内容，替换成该选项后面的字符串, [address]c\用于替换的新文本
+d ：删除行，[address]d
+p ：打印， 通常与参数 -n 一起用，[address]p
+w : 将文本中指定行的内容写入文件, [address]w filename
+</code></pre>
+<h2 id="sed命令详解"><a href="#sed命令详解" class="headerlink" title="sed命令详解"></a>sed命令详解</h2><p>本节从sed文本操作的“增删改查”举例说明其具体命令用法</p>
+<h3 id="新增和插入：a和i"><a href="#新增和插入：a和i" class="headerlink" title="新增和插入：a和i"></a>新增和插入：a和i</h3><p>sed的命令a和i都能实现新增行，其区别在于：</p>
+<ul>
+<li>a ：append, 指定行后面新增一行</li>
+<li>i : insert, 表示在指定行前面插入一行</li>
+</ul>
+<p>注意区分i命令和i选项<br>a和i命令的基本格式完全相同：</p>
+<pre><code>[address]a（或 i）\新文本内容
+</code></pre>
+<p>将一个新行插入到数据流第三行前：</p>
+<pre><code>sed &#39;3i\This is an inserted line.&#39; data6.txt
+
+This is line number 1.
+This is line number 2.
+This is an inserted line.
+This is line number 3.
+This is line number 4.
+</code></pre>
+<p>将一个新行附加到数据流中第三行后:</p>
+<pre><code>sed &#39;3a\This is an appended line.&#39; data6.txt
+
+This is line number 1.
+This is line number 2.
+This is line number 3.
+This is an appended line.
+This is line number 4.
+</code></pre>
+<p>将一个多行数据添加到数据流中，只需对要行末尾添加反斜线即可，类似C语言的代码换行</p>
+<pre><code>sed &#39;1i\
+This is one line of new text.\
+This is another line of new text.&#39; data6.txt
+
+This is one line of new text.
+This is another line of new text.
+This is line number 1.
+This is line number 2.
+This is line number 3.
+This is line number 4.
+</code></pre>
+<h3 id="删除：d"><a href="#删除：d" class="headerlink" title="删除：d"></a>删除：d</h3><ul>
+<li>d: delete, 删除行</li>
+</ul>
+<p>格式：</p>
+<pre><code>[address]d
+</code></pre>
+<p>删除第三行：</p>
+<pre><code>[root@localhost ~]# cat data6.txt
+This is line number 1.
+This is line number 2.
+This is line number 3.
+This is line number 4.
+[root@localhost ~]# sed &#39;3d&#39; data6.txt
+This is line number 1.
+This is line number 2.
+This is line number 4.
+</code></pre>
+<p>删除二、三行：</p>
+<pre><code>sed &#39;2,3d&#39; data6.txt
+This is line number 1.
+This is line number 4.
+</code></pre>
+<p>删除第三行开始的后续所有行：</p>
+<pre><code>[root@localhost ~]# sed &#39;3,$d&#39; data6.txt
+This is line number 1.
+This is line number 2.
+</code></pre>
+<p>注意：sed d 命令并不会修改原始文件，这里被删除的行只是从 sed 的缓冲区中消失了，原始文件没做任何改变，若要修改源文件，可重定向sed的输出到源文件，覆盖原内容使修改生效。</p>
+<h3 id="匹配定位：-x2F-pattern-x2F"><a href="#匹配定位：-x2F-pattern-x2F" class="headerlink" title="匹配定位：&#x2F;pattern&#x2F;"></a>匹配定位：&#x2F;pattern&#x2F;</h3><p>sed的增删操作，可以针对包含匹配字符串的行进行操作，其原理是活用[address], 支持匹配字符串的定位，以插入命令’i’为例，匹配格式如下：</p>
+<pre><code>sed [option] &#39;/匹配字符串/i \插入字符串&#39;
+[option] 通常为 -i, 修改直接在源文件生效
+</code></pre>
+<p>原文件：</p>
+<pre><code>cat testfile 
+hello
+</code></pre>
+<p>在包含”hello”的一行的上一行，插入”upline”:</p>
+<pre><code>sed -i &#39;/hello/i\upline&#39; testfile
+</code></pre>
+<p>“hello”下一行插入”upline”:</p>
+<pre><code>sed -i &#39;/hello/a\down&#39; testfile
+</code></pre>
+<p>修改后的文件：</p>
+<pre><code>cat testfile 
+up
+hello
+down
+</code></pre>
+<p>删除匹配到”hello”的行：</p>
+<pre><code>sed -i &#39;/hello/d&#39; testfile
+</code></pre>
+<p>如果匹配字符串有“&#x2F;”，为了和sed命令的分隔符“&#x2F;”，使用“\”转义。<br>例如删除匹配某个路径字符串的行：</p>
+<pre><code>匹配&quot;\etc\install.sh&quot;
+set -i &#39;/\/etc\/install.sh/d&#39; test.txt
+</code></pre>
+<p>sed 命令包含一些预定义特殊符号，代表行尾，行首等。<br>删除以A开头的行：</p>
+<pre><code>sed -i &#39;/^A.*/d&#39; test.txt
+^A表示开头是A, .*表示后跟任意字符串
+</code></pre>
+<p>在行尾追加一行内容:</p>
+<pre><code>sed -i &#39;$a\added-content&#39; test.txt
+$表示定位到行尾，a是追加命令，added-content是追加内容
+</code></pre>
+<h3 id="替换修改-s"><a href="#替换修改-s" class="headerlink" title="替换修改: s"></a>替换修改: s</h3><p>s替换命令内部格式为：</p>
+<pre><code>[address]s/pattern/replacement/flags
+</code></pre>
+<ul>
+<li>address 指定要操作的具体行</li>
+<li>pattern 指定需要替换的内容</li>
+<li>replacement 指定替换的新内容</li>
+<li>flags 指定特殊功能</li>
+</ul>
+<p>常用的flags:</p>
+<ul>
+<li>n    1~512 之间的数字，表示指定要替换的字符串出现第几次时才进行替换</li>
+<li>g    对数据中所有匹配到的内容进行替换，否则只会在第一次匹配成功时做替换操作</li>
+<li>p    会打印与替换命令中指定的模式匹配的行。此标记通常与 -n    选项一起使用</li>
+<li>\    转义（转义替换部分包含：&amp;、\ 等）。</li>
+</ul>
+<p>替换每行第二个匹配字符串：</p>
+<pre><code>sed &#39;s/test/trial/2&#39; data.txt
+原文本：
+This is first test of the test script
+This is second test of the test script
+输出：
+This is first test of the trial script
+This is second test of the trial script
+</code></pre>
+<p>只替换第二行的匹配字符串：</p>
+<pre><code>sed &#39;2s/test/trial/&#39; data.txt
+原文本：
+This is first test of the test script
+This is second test of the test script
+输出：
+This is first test of the test script
+This is second test of the trial script
+</code></pre>
+<p>全局替换所有匹配字符串：</p>
+<pre><code>sed &#39;s/test/trial/g&#39; data.txt
+原文本：
+This is first test of the test script
+This is second test of the test script
+输出：
+This is first trial of the trial script
+This is second trial of the trial script
+</code></pre>
+<h3 id="提取：p"><a href="#提取：p" class="headerlink" title="提取：p"></a>提取：p</h3><p>sed p命令配合字符串匹配，可以输出包含指定字符串的行内容。</p>
+<pre><code>sed -n &#39;/string/p&#39; filename
+提取filename文件中,所有包含string的行的内容，并打印到标准输出
+-n是只打印匹配命中的内容
+</code></pre>
+<p>sed p和grep都能提取内容，其区别在于：</p>
+<ul>
+<li><code>sed &#39;/string/p&#39;</code>是提取指定文件的行内容，重点在内容提取</li>
+<li><code>grep &quot;string&quot; path</code>是输出包含指定内容的所有文件路径，重点在查找文件位置</li>
+</ul>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051452182.png" alt="image-20221205145238133"></p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051452191.png" alt="image-20221205145248149"></p>
+<h2 id="sed进阶与实战"><a href="#sed进阶与实战" class="headerlink" title="sed进阶与实战"></a>sed进阶与实战</h2><h3 id="多文件批量追加和删除"><a href="#多文件批量追加和删除" class="headerlink" title="多文件批量追加和删除"></a>多文件批量追加和删除</h3><p>背景介绍：<br>底层固件代码有一些功能由宏定义控制，不同功能需要不同的宏定义组合，因此有不同的宏定义文件，命名为.def后缀。批量编译不同版本，编译脚本依次提取def文件夹内的.def文件和源代码一起编译。单个def内容如下：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051453765.png" alt="image-20221205145321718"></p>
+<p>每一个宏都有多个取值，因此组合起来，需要生成一堆.def文件，批量编译才能覆盖各自功能。<br>每新增一个宏，都要修改所有.def文件，如果这个宏有两个取值，.def文件数量将翻倍。</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051453942.png" alt="image-20221205145327892"></p>
+<p>人工修改过于低效，使用sed可解决此问题。</p>
+<p>查找指定文件，并批量追加一行内容：</p>
+<pre><code>find . -name &#39;*.def*&#39; | xargs sed -i &#39;$a\added-content&#39;
+</code></pre>
+<p>各命令含义：</p>
+<pre><code>find [path] -name &quot;*.def&quot;
+查找path路径下，以.def结尾的所有文件，结果存储在stdout
+|
+管道，将查找结果转存到标准输入stdin
+xargs
+查找结果有很多个，用xargs转成命令行输入，sed才能批量处理
+sed -i &#39;$a\added-content&#39;
+    -i 直接修改文件，&#39;$a\added-content&#39; 最后一行追加added-content
+</code></pre>
+<p>查找指定文件，并批量删除匹配某字符串的行：</p>
+<pre><code>find ./defs -name &#39;*.def&#39; | xargs sed -i &quot;/deleteString/d&quot;
+</code></pre>
+<p>查找指定文件，并批量替换匹配某字符串：</p>
+<pre><code>find ./defs -name &#39;*.def&#39; | xargs sed -i &quot;s/oldString/newString/&quot;
+</code></pre>
+<p>在实际shell脚本中，通常由用户输入变量，<code>$1, $2, $@</code> 解析变量。a、i、d和s能否在命令中使用双引号解析变量，实现动态编辑？<br>实验如下：</p>
+<pre><code>ARGS=&quot;AA BB&quot;
+find ./defs -name &#39;*.def&#39; | xargs sed -i &quot;$a\$&#123;ARGS&#125;&quot;
+find ./defs -name &#39;*.def&#39; | xargs sed -i &quot;$i\$&#123;ARGS&#125;&quot;
+find ./defs -name &#39;*.def&#39; | xargs sed -i &quot;/$&#123;ARGS&#125;/d&quot;
+find ./defs -name &#39;*.def&#39; | xargs sed -i &quot;s/aabb/$ARGS/&quot;
+</code></pre>
+<ul>
+<li>i 和 a 命令不能解析变量，实际追加的就是是${ARGS}</li>
+<li>d命令可以解析变量，实际删除的是有”AA BB”的行</li>
+<li>s命令可以解析变量，实际替换后的结果是”AA BB”</li>
+</ul>
+<p>结论：将命令中的单引号改成双引号，理论上可以解析$包含的变量，实际上有的命令支持，有的命令不支持。</p>
+<h3 id="提取文件中的关键内容"><a href="#提取文件中的关键内容" class="headerlink" title="提取文件中的关键内容"></a>提取文件中的关键内容</h3><p>背景介绍：<br>底层固件需要将代码段、数据段等关键信息存储在固件头部，编译过程中用编译器的size命令可以获取这些信息，并存储到文本，但是固件头部需要按自己的格式存储起始地址和大小信息，因此需要用sed提取并编辑该文本。</p>
+<p>原文本：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051453983.png" alt="image-20221205145348933"></p>
+<p>提取后文本：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051453414.png"></p>
+<p>sed命令：</p>
+<pre><code>sed -n &#39;/string/p&#39; oldFile | awk &#39;&#123;print $3&#125;&#39; &gt;&gt; newFile
+提取oldFile内包含string的行，并用awk提取第三列，再写入newFile
+</code></pre>
+<p>该命令在Makefile实现，需要根据Makefile和shell特性做修改：</p>
+<ul>
+<li>@：编译过程隐藏命令输出，类似于后台执行</li>
+<li>$(shell xxxx): Makefile执行shell命令</li>
+<li>$$: Makefile不能直接用shell的“$”解析变量，用“$$”</li>
+</ul>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051454928.png" alt="image-20221205145409877"></p>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/05/20/NodeJs%E7%AC%94%E8%AE%B0%EF%BC%9A%E4%BD%BF%E7%94%A8pm2%E9%83%A8%E7%BD%B2%E9%A1%B9%E7%9B%AE/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -3909,442 +4248,6 @@ func(10, , 8) ; //不行,只能最右边的连续若干个参数缺省
   
   
 
-      
-  
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/02/29/%E6%B5%85%E8%B0%88C%E7%9A%84%E7%BB%93%E6%9E%84%E4%BD%93%E4%B8%8E%E9%9D%A2%E5%90%91%E5%AF%B9%E8%B1%A1/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Cursorhu">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="ThinkNotes">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2020/02/29/%E6%B5%85%E8%B0%88C%E7%9A%84%E7%BB%93%E6%9E%84%E4%BD%93%E4%B8%8E%E9%9D%A2%E5%90%91%E5%AF%B9%E8%B1%A1/" class="post-title-link" itemprop="url">浅谈C的结构体与面向对象</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2020-02-29 15:13:18" itemprop="dateCreated datePublished" datetime="2020-02-29T15:13:18+08:00">2020-02-29</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2022-12-06 15:17:40" itemprop="dateModified" datetime="2022-12-06T15:17:40+08:00">2022-12-06</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/c-c/" itemprop="url" rel="index"><span itemprop="name">c/c++</span></a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h1 id="0-概述"><a href="#0-概述" class="headerlink" title="0.概述"></a>0.概述</h1><p>结构体（Struct）：存放一组不同类型的数据的数据结构。<br>数组（Array）：存放一组相同类型的数据的数据结构。<br>结构体和int,char，指针等基础数据类型一样，也是一种数据类型。格式定义如下：</p>
-<pre><code>struct 结构体名&#123;
-    成员类型1 成员名1;
-    成员类型2 成员名2；
-&#125;实例1，实例2;
-</code></pre>
-<p>结构体的成员（Member）可以为任意类型，如int,char，指针，甚至结构体类型。<br>结构体可以配合结构体数组、普通指针、函数指针、以及自身嵌套的使用方法，实现复杂数据结构，以及面向对象的代码风格。</p>
-<h1 id="1-结构体声明"><a href="#1-结构体声明" class="headerlink" title="1.结构体声明"></a>1.结构体声明</h1><p>声明是告诉编译器某个数据结构的定义。一般在头文件对结构体、函数等类型声明。声明过程不分配内存。<br>一个结构体类型的声明：</p>
-<pre><code>struct stu&#123;
-    char *name;     //姓名
-    int num;        //学号
-    int age;        //年龄
-    char group;     //所在小组
-    float score;    //成绩
-&#125;;
-</code></pre>
-<p>注意：<br>1.结构体声明类似于函数声明，是一个语句，末尾加；<br>2.结构体声明只声明了类型，不实例化变量，因此不分配内存。<br>3.结构体成员的变量只在实例结构体才分配内存。</p>
-<h1 id="2-结构体实例"><a href="#2-结构体实例" class="headerlink" title="2.结构体实例"></a>2.结构体实例</h1><h2 id="2-1基础方法"><a href="#2-1基础方法" class="headerlink" title="2.1基础方法"></a>2.1基础方法</h2><p>结构体变量是结构体类型的实例，实例化就是在内存分配一个结构体类型的变量空间。<br>方法一：先声明结构体类型stu，再实例变量stu1,stu2。<br>该方法结构体类型声明和实例化分离。声明一次，到处实例化。注意实例变量要带struct关键字。</p>
-<pre><code>struct stu stu1, stu2;
-</code></pre>
-<p>方法二：声明的时候也实例变量stu1,stu2。</p>
-<pre><code>struct stu&#123;
-    char *name;     //姓名
-    int num;        //学号
-    int age;        //年龄
-    char group;     //所在小组
-    float score;    //成绩
-&#125; stu1, stu2;
-</code></pre>
-<p>方法三：不声明接头体名，直接实例变量。<br>适用于只需要 stu1、stu2两个变量，后面不需要再使用结构体名定义其他变量的情况</p>
-<pre><code>struct&#123;             //没有写stu
-    char *name;     //姓名
-    int num;        //学号
-    int age;        //年龄
-    char group;     //所在小组
-    float score;    //成绩
-&#125; stu1, stu2;
-</code></pre>
-<h2 id="2-2重定义方法"><a href="#2-2重定义方法" class="headerlink" title="2.2重定义方法"></a>2.2重定义方法</h2><p>结构体类型通常配合typedef重定义后声明。<br>声明一次，到处实例化。不需要带struct关键字。</p>
-<pre><code>    typedef struct stu&#123; //stu可省略
-        char *name;     //姓名
-        int num;        //学号
-        int age;        //年龄
-        char group;     //所在小组
-        float score;    //成绩
-    &#125;stu_t, *stu_p;    //声明stu_t为stu类型，stu_p为stu类型的指针
-</code></pre>
-<p>实例变量：</p>
-<pre><code>stu_t stu1,stu2;    //实例两个stu结构体变量
-stu_p *stu1_p, *stu2_p; //实例两个指向stu结构体指针
-stu1_p = &amp;stu1; //指向实例stu1
-stu2_p = &amp;stu2; //指向实例stu2
-</code></pre>
-<h1 id="3-结构体初始化"><a href="#3-结构体初始化" class="headerlink" title="3.结构体初始化"></a>3.结构体初始化</h1><p>初始化&#x3D;赋初始值。<br>结构体的实例只分配了内存，其成员的值要手动赋值后才能确定。否则直接拿来用会得到不确定的值（取决于分配到的内存原本的值）。<br>以重定义的结构体类型stu_t为例，实例变量时顺便初始化所有成员为0：</p>
-<pre><code>stu_t stu1,stu2 = &#123;0&#125;;
-</code></pre>
-<p>有的编译器可能要求这种写法：</p>
-<pre><code>stu_t stu1,stu2 = &#123;&#123;0&#125;&#125;;
-</code></pre>
-<p>如果各成员有默认初始值，初始化如下：</p>
-<pre><code>stu_t stu1, stu2 = &#123; &quot;Tom&quot;, 9527, 18, &#39;A&#39;, 136.5 &#125;;
-</code></pre>
-<h1 id="4-结构体的赋值"><a href="#4-结构体的赋值" class="headerlink" title="4.结构体的赋值"></a>4.结构体的赋值</h1><p>结构体赋值是对结构体变量内的成员赋值。<br>两种方式访问成员：</p>
-<pre><code>结构体变量.成员名;
-stu1.name = &#39;Tom&#39;;
-结构体指针-&gt;成员名
-stu1_p-&gt;name = &#39;Tom&#39;;
-</code></pre>
-<p>这两种方法的选择取决于使用情况。如果结构体作为参数在函数之间频繁传递和赋值，建议使用传指针，而不是传结构体变量，这样减少函数为结构体频繁分配局部内存，但要注意结构体已被释放，形成空指针的判断。<br>注意是对实例的成员赋值（已分配内存），而不能对结构体类型的成员赋值（只是个标签）。例如如下操作是错误的：</p>
-<pre><code>stu_t.name = &quot;Tom&quot;  //错，stu_t是类型
-stu1_p = &amp;stu_t     //错，stu_t没地址
-</code></pre>
-<p>可以对结构体类型进行sizeof操作，而不需要分配内存。</p>
-<pre><code>sizeof(stu_t);      //获取结构体（将）占用的内存空间
-</code></pre>
-<h1 id="5-结构体的内存分配"><a href="#5-结构体的内存分配" class="headerlink" title="5.结构体的内存分配"></a>5.结构体的内存分配</h1><p><strong>理论上</strong>结构体的内存占用是成员占用的和。各成员在内存中连续存储的，和数组非常类似，例如结构体变量 stu1、stu2的内存分布如下，共占用 4+4+4+1+4&#x3D;17字节。<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061515193.jpeg" alt="1"><br>但实际上，编译器会遵循<strong>内存对齐</strong>规则。实际内存占用大于各成员占用的和。如下图，stu1、stu2 其实占用了 17+3&#x3D;20 字节<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061516336.jpeg" alt="2"></p>
-<h2 id="5-1内存对齐概述"><a href="#5-1内存对齐概述" class="headerlink" title="5.1内存对齐概述"></a>5.1内存对齐概述</h2><p>1.CPU怎么访问内存中的数据最高效？<br>答：用最少的访问次数，获取该数据所在的内存空间的值。<br>2.怎么做到对某类型数据的最少访问？<br>答：编译器设置数据的存放地址的单位为数据占用空间的长度，CPU以数据长度为单位查询偏移地址，找到数据空间首地址后，根据数据类型取出其占用空间大小的数据。<br>如int数据，就存放在以4字节为单位的偏移地址，如0，4，8…,CPU取数据就按0，4，8…的地址查询，找到该数据地址后取4字节。这样做到一次性访问获取int数据。如果CPU按单字节访问int,就要查询4次，如int首字节地址为0x00001024, CPU要分4次查询0x00001024~0x00001027才能得到一个int。<br>3.对于结构体，包含多种数据类型，怎么对齐？<br>答：各成员按各自的类型对齐，即对于成员来说不存在结构体的概念，它认为它就是基本的数据类型int、char、指针等。</p>
-<h2 id="5-2结构体与内存对齐"><a href="#5-2结构体与内存对齐" class="headerlink" title="5.2结构体与内存对齐"></a>5.2结构体与内存对齐</h2><p>结构体是不同类型数据的集合，因此内存对齐问题就特别突出。一个例子：</p>
-<pre><code>#include &quot;stdio.h&quot;
-typedef struct &#123;
-    int a;
-    double b;
-    char c;
-&#125;A; 
-
-typedef struct &#123;
-    int a;
-    char b;
-    double c;
-&#125;B;
-
-int main()
-&#123;
-    printf(&quot;sizeof A: %d, sizeof B: %d\n&quot;, sizeof(A), sizeof(B));
-&#125;
-</code></pre>
-<p>A和B的内存占用：A&#x3D;24字节，B&#x3D;16字节。<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061516111.png" alt="3"><br>结构体内存对齐的计算规则：<br>1.默认首地址已对齐（或认为是0地址)<br>2.各成员按自己的类型对齐<br>3.整个结构体分配的空间是期中最大成员占用空间的整数倍<br>对于A：<br>int a占用4字节，地址byte[0<del>3]<br>double b占8字节，起始地址必须是8的倍数，占用byte[7</del>15]<br>char c占1字节，因此占byte[16]<br>目前共占用17字节。编译器会按照规则3，将byte[17~13]也分配给结构体，因此最终结构体占用3<em>8&#x3D;24字节。<br>对于B, int a和char b加起来都不够8字节，double c再占用8字节，共占用2</em>8&#x3D;16字节。<br>因此<strong>结构体的内存分配&#x3D;各成员按类型对齐+总空间是最大成员空间的倍数</strong><br>注意，结构体不仅成员间要对齐，最后一个成员后面的空余空间可能也分配给结构体。<br>查看下面的测试程序：</p>
-<pre><code>typedef struct &#123;
-    int a;
-    double b;
-    char c;
-    char d;         //d作为成员
-&#125;C;
-
-typedef struct &#123;
-    int a;
-    double b;
-    char c;
-    struct &#123;        //d作为嵌套结构体的成员
-        char d; 
-    &#125;;
-&#125;D;
-
-printf(&quot;sizeof C: %d, sizeof D: %d\n&quot;, sizeof(C), sizeof(D));
-</code></pre>
-<p>C和D的内存占用：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061517211.png" alt="4"><br>新增的char d作为C的成员被分配在第三个8byte区域的第二个字节（byte[17])，嵌套的结构体并不从第四个8byte开始分配，它占用空间还是byte[17]。可见编译器对结构体内存分配不区分成员类型，只根据成员大小来处理。</p>
-<h1 id="6-联合、位域、枚举"><a href="#6-联合、位域、枚举" class="headerlink" title="6.联合、位域、枚举"></a>6.联合、位域、枚举</h1><p>这几种数据结构体和结构体相关联，通常混合使用。</p>
-<h2 id="6-1联合"><a href="#6-1联合" class="headerlink" title="6.1联合"></a>6.1联合</h2><p>联合(Union)也称共用体，和结构体的区别：<br>结构体的各个成员会占用不同的内存，互相之间没有影响；而共用体的所有成员占用同一段内存，修改一个成员会影响其余所有成员。<br>声明格式：</p>
-<pre><code>union 共用体名&#123;
-    成员列表
-&#125;;
-</code></pre>
-<p>共用体占用的内存等于最长的成员占用的内存。共用体使用了内存覆盖技术，同一时刻只能保存一个成员的值，如果对新的成员赋值，就会把原来成员的值覆盖掉。<br>联合的一个示例：</p>
-<pre><code>#include &lt;stdio.h&gt;
-union data&#123;
-    int n;
-    char ch;
-    short m;
-&#125;;
-int main()&#123;
-    union data a;
-    printf(&quot;%d, %d\n&quot;, sizeof(a), sizeof(union data) );
-    a.n = 0x40;
-    printf(&quot;%X, %c, %hX\n&quot;, a.n, a.ch, a.m);
-    a.ch = &#39;9&#39;;
-    printf(&quot;%X, %c, %hX\n&quot;, a.n, a.ch, a.m);
-    a.m = 0x2059;
-    printf(&quot;%X, %c, %hX\n&quot;, a.n, a.ch, a.m);
-    a.n = 0x3E25AD54;
-    printf(&quot;%X, %c, %hX\n&quot;, a.n, a.ch, a.m);
-    return 0;
-&#125;
-</code></pre>
-<p>输出：</p>
-<pre><code>4, 4
-40, @, 40
-39, 9, 39
-2059, Y, 2059
-3E25AD54, T, AD54
-</code></pre>
-<p>在内存中数据分布如下（以大端，低字节存高位为例）<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061517262.jpeg" alt="5"><br>可见数据会相互覆盖，联合可以理解为分时复用的结构体，其空间占用定长，为最大的成员长度，在不同时间，值的含义不同。</p>
-<h2 id="6-2位域"><a href="#6-2位域" class="headerlink" title="6.2位域"></a>6.2位域</h2><p>有的结构体成员在存储时并不占用一个完整的字节，只需要按二进制位为单位分配空间即可。可以指定该成员所占用的二进制位数（Bit），这就是位域。</p>
-<pre><code>#include &quot;stdio.h&quot;
-struct &#123;
-        unsigned char a;    //a占完整的8bit
-        unsigned char b: 2; //b占2bit
-        unsigned char c: 6; //C占6bit
-&#125;bs;
-
-int main()
-&#123;
-    printf(&quot;sizeof bs: %d\n&quot;, sizeof(bs));
-&#125;
-</code></pre>
-<p>输出2字节，可见b和c刚好拼成一个unsigned char(8 bit)：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061517807.png" alt="6"><br>位域将结构体成员占用的空间从基本数据类型为单位，变成了以二进制位为单位，是更精细的结构体内存分配。<br>位域不能超过对应基本类型的二进制位数。</p>
-<h2 id="6-3枚举"><a href="#6-3枚举" class="headerlink" title="6.3枚举"></a>6.3枚举</h2><p>枚举可以理解为计数宏的结构体。</p>
-<pre><code>#include &lt;stdio.h&gt;
-int main()&#123;
-    enum week&#123; Mon = 1, Tues, Wed, Thurs, Fri, Sat, Sun &#125; day;
-    scanf(&quot;%d&quot;, &amp;day);
-    switch(day)&#123;
-        case Mon: puts(&quot;Monday&quot;); break;
-        case Tues: puts(&quot;Tuesday&quot;); break;
-        case Wed: puts(&quot;Wednesday&quot;); break;
-        case Thurs: puts(&quot;Thursday&quot;); break;
-        case Fri: puts(&quot;Friday&quot;); break;
-        case Sat: puts(&quot;Saturday&quot;); break;
-        case Sun: puts(&quot;Sunday&quot;); break;
-        default: puts(&quot;Error!&quot;);
-    &#125;
-    return 0;
-&#125;
-</code></pre>
-<p>枚举值默认从0开始，往后逐个加 1（递增）；如果第一个成员赋值，从那个成员值往后递增。也就是说，week中的 Mon、Tues …… Sun 对应的值分别为 1、2… 7。<br>宏在编译的预处理阶段将名字替换成对应的值，而枚举在编译阶段将名字替换成对应的值。在编译过程中，Mon、Tues、Wed 名字都被替换成了对应的数字。这意味着Mon、Tues、Wed 等都不是变量，不占用数据区（常量区、全局数据区、栈区和堆区）的内存，而是被编译到指令里面，放到代码区，所以不能用&amp;取得它们的地址。这就是枚举的本质。<br>枚举类型实例的内存占用通常&#x3D;int类型占用&#x3D;4字节。</p>
-<h1 id="7-结构体常见用法"><a href="#7-结构体常见用法" class="headerlink" title="7.结构体常见用法"></a>7.结构体常见用法</h1><h2 id="7-1结构体数组"><a href="#7-1结构体数组" class="headerlink" title="7.1结构体数组"></a>7.1结构体数组</h2><p>结构体数组是将多个同类型结构体按数组的方式存储，其成员访问方式为：先访问数组元素，再访问结构体成员。<br>结构体数组本质还是数组，但数组成员是结构体，结构体内可以包含各种类型的成员。<br>一个Linux NandFlash驱动的结构体数组如下：</p>
-<pre><code>    static struct mtd_partition s3c_nand_parts[] = &#123;
-    [0] = &#123;
-        .name   = &quot;bootloader&quot;,
-        .size   = 0x00040000,
-        .offset    = 0,
-    &#125;,
-    [1] = &#123;
-        .name   = &quot;params&quot;,
-        .offset = MTDPART_OFS_APPEND,
-        .size   = 0x00020000,
-    &#125;,
-    [2] = &#123;
-        .name   = &quot;kernel&quot;,
-        .offset = MTDPART_OFS_APPEND,
-        .size   = 0x00200000,
-    &#125;,
-    [3] = &#123;
-        .name   = &quot;root&quot;,
-        .offset = MTDPART_OFS_APPEND,
-        .size   = MTDPART_SIZ_FULL,
-    &#125;
-&#125;;
-</code></pre>
-<p> 该数组名为s3c_nand_parts，成员为mtd_partition结构体，包含分区名，分区大小和分区偏移地址。每个结构体成员分别初始化赋值。注意结构体数组实例没写结构体名，只有数组下标[]，结构体成员没写结构体名,只有.符号。这是Linux kernel常见的精简写法。<br> 访问一个结构体数组的成员：</p>
-<pre><code>s3c_nand_parts[0].name = &quot;bootloader_2&quot;
-</code></pre>
-<p>结构体数组的内存占用&#x3D;数组成员数*单个结构体内存占用。</p>
-<h2 id="7-2结构体指针"><a href="#7-2结构体指针" class="headerlink" title="7.2结构体指针"></a>7.2结构体指针</h2><p>结构体指针本质是指针变量，其值是结构体的地址。<br>前面结构体重定义一节已经定义和初始化过结构体指针，需要注意的是，结构体指针的初始化值来源于结构体实例，结构体类型名只是标签，不代表结构体地址，注意和”数组名&#x3D;数组地址“区分。</p>
-<pre><code>struct stu&#123;         
-    char *name;     //姓名
-    int num;        //学号
-    int age;        //年龄
-    char group;     //所在小组
-    float score;    //成绩
-&#125; stu1, stu2;
-
-struct stu *stu_p = stu;    //错，stu只是符号，不占内存
-struct stu *stu_p = &amp;stu1;  //对，stu1是结构体实例，占内存  //对，stu1是stu实例变量，有内存占用
-</code></pre>
-<p>结构体指针的常见用途：malloc分配结构体空间</p>
-<pre><code>stu_p =(stu_t *)malloc(sizeof(stu_t));  //分配结构体空间，返回地址给结构体指针
-</code></pre>
-<p>结构体指针最重要的用途：函数传参<br>结构体变量作为函数参数时传递的是整个结构体内存空间，也就是所有成员空间，而不是像数组一样被编译器转换成一个指针。如果结构体成员较多，传送的时间和空间开销会很大，影响程序的运行效率。所以最好的办法就是使用结构体指针，这时由实参传向形参的只是一个地址，非常快速。</p>
-<h2 id="7-2结构体嵌套"><a href="#7-2结构体嵌套" class="headerlink" title="7.2结构体嵌套"></a>7.2结构体嵌套</h2><p>结构体嵌套是结构体的成员也是结构体。有两种情况：<br>1.成员是其他类型的结构体<br>2.成员是同类型的结构体</p>
-<h3 id="7-2-1-嵌套其他类型"><a href="#7-2-1-嵌套其他类型" class="headerlink" title="7.2.1.嵌套其他类型"></a>7.2.1.嵌套其他类型</h3><p>在协议开发中，一个命令的数据可以用结构体来表达，在命令的内部又分为很多个数据域，每个数据域又用结构体来表达，因此需要结构体嵌套。对于同一块数据，根据命令的不同，解析为不同的结构体,因此存在多类命令公用一块数据域的情况，因此需要联合（Union）。以NVMe协议为例，结构体嵌套和联合一起使用的例子：</p>
-<pre><code>typedef struct  //nvme命令结构体
-&#123;
-     union      //命令中dword10空间的联合
-    &#123;
-        u32 command_dw10;
-        struct
-        &#123;
-            u32 cntid:16;   //16 bit位域
-            u32 resv1:8;    //8 bit位域
-            u32 cns:8;      //8 bit位域
-        &#125;identify;          //当命令为identify时
-        struct
-        &#123;
-            u32 save:1;
-            u32 resv1:20;
-            u32 select:3;
-            u32 feature_identifier:8;
-        &#125;get_features;      //当命令为get_featuresy时
-        struct
-        &#123;
-            u32 queue_size:16;
-            u32 queue_identifier:16;
-        &#125;io_queue_create_delete_dw10;
-        ...
-    &#125;;
-    
-    union   //命令中dword11空间的联合
-    &#123;
-        u32 command_dw11;
-        struct
-        &#123;
-            u32 completion:16;
-            u32 submission:16;
-        &#125;number_of_queues;
-        struct
-        &#123;
-            u32 interrupt_vector:16;
-            u32 resv1:14;
-            u32 interrupt_enabled:1;
-            u32 physically_contiguous:1;
-        &#125;create_io_completion_queue_dw11;
-        ...
-    &#125;;
-    
-&#125;command_t, *command_p;
-</code></pre>
-<p>该例子结合了结构体、联合、位域。对每个nvme命令，多个联合并存在结构体command_t实例里，每个联合长度为一个dword(4字节)，分别表示dword0~15中的一个。对于dword内部，根据解析到命令的不同，作为不同含义处理，如解析为identify就按identify的结构体读写成员，如解析为get_features则按get_features的结构体读写成员。在结构体内部，用位域更精细控制这个dword内各bit的含义。</p>
-<h3 id="7-2-2嵌套自身类型"><a href="#7-2-2嵌套自身类型" class="headerlink" title="7.2.2嵌套自身类型"></a>7.2.2嵌套自身类型</h3><p>结构体嵌套自身类型的典型应用：链表数据结构体</p>
-<pre><code>typedef struct ListNode &#123;
-    DataType data;          // 节点数据 
-    struct ListNode *next;  // 指向下一个结点的指针 
-&#125; ListNode_t;
-</code></pre>
-<p>这个结构体有两个成员：DataType类型的数据，和指向 struct ListNode类型(&#x3D;ListNode_t类型)的实例的指针。有多个ListNode_t类型的结构体被实例化且依次指向后续节点后，可以依次node1-&gt;next-&gt;next…-&gt;data访问链表中的节点数据。<br>注意：结构体体能嵌套自身类型的指针，而不能嵌套自身类型的实例。因为指针分配内存是定长（通常4字节），而循环嵌套结构体变量是无穷的。以下写法是错的</p>
-<pre><code>typedef struct ListNode &#123;
-    DataType data;           
-    struct ListNode next;  // 错，嵌套的是实例 
-&#125; ListNode_t;
-</code></pre>
-<h1 id="8-结构体高级用法：面向对象"><a href="#8-结构体高级用法：面向对象" class="headerlink" title="8.结构体高级用法：面向对象"></a>8.结构体高级用法：面向对象</h1><h2 id="8-1函数指针"><a href="#8-1函数指针" class="headerlink" title="8.1函数指针"></a>8.1函数指针</h2><p>程序中定义的函数，在编译时会为这个函数代码分配一段存储空间，这段存储空间的首地址称为这个函数的入口地址。函数名表示的就是这个地址的值。可以定义一个指针变量来存放函数的入口地址，这个指针变量就叫作函数指针变量，简称函数指针。<br>这段话什么意思？<br>1.函数名&#x3D;函数入口地址<br>2.可以用指针变量的值取代函数名，函数的调用和该指针变量的调用等价<br>3.可以把这个指针变量当参数传递给别的函数，也可以把这个指针变量作为结构体的成员，总之，一切指针能做的，函数指针都能做。<br>函数指针的定义：</p>
-<pre><code>返回值 函数入口地址(入参1的类型，入参2的类型，...)
-int (*p)(int, int);     //p为函数指针，*p为入口地址
-</code></pre>
-<p>定义了一个指针变量 p，该指针变量可以指向返回值类型为 int 型，且有两个整型参数的函数。p 的类型为 int(*)(int，int)<br>函数指针的初始化：</p>
-<pre><code>int Func(int x);   /*声明一个函数，包含入参名*/
-int (*p) (int);  /*声明一个函数指针，只有入参类型*/
-p = Func;         /*将Func函数的入口地址赋给指针变量p*/
-</code></pre>
-<p>函数指针作为结构体成员的调用如下</p>
-<pre><code>struct&#123;
-    int (* func)(int);
-&#125;stu1, *stu1_p; //分配两个结构体实例：stu1结构体和指针stu1_p
-
-stu1.func(10);  //通过结构体调用函数指针
-stu1_p-&gt;func(10);   //通过结构体指针调用函数指针
-</code></pre>
-<h2 id="8-2回调函数"><a href="#8-2回调函数" class="headerlink" title="8.2回调函数"></a>8.2回调函数</h2><p>回调函数(Callback)就是一个通过函数指针调用的函数。把函数指针（地址）作为参数传递给另一个函数，当这个指针被用来调用其所指向的函数时，我们就说这是回调函数。回调函数不是由函数的实现方直接调用，而是在特定的事件或条件发生时，由把它当参数的那个函数调用的，用于对该事件或条件进行响应。<br>回调的两个特点：<br>1.函数&#x3D;参数。函数A指针当参数传递B<br>2.异步。特定时间发生时，B才调用A指针指向的函数</p>
-<h2 id="8-3结构体与面向对象"><a href="#8-3结构体与面向对象" class="headerlink" title="8.3结构体与面向对象"></a>8.3结构体与面向对象</h2><p>当函数指针作为结构体的成员，可以通过结构体实例调用成员函数，此时可以实现类似其他语言中“类”或“接口”的概念：<br>结构体声明&#x3D;类声明&#x3D;接口声明<br>结构体的函数指针成员&#x3D;类方法&#x3D;接口函数<br>结构体实例调用函数指针成员&#x3D;类实例调用方法&#x3D;接口的实现<br>这种设计思想在Linux内核和驱动框架中很常用。以字符设备驱动为例：<br>字符设备驱动顶层框架将所有字符操作函数作为接口在结构体file_operations中定义，在底层具体的设备驱动中实现file_operations的方法。底层驱动实例化file_operations结构体（分配内存），将各种操作的具体实现函数赋值给接口定义的函数，然后上报（注册）该file_operations实例给顶层驱动框架，顶层驱动框架接收到应用层的系统调用请求时，回调已注册的file_operations实例的函数。<br>上层驱动框架定义的字符文件操作接口如下，这些open、read、write作为文件操作的方法供应用层调用。</p>
-<pre><code> struct file_operations &#123;   //字符文件操作的接口定义
-　　struct module *owner;   //结构体指针
-　　ssize_t(*read) (struct file *, char __user *, size_t, loff_t *);      //函数指针read
-　　ssize_t(*write) (struct file *, const char __user *, size_t, loff_t *);    //函数指针write
-　　int (*open) (struct inode *, struct file *);    //函数指针open
-　　int (*ioctl) (struct inode *, struct file *, unsigned int, unsigned long);   //函数指针ioctl
-　　...
-&#125;;
-</code></pre>
-<p>而这些方法具体实现（内部做什么）是由底层驱动代码实现：</p>
-<pre><code>static int my_drv_open(struct inode *inode, struct file *file)
-&#123;
-    //硬件寄存器操作A...
-    return 0;
-&#125;
-
-static ssize_t my_drv_write(struct file *file, const char __user *buf, size_t count, loff_t * ppos)
-&#123;
-    //硬件寄存器操作B...
-    return 0;
-&#125;
-</code></pre>
-<p>那么这些实现怎么关联接口：在底层驱动分配结构体实例，初始化函数指针为实现函数</p>
-<pre><code>static struct file_operations my_drv_fops = &#123;
-    .owner  =   THIS_MODULE,   
-    .open   =   my_drv_open,   //open接口由my_drv_open函数实现  
-    .write    =    my_drv_write,     //write接口由my_drv_write函数实现  
-&#125;;
-</code></pre>
-<p>关联完了，上层驱动怎么调用：结构体指针传参+回调<br>my_drv_fops是file_operations的实例，上报给上层驱动，上层驱动有它自己的字符设备结构体cdev，取出my_drv_fops实例的.结构体指针fops的值，赋给cdev实例内的ops指针。之后它就能用ops调用my_drv_open、my_drv_write函数。</p>
-<pre><code>//注册结构体
-cdev-&gt;owner = fops-&gt;owner;
-cdev-&gt;ops = fops;
-//回调.open方法
-cdev-&gt;ops-&gt;open(inode,file);
-</code></pre>
-<p>由于my_drv_write是值，open才是结构体成员，因此调用的时候看上去调用的是open函数，本质上执行的还是my_drv_write的流程。函数指针的回调能将接口名暴露，方法名隐藏。因此底层实现的函数名和上层驱动的调用函数名不相关，上层永远都可以用.open .read .write这些接口调用底层驱动，而底层函数可以随便改名（不能改入参出参类型，否则函数指针类型变了），这种特性都是函数指针决定的。<br>对于应用程序，是调用上层驱动提供的系统调用接口，还是如.open .read .write等接口。Linux驱动将设备抽象成了文件，驱动程序实现了文件的各种方法，所以对应用程序，打开文件&#x3D;打开设备，调用文件对应的接口&#x3D;调用设备驱动提供的接口。</p>
-<pre><code>fd = open(&quot;/dev/xyz&quot;, O_RDWR);  //打开文件（设备）
-read(fd, &amp;val, 1);  //读fd文件（设备）的值到val变量
-</code></pre>
-<p>除了C语言，在golang中也有类似的结构体+函数指针实现的面向对象方法。<br>NOTE:关于结构体中的函数指针写法易错点：<br>不包含变量名，只能使用基本类型</p>
-<pre><code>   #一个结构体
-   typedef stru&#123;    //定义结构体名
-        int a;
-        char b;
-   &#125;stru_t, *stru_p; //重定义结构体变量和指针
-    
-    #普通函数声明
-    int func(int a, stru_p p); //参数写类型且写值，可以使用typedef后的结构体指针类型
-    
-    #函数指针声明
-    int (*func)(int, struct stru *);    //参数只写类型不写参数，只能使用C基本类型，不能使用typedef后的类型，只能写struct stru *类型
-</code></pre>
-<p>函数指针声明使用typedef后的类型名，编译器不认识，产生syntax error。    </p>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
 
   
   <nav class="pagination">
@@ -4414,7 +4317,7 @@ read(fd, &amp;val, 1);  //读fd文件（设备）的值到val变量
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">64</span>
+          <span class="site-state-item-count">65</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
@@ -4427,7 +4330,7 @@ read(fd, &amp;val, 1);  //读fd文件（设备）的值到val变量
       <div class="site-state-item site-state-tags">
             <a href="/tags/">
           
-        <span class="site-state-item-count">37</span>
+        <span class="site-state-item-count">38</span>
         <span class="site-state-item-name">标签</span></a>
       </div>
   </nav>
