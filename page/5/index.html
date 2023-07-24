@@ -190,6 +190,312 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/11/20/%E6%B5%85%E8%B0%88C-%E5%AE%9E%E7%8E%B0%E5%8D%95%E4%BE%8B%E6%A8%A1%E5%BC%8F/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2020/11/20/%E6%B5%85%E8%B0%88C-%E5%AE%9E%E7%8E%B0%E5%8D%95%E4%BE%8B%E6%A8%A1%E5%BC%8F/" class="post-title-link" itemprop="url">浅谈C++实现单例模式</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-11-20 16:59:24" itemprop="dateCreated datePublished" datetime="2020-11-20T16:59:24+08:00">2020-11-20</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2022-12-08 17:28:57" itemprop="dateModified" datetime="2022-12-08T17:28:57+08:00">2022-12-08</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/C/" itemprop="url" rel="index"><span itemprop="name">C++</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h1 id="0-前言"><a href="#0-前言" class="headerlink" title="0.前言"></a>0.前言</h1><p>相信大家面试都逃不开设计模式话题，本节将阐述面试中的最常用的设计模式(单例模式)，从分类，线程安全，不基于C++11标准的角度与基于C++11标准的角度，有哪些解决线程安全的单例模式方案，相信认真看完本篇文章，在以后面试中就不用担忧了。</p>
+<p>众所周知的单例：<br>在一般书籍中或者大家比较是熟知的单例模式是下面这样：</p>
+<pre><code>class singleton &#123;
+private:
+    singleton() &#123;&#125;
+    static singleton *p;
+public:
+    static singleton *instance();
+&#125;;
+
+singleton *singleton::p = nullptr;
+
+singleton* singleton::instance() &#123;
+    if (p == nullptr)
+        p = new singleton();
+    return p;
+&#125;
+</code></pre>
+<p>这是一个非常简单的实现，将构造函数声明为private或protect防止被外部函数实例化，内部有一个静态的类指针保存唯一的实例，实例的实现由一个public方法来实现，该方法返回该类的唯一实例。</p>
+<p>当然这个代码只适合在单线程下，当多线程时，是不安全的。考虑两个线程同时首次调用instance方法且同时检测到p是nullptr，则两个线程会同时构造一个实例给p，这将违反了单例的准则。</p>
+<h1 id="2-懒汉与饿汉"><a href="#2-懒汉与饿汉" class="headerlink" title="2.懒汉与饿汉"></a>2.懒汉与饿汉</h1><p>单例分为两种实现方法：</p>
+<p>懒汉:第一次用到类实例的时候才会去实例化，上述就是懒汉实现。<br>饿汉:单例类定义的时候就进行了实例化。</p>
+<p>这里也给出饿汉的实现：</p>
+<pre><code>class singleton &#123;
+private:
+    singleton() &#123;&#125;
+    static singleton *p;
+public:
+    static singleton *instance();
+&#125;;
+
+singleton *singleton::p = new singleton();
+singleton* singleton::instance() &#123;
+    return p;
+&#125;
+</code></pre>
+<p>当然这个是线程安全的，对于我们通常阐述的线程不安全，为懒汉模式，下面会阐述懒汉模式的线程安全代码优化。</p>
+<h1 id="3-多线程加锁"><a href="#3-多线程加锁" class="headerlink" title="3.多线程加锁"></a>3.多线程加锁</h1><p>在C++中加锁有个类实现原理采用RAII，不用手动管理unlock，那就是lock_guard，这里采用其进行加锁。</p>
+<pre><code>class singleton &#123;
+private:
+    singleton() &#123;&#125;
+    static singleton *p;
+    static mutex lock_;
+public:
+    static singleton *instance();
+&#125;;
+
+singleton *singleton::p = nullptr;
+
+singleton* singleton::instance() &#123;
+    lock_guard&lt;mutex&gt; guard(lock_);
+    if (p == nullptr)
+        p = new singleton();
+    return p;
+&#125;
+</code></pre>
+<p>这种写法不会出现上面两个线程都执行到p&#x3D;nullptr里面的情况，当线程A在执行p &#x3D; new Singleton()的时候，线程B如果调用了instance()，一定会被阻塞在加锁处，等待线程A执行结束后释放这个锁。从而是线程安全的。</p>
+<p>但是这种写法性能非常低下，因为每次调用instance()都会加锁释放锁，而这个步骤只有在第一次new Singleton()才是有必要的，只要p被创建出来了，不管多少线程同时访问，使用if (p &#x3D;&#x3D; nullptr)进行判断都是足够的（只是读操作，不需要加锁），没有线程安全问题，加了锁之后反而存在性能问题。</p>
+<p>因此引出**双重检查锁(DCL)**。</p>
+<h1 id="4-双重检查锁模式"><a href="#4-双重检查锁模式" class="headerlink" title="4.双重检查锁模式"></a>4.双重检查锁模式</h1><p>上面写法是不管任何情况都会去加锁，然后释放锁，而对于读操作是不存在线程安全的，故只需要在第一次实例创建的时候加锁，以后不需要。下面先看一下DCLP的实现：</p>
+<pre><code>singleton* singleton::instance() &#123;
+    if(p == nullptr) &#123;  // 第一次检查
+        Lock lock;
+        if(p == nullptr)&#123; // 第二次检查
+            p = new singleton;
+        &#125;
+    &#125;
+    return p;
+&#125;
+</code></pre>
+<p>基于上述，我们可以写出<strong>双重检查锁+自动回收(DCLP)</strong></p>
+<pre><code>class singleton &#123;
+private:
+    singleton() &#123;&#125;
+
+    static singleton *p;
+    static mutex lock_;
+public:
+    singleton *instance();
+
+    // 实现一个内嵌垃圾回收类
+    class CGarbo
+    &#123;
+    public:
+        ~CGarbo()
+        &#123;
+            if(singleton::p)
+                delete singleton::p;
+        &#125;
+    &#125;;
+    static CGarbo Garbo; // 定义一个静态成员变量，程序结束时，系统会自动调用它的析构函数从而释放单例对象
+&#125;;
+
+singleton *singleton::p = nullptr;
+singleton::CGarbo Garbo;
+
+singleton* singleton::instance() &#123;
+    if (p == nullptr) &#123;
+        lock_guard&lt;mutex&gt; guard(lock_);
+        if (p == nullptr)
+            p = new singleton();
+    &#125;
+    return p;
+&#125;
+</code></pre>
+<p>DCLP的关键在于，大多数对instance的调用会看到p是非空的，因此甚至不用尝试去初始化它。因此，DCLP在尝试获取锁之前检查p是否为空。只有当检查成功（也就是p还没有被初始化）时才会去获得锁，然后再次检查p是否仍然为空（因此命名为双重检查锁）。第二次检查是必要，因为就像我们刚刚看到的，很有可能另一个线程偶然在第一次检查之后，获得锁成功之前初始化p。</p>
+<p>看起来上述代码非常美好，可是过了相当一段时间后，才发现这个漏洞，原因是：<strong>内存读写的乱序执行(编译器问题)。</strong></p>
+<p>再次考虑初始化p的那一行：</p>
+<pre><code>p = new singleton;
+</code></pre>
+<p>这条语句会导致三个事情的发生：</p>
+<ul>
+<li>分配能够存储singleton对象的内存；</li>
+<li>在被分配的内存中构造一个singleton对象；</li>
+<li>让p指向这块被分配的内存。</li>
+</ul>
+<p>可能会认为这三个步骤是按顺序执行的，但实际上只能确定步骤1是最先执行的，步骤2，3却不一定。问题就出现在这。</p>
+<ol>
+<li>线程A调用instance，执行第一次p的测试，获得锁，按照1,3,执行，然后被挂起。此时p是非空的，但是p指向的内存中还没有Singleton对象被构造。</li>
+<li>线程B调用instance，判定p非空，</li>
+<li>将其返回给instance的调用者。调用者对指针解引用以获得singleton，噢，一个还没有被构造出的对象。bug就出现了。</li>
+</ol>
+<p>DCLP能够良好的工作仅当步骤一和二在步骤三之前被执行，但是并没有并没有方法在C或C++中表达这种限制。这就像是插在DCLP心脏上的一把匕首：我们需要在相对指令顺序上定义限制，但是我们的语言没有给出表达这种限制的方法。</p>
+<h1 id="5-memory-barrier指令"><a href="#5-memory-barrier指令" class="headerlink" title="5.memory barrier指令"></a>5.memory barrier指令</h1><p>DCLP问题在C++11中，这个问题得到了解决。</p>
+<p>因为新的C++11规定了新的内存模型，保证了执行上述3个步骤的时候不会发生线程切换，相当这个初始化过程是“原子性”的的操作，DCL又可以正确使用了，不过在C++11下却有更简洁的多线程singleton写法了，这个留在后面再介绍。</p>
+<p>C++11之前解决方法是barrier指令。要使其正确执行的话，就得在步骤2、3直接加上一道memory barrier。强迫CPU执行的时候按照1、2、3的步骤来运行。</p>
+<p>第一种实现：</p>
+<p>基于operator new + placement new，遵循1,2,3执行顺序依次编写代码。</p>
+<pre><code>// method 1 operator new + placement new
+singleton *instance() &#123;
+    if (p == nullptr) &#123;
+        lock_guard&lt;mutex&gt; guard(lock_);
+        if (p == nullptr) &#123;
+            singleton *tmp = static_cast&lt;singleton *&gt;(operator new(sizeof(singleton)));
+            new(p)singleton();
+            p = tmp;
+        &#125;
+    &#125;
+    return p;
+&#125;
+</code></pre>
+<p>第二种实现：</p>
+<p>基于直接嵌入ASM汇编指令mfence，uninx的barrier宏也是通过该指令实现的。</p>
+<pre><code>#define barrier() __asm__ volatile (&quot;lwsync&quot;)
+singleton *singleton::instance() &#123;
+    if (p == nullptr) &#123;
+        lock_guard&lt;mutex&gt; guard(lock_);
+        barrier();
+        if (p == nullptr) &#123;
+            p = new singleton();
+        &#125;
+    &#125;
+    return p;
+&#125;
+</code></pre>
+<p>通常情况下是调用cpu提供的一条指令，这条指令的作用是会阻止cpu将该指令之前的指令交换到该指令之后，这条指令也通常被叫做barrier。 </p>
+<p>上面代码中的asm表示这个是一条汇编指令，volatile是可选的，如果用了它，则表示向编译器声明不允许对该汇编指令进行优化。lwsync是POWERPC提供的barrier指令。</p>
+<h1 id="6-静态局部变量"><a href="#6-静态局部变量" class="headerlink" title="6.静态局部变量"></a>6.静态局部变量</h1><p>Scott Meyer在《Effective C++》中提出了一种简洁的singleton写法</p>
+<pre><code>singleton *singleton::instance() &#123;
+    static singleton p;
+    return &amp;p;
+&#125;
+</code></pre>
+<ul>
+<li>单线程下，正确。</li>
+<li>C++11及以后的版本（如C++14）的多线程下，正确。</li>
+<li>C++11之前的多线程下，不一定正确。</li>
+</ul>
+<p>原因在于在C++11之前的标准中并没有规定local static变量的内存模型。于是乎它就是不是线程安全的了。但是在C++11却是线程安全的，这是因为新的C++标准规定了当一个线程正在初始化一个变量的时候，其他线程必须得等到该初始化完成以后才能访问它。</p>
+<p>上述使用的内存序：</p>
+<p>memory_order_relaxed：松散内存序，只用来保证对原子对象的操作是原子的<br>memory_order_acquire：获得操作，在读取某原子对象时，当前线程的任何后面的读写操作都不允许重排到这个操作的前面去，并且其他线程在对同一个原子对象释放之前的所有内存写入都在当前线程可见<br>memory_order_release：释放操作，在写入某原子对象时，当前线程的任何前面的读写操作都不允许重排到这个操作的后面去，并且当前线程的所有内存写入都在对同一个原子对象进行获取的其他线程可见</p>
+<h1 id="7-Atomic"><a href="#7-Atomic" class="headerlink" title="7.Atomic"></a>7.Atomic</h1><p>在C++11之前的版本下，除了通过锁实现线程安全的Singleton外，还可以利用各个编译器内置的atomic operation来实现。</p>
+<p>java和c#发现乱序问题后，就加了一个关键字volatile，在声明p变量的时候，要加上volatile修饰，编译器看到之后，就知道这个地方不能够reorder（一定要先分配内存，在执行构造器，都完成之后再赋值）。</p>
+<p>而对于c++标准却一直没有改正，所以VC++在2005版本也加入了这个关键字，但是这并不能够跨平台（只支持微软平台）。</p>
+<p>而到了c++ 11版本，为了从根本上消除这些漏洞，引入了适合多线程的内存模型。终于有了这样的机制帮助我们实现跨平台的方案。</p>
+<pre><code>mutex singleton::lock_;
+atomic&lt;singleton *&gt; singleton::p;
+
+/*
+* std::atomic_thread_fence(std::memory_order_acquire); 
+* std::atomic_thread_fence(std::memory_order_release);
+* 这两句话可以保证他们之间的语句不会发生乱序执行。
+*/
+singleton *singleton::instance() &#123;
+    singleton *tmp = p.load(memory_order_relaxed);
+    atomic_thread_fence(memory_order_acquire);
+    if (tmp == nullptr) &#123;
+        lock_guard&lt;mutex&gt; guard(lock_);
+        tmp = p.load(memory_order_relaxed);
+        if (tmp == nullptr) &#123;
+            tmp = new singleton();
+            atomic_thread_fence(memory_order_release);
+            p.store(tmp, memory_order_relaxed);
+        &#125;
+    &#125;
+    return p;
+&#125;
+</code></pre>
+<p>值得注意的是，上述代码使用两个比较关键的术语，获得与释放：</p>
+<ul>
+<li>获得是一个对内存的读操作，当前线程的任何后面的读写操作都不允许重排到这个操作的前面去。</li>
+<li>释放是一个对内存的写操作，当前线程的任何前面的读写操作都不允许重排到这个操作的后面去。</li>
+</ul>
+<p>acquire 和 release 通常都是配对出现的，目的是保证如果对同一个原子对象的 release 发生在 acquire 之前的话，release 之前发生的内存修改能够被 acquire 之后的内存读取全部看到。</p>
+<h1 id="8-pthread-once"><a href="#8-pthread-once" class="headerlink" title="8.pthread_once"></a>8.pthread_once</h1><p>如果是在unix平台的话，除了使用atomic operation外，在不适用C++11的情况下，还可以通过pthread_once来实现Singleton。</p>
+<p>原型如下：</p>
+<pre><code>int pthread_once(pthread_once_t once_control, void (init_routine) (void))；
+</code></pre>
+<p>实现：</p>
+<pre><code>class singleton &#123;
+private:
+    singleton(); //私有构造函数，不允许使用者自己生成对象
+    singleton(const singleton &amp;other);
+
+    //要写成静态方法的原因：类成员函数隐含传递this指针（第一个参数）
+    static void init() &#123;
+        p = new singleton();
+    &#125;
+
+    static pthread_once_t ponce_;
+    static singleton *p; //静态成员变量 
+public:
+    singleton *instance() &#123;
+        // init函数只会执行一次
+        pthread_once(&amp;ponce_, &amp;singleton::init);
+        return p;
+    &#125;
+&#125;;
+</code></pre>
+<h1 id="9-总结"><a href="#9-总结" class="headerlink" title="9.总结"></a>9.总结</h1><p>本文讲解了几种单例模式，并讲解了线程安全的单例模式，以及不用C++11实现的几种线程安全的单例模式：memory barrier，静态局部变量，pthread_once方式，C++11的atomic实现等。</p>
+<p>最后值得注意的是，针对上述单例类的析构函数请参考双重锁检查模式+自动回收实现，必须在类中声明一个静态局部变量，静态局部变量可以理解为全局变量，在程序结束时，自动调用该静态局部变量的析构函数，这就是为什么要在类中声明与定义嵌套类，而不是直接编写单例的析构函数。</p>
+<p>本文参考：<a target="_blank" rel="noopener" href="https://light-city.club/sc/design_pattern/singleton/singleton/">C++那些事-&gt;设计模式-&gt;单例模式</a></p>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/11/15/%E6%B5%85%E8%B0%88Linux%E8%BF%9B%E7%A8%8B%E7%9A%84%E5%86%85%E5%AD%98%E5%88%86%E5%B8%83%E5%92%8C%E8%BF%9B%E7%A8%8BIPC/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -2754,173 +3060,6 @@ omit- frame-pointer:可能的情况下不产生栈帧;
   
   
 
-      
-  
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/06/10/Makefile%E4%BD%BF%E7%94%A8%E7%AC%94%E8%AE%B0/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Cursorhu">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="ThinkNotes">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2020/06/10/Makefile%E4%BD%BF%E7%94%A8%E7%AC%94%E8%AE%B0/" class="post-title-link" itemprop="url">Makefile使用笔记</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2020-06-10 17:20:09" itemprop="dateCreated datePublished" datetime="2020-06-10T17:20:09+08:00">2020-06-10</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2022-12-08 17:30:53" itemprop="dateModified" datetime="2022-12-08T17:30:53+08:00">2022-12-08</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/makefile/" itemprop="url" rel="index"><span itemprop="name">makefile</span></a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h1 id="文件名替换"><a href="#文件名替换" class="headerlink" title="文件名替换"></a>文件名替换</h1><p>1.wildcard<br>展开多个文件为使用空格分开的、匹配此模式的列表参数<br>格式<br><code>$(wildcard PATTERN...)</code></p>
-<p>示例：</p>
-<pre><code>SRC=$(wildcard *.c)
-</code></pre>
-<p>2.patsubst<br>替换通配符<br>格式</p>
-<pre><code>$(patsubst %.c,%.o,$(dir))
-</code></pre>
-<p>示例：</p>
-<pre><code>obj := $(patsubst %.c,%.o,$(wildcard *.c))
-</code></pre>
-<p>3.替换引用<br>patsubst的示例等价于：</p>
-<pre><code>obj=$(dir:%.c=%.o)
-</code></pre>
-<p>引用替换：</p>
-<pre><code>$(var:a=b) 或 $&#123;var:a=b&#125;
-</code></pre>
-<p>含义是把变量var中的每一个值，用b替换掉a</p>
-<h1 id="PHONY"><a href="#PHONY" class="headerlink" title="PHONY"></a>PHONY</h1><p>Makefile执行的规则是A:B，表示A依赖于B</p>
-<ul>
-<li>有B才能执行A对应的编译操</li>
-<li>B有更新(检测文件时间)，则A会执行，若B没有更新，不执行A</li>
-</ul>
-<p>问题来了，clean: 不需要依赖任何对象，如何执行<br>PHONY定义伪目标,可以解决源文件不是最终目标直接依赖（即间接依赖）带来的不能自动检查更新规则, 示例如下</p>
-<pre><code>.PHONY: clean
-clean:
-    rm -f *.o
-</code></pre>
-<p>PHONY不仅用于clean，对于间接依赖也有用，例如A:B， B:C ，有时C为空，就需要把B定义为PHONY</p>
-<pre><code>OBJS = *.o
-program:  $(OBJS)
-        gcc *.o -o program
- 
-.PHONY : $(OBJS)
-$(OBJS):
-        make -C $(dir $@)
-</code></pre>
-<p>不过一般情况，obj依赖于%.c，总之，对于没有依赖项的对象，需要定义为PHONY</p>
-<h1 id="通配符"><a href="#通配符" class="headerlink" title="通配符"></a>通配符</h1><p>常见通配符</p>
-<pre><code>$@, $^, $&lt;, $?
-
-$@  表示目标文件
-$^  表示所有的依赖文件
-$&lt;  表示第一个依赖文件
-$?  表示比目标还要新的依赖文件列表
-</code></pre>
-<p>示例：<br>编译Test目录下的.cpp文件，输出test可执行程序<br>直接指定依赖文件名的makefile写法：</p>
-<pre><code>test: $(wildcard Test/*.cpp)
-    $(CXX) $(CFLAGS) -o test $(wildcard Test/*.cpp) 
-</code></pre>
-<p>虽然wildcard实现了所有依赖的.cpp的通配，编译语句再用wildcard写一次依赖文件不优雅，而且test在依赖中已经写了，编译语句又写一遍 -o test。<br>编译语句使用通配, 称为通用格式：</p>
-<pre><code>test: $(wildcard Test/*.cpp)
-    $(CXX) $(CFLAGS) -o $@ $^
-</code></pre>
-<h1 id="多个源文件分别编译"><a href="#多个源文件分别编译" class="headerlink" title="多个源文件分别编译"></a>多个源文件分别编译</h1><p>目录下有很多源文件，每个单独编译和执行的，将每一个文件编译成可执行文件，不用单独命名如：gcc -c xxx.c -o xxx<br>(1)Makefile实现</p>
-<pre><code>SRC=$(wildcard *.c)
-OBJ=$(SRC:%.c=%.o)
-BIN=$(OBJ:%.o=%)
- 
-CC=gcc
-CFLAGS=-Wall -g -c
- 
-all:$(BIN)
-
-$(BIN):%:%.o
-        $(CC) $^ -o $@
-$(OBJ):%.o:%.c
-        $(CC) $(CFLAGS) $^ -o $@
-
-.PHONY: clean
-clean:
-        rm -rf $(OBJ) $(BIN)
-</code></pre>
-<p>(2)Shell实现</p>
-<pre><code>#! /bin/bash
-for file in ./*.c
-do
-if [ -f $file ]
-then
-file=$&#123;file#./&#125;
-target=$&#123;file%.c&#125;
-gcc -o $target $file
-echo $target
-fi
-if [ -d $file ]
-then
-echo $file is mu lu
-fi
-done
-</code></pre>
-<p>(2)Makefile编译指定目录<br>Makefile可以输入参数，直接在make命令的后面加上参数，如:</p>
-<pre><code>make BUILD_DIR=./foldername/
-</code></pre>
-<p>传入的变量将会覆盖相应Makefile中的<code>BUILD_DIR</code></p>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
 
   
   <nav class="pagination">
@@ -2990,7 +3129,7 @@ done
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">65</span>
+          <span class="site-state-item-count">66</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
@@ -3003,7 +3142,7 @@ done
       <div class="site-state-item site-state-tags">
             <a href="/tags/">
           
-        <span class="site-state-item-count">38</span>
+        <span class="site-state-item-count">39</span>
         <span class="site-state-item-name">标签</span></a>
       </div>
   </nav>
