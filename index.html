@@ -190,6 +190,110 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2023/08/02/Linux-driver%E9%80%9A%E7%94%A8%E8%B0%83%E8%AF%95%E6%8A%80%E6%9C%AF%E8%AE%B0%E5%BD%95/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2023/08/02/Linux-driver%E9%80%9A%E7%94%A8%E8%B0%83%E8%AF%95%E6%8A%80%E6%9C%AF%E8%AE%B0%E5%BD%95/" class="post-title-link" itemprop="url">Linux driver常用调试技术记录</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2023-08-02 17:52:38 / 修改时间：19:45:13" itemprop="dateCreated datePublished" datetime="2023-08-02T17:52:38+08:00">2023-08-02</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/linux/" itemprop="url" rel="index"><span itemprop="name">linux</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h2 id="Printk"><a href="#Printk" class="headerlink" title="Printk"></a>Printk</h2><p>printk参考Kernel document: <a target="_blank" rel="noopener" href="https://www.kernel.org/doc/html/latest/translations/zh_CN/core-api/printk-basics.html">使用printk记录消息</a></p>
+<p>（1）Printk的基础用法</p>
+<p>常用示例如下，一般是手动添加打印代码时使用：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">step1: 例如要打印当前函数被调用，添加pr_info(&quot;%s\n&quot;, __FUNCTION__)</span><br><span class="line">step2: echo 7 &gt; /proc/sys/kernel/printk</span><br></pre></td></tr></table></figure>
+
+<p>（2）Printk在具体的linux driver subsystem中的使用</p>
+<p>Linux driver子系统通常使用printk的封装版。以pci driver为例，pci driver代码已经提供了pci_dbg, pci_info, pci_err等打印函数，其不仅打印arg信息，也打印pci port设备信息，例如以下PCIe driver的log:</p>
+<p>pcieport 0000:00:1b.4 显示了当前的PCIe port。如果有多个PCIe port的打印，可以区分是哪个port的打印输出。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">[   44.713266] pcieport 0000:00:1b.4: DPC: containment event, status:0x1f01 source:0x0000</span><br><span class="line">[   44.713268] pcieport 0000:00:1b.4: DPC: unmasked uncorrectable error detected</span><br><span class="line">[   44.713274] pcieport 0000:00:1b.4: PCIe Bus Error: severity=Uncorrected (Non-Fatal), type=Transaction Layer, (Receiver ID)</span><br><span class="line">[   44.713277] pcieport 0000:00:1b.4:   device [8086:43c4] error status/mask=00200000/00004000</span><br><span class="line">[   44.713280] pcieport 0000:00:1b.4:    [21] ACSViol                (First)</span><br></pre></td></tr></table></figure>
+
+<p><strong>如何设置dev_info, dev_err:</strong></p>
+<p>pci_info, pci_err的打开和pr_info, pr_err一致，只需要设置打印级别大于info&#x2F;err即可：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">echo 7 &gt; /proc/sys/kernel/printk</span><br></pre></td></tr></table></figure>
+
+<p>其他驱动模块的xxx_info, xxx_err也是一样</p>
+<p><strong>如何设置dev_dbg:</strong></p>
+<p>dev_dbg是比较特殊和最常用的打印方式，定义如下。</p>
+<p>可见dev_dbg的开启依赖于两个条件：</p>
+<ul>
+<li><p>driver定义了CONFIG_DYNAMIC_DEBUG 或者 DEBUG 宏才能开启，一般使用DEBUG宏</p>
+</li>
+<li><p>printk级别需要为8（7为debug level, 8 &gt; debug level，才能开启debug打印）</p>
+</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">#if defined(CONFIG_DYNAMIC_DEBUG) || \</span><br><span class="line">	(defined(CONFIG_DYNAMIC_DEBUG_CORE) &amp;&amp; defined(DYNAMIC_DEBUG_MODULE))</span><br><span class="line">#define dev_dbg(dev, fmt, ...)						\</span><br><span class="line">	dynamic_dev_dbg(dev, dev_fmt(fmt), ##__VA_ARGS__)</span><br><span class="line">#elif defined(DEBUG)</span><br><span class="line">#define dev_dbg(dev, fmt, ...)						\</span><br><span class="line">	dev_printk(KERN_DEBUG, dev, dev_fmt(fmt), ##__VA_ARGS__)</span><br><span class="line">#else</span><br><span class="line">#define dev_dbg(dev, fmt, ...)						\</span><br><span class="line">(&#123;									\</span><br><span class="line">	if (0)								\</span><br><span class="line">		dev_printk(KERN_DEBUG, dev, dev_fmt(fmt), ##__VA_ARGS__); \</span><br><span class="line">&#125;)</span><br><span class="line">#endif</span><br></pre></td></tr></table></figure>
+
+<p>以pci_dbg为例，其内部实现是dev_dbg，要打开pci_dbg设置如下：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">step1: 在Kernel Makefile定义DEBUG宏，可以在driver/pci的Makefile定义，也可以在Kernel根目录Makefile定义, 建议按driver子系统定义，即driver/pci的Makefile：</span><br><span class="line">方式一：DEBUG宏定义在KCFLAG，即编译此目录的任何driver .o, .ko都定义了DEBUG宏</span><br><span class="line">KCFLAGS += -DDEBUG </span><br><span class="line">方式二：DEBUG宏定义在某一个driver模块，即编译此模块时定义了DEBUG宏，例如</span><br><span class="line">obj-$&#123;CONFIG_PCI&#125; += -DDEBUG </span><br></pre></td></tr></table></figure>
+
+<p>以上是对任意Driver模块打开DEBUG宏的通用方法；实际上，drivers&#x2F;pci目录下已经定义了CONFIG可选项，只需要make menuconfig时设置PCI_DEBUG &#x3D; y即可最所有PCI目录的driver模块定义DEBUG宏</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">### Makefile:</span><br><span class="line">subdir-ccflags-$(CONFIG_PCI_DEBUG) := -DDEBUG</span><br><span class="line"></span><br><span class="line">### Kconfig:</span><br><span class="line">config PCI_DEBUG</span><br><span class="line">	bool &quot;PCI Debugging&quot;</span><br><span class="line">	depends on DEBUG_KERNEL</span><br><span class="line">	help</span><br><span class="line">	  Say Y here if you want the PCI core to produce a bunch of debug</span><br><span class="line">	  messages to the system log.  Select this if you are having a</span><br><span class="line">	  problem with PCI support and want to see more of what is going on.</span><br><span class="line"></span><br><span class="line">	  When in doubt, say N.</span><br></pre></td></tr></table></figure>
+
+<p>接下来设置printk大于DEBUG level：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">echo 8 &gt; /proc/sys/kernel/printk</span><br></pre></td></tr></table></figure>
+
+<p>此后drivers&#x2F;pci下的所有pci_dbg都被打印（当然也包括pci_info, pci_err等），dmesg可查看。</p>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2023/07/24/windows-coredump%E7%9A%84%E9%85%8D%E7%BD%AE%E5%92%8C%E6%B5%8B%E8%AF%95/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -2535,104 +2639,6 @@
   
   
 
-      
-  
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2023/04/10/%E6%B5%85%E8%B0%88%E4%BF%A1%E5%8F%B7%E5%AE%8C%E6%95%B4%E6%80%A7%E5%92%8CReDriver/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Cursorhu">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="ThinkNotes">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2023/04/10/%E6%B5%85%E8%B0%88%E4%BF%A1%E5%8F%B7%E5%AE%8C%E6%95%B4%E6%80%A7%E5%92%8CReDriver/" class="post-title-link" itemprop="url">浅谈信号完整性和ReDriver</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2023-04-10 10:51:25" itemprop="dateCreated datePublished" datetime="2023-04-10T10:51:25+08:00">2023-04-10</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2023-04-11 10:30:02" itemprop="dateModified" datetime="2023-04-11T10:30:02+08:00">2023-04-11</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/IC/" itemprop="url" rel="index"><span itemprop="name">IC</span></a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h2 id="信号完整性"><a href="#信号完整性" class="headerlink" title="信号完整性"></a>信号完整性</h2><p>在讨论ReDriver之前，先说明信号完整性（Signal Integrity, SI）的相关背景。<br>电子信号在传输过程中(无线或有线)都会受到环境噪声干扰，信号功率也会随着传输距离衰减(signal attenuation)。<br>通信系统中用信噪比表达的信号的好坏:</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">信噪比(dB)=10*log（信号/噪音）</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>当信噪比大于设备接收灵敏度时，信号能被正常接收和解析（成逻辑0&#x2F;1）</li>
-<li>当信噪比小于设备接收灵敏度时，信号被错误解析（错误的逻辑0&#x2F;1）或者是根本解析不出信号(噪声完全淹没信号，接收端恒为0或1，没有信号变化)。</li>
-</ul>
-<p>信号完整性（Signal Integrity, SI）一般指PCB电路中的电压信号的信噪比好坏。如果电路中信号能够以要求的时序、持续时间和电压幅度到达接收器，则该电路具有较好的信号完整性。反之当信号不能正常响应时，就出现了信号完整性问题。一般通过眼图观测信号完整性好坏。</p>
-<p>信号完整性在高速电路更容易出问题，表现为信号有传输延迟和时序错误、电路串扰（电容性、电感性串扰）等。</p>
-<p>高速信号的PCB电路设计和信号完整性密切相关，例如下图是PCB使用FR4材料和Megtron6材料，信号-频率函数显示衰减度不同。</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202304101118830.png" alt="Attenuation versus Frequency as a function of PCB material"></p>
-<h2 id="ReDriver"><a href="#ReDriver" class="headerlink" title="ReDriver"></a>ReDriver</h2><p>Redriver能减弱信号在远距离、高噪声环境的传输中的信号完整性问题对接收端的影响。</p>
-<p>Redriver类似通信系统中的基站，其接收传输线路中的信号，重新生成原始信号，再转发给远端设备；其输出信号基本和原始信号完全一致以保证接收端能正常解析信号。</p>
-<p>(1)PCIe redriver</p>
-<p>以典型的高速信号PCIe接口为例，其使用Redriver和Retimer提高信号完整性，参考：<a target="_blank" rel="noopener" href="https://www.allaboutcircuits.com/industry-articles/choosing-the-right-redriver-or-retimer-device-to-extend-pcie-protocol-signal-range/">Choosing the Right Redriver or Retimer Device to Extend PCIe Protocol Signal Range</a></p>
-<p>其RX, EQ接收PCIe信号源的TX, EQ信号，redrive生成原始信号后再从TX, EQ发送给接收端。</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202304101126665.png" alt="Single lane redriver block diagram"></p>
-<p>(2)USB redriver</p>
-<p>以多层子设备结构的USB接口为例，其使用Redriver提高子USB host的驱动能力，参考 <a target="_blank" rel="noopener" href="https://www.diodes.com/zh/products/connectivity-and-timing/redrivers-repeaters/">信号完整性 - ReDriver&#x2F; 信号中继器 &#x2F; 调节器</a></p>
-<p><img src="https://www.diodes.com/assets/Uploads/redrivers-application2__ResizedImageWzYwMCwzNTFd.png" alt="redrivers application2"></p>
-<p>(3)SD redriver</p>
-<p>即使是较低速的SD接口(MB&#x2F;s级别)也有PCB设计和传输距离引起的信号完整性问题，也需要redriver解决。</p>
-<p>如下SD redriver接收SD host的几个信号并重新生成：SD clock, SD cmd, SD data, Vdd power。</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202304101130119.png" alt="image-20230410113046013"></p>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
 
   
   <nav class="pagination">
@@ -2702,7 +2708,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">66</span>
+          <span class="site-state-item-count">67</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
