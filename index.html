@@ -221,7 +221,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2023-08-03 10:56:03" itemprop="dateModified" datetime="2023-08-03T10:56:03+08:00">2023-08-03</time>
+                <time title="修改时间：2023-08-03 11:27:55" itemprop="dateModified" datetime="2023-08-03T11:27:55+08:00">2023-08-03</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -245,18 +245,24 @@
 
       
           <h2 id="Printk"><a href="#Printk" class="headerlink" title="Printk"></a>Printk</h2><p>printk参考Kernel document: <a target="_blank" rel="noopener" href="https://www.kernel.org/doc/html/latest/translations/zh_CN/core-api/printk-basics.html">使用printk记录消息</a></p>
-<p>（1）Printk的基础用法</p>
-<p>常用示例如下，一般是手动添加打印代码时使用：</p>
+<h3 id="（1）Printk的基础用法"><a href="#（1）Printk的基础用法" class="headerlink" title="（1）Printk的基础用法"></a>（1）Printk的基础用法</h3><p>常用示例如下，一般是手动添加打印代码时使用：</p>
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">step1: 例如要打印当前函数被调用，添加pr_info(&quot;%s\n&quot;, __FUNCTION__)</span><br><span class="line">step2: echo 7 &gt; /proc/sys/kernel/printk</span><br></pre></td></tr></table></figure>
 
-<p>Tips: 非root用户不能成功执行<code>sudo echo 7 &gt; /proc/sys/kernel/printk</code>，显示permission denied；root用户可执行</p>
+<p><strong>Tips1: 非root用户不能成功执行<code>sudo echo 7 &gt; /proc/sys/kernel/printk</code>，显示permission denied</strong></p>
 <p>原因：因为sudo仅让echo按root权限执行，没有让&gt;按root权限执行</p>
-<p>解决办法：<code>sudo sh -c &quot;cmd&quot;</code>，让bash将整个cmd字符串当一个命令执行，并赋予root权限</p>
+<p>解决办法一：dmesg配置printk级别：<code>sudo dmesg -n 7</code></p>
+<p>解决办法二：解决任何sudo echo写入的权限问题：</p>
+<p><code>sudo sh -c &quot;cmd&quot;</code>，让bash将整个cmd字符串当一个命令执行，并赋予root权限</p>
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo sh -c &quot;echo 7 &gt; /proc/sys/kernel/printk&quot;</span><br></pre></td></tr></table></figure>
 
 <p>再<code>cat /proc/sys/kernel/printk</code>可见printk已变成7,4,1,7(默认是4,4,1,7)</p>
-<p>（2）Printk在具体的linux driver subsystem中的使用</p>
-<p>Linux driver子系统通常使用printk的封装版。以pci driver为例，pci driver代码已经提供了pci_dbg, pci_info, pci_err等打印函数，其不仅打印arg信息，也打印pci port设备信息，例如以下PCIe driver的log:</p>
+<p><strong>Tips2: (printk持久化)系统启动自动设置打印级别：</strong></p>
+<p>&#x2F;proc&#x2F;sys&#x2F;kernel&#x2F;printk每次启动后都恢复为默认值4,4,1,7，要系统启动时自动配置7,4,1,7，在&#x2F;etc&#x2F;sysctl.conf添加如下内容即可：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kernel.printk = 7 4 1 7</span><br></pre></td></tr></table></figure>
+
+<p><strong>如果要观测系统启动中的driver debug打印，必须配置kernel.printk</strong></p>
+<p><strong>如果要观测系统启动后的driver debug打印，建议使用dmesg -n修改printk</strong></p>
+<h3 id="（2）Printk在driver-subsystem中的使用"><a href="#（2）Printk在driver-subsystem中的使用" class="headerlink" title="（2）Printk在driver subsystem中的使用"></a>（2）Printk在driver subsystem中的使用</h3><p>Linux driver子系统通常使用printk的封装版。以pci driver为例，pci driver代码已经提供了pci_dbg, pci_info, pci_err等打印函数，其不仅打印arg信息，也打印pci port设备信息，例如以下PCIe driver的log:</p>
 <p>pcieport 0000:00:1b.4 显示了当前的PCIe port。如果有多个PCIe port的打印，可以区分是哪个port的打印输出。</p>
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">[   44.713266] pcieport 0000:00:1b.4: DPC: containment event, status:0x1f01 source:0x0000</span><br><span class="line">[   44.713268] pcieport 0000:00:1b.4: DPC: unmasked uncorrectable error detected</span><br><span class="line">[   44.713274] pcieport 0000:00:1b.4: PCIe Bus Error: severity=Uncorrected (Non-Fatal), type=Transaction Layer, (Receiver ID)</span><br><span class="line">[   44.713277] pcieport 0000:00:1b.4:   device [8086:43c4] error status/mask=00200000/00004000</span><br><span class="line">[   44.713280] pcieport 0000:00:1b.4:    [21] ACSViol                (First)</span><br></pre></td></tr></table></figure>
 
