@@ -20,15 +20,15 @@
     var CONFIG = {"hostname":"cursorhu.github.io","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
   </script>
 
-  <meta name="description" content="Printkprintk参考Kernel document: 使用printk记录消息 （1）Printk的基础用法 常用示例如下，一般是手动添加打印代码时使用： 12step1: 例如要打印当前函数被调用，添加pr_info(&quot;%s\n&quot;, __FUNCTION__)step2: echo 7 &gt; &#x2F;proc&#x2F;sys&#x2F;kernel&#x2F;printk  （2）Printk在具">
+  <meta name="description" content="Printkprintk参考Kernel document: 使用printk记录消息 （1）Printk的基础用法 常用示例如下，一般是手动添加打印代码时使用： 12step1: 例如要打印当前函数被调用，添加pr_info(&quot;%s\n&quot;, __FUNCTION__)step2: echo 7 &gt; &#x2F;proc&#x2F;sys&#x2F;kernel&#x2F;printk  Tips: 非root">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Linux driver常用调试技术记录">
 <meta property="og:url" content="https://cursorhu.github.io/2023/08/02/Linux-driver%E9%80%9A%E7%94%A8%E8%B0%83%E8%AF%95%E6%8A%80%E6%9C%AF%E8%AE%B0%E5%BD%95/index.html">
 <meta property="og:site_name" content="ThinkNotes">
-<meta property="og:description" content="Printkprintk参考Kernel document: 使用printk记录消息 （1）Printk的基础用法 常用示例如下，一般是手动添加打印代码时使用： 12step1: 例如要打印当前函数被调用，添加pr_info(&quot;%s\n&quot;, __FUNCTION__)step2: echo 7 &gt; &#x2F;proc&#x2F;sys&#x2F;kernel&#x2F;printk  （2）Printk在具">
+<meta property="og:description" content="Printkprintk参考Kernel document: 使用printk记录消息 （1）Printk的基础用法 常用示例如下，一般是手动添加打印代码时使用： 12step1: 例如要打印当前函数被调用，添加pr_info(&quot;%s\n&quot;, __FUNCTION__)step2: echo 7 &gt; &#x2F;proc&#x2F;sys&#x2F;kernel&#x2F;printk  Tips: 非root">
 <meta property="og:locale" content="zh_CN">
 <meta property="article:published_time" content="2023-08-02T09:52:38.000Z">
-<meta property="article:modified_time" content="2023-08-02T11:56:14.235Z">
+<meta property="article:modified_time" content="2023-08-03T02:56:03.686Z">
 <meta property="article:author" content="Cursorhu">
 <meta property="article:tag" content="linux">
 <meta name="twitter:card" content="summary">
@@ -218,10 +218,16 @@
                 <i class="far fa-calendar"></i>
               </span>
               <span class="post-meta-item-text">发表于</span>
-              
 
-              <time title="创建时间：2023-08-02 17:52:38 / 修改时间：19:56:14" itemprop="dateCreated datePublished" datetime="2023-08-02T17:52:38+08:00">2023-08-02</time>
+              <time title="创建时间：2023-08-02 17:52:38" itemprop="dateCreated datePublished" datetime="2023-08-02T17:52:38+08:00">2023-08-02</time>
             </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-08-03 10:56:03" itemprop="dateModified" datetime="2023-08-03T10:56:03+08:00">2023-08-03</time>
+              </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
                 <i class="far fa-folder"></i>
@@ -255,6 +261,12 @@
 <p>常用示例如下，一般是手动添加打印代码时使用：</p>
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">step1: 例如要打印当前函数被调用，添加pr_info(&quot;%s\n&quot;, __FUNCTION__)</span><br><span class="line">step2: echo 7 &gt; /proc/sys/kernel/printk</span><br></pre></td></tr></table></figure>
 
+<p>Tips: 非root用户不能成功执行<code>sudo echo 7 &gt; /proc/sys/kernel/printk</code>，显示permission denied；root用户可执行</p>
+<p>原因：因为sudo仅让echo按root权限执行，没有让&gt;按root权限执行</p>
+<p>解决办法：<code>sudo sh -c &quot;cmd&quot;</code>，让bash将整个cmd字符串当一个命令执行，并赋予root权限</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo sh -c &quot;echo 7 &gt; /proc/sys/kernel/printk&quot;</span><br></pre></td></tr></table></figure>
+
+<p>再<code>cat /proc/sys/kernel/printk</code>可见printk已变成7,4,1,7(默认是4,4,1,7)</p>
 <p>（2）Printk在具体的linux driver subsystem中的使用</p>
 <p>Linux driver子系统通常使用printk的封装版。以pci driver为例，pci driver代码已经提供了pci_dbg, pci_info, pci_err等打印函数，其不仅打印arg信息，也打印pci port设备信息，例如以下PCIe driver的log:</p>
 <p>pcieport 0000:00:1b.4 显示了当前的PCIe port。如果有多个PCIe port的打印，可以区分是哪个port的打印输出。</p>
