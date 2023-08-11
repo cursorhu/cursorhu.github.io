@@ -190,6 +190,126 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2023/08/11/Debian12-Gnome%E9%85%8D%E7%BD%AE%E7%AC%94%E8%AE%B0/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2023/08/11/Debian12-Gnome%E9%85%8D%E7%BD%AE%E7%AC%94%E8%AE%B0/" class="post-title-link" itemprop="url">Debian12+Gnome配置笔记</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2023-08-11 10:57:59 / 修改时间：19:04:29" itemprop="dateCreated datePublished" datetime="2023-08-11T10:57:59+08:00">2023-08-11</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/linux/" itemprop="url" rel="index"><span itemprop="name">linux</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h3 id="设置sudo"><a href="#设置sudo" class="headerlink" title="设置sudo"></a>设置sudo</h3><p>普通用户(以username为例)并没有被加入sudo用户组，不能使用sudo命令</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">username@debian:~$ sudo apt install xxx</span><br><span class="line">username is not in the sudoers file.</span><br></pre></td></tr></table></figure>
+
+<p>有两种方式：</p>
+<ol>
+<li><p>在su下用visudo(nano也可以)编辑&#x2F;etc&#x2F;sudoers文件，新增username使sudo能获取root权限。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"># User privilege specification</span><br><span class="line">root    ALL=(ALL:ALL) ALL</span><br><span class="line">username ALL=(ALL:ALL) ALL</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>在su下用usermod -aG sudo username，将username添加到sudo组，由于&#x2F;etc&#x2F;sudoers的如下设置已经将sudo组设为root权限，所以这个操作等效于使username能用sudo获取root权限。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">%sudo ALL=(ALL:ALL) ALL</span><br></pre></td></tr></table></figure></li>
+</ol>
+<ul>
+<li>sbin的命令not found问题：执行visudo或usermod时，发现command not found. Debug过程如下：</li>
+</ul>
+<p>​        使用whereis visudo查看路径是&#x2F;usr&#x2F;sbin；echo $PATH没有&#x2F;usr&#x2F;sbin，因此是环境变量问题。</p>
+<p>   方式一：在username的~&#x2F;.bashrc下添加sbin到PATH，生效之后sbin目录的命    令才可执行：</p>
+   <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">nano .bashrc</span><br><span class="line">export PATH=$PATH:/usr/sbin</span><br><span class="line">source ~/.bashrc</span><br><span class="line">echo $PATH</span><br></pre></td></tr></table></figure>
+
+<p>   方式二：另外一种方式是加软链接，需要一个个添加</p>
+   <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ln -s /usr/sbin/visudo /usr/bin/visudo</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>如何退出su：使用exit，或su username，切换到username用户</li>
+</ul>
+<h3 id="设置apt源"><a href="#设置apt源" class="headerlink" title="设置apt源"></a>设置apt源</h3><ul>
+<li>使用iso安装的debian，首先需要取消从iso安装软件的选项：</li>
+</ul>
+<p>​        software&amp;update -&gt; Other Software -&gt; 取消勾选cdrom</p>
+<ul>
+<li>再选择国内源, 例如China-&gt; mirrors.163.com&#x2F;debian，并选中main&#x2F;free&#x2F;non-free各种下载选项。</li>
+<li>如果refresh cache界面卡死，使用<code>apt update</code>手动更新源。</li>
+</ul>
+<h3 id="设置gnome-shell"><a href="#设置gnome-shell" class="headerlink" title="设置gnome shell"></a>设置gnome shell</h3><p>gnome shell即gnome的桌面</p>
+<p>(1)通过extensions自定义桌面插件</p>
+<p>参考：<a target="_blank" rel="noopener" href="https://itsfoss.com/gnome-shell-extensions/#:~:text=Installing%20GNOME%20Shell%20Extensions%201%20Use%20gnome-shell-extensions%20package,3%20Install%20GNOME%20Shell%20Extensions%20manually.%20See%20More.">How to Use GNOME Shell Extensions [Complete Guide]</a></p>
+<p>可以通过gnome-shell-extension-manager直接安装extension，无需到网站下载</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo apt install gnome-shell-extension-manager</span><br></pre></td></tr></table></figure>
+
+<p>推荐安装Dash to Dock和Arc Menu</p>
+<p>(2)修改主题(theme)</p>
+<p>参考 <a target="_blank" rel="noopener" href="https://itsfoss.com/install-switch-themes-gnome-shell/">How to Install and Change GNOME Theme in Linux</a></p>
+<p>打开extensions的User Themes插件后才可以安装自定义themes</p>
+<p>手动安装单个GTK主题的方法：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">#创建放置themes的目录</span><br><span class="line">mkdir ~/.themes</span><br><span class="line">#从gnome-look下载themes,放到.themes目录，Ctrl+H打开隐藏目录</span><br><span class="line">https://www.gnome-look.org/browse/</span><br><span class="line">#打开gnome tweak(默认已安装)，Appearance -&gt; Shell -&gt; 使用themes</span><br></pre></td></tr></table></figure>
+
+<p>注意</p>
+<ul>
+<li>要完整桌面主题效果，需要安装gtk-theme，icon-theme，cursor-theme等多类theme。例如WhileSur，要达到和MacOS一样的效果，需要去GTK3&#x2F;4 themes, Full Icon Themes，Cursors分别下载top5的WhileSur主题。一个主题可能有多种模式，按github install.sh能完整安装各种模式，手动下载只能安装一种模式。</li>
+<li>注意gnome桌面是基于GTK，GTK is a multi-platform toolkit for creating graphical user interfaces. 所以是在gtk-theme而不是gnome-shell找。</li>
+<li>要自定义登录界面的主题，去GDM themes找top5(改GDM需要先安装loginized)；要自定义GRUB主题，去GRUB themes找。</li>
+<li>Top 10 themes: <a target="_blank" rel="noopener" href="https://itsfoss.com/best-gtk-themes/">best-gtk-themes</a></li>
+</ul>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2023/08/02/Linux-driver%E9%80%9A%E7%94%A8%E8%B0%83%E8%AF%95%E6%8A%80%E6%9C%AF%E8%AE%B0%E5%BD%95/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -401,7 +521,7 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2023/07/12/ArchLinux%E5%AE%89%E8%A3%85%E5%92%8C%E9%85%8D%E7%BD%AE%E7%AC%94%E8%AE%B0/">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2023/07/12/Arch%20Linux%E5%AE%89%E8%A3%85%E5%92%8C%E9%85%8D%E7%BD%AE%E7%AC%94%E8%AE%B0/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/avatar.gif">
@@ -415,7 +535,7 @@
       <header class="post-header">
         <h2 class="post-title" itemprop="name headline">
           
-            <a href="/2023/07/12/ArchLinux%E5%AE%89%E8%A3%85%E5%92%8C%E9%85%8D%E7%BD%AE%E7%AC%94%E8%AE%B0/" class="post-title-link" itemprop="url">ArchLinux安装和配置笔记</a>
+            <a href="/2023/07/12/Arch%20Linux%E5%AE%89%E8%A3%85%E5%92%8C%E9%85%8D%E7%BD%AE%E7%AC%94%E8%AE%B0/" class="post-title-link" itemprop="url">Arch Linux安装和配置笔记</a>
         </h2>
 
         <div class="post-meta">
@@ -432,7 +552,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2023-07-14 11:34:46" itemprop="dateModified" datetime="2023-07-14T11:34:46+08:00">2023-07-14</time>
+                <time title="修改时间：2023-08-11 11:03:19" itemprop="dateModified" datetime="2023-08-11T11:03:19+08:00">2023-08-11</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -455,7 +575,7 @@
     <div class="post-body" itemprop="articleBody">
 
       
-          <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>最近Debian12发布，尝鲜在移动硬盘装了Debian12+KDE，但不习惯Debian繁琐的PPA包管理，也不喜欢Ubuntu越来越商业化的行为，最终切换到ArchLinux，进入Pacman和AUR的包管理和滚动更新风格。此文记录ArchLinux安装配置过程。</p>
+          <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>最近Debian12发布，尝鲜在移动硬盘装了Debian12+KDE，但不习惯Debian繁琐的包管理和Ubuntu越来越商业化的行为，最终切换到ArchLinux，进入Pacman和AUR的包管理和滚动更新风格。此文记录ArchLinux安装配置过程。</p>
 <h2 id="构建多系统的U盘启动盘"><a href="#构建多系统的U盘启动盘" class="headerlink" title="构建多系统的U盘启动盘"></a>构建多系统的U盘启动盘</h2><p>使用<a target="_blank" rel="noopener" href="https://www.ventoy.net/en/doc_start.html">ventoy&#x2F;Start to use Ventoy</a>，将各系统镜像放到Ventoy目录即可，不需要用传统的UltraISO那种一个系统ISO要占用整个U盘。<br>Arch Linux的ISO<a target="_blank" rel="noopener" href="https://archlinux.org/download/">在此下载</a></p>
 <h2 id="使用archinstall安装ArchLinux"><a href="#使用archinstall安装ArchLinux" class="headerlink" title="使用archinstall安装ArchLinux"></a>使用archinstall安装ArchLinux</h2><p><a target="_blank" rel="noopener" href="https://wiki.archlinux.org/title/Installation_guide">传统的ArchLinux安装方式</a>过于繁琐，现在Arch Linux安装包提供一个类GUI的脚本<a target="_blank" rel="noopener" href="https://wiki.archlinux.org/title/Archinstall">archinstall</a>，按需求配置即可，可以一键处理包括KDE&#x2F;GNOME&#x2F;I3W等桌面在内的全部安装过程。</p>
 <p>参考 <a target="_blank" rel="noopener" href="https://www.linuxmi.com/archinstall-auto-arch-linux.html">使用 archinstall 自动化脚本安装 Arch Linux 完整指南</a>，<a target="_blank" rel="noopener" href="https://u.sb/archlinux-archinstall/">使用 archinstall 安装 Arch Linux 和 KDE 桌面环境</a>。</p>
@@ -591,69 +711,6 @@
 <p>在查看代码的环境安装clangd客户端(即VSCode的clangd插件)，一般通过windows机器的VSCode SSH连接Linux的clangd服务，因此需要将VSCode的remote SSH登陆到Linux机器（注意不要同时使用Xshell等其他SSH工具，否则VSCode remote SSH连不上）</p>
 <p>VSCode remote SSH中打开代码后，clangd自动indexing(完成Kernel index需要相当长时间)，CTRL+鼠标左键查看定义，ALT+左键头返回跳转</p>
 <p>clangd方式可以很方便找到C函数指针的实现，而VSCode的C++ intellisense跳转不到</p>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-      
-  
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2023/05/19/%E9%9A%8F%E6%9C%BA%E7%AC%94%E8%AE%B0/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Cursorhu">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="ThinkNotes">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2023/05/19/%E9%9A%8F%E6%9C%BA%E7%AC%94%E8%AE%B0/" class="post-title-link" itemprop="url">随机笔记</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-              
-
-              <time title="创建时间：2023-05-19 10:09:47 / 修改时间：10:11:38" itemprop="dateCreated datePublished" datetime="2023-05-19T10:09:47+08:00">2023-05-19</time>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <p><strong>马化腾：AI是互联网百年不遇的机遇，有些公司为提振股价太急了</strong></p>
-<p>近日，在腾讯2023年股东大会上，腾讯CEO马化腾回应有关ChatGPT和AI相关提问时表示，“我们最开始以为（人工智能）是互联网十年不遇的机会，但是越想越觉得，这是几百年不遇的、类似发明电的工业革命一样的机遇。”</p>
-<p>马化腾表示，互联网企业在AI领域都有很多的积累，腾讯也一样在埋头研发，但是并不急于早早做完，把半成品拿出来展示。“对于工业革命来讲，早一个月把电灯泡拿出来，在长的时间跨度上来看是不那么重要的。关键还是要把底层的算法、算力和数据扎扎实实做好，而且更关键的是场景落地，目前（我们）还在做一些思考。我感觉现在有很多公司太急了，感觉是为了提振股价，我们一贯不是这种风格。”</p>
-<p>马化腾分享称，<strong>好的公司不能包揽一切，他通过多年管理层经验看到，要聚焦最擅长的领域，才能更好地发挥自己的价值，不能贪图利益，把宝贵的精力分散在其他人更专业的方面去抢一杯羹，专注才能最大化地发展自己的优势。“发现哪些业务和过去的业务能产生1+1大于2的效益，用得上自己过去的经验并且能做到业内最好的水准，经常思考这个，会让自己的动力更足。”</strong></p>
 
       
     </div>
@@ -2736,7 +2793,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">67</span>
+          <span class="site-state-item-count">66</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
