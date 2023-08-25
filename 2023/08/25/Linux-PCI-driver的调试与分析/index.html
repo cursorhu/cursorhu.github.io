@@ -20,18 +20,23 @@
     var CONFIG = {"hostname":"cursorhu.github.io","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
   </script>
 
-  <meta name="description" content="PCI driver访问设备regsiterAPI在LDD3的PCI driver一章已经有较详细说明： *Linux offers a standard interface to access the configuration space.As far as the driver is concerned, the configuration space can be accessed thr">
+  <meta name="description" content="PCI driver access device registerAPI在LDD3的PCI driver一章已经有较详细说明： *Linux offers a standard interface to access the configuration space.As far as the driver is concerned, the configuration space can be a">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Linux PCI driver的调试与分析">
 <meta property="og:url" content="https://cursorhu.github.io/2023/08/25/Linux-PCI-driver%E7%9A%84%E8%B0%83%E8%AF%95%E4%B8%8E%E5%88%86%E6%9E%90/index.html">
 <meta property="og:site_name" content="ThinkNotes">
-<meta property="og:description" content="PCI driver访问设备regsiterAPI在LDD3的PCI driver一章已经有较详细说明： *Linux offers a standard interface to access the configuration space.As far as the driver is concerned, the configuration space can be accessed thr">
+<meta property="og:description" content="PCI driver access device registerAPI在LDD3的PCI driver一章已经有较详细说明： *Linux offers a standard interface to access the configuration space.As far as the driver is concerned, the configuration space can be a">
 <meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202308251714033.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202308251714855.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202308251715226.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202308251756929.png">
 <meta property="article:published_time" content="2023-08-25T03:56:14.000Z">
-<meta property="article:modified_time" content="2023-08-25T06:54:39.169Z">
+<meta property="article:modified_time" content="2023-08-25T09:58:03.057Z">
 <meta property="article:author" content="Cursorhu">
 <meta property="article:tag" content="PCI">
 <meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202308251714033.png">
 
 <link rel="canonical" href="https://cursorhu.github.io/2023/08/25/Linux-PCI-driver%E7%9A%84%E8%B0%83%E8%AF%95%E4%B8%8E%E5%88%86%E6%9E%90/">
 
@@ -220,7 +225,7 @@
               <span class="post-meta-item-text">发表于</span>
               
 
-              <time title="创建时间：2023-08-25 11:56:14 / 修改时间：14:54:39" itemprop="dateCreated datePublished" datetime="2023-08-25T11:56:14+08:00">2023-08-25</time>
+              <time title="创建时间：2023-08-25 11:56:14 / 修改时间：17:58:03" itemprop="dateCreated datePublished" datetime="2023-08-25T11:56:14+08:00">2023-08-25</time>
             </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -250,7 +255,7 @@
     <div class="post-body" itemprop="articleBody">
 
       
-        <h3 id="PCI-driver访问设备regsiter"><a href="#PCI-driver访问设备regsiter" class="headerlink" title="PCI driver访问设备regsiter"></a>PCI driver访问设备regsiter</h3><p>API在LDD3的PCI driver一章已经有较详细说明：</p>
+        <h3 id="PCI-driver-access-device-register"><a href="#PCI-driver-access-device-register" class="headerlink" title="PCI driver access device register"></a>PCI driver access device register</h3><p>API在LDD3的PCI driver一章已经有较详细说明：</p>
 <p>*<em>Linux offers a standard interface to access the configuration space.</em><br><em>As far as the driver is concerned, the configuration space can be accessed through 8-</em><br><em>bit, 16-bit, or 32-bit data transfers. The relevant functions are prototyped in &lt;linux&#x2F;*<br>pci.h&gt;</em>  </p>
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">int pci_read_config_byte(struct pci_dev *dev, int where, u8 *val);</span><br><span class="line">int pci_read_config_word(struct pci_dev *dev, int where, u16 *val);</span><br><span class="line">int pci_read_config_dword(struct pci_dev *dev, int where, u32 *val);</span><br><span class="line">int pci_write_config_byte(struct pci_dev *dev, int where, u8 val);</span><br><span class="line">int pci_write_config_word(struct pci_dev *dev, int where, u16 val);</span><br><span class="line">int pci_write_config_dword(struct pci_dev *dev, int where, u32 val);</span><br></pre></td></tr></table></figure>
 
@@ -272,8 +277,8 @@
 <p><em>struct</em> pci_raw_ops有几处定义，direct.c, mmconfig_32.c, mmconfig_64.c, 分别对应不同的访问方式。下面以<a target="_blank" rel="noopener" href="https://elixir.bootlin.com/linux/latest/source/arch/x86/pci/direct.c#L83">direct.c中的实现</a>为例：</p>
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">const struct pci_raw_ops pci_direct_conf1 = &#123;</span><br><span class="line">	.read =		pci_conf1_read,</span><br><span class="line">	.write =	pci_conf1_write,</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">static const struct pci_raw_ops pci_direct_conf2 = &#123;</span><br><span class="line">	.read =		pci_conf2_read,</span><br><span class="line">	.write =	pci_conf2_write,</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
 
-<p>有两种direct config访问方式，区别在于指令结构不一样：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">#define PCI_CONF1_ADDRESS(bus, devfn, reg) \</span><br><span class="line">	(0x80000000 | ((reg &amp; 0xF00) &lt;&lt; 16) | (bus &lt;&lt; 16) \</span><br><span class="line">	| (devfn &lt;&lt; 8) | (reg &amp; 0xFC))</span><br><span class="line">	</span><br><span class="line">#define PCI_CONF2_ADDRESS(dev, reg)	(u16)(0xC000 | (dev &lt;&lt; 8) | reg)</span><br></pre></td></tr></table></figure>
+<p>有两种direct config访问方式，区别在于指令结构不一样，参考PCI express base spec 的 Configuration Space Header。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">/*</span><br><span class="line"> * Functions for accessing PCI base (first 256 bytes) and extended</span><br><span class="line"> * (4096 bytes per PCI function) configuration space with type 1</span><br><span class="line"> * accesses.</span><br><span class="line"> */</span><br><span class="line"></span><br><span class="line">#define PCI_CONF1_ADDRESS(bus, devfn, reg) \</span><br><span class="line">	(0x80000000 | ((reg &amp; 0xF00) &lt;&lt; 16) | (bus &lt;&lt; 16) \</span><br><span class="line">	| (devfn &lt;&lt; 8) | (reg &amp; 0xFC))</span><br><span class="line">	</span><br><span class="line">/*</span><br><span class="line"> * Functions for accessing PCI configuration space with type 2 accesses</span><br><span class="line"> */</span><br><span class="line">#define PCI_CONF2_ADDRESS(dev, reg)	(u16)(0xC000 | (dev &lt;&lt; 8) | reg)</span><br></pre></td></tr></table></figure>
 
 <p>以pci_conf1_read的内部实现为例：</p>
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line">static int pci_conf1_read(unsigned int seg, unsigned int bus,</span><br><span class="line">			  unsigned int devfn, int reg, int len, u32 *value)</span><br><span class="line">&#123;</span><br><span class="line">	unsigned long flags;</span><br><span class="line"></span><br><span class="line">	if (seg || (bus &gt; 255) || (devfn &gt; 255) || (reg &gt; 4095)) &#123;</span><br><span class="line">		*value = -1;</span><br><span class="line">		return -EINVAL;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	raw_spin_lock_irqsave(&amp;pci_config_lock, flags);</span><br><span class="line"></span><br><span class="line">	outl(PCI_CONF1_ADDRESS(bus, devfn, reg), 0xCF8);</span><br><span class="line"></span><br><span class="line">	switch (len) &#123;</span><br><span class="line">	case 1:</span><br><span class="line">		*value = inb(0xCFC + (reg &amp; 3));</span><br><span class="line">		break;</span><br><span class="line">	case 2:</span><br><span class="line">		*value = inw(0xCFC + (reg &amp; 2));</span><br><span class="line">		break;</span><br><span class="line">	case 4:</span><br><span class="line">		*value = inl(0xCFC);</span><br><span class="line">		break;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	raw_spin_unlock_irqrestore(&amp;pci_config_lock, flags);</span><br><span class="line"></span><br><span class="line">	return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
@@ -282,6 +287,23 @@
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">static __always_inline void __out##bwl(type value, u16 port)		\</span><br><span class="line">&#123;									\</span><br><span class="line">	asm volatile(&quot;out&quot; #bwl &quot; %&quot; #bw &quot;0, %w1&quot;			\</span><br><span class="line">		     : : &quot;a&quot;(value), &quot;Nd&quot;(port));			\</span><br><span class="line">&#125;									\</span><br><span class="line">									\</span><br><span class="line">static __always_inline type __in##bwl(u16 port)				\</span><br><span class="line">&#123;									\</span><br><span class="line">	type value;							\</span><br><span class="line">	asm volatile(&quot;in&quot; #bwl &quot; %w1, %&quot; #bw &quot;0&quot;			\</span><br><span class="line">		     : &quot;=a&quot;(value) : &quot;Nd&quot;(port));			\</span><br><span class="line">	return value;							\</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
 <p>至此pci_read_config_byte一类的PCI register acess API分析完毕。</p>
+<h3 id="PCIe-AER-driver"><a href="#PCIe-AER-driver" class="headerlink" title="PCIe AER driver"></a>PCIe AER driver</h3><p>AER: Advanced Error Reporting  </p>
+<p>PCIe的AER是PCIe spec协议的标准功能，AER涉及到Error信号产生，上报，处理，错误恢复等。</p>
+<h4 id="PCIe-base-spec摘要："><a href="#PCIe-base-spec摘要：" class="headerlink" title="PCIe base spec摘要："></a>PCIe base spec摘要：</h4><p>Error分类：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202308251714033.png" alt="image-20230825171440881"></p>
+<p>Error信号在数字逻辑的处理流水：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202308251714855.png" alt="image-20230825171423678"></p>
+<p>AER的capability regsiter:</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202308251715226.png" alt="image-20230825171511047"></p>
+<h4 id="PCIe-AER-driver摘要"><a href="#PCIe-AER-driver摘要" class="headerlink" title="PCIe AER driver摘要"></a>PCIe AER driver摘要</h4><p>PCIe driver的使用aer service driver实现软件处理流程，aer service属于PCIe bus driver的子功能，而PCIe driver又属于PCI driver字类。</p>
+<p>什么是PCIe service driver: <a target="_blank" rel="noopener" href="https://www.kernel.org/doc/html/v6.1/PCI/pciebus-howto.html">2. The PCI Express Port Bus Driver Guide HOWTO</a></p>
+<p>什么是PCIe AER driver: <a target="_blank" rel="noopener" href="https://www.kernel.org/doc/html/v6.1/PCI/pcieaer-howto.html">8. The PCI Express Advanced Error Reporting Driver Guide HOWTO</a></p>
+<h4 id="PCIe-AER-driver调试记录"><a href="#PCIe-AER-driver调试记录" class="headerlink" title="PCIe AER driver调试记录"></a>PCIe AER driver调试记录</h4><p>(1)如何打开和关闭PCIe AER</p>
+<p>配置Kconfig可开关：make menuconfig -&gt; &#x2F; -&gt; 搜索PCIEAER -&gt; n关闭，y打开</p>
+<p>如下Kconfig的AER三个相关项都被关闭：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">CONFIG_PCIAER=n</span><br><span class="line">CONFIG_ACPI_APEI_PCIEAER=n</span><br><span class="line">CONFIG_PCIAER_INJECT=n</span><br></pre></td></tr></table></figure>
+
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202308251756929.png" alt="image-20230825175611772"></p>
 
     </div>
 
@@ -362,7 +384,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#PCI-driver%E8%AE%BF%E9%97%AE%E8%AE%BE%E5%A4%87regsiter"><span class="nav-number">1.</span> <span class="nav-text">PCI driver访问设备regsiter</span></a></li></ol></div>
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#PCI-driver-access-device-register"><span class="nav-number">1.</span> <span class="nav-text">PCI driver access device register</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#PCIe-AER-driver"><span class="nav-number">2.</span> <span class="nav-text">PCIe AER driver</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#PCIe-base-spec%E6%91%98%E8%A6%81%EF%BC%9A"><span class="nav-number">2.1.</span> <span class="nav-text">PCIe base spec摘要：</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#PCIe-AER-driver%E6%91%98%E8%A6%81"><span class="nav-number">2.2.</span> <span class="nav-text">PCIe AER driver摘要</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#PCIe-AER-driver%E8%B0%83%E8%AF%95%E8%AE%B0%E5%BD%95"><span class="nav-number">2.3.</span> <span class="nav-text">PCIe AER driver调试记录</span></a></li></ol></li></ol></div>
       </div>
       <!--/noindex-->
 
