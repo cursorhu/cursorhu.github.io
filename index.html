@@ -190,6 +190,106 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2023/08/25/Linux-PCI-driver%E7%9A%84%E8%B0%83%E8%AF%95%E4%B8%8E%E5%88%86%E6%9E%90/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2023/08/25/Linux-PCI-driver%E7%9A%84%E8%B0%83%E8%AF%95%E4%B8%8E%E5%88%86%E6%9E%90/" class="post-title-link" itemprop="url">Linux PCI driver的调试与分析</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2023-08-25 11:56:14 / 修改时间：14:54:39" itemprop="dateCreated datePublished" datetime="2023-08-25T11:56:14+08:00">2023-08-25</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/linux/" itemprop="url" rel="index"><span itemprop="name">linux</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h3 id="PCI-driver访问设备regsiter"><a href="#PCI-driver访问设备regsiter" class="headerlink" title="PCI driver访问设备regsiter"></a>PCI driver访问设备regsiter</h3><p>API在LDD3的PCI driver一章已经有较详细说明：</p>
+<p>*<em>Linux offers a standard interface to access the configuration space.</em><br><em>As far as the driver is concerned, the configuration space can be accessed through 8-</em><br><em>bit, 16-bit, or 32-bit data transfers. The relevant functions are prototyped in &lt;linux&#x2F;*<br>pci.h&gt;</em>  </p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">int pci_read_config_byte(struct pci_dev *dev, int where, u8 *val);</span><br><span class="line">int pci_read_config_word(struct pci_dev *dev, int where, u16 *val);</span><br><span class="line">int pci_read_config_dword(struct pci_dev *dev, int where, u32 *val);</span><br><span class="line">int pci_write_config_byte(struct pci_dev *dev, int where, u8 val);</span><br><span class="line">int pci_write_config_word(struct pci_dev *dev, int where, u16 val);</span><br><span class="line">int pci_write_config_dword(struct pci_dev *dev, int where, u32 val);</span><br></pre></td></tr></table></figure>
+
+<p>内部实现实际是pci_bus_read_config_word，参考：<a target="_blank" rel="noopener" href="https://elixir.bootlin.com/linux/latest/source/drivers/pci/access.c#L554">access.c#L554</a></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">int pci_read_config_word(const struct pci_dev *dev, int where, u16 *val)</span><br><span class="line">&#123;</span><br><span class="line">	if (pci_dev_is_disconnected(dev)) &#123;</span><br><span class="line">		PCI_SET_ERROR_RESPONSE(val);</span><br><span class="line">		return PCIBIOS_DEVICE_NOT_FOUND;</span><br><span class="line">	&#125;</span><br><span class="line">	return pci_bus_read_config_word(dev-&gt;bus, dev-&gt;devfn, where, val);</span><br><span class="line">&#125;</span><br><span class="line">EXPORT_SYMBOL(pci_read_config_word);</span><br></pre></td></tr></table></figure>
+
+<p>pci_bus_read_config_word的内部实现LDD3也说了：</p>
+<p><em><em>The actual implementation of pci_read_config_byte(dev, where, val), for instance, expands to:</em><br>dev-&gt;bus-&gt;ops-&gt;read(bus, devfn, where, 8, val);</em>  </p>
+<p>其中bus-&gt;ops使用pci_ops结构：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">struct pci_ops &#123;</span><br><span class="line">int (*read)(struct pci_bus *bus, unsigned int devfn, int where, int size,</span><br><span class="line">u32 *val);</span><br><span class="line">int (*write)(struct pci_bus *bus, unsigned int devfn, int where, int size,</span><br><span class="line">u32 val);</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>pci_read_config_byte的实现是宏函数，使用##连接符动态定义byte, word, dword，因此直接搜索不到，实际还是在<a target="_blank" rel="noopener" href="https://elixir.bootlin.com/linux/latest/source/drivers/pci/access.c#L74">access.c#L74</a>，就在EXPORT_SYMBOL(pci_bus_read_config_word); 的前面定义:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">#define PCI_OP_READ(size, type, len) \</span><br><span class="line">int noinline pci_bus_read_config_##size \</span><br><span class="line">	(struct pci_bus *bus, unsigned int devfn, int pos, type *value)	\</span><br><span class="line">&#123;									\</span><br><span class="line">	int res;							\</span><br><span class="line">	unsigned long flags;						\</span><br><span class="line">	u32 data = 0;							\</span><br><span class="line">	if (PCI_##size##_BAD) return PCIBIOS_BAD_REGISTER_NUMBER;	\</span><br><span class="line">	pci_lock_config(flags);						\</span><br><span class="line">	res = bus-&gt;ops-&gt;read(bus, devfn, pos, len, &amp;data);		\</span><br><span class="line">	if (res)							\</span><br><span class="line">		PCI_SET_ERROR_RESPONSE(value);				\</span><br><span class="line">	else								\</span><br><span class="line">		*value = (type)data;					\</span><br><span class="line">	pci_unlock_config(flags);					\</span><br><span class="line">	return res;							\</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>那么bus-&gt;ops-&gt;read的底层实现到底是什么？取决于cpu和pci架构，例如arm&#x2F;x86&#x2F;ia64…</p>
+<p>全局搜索定义struct pci_ops的代码即可见，以<a target="_blank" rel="noopener" href="https://elixir.bootlin.com/linux/latest/source/arch/x86/pci/common.c#L72">x86为例</a></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">struct pci_ops pci_root_ops = &#123;</span><br><span class="line">	.read = pci_read,</span><br><span class="line">	.write = pci_write,</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">static int pci_read(struct pci_bus *bus, unsigned int devfn, int where, int size, u32 *value)</span><br><span class="line">&#123;</span><br><span class="line">	return raw_pci_read(pci_domain_nr(bus), bus-&gt;number,</span><br><span class="line">				 devfn, where, size, value);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">int raw_pci_read(unsigned int domain, unsigned int bus, unsigned int devfn,</span><br><span class="line">						int reg, int len, u32 *val)</span><br><span class="line">&#123;</span><br><span class="line">	if (domain == 0 &amp;&amp; reg &lt; 256 &amp;&amp; raw_pci_ops)</span><br><span class="line">		return raw_pci_ops-&gt;read(domain, bus, devfn, reg, len, val);</span><br><span class="line">	if (raw_pci_ext_ops)</span><br><span class="line">		return raw_pci_ext_ops-&gt;read(domain, bus, devfn, reg, len, val);</span><br><span class="line">	return -EINVAL;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><em>struct</em> pci_raw_ops有几处定义，direct.c, mmconfig_32.c, mmconfig_64.c, 分别对应不同的访问方式。下面以<a target="_blank" rel="noopener" href="https://elixir.bootlin.com/linux/latest/source/arch/x86/pci/direct.c#L83">direct.c中的实现</a>为例：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">const struct pci_raw_ops pci_direct_conf1 = &#123;</span><br><span class="line">	.read =		pci_conf1_read,</span><br><span class="line">	.write =	pci_conf1_write,</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">static const struct pci_raw_ops pci_direct_conf2 = &#123;</span><br><span class="line">	.read =		pci_conf2_read,</span><br><span class="line">	.write =	pci_conf2_write,</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>有两种direct config访问方式，区别在于指令结构不一样：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">#define PCI_CONF1_ADDRESS(bus, devfn, reg) \</span><br><span class="line">	(0x80000000 | ((reg &amp; 0xF00) &lt;&lt; 16) | (bus &lt;&lt; 16) \</span><br><span class="line">	| (devfn &lt;&lt; 8) | (reg &amp; 0xFC))</span><br><span class="line">	</span><br><span class="line">#define PCI_CONF2_ADDRESS(dev, reg)	(u16)(0xC000 | (dev &lt;&lt; 8) | reg)</span><br></pre></td></tr></table></figure>
+
+<p>以pci_conf1_read的内部实现为例：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line">static int pci_conf1_read(unsigned int seg, unsigned int bus,</span><br><span class="line">			  unsigned int devfn, int reg, int len, u32 *value)</span><br><span class="line">&#123;</span><br><span class="line">	unsigned long flags;</span><br><span class="line"></span><br><span class="line">	if (seg || (bus &gt; 255) || (devfn &gt; 255) || (reg &gt; 4095)) &#123;</span><br><span class="line">		*value = -1;</span><br><span class="line">		return -EINVAL;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	raw_spin_lock_irqsave(&amp;pci_config_lock, flags);</span><br><span class="line"></span><br><span class="line">	outl(PCI_CONF1_ADDRESS(bus, devfn, reg), 0xCF8);</span><br><span class="line"></span><br><span class="line">	switch (len) &#123;</span><br><span class="line">	case 1:</span><br><span class="line">		*value = inb(0xCFC + (reg &amp; 3));</span><br><span class="line">		break;</span><br><span class="line">	case 2:</span><br><span class="line">		*value = inw(0xCFC + (reg &amp; 2));</span><br><span class="line">		break;</span><br><span class="line">	case 4:</span><br><span class="line">		*value = inl(0xCFC);</span><br><span class="line">		break;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	raw_spin_unlock_irqrestore(&amp;pci_config_lock, flags);</span><br><span class="line"></span><br><span class="line">	return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>最底层调用的是x86的in, out汇编指令，也是宏函数封装，参考<a target="_blank" rel="noopener" href="https://elixir.bootlin.com/linux/latest/source/arch/x86/include/asm/shared/io.h#L27">arch&#x2F;x86&#x2F;include&#x2F;asm&#x2F;shared&#x2F;io.h#L27</a></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">static __always_inline void __out##bwl(type value, u16 port)		\</span><br><span class="line">&#123;									\</span><br><span class="line">	asm volatile(&quot;out&quot; #bwl &quot; %&quot; #bw &quot;0, %w1&quot;			\</span><br><span class="line">		     : : &quot;a&quot;(value), &quot;Nd&quot;(port));			\</span><br><span class="line">&#125;									\</span><br><span class="line">									\</span><br><span class="line">static __always_inline type __in##bwl(u16 port)				\</span><br><span class="line">&#123;									\</span><br><span class="line">	type value;							\</span><br><span class="line">	asm volatile(&quot;in&quot; #bwl &quot; %w1, %&quot; #bw &quot;0&quot;			\</span><br><span class="line">		     : &quot;=a&quot;(value) : &quot;Nd&quot;(port));			\</span><br><span class="line">	return value;							\</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>至此pci_read_config_byte一类的PCI register acess API分析完毕。</p>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2023/08/11/Debian12-Gnome%E9%85%8D%E7%BD%AE%E7%AC%94%E8%AE%B0/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -2584,151 +2684,6 @@
   
   
 
-      
-  
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2023/04/26/Ubuntu%E4%BD%BF%E7%94%A8%E7%AC%94%E8%AE%B0/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Cursorhu">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="ThinkNotes">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2023/04/26/Ubuntu%E4%BD%BF%E7%94%A8%E7%AC%94%E8%AE%B0/" class="post-title-link" itemprop="url">Ubuntu使用笔记</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2023-04-26 11:08:09" itemprop="dateCreated datePublished" datetime="2023-04-26T11:08:09+08:00">2023-04-26</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2023-05-15 19:19:58" itemprop="dateModified" datetime="2023-05-15T19:19:58+08:00">2023-05-15</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/linux/" itemprop="url" rel="index"><span itemprop="name">linux</span></a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <p>本文基于Ubuntu 22.04 LTS</p>
-<h2 id="软件下载源"><a href="#软件下载源" class="headerlink" title="软件下载源"></a>软件下载源</h2><p>使用国内软件源下载：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">software&amp;updates -&gt; Ubuntu Software -&gt; download from -&gt; cn99.com或aliyun.com</span><br></pre></td></tr></table></figure>
-
-<h2 id="中文输入法"><a href="#中文输入法" class="headerlink" title="中文输入法"></a>中文输入法</h2><p>安装中文输入法(pinyin)的步骤：</p>
-<p>安装中文支持：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Settings -&gt; Region&amp;language -&gt; Manage Installed Languages -&gt; Install/Remove Languages -&gt; 安装chinese simplified</span><br></pre></td></tr></table></figure>
-
-<p>设置系统语言为中文：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Settings -&gt; Region&amp;language -&gt; Language改成Chinese</span><br></pre></td></tr></table></figure>
-
-<p>安装Fcitx框架和中文输入法：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">sudo apt-get install fcitx-bin #安装fcitx框架</span><br><span class="line">sudo apt-get install fcitx-table #安装输入法栏，其中自动安装拼音输入法</span><br><span class="line">fcitx --version</span><br></pre></td></tr></table></figure>
-
-<p>使用Fcitx框架，重启</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Settings -&gt; Region&amp;language -&gt; Manage Installed Languages -&gt; Keyboard input method system 选择Fcitx 4</span><br></pre></td></tr></table></figure>
-
-<p>添加输入法</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Ubuntu右上角的小键盘图标 -&gt; configure -&gt; 添加pinyin（只有系统语言为中文时才能添加中文输入法）</span><br></pre></td></tr></table></figure>
-
-<p>切换中英文输入法：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ctrl + space</span><br></pre></td></tr></table></figure>
-
-<p>设置系统语言改回英文：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Settings -&gt; Region&amp;language -&gt; Language改成English</span><br></pre></td></tr></table></figure>
-
-<h2 id="snap包管理工具"><a href="#snap包管理工具" class="headerlink" title="snap包管理工具"></a>snap包管理工具</h2><p><a target="_blank" rel="noopener" href="https://snapcraft.io/store">Snap</a>是Canonical开发的Linux包管理和软件部署工具。 </p>
-<p>安装和使用参考 <a target="_blank" rel="noopener" href="https://phoenixnap.com/kb/install-snap-ubuntu#:~:text=1%20Start%20by%20updating%20packages%3A%0Asudo%20apt,update%202%20Enter%20the%20following%20command%3A"><strong>How to Install Snap on Ubuntu</strong></a></p>
-<p>特点：丰富的第三方工具库，包括开源工具和闭源工具；二进制安装，不是源码编译</p>
-<p>相比apt，其查找工具和安装极为简单：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">sudo snap find &lt;keyword&gt; #查找keyword相关的工具，显示可安装的列表</span><br><span class="line">sudo snap install &lt;package&gt; #安装列表中的工具</span><br></pre></td></tr></table></figure>
-
-<p>查看和卸载snap安装的包：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">snap list</span><br><span class="line">sudo snap remove &lt;package&gt;</span><br></pre></td></tr></table></figure>
-
-<p>示例：安装VSCode和Chrome</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">sudo snap find vscode #找到&lt;package&gt;为code</span><br><span class="line">sudo snap install code --classic</span><br><span class="line">sudo snap find chrome #找到&lt;package&gt;为chromium</span><br><span class="line">sudo snap install chromium</span><br></pre></td></tr></table></figure>
-
-<h2 id="设置快捷键"><a href="#设置快捷键" class="headerlink" title="设置快捷键"></a>设置快捷键</h2><p>setting -&gt; keyboard -&gt; shortcuts -&gt; custom shortcut -&gt; 为应用程序添加快捷键</p>
-<p>以截图工具flameshot为例，设置快捷键的command为调用flameshot的命令，截图默认保存到~&#x2F;Pictures</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202305051055723.png" alt="image-20230505105544618"></p>
-<p>要配置其他flameshot命令的快捷键，用 <code>man flameshot</code> 查看，参考 <a target="_blank" rel="noopener" href="https://flameshot.org/docs/guide/key-bindings/">Keyboard shortcuts for Flameshot</a></p>
-<h2 id="Timeshift备份系统"><a href="#Timeshift备份系统" class="headerlink" title="Timeshift备份系统"></a>Timeshift备份系统</h2><p>22.04系统似乎比较容易挂，进不了系统显示”Oh no… system can’t recover…”，比如：</p>
-<p>Nvdia驱动选择开源版本xserver就挂了一次, recovery模式看&#x2F;var&#x2F;log&#x2F;message有nouveau和nvidia module相关问题</p>
-<p>学习xv6时安装编译环境时也挂了一次(不能安装到&#x2F;usr&#x2F;local，应该安装到&#x2F;home)，recovery模式dpkg report显示failure log：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">symbol lookup error: /lib/x86_64-linux-gnu/libgnutls.so.30: undefined symbol: __gmpz_limbs_write </span><br></pre></td></tr></table></figure>
-
-<p>都是找遍办法都修复不了，只能重装…</p>
-<p>为了解决此问题，使用Timeshift将系统备份，参考: <a target="_blank" rel="noopener" href="https://itsfoss.com/backup-restore-linux-timeshift/">How to Backup and Restore Linux System Settings With Timeshift</a></p>
-<p>安装timeshift：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo apt install timeshift</span><br></pre></td></tr></table></figure>
-
-<p>备份整个系统，包括&#x2F;root和&#x2F;home&#x2F;user，设置定时备份</p>
-<p>如何恢复：</p>
-<p>情景一：系统无法进入桌面，但是可以进入recovery模式root操作：</p>
-<p>如下图，用<code>timeshift --help</code>查看各种命令，使用<code>timeshift --restore</code>恢复指定snapshot</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202305081931009.png" alt="image-20230508193100794"></p>
-<p>情景二：系统无法进入recovery模式，但是备份的snapshot数据还在</p>
-<p>使用<a target="_blank" rel="noopener" href="https://www.ubuntu.com/download/desktop/create-a-usb-stick-on-windows?ref=itsfoss.com">Ubuntu Live USB</a> ，即装系统的USB进入try ubuntu环境，联网换国内源安装timeshift，再恢复系统盘中的snapshot数据</p>
-<p>情景三：磁盘中的snapshot数据损害：只能重装系统，为了避免此情况发生，应该将系统备份到其他硬盘而不仅仅在当前系统盘</p>
-<h2 id="Clonezilla克隆系统"><a href="#Clonezilla克隆系统" class="headerlink" title="Clonezilla克隆系统"></a>Clonezilla克隆系统</h2><p>类似windows ghost的整盘克隆：</p>
-<p><a target="_blank" rel="noopener" href="https://www.linuxbabe.com/backup/how-to-use-clonezilla-live">https://www.linuxbabe.com/backup/how-to-use-clonezilla-live</a></p>
-<p>至少需要三个盘：</p>
-<p>在U盘写入Clonezilla的live usb iso生成Clonezilla live USB，再以Clonezilla live USB启动，对待备份的SSD盘做系统备份，到另一个SSD或者大USB盘；</p>
-<p>恢复也是需要Clonezilla live USB + 有系统备份的盘 + 目标写入盘</p>
-<h2 id="关于系统目录"><a href="#关于系统目录" class="headerlink" title="关于系统目录"></a>关于系统目录</h2><p>&#x2F;usr：系统级的目录，可以理解为C:&#x2F;Windows&#x2F;，apt安装的一般在&#x2F;usr&#x2F;bin和&#x2F;usr&#x2F;lib</p>
-<p>&#x2F;usr&#x2F;lib：理解为C:&#x2F;Windows&#x2F;System32</p>
-<p>&#x2F;usr&#x2F;local：用户级的程序目录，可以理解为C:&#x2F;Progrem Files&#x2F;，用户自己编译的软件默认安装到这个目录下</p>
-<p>&#x2F;opt是用户级的目录用来安装大型的第三方附加软件包，可以理解为D:&#x2F;Software</p>
-<p>开发过程中为了避免lib冲突，自己编译的包建议放在&#x2F;home&#x2F;&lt;具体的项目目录&gt;，此外注意自己编译基础库设置的LD_LIBRARY_PATH造成系统库链接冲突</p>
-<h2 id="Tmux"><a href="#Tmux" class="headerlink" title="Tmux"></a>Tmux</h2><p>参考：<a target="_blank" rel="noopener" href="https://www.ruanyifeng.com/blog/2019/10/tmux.html">Tmux 使用教程</a></p>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
 
   
   <nav class="pagination">
@@ -2798,7 +2753,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">66</span>
+          <span class="site-state-item-count">67</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
@@ -2811,7 +2766,7 @@
       <div class="site-state-item site-state-tags">
             <a href="/tags/">
           
-        <span class="site-state-item-count">39</span>
+        <span class="site-state-item-count">40</span>
         <span class="site-state-item-name">标签</span></a>
       </div>
   </nav>
