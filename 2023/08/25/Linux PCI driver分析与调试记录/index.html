@@ -22,8 +22,8 @@
 
   <meta name="description" content="PCI tree结构关于PCIe tree的bus&#x2F;device的详细architecture，参考LDD3和Mastering Linux Device Driver Development - John Madieu    Root complex (RC): This refers to the PCIe host controller in the SoC. It can acc">
 <meta property="og:type" content="article">
-<meta property="og:title" content="Linux PCI driver的调试与分析">
-<meta property="og:url" content="https://cursorhu.github.io/2023/08/25/Linux-PCI-driver%E7%9A%84%E8%B0%83%E8%AF%95%E4%B8%8E%E5%88%86%E6%9E%90/index.html">
+<meta property="og:title" content="Linux PCI driver分析与调试记录">
+<meta property="og:url" content="https://cursorhu.github.io/2023/08/25/Linux%20PCI%20driver%E5%88%86%E6%9E%90%E4%B8%8E%E8%B0%83%E8%AF%95%E8%AE%B0%E5%BD%95/index.html">
 <meta property="og:site_name" content="ThinkNotes">
 <meta property="og:description" content="PCI tree结构关于PCIe tree的bus&#x2F;device的详细architecture，参考LDD3和Mastering Linux Device Driver Development - John Madieu    Root complex (RC): This refers to the PCIe host controller in the SoC. It can acc">
 <meta property="og:locale" content="zh_CN">
@@ -39,13 +39,13 @@
 <meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202308291158420.png">
 <meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202308291151689.png">
 <meta property="article:published_time" content="2023-08-25T03:56:14.000Z">
-<meta property="article:modified_time" content="2023-08-30T09:09:53.804Z">
+<meta property="article:modified_time" content="2023-09-06T08:57:46.001Z">
 <meta property="article:author" content="Cursorhu">
 <meta property="article:tag" content="PCI">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202308291114824.png">
 
-<link rel="canonical" href="https://cursorhu.github.io/2023/08/25/Linux-PCI-driver%E7%9A%84%E8%B0%83%E8%AF%95%E4%B8%8E%E5%88%86%E6%9E%90/">
+<link rel="canonical" href="https://cursorhu.github.io/2023/08/25/Linux%20PCI%20driver%E5%88%86%E6%9E%90%E4%B8%8E%E8%B0%83%E8%AF%95%E8%AE%B0%E5%BD%95/">
 
 
 <script id="page-configurations">
@@ -58,7 +58,7 @@
   };
 </script>
 
-  <title>Linux PCI driver的调试与分析 | ThinkNotes</title>
+  <title>Linux PCI driver分析与调试记录 | ThinkNotes</title>
   
 
 
@@ -208,7 +208,7 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2023/08/25/Linux-PCI-driver%E7%9A%84%E8%B0%83%E8%AF%95%E4%B8%8E%E5%88%86%E6%9E%90/">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2023/08/25/Linux%20PCI%20driver%E5%88%86%E6%9E%90%E4%B8%8E%E8%B0%83%E8%AF%95%E8%AE%B0%E5%BD%95/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/avatar.gif">
@@ -221,7 +221,7 @@
     </span>
       <header class="post-header">
         <h1 class="post-title" itemprop="name headline">
-          Linux PCI driver的调试与分析
+          Linux PCI driver分析与调试记录
         </h1>
 
         <div class="post-meta">
@@ -238,7 +238,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2023-08-30 17:09:53" itemprop="dateModified" datetime="2023-08-30T17:09:53+08:00">2023-08-30</time>
+                <time title="修改时间：2023-09-06 16:57:46" itemprop="dateModified" datetime="2023-09-06T16:57:46+08:00">2023-09-06</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -298,7 +298,7 @@
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">+-07.0-[01-2a]--</span><br></pre></td></tr></table></figure>
 
 <p>(3)查看PCI设备的register space</p>
-<p>使用<code>lspci -s [bus]:[device].[function] -xxxx</code> 查看完整的PCIe register space(需要root权限)， -s: show, lspci –help查看各选项</p>
+<p>使用<code>lspci -s [bus]:[device].[function] -xxxx</code> 查看完整的PCIe register space(需要root权限)， -s: show, <code>lspci --help</code>查看各选项</p>
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">cursorhu@ubuntu-PC:~$ sudo lspci -s 00:1c.0 -xxxx (或者-xxx，显示00~ff)</span><br><span class="line">[sudo] password for cursorhu: </span><br><span class="line">00:1c.0 PCI bridge: Intel Corporation Tiger Lake-LP PCI Express Root Port #8 (rev 20)</span><br><span class="line">00: 86 80 bf a0 07 04 10 00 20 00 04 06 00 00 81 00</span><br><span class="line">10: 00 00 00 00 00 00 00 00 00 a9 a9 00 40 40 00 20</span><br><span class="line">20: c0 88 50 89 01 7e 91 7e 60 00 00 00 60 00 00 00</span><br><span class="line">30: 00 00 00 00 40 00 00 00 00 00 00 00 ff 04 02 00</span><br><span class="line">40: 10 80 42 01 01 80 00 00 20 00 11 00 13 4c 72 08</span><br><span class="line">50: 42 00 13 70 60 b2 3c 00 08 10 40 00 08 00 00 00</span><br><span class="line">60: 00 00 00 00 37 08 00 00 00 04 00 00 0e 00 00 00</span><br><span class="line">70: 03 00 1f 00 00 00 00 00 00 00 00 00 00 00 00 00</span><br><span class="line">80: 05 90 01 00 78 02 e0 fe 00 00 00 00 00 00 00 00</span><br><span class="line">90: 0d a0 00 00 00 00 00 00 00 00 00 00 00 00 00 00</span><br><span class="line">a0: 01 00 03 c8 00 00 00 00 00 00 00 00 00 00 00 00</span><br><span class="line">b0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00</span><br><span class="line">c0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00</span><br><span class="line">d0: 11 10 00 07 42 18 01 40 0a 00 9e 09 00 00 00 00</span><br><span class="line">e0: 00 03 e3 00 03 90 03 90 16 00 10 00 00 00 00 00</span><br><span class="line">f0: 50 01 00 00 00 00 00 4c b5 0f 21 01 04 00 00 84</span><br><span class="line">100: 01 00 01 22 00 00 00 00 00 40 00 00 11 00 06 00</span><br><span class="line">110: 01 20 00 00 00 20 00 00 00 00 00 00 00 00 00 00</span><br><span class="line">120: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
 
 <p>我们要确认PCI bridge的 link status register(位于capability register offset 0x12, bit 13 Link active bit) 以知道 PCIe link 是否 active.<br>如何查看：如下图 0x00 ~ 0x3C 是config space标准空间；0x34 capability pointer是地址，指向capability register空间，其值为0x40，因此capability register空间是从0x40开始；因此 link status regsiter 是 0x40+0x12 &#x3D; 0x52, 其bit13 即 0x53 的 bit5. </p>
