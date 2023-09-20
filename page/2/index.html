@@ -190,6 +190,118 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2023/05/05/esp32%E7%AC%94%E8%AE%B0%E4%B9%8BPWM%E5%AE%9E%E7%8E%B0LED%E5%91%BC%E5%90%B8%E7%81%AF/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2023/05/05/esp32%E7%AC%94%E8%AE%B0%E4%B9%8BPWM%E5%AE%9E%E7%8E%B0LED%E5%91%BC%E5%90%B8%E7%81%AF/" class="post-title-link" itemprop="url">esp32笔记之PWM实现LED呼吸灯</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2023-05-05 16:50:16" itemprop="dateCreated datePublished" datetime="2023-05-05T16:50:16+08:00">2023-05-05</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-05-06 20:16:07" itemprop="dateModified" datetime="2023-05-06T20:16:07+08:00">2023-05-06</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/esp32/" itemprop="url" rel="index"><span itemprop="name">esp32</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h2 id="PWM简介"><a href="#PWM简介" class="headerlink" title="PWM简介"></a>PWM简介</h2><p>先从应用上讲讲PWM：</p>
+<p>有一盏日光灯，一般我们只能打开它或者关闭它，不存在中间状态；</p>
+<p>有另一个LED灯，支持在一秒以内极快速的速度开关开关，其变化超过人眼识别的24帧率，LED灯看上去就像一直开着，但亮度比常开暗一些；如果控制灯快速开关过程中的打开时间和关闭时间的比例，就可以调节人眼看到的灯亮度。</p>
+<p>以上就是PWM的大概应用原理：用高频率的开关信号，控制输出信号的平均强度，使输出信号能在0%到100%强度间任意调节。</p>
+<p>用电路语句讲PWM原理：用数字信号的占空比来调制模拟信号的幅度(电压)。</p>
+<p>PWM详细介绍参考：<a target="_blank" rel="noopener" href="https://circuitdigest.com/tutorial/what-is-pwm-pulse-width-modulation">What is PWM: Pulse Width Modulation</a></p>
+<p>脉冲宽度(pulse width)是指单位时间的高电平的持续时间，脉冲宽度越大被调制的模拟信号电压越大。</p>
+<ul>
+<li>在一定的频率下，通过不同的(高电平)占空比即可得到不同脉冲宽度，进而调节输出的模拟电压信号</li>
+<li>在一定的占空比下，通过不同的频率实现不同的调节速度；频率要适配不同设备，不能任意设置，例如电机频率50HZ，MCU外设1000Hz。频率不决定被调制电压的幅度。</li>
+</ul>
+<p>PWM的调制信号如下：</p>
+<p><img src="https://circuitdigest.com/sites/default/files/inlineimages/pulse-width-modulation-duty-cycle.gif" alt="img"></p>
+<p>PWM调制电路通常用RC filter实现：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202305051659127.jpg" alt="Converting-PWM-signals-into-Analog"></p>
+<p>PWM一般对具体设备使用固定频率，再调整高电平的占空比决定模拟信号的幅度。</p>
+<p>如下图，占空比从0%调节到100%，对应输出电压为0V~5V</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202305061100234.jpg" alt="Pulse-Width-Modulation"></p>
+<p>从原理上讲就是开关控制，在一个周期内调制信号的高电平时间越长，RC电荷积分更多，输出电压越大：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202305051657299.png" alt="image-20230505165748199"></p>
+<h2 id="MicroPython控制PWM"><a href="#MicroPython控制PWM" class="headerlink" title="MicroPython控制PWM"></a>MicroPython控制PWM</h2><p>官方tutorial参考：</p>
+<p><a target="_blank" rel="noopener" href="https://docs.micropython.org/en/latest/esp32/quickref.html">Quick reference for the ESP32</a> PWM (pulse width modulation)</p>
+<p><a target="_blank" rel="noopener" href="https://docs.micropython.org/en/latest/esp32/tutorial/pwm.html#esp32-pwm">Pulse Width Modulation</a> 其中有调整频率和占空比的sample code:</p>
+<ul>
+<li><p>Example of a smooth frequency change:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">from utime import sleep</span><br><span class="line">from machine import Pin, PWM</span><br><span class="line"></span><br><span class="line">F_MIN = 500</span><br><span class="line">F_MAX = 1000</span><br><span class="line"></span><br><span class="line">f = F_MIN</span><br><span class="line">delta_f = 1</span><br><span class="line"></span><br><span class="line">p = PWM(Pin(5), f)</span><br><span class="line">print(p)</span><br><span class="line"></span><br><span class="line">while True:</span><br><span class="line">    p.freq(f)</span><br><span class="line"></span><br><span class="line">    sleep(10 / F_MIN)</span><br><span class="line"></span><br><span class="line">    f += delta_f</span><br><span class="line">    if f &gt;= F_MAX or f &lt;= F_MIN:</span><br><span class="line">        delta_f = -delta_f</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>Example of a smooth duty change:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">from utime import sleep</span><br><span class="line">from machine import Pin, PWM</span><br><span class="line"></span><br><span class="line">DUTY_MAX = 2**16 - 1</span><br><span class="line"></span><br><span class="line">duty_u16 = 0</span><br><span class="line">delta_d = 16</span><br><span class="line"></span><br><span class="line">p = PWM(Pin(5), 1000, duty_u16=duty_u16)</span><br><span class="line">print(p)</span><br><span class="line"></span><br><span class="line">while True:</span><br><span class="line">    p.duty_u16(duty_u16)</span><br><span class="line"></span><br><span class="line">    sleep(1 / 1000)</span><br><span class="line"></span><br><span class="line">    duty_u16 += delta_d</span><br><span class="line">    if duty_u16 &gt;= DUTY_MAX:</span><br><span class="line">        duty_u16 = DUTY_MAX</span><br><span class="line">        delta_d = -delta_d</span><br><span class="line">    elif duty_u16 &lt;= 0:</span><br><span class="line">        duty_u16 = 0</span><br><span class="line">        delta_d = -delta_d</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="呼吸灯示例"><a href="#呼吸灯示例" class="headerlink" title="呼吸灯示例"></a>呼吸灯示例</h2><p>参考：<a target="_blank" rel="noopener" href="https://doc.itprojects.cn/0006.zhishi.esp32/02.doc/index.html#/03.PWMhuxideng">itproject.cn&#x2F;Python+ESP32快速上手&#x2F;3.PWM呼吸灯</a></p>
+<p>esp32的micropython代码以script形式执行，主程序必须命名为main.py(参考 <a target="_blank" rel="noopener" href="https://docs.micropython.org/en/v1.9.3/pyboard/pyboard/tutorial/script.html">Running your first script</a>):</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">from machine import Pin, PWM</span><br><span class="line">import time</span><br><span class="line"></span><br><span class="line">led2 = PWM(Pin(2))</span><br><span class="line">led2.freq(1000)</span><br><span class="line"></span><br><span class="line">while True:</span><br><span class="line">    for i in range(0, 1024):</span><br><span class="line">        led2.duty(i)</span><br><span class="line">        time.sleep_ms(1)</span><br><span class="line">        </span><br><span class="line">    for i in range(1023, -1, -1):</span><br><span class="line">        led2.duty(i)</span><br><span class="line">        time.sleep_ms(1)</span><br></pre></td></tr></table></figure>
+
+<p>LED渐变呼吸闪烁：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202305052003803.gif" alt="mmexport1683287925729"></p>
+<p>如果将led duty调整为512，最大亮度会变小，验证了最大占空比决定最大电压</p>
+<p>如果将led freq调整为50，最大亮度不变，但led渐变过程中会闪烁，也就是说开关调节频率太低，导致人眼都可以观察到led的开关电，看上去就是led闪烁</p>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2023/05/04/esp32%E7%AC%94%E8%AE%B0%E4%B9%8B%E7%8E%AF%E5%A2%83%E6%90%AD%E5%BB%BA/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -1508,91 +1620,6 @@
   
   
 
-      
-  
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2023/01/30/Windows-CMD-%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4%E7%AC%94%E8%AE%B0/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Cursorhu">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="ThinkNotes">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2023/01/30/Windows-CMD-%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4%E7%AC%94%E8%AE%B0/" class="post-title-link" itemprop="url">Windows CMD 常用命令笔记</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-              
-
-              <time title="创建时间：2023-01-30 10:38:16 / 修改时间：10:51:12" itemprop="dateCreated datePublished" datetime="2023-01-30T10:38:16+08:00">2023-01-30</time>
-            </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/windows/" itemprop="url" rel="index"><span itemprop="name">windows</span></a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h1 id="Tree命令生成目录树"><a href="#Tree命令生成目录树" class="headerlink" title="Tree命令生成目录树"></a>Tree命令生成目录树</h1><blockquote>
-<p>tree 命令的目录格式：TREE 【drive：】【path】【&#x2F;F】【&#x2F;A】</p>
-<ul>
-<li>可在cmd内输入（help tree 或 tree &#x2F; ？）查看</li>
-<li>&#x2F;F  显示每个文件夹中文件的名称</li>
-<li>&#x2F;A  使用ASCII字符，而不使用拓展字符</li>
-</ul>
-</blockquote>
-<p>示例一：只显示路径名不显示文件名</p>
-<p><code>TREE 【drive：】【path】</code></p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202301301049746.png" alt="image-20230130104934713"></p>
-<p>示例二：显示路径名和文件名</p>
-<p><code>TREE 【drive：】【path】【/F】</code></p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202301301048851.png" alt="image-20230130104835813"></p>
-<p>示例三：将目录树存入指定文件</p>
-<p><code>TREE 【drive：】【path】 &gt; 文件路径】</code></p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202301301051100.png" alt="image-20230130105102054"></p>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
 
   
   <nav class="pagination">
@@ -1662,20 +1689,20 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">68</span>
+          <span class="site-state-item-count">69</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
       <div class="site-state-item site-state-categories">
             <a href="/categories/">
           
-        <span class="site-state-item-count">26</span>
+        <span class="site-state-item-count">27</span>
         <span class="site-state-item-name">分类</span></a>
       </div>
       <div class="site-state-item site-state-tags">
             <a href="/tags/">
           
-        <span class="site-state-item-count">41</span>
+        <span class="site-state-item-count">42</span>
         <span class="site-state-item-name">标签</span></a>
       </div>
   </nav>

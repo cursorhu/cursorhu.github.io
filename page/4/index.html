@@ -190,6 +190,241 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2021/08/23/%E6%A0%91%E8%8E%93%E6%B4%BE%E7%AC%94%E8%AE%B0%EF%BC%9A%E4%BD%BF%E7%94%A8mjpg-streamer-Apache+SSH%E8%87%AA%E5%88%B6%E7%BD%91%E7%BB%9C%E6%91%84%E5%83%8F%E5%A4%B4/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2021/08/23/%E6%A0%91%E8%8E%93%E6%B4%BE%E7%AC%94%E8%AE%B0%EF%BC%9A%E4%BD%BF%E7%94%A8mjpg-streamer-Apache+SSH%E8%87%AA%E5%88%B6%E7%BD%91%E7%BB%9C%E6%91%84%E5%83%8F%E5%A4%B4/" class="post-title-link" itemprop="url">树莓派笔记：使用mjpg-streamer+Apache+SSH自制网络摄像头</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2021-08-23 23:38:12" itemprop="dateCreated datePublished" datetime="2021-08-23T23:38:12+08:00">2021-08-23</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2022-12-08 19:50:26" itemprop="dateModified" datetime="2022-12-08T19:50:26+08:00">2022-12-08</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/raspi/" itemprop="url" rel="index"><span itemprop="name">raspi</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h1 id="选型"><a href="#选型" class="headerlink" title="选型"></a>选型</h1><ul>
+<li>为什么用树莓派4：</li>
+</ul>
+<p>资料多遇到容易解决问题；<br>性能较强适合作为终端服务器；<br>自带WIFI, BT5.0，GPIO 方便拓展开发IOT相关项目；<br>适配系统丰富，基本PC上linux版本树莓派都有对应版本</p>
+<ul>
+<li>为什么用USB摄像头：</li>
+</ul>
+<p>为了快速实现，Linux对USB设备支持非常好，USB设备基本都是免驱；<br>USB摄像头支持高分辨率，带麦克风，满足其他项目拓展应用；<br>当然CSI接口摄像头也有优势，同等条件下其CPU占用率比USB低；不过本地测试中CPU并不是USB摄像头性能瓶颈<br>关于CSI和USB 摄像头区别：<a target="_blank" rel="noopener" href="https://blog.csdn.net/ZhaoDongyu_AK47/article/details/103981905">CSI摄像头 vs USB摄像头</a></p>
+<ul>
+<li>树莓派用什么系统：</li>
+</ul>
+<p>看个人喜好，我用的ubuntu server的树莓派版本，软件源基本最新；</p>
+<ul>
+<li>用什么云服务器：</li>
+</ul>
+<p>看个人喜好和价格；云服务器最大价值在于公网IP<br>我目前用的Aliyun + CentOS7 系统</p>
+<p>系统实拍：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081944910.png" alt="image-20221208194427802"></p>
+<h1 id="树莓派系统安装"><a href="#树莓派系统安装" class="headerlink" title="树莓派系统安装"></a>树莓派系统安装</h1><p>准备：电源，网线，SD卡<br>安装步骤：</p>
+<ul>
+<li>1.下载ubuntu server for raspi</li>
+</ul>
+<p>注意一定要下载raspi版本的镜像，普通ubuntu server版本安装完不能直接使用SSH<br><a target="_blank" rel="noopener" href="https://ubuntu.com/download/raspberry-pi">Install Ubuntu on a RaspberryPi</a></p>
+<ul>
+<li>2.Win32DiskImager写.img镜像到SD卡，作为系统盘</li>
+</ul>
+<p>参考：<a target="_blank" rel="noopener" href="https://blog.csdn.net/bhniunan/article/details/104790090">使用win32DiskImager为树莓派4B安装系统</a></p>
+<ul>
+<li>3.SSH 登陆</li>
+</ul>
+<p>ubuntu server for raspi系统装机启动后，连接网线到主机局域网后就可以SSH登陆<br>树莓派连到主机网段路由器的LAN口，树莓派系统默认开了dhcp, 用Advanced IP Scanner扫描树莓派IP</p>
+<p>树莓派4b：mac地址“dc-a6-32”开头<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081944582.png" alt="image-20221208194446543"></p>
+<p>SSH 软件看个人喜好，putty, SecureCRT, Xshell都可以，我个人使用的SecureCRT</p>
+<p>ubuntu server for raspi系统的SSH会话初始化如下：<br>新建会话-&gt; SSH2链接-&gt; 树莓派ip -&gt; 账户名(默认ubuntu)<br>初始密码：ubuntu，登陆成功后需要重设密码。</p>
+<p>wifi配置方式参考 <a target="_blank" rel="noopener" href="https://blog.csdn.net/weixin_42378324/article/details/114631521">树莓派安装ubuntu server, 无显示屏和键盘</a></p>
+<ul>
+<li>4.固定树莓派IP</li>
+</ul>
+<p>DHCP方式每次启动树莓派IP可能不一样，有两种方式固定IP</p>
+<ul>
+<li>MAC绑定IP<br>参考<a target="_blank" rel="noopener" href="https://blog.csdn.net/Echozi/article/details/104210167">TL-WR886N路由器+树莓派绑定IP地址</a></li>
+<li>手动配置固定ip<br><a target="_blank" rel="noopener" href="https://blog.csdn.net/u010169607/article/details/111316624">Pi4B 树莓派 ubuntu20.04 设置固定IP地址</a></li>
+</ul>
+<h1 id="USB摄像头测试"><a href="#USB摄像头测试" class="headerlink" title="USB摄像头测试"></a>USB摄像头测试</h1><ul>
+<li>首先主机win10上验证摄usb像头功能正常</li>
+</ul>
+<p>设备管理器禁用笔记本原装摄像头驱动，搜索相机-&gt; 打开视频，视频流应该正常</p>
+<ul>
+<li>在树莓派上验证摄像头设备</li>
+</ul>
+<p>usb摄像头设备既是usb设备又是v4l2设备，应该挂载在&#x2F;dev&#x2F;videoX</p>
+<pre><code>ls /dev/video*
+ls /dev | grep video
+</code></pre>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081945191.png" alt="image-20221208194510165"><br>插拔摄像头确认usb摄像头对应设备是video0</p>
+<h1 id="树莓派安装mjpg-streamer"><a href="#树莓派安装mjpg-streamer" class="headerlink" title="树莓派安装mjpg-streamer"></a>树莓派安装mjpg-streamer</h1><p>mjpg-streamer的作用是将摄像头采集的YUV&#x2F;JPEG数据，封装成流服务，其他设备可以通过http方式获取图片或视频流。<br>mjpg-streamer属于应用层实现流媒体服务端，其底层调用的是Linux V4L2框架接口。</p>
+<p>安装过程：</p>
+<ol>
+<li><p>依赖库安装</p>
+<p>sudo apt-get install subversion libjpeg8-dev imagemagick libv4l-dev cmake git</p>
+</li>
+<li><p>安装mjpg-streamer</p>
+<p>git clone <a target="_blank" rel="noopener" href="https://github.com/jacksonliam/mjpg-streamer.git">https://github.com/jacksonliam/mjpg-streamer.git</a><br>cd mjpg-streamer&#x2F;mjpg-streamer-experimental&#x2F;<br>make all<br>sudo make install</p>
+</li>
+</ol>
+<h1 id="局域网测试mjpg-streamer"><a href="#局域网测试mjpg-streamer" class="headerlink" title="局域网测试mjpg-streamer"></a>局域网测试mjpg-streamer</h1><p>mjpg-streamer&#x2F;mjpg-streamer-experimental目录下有测试脚本：<code>start.sh</code><br>环境变量添加依赖库路径：</p>
+<pre><code>export LD_LIBRARY_PATH=&quot;$(pwd)&quot; 
+</code></pre>
+<p>运行示例：</p>
+<pre><code>./mjpg_streamer -i &quot;./input_uvc.so&quot; -o &quot;./output_http.so -w ./www&quot; 
+</code></pre>
+<p>其YUV&#x2F;MJPEG的输入使用 input_uvc.so， 输出流到 http依赖于 output_http.so，<code>-w ./www</code> 表示http客户端访问时返回www文件夹下的资源，即对应的浏览器页面。</p>
+<p>可以自定义参数，参考：</p>
+<pre><code>mjpg_streamer -i &quot;input_uvc.so --help&quot;
+</code></pre>
+<p>修改start.sh的自定义启动语句如下：</p>
+<pre><code>./mjpg_streamer -i &quot;./input_uvc.so -n -f 30 -r 640x480 -d /dev/video0&quot;  -o &quot; ./output_http.so -w ./www&quot;
+</code></pre>
+<p>-n 用于跳过一些ioctrl请求，我的摄像头如果不用-n，有一些ioctrl会返回错误，尽管不影响流传输功能，还是跳过。<br>-f 设置fps，如果有卡顿考虑降低该值<br>-r 分辨率，1080P摄像头可以支持到1920x1080<br>-d 设备名，默认&#x2F;dev&#x2F;video0</p>
+<p>一般USB摄像头支持直接输出压缩后的MJPEG格式图像，有的只支持YUV格式图像；<br>摄像头优先使用MJPEG格式，因为不用mjpg-streamer软件边采集边做压缩，减少CPU使用</p>
+<p>启动信息：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081945245.png" alt="image-20221208194525192"></p>
+<p>此时流服务已运行，在局域网任意设备用浏览器访问<code>树莓派ip:流服务端口</code>即可获取www目录的网页资源<br>192.168.0.105是我树莓派固定ip, 8080是mjpg-streamer服务默认端口<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081945636.png" alt="image-20221208194549504"><br>局域网下即使是1080p 30fps也非常流畅，看不出卡顿</p>
+<h1 id="公网服务器搭建反向代理"><a href="#公网服务器搭建反向代理" class="headerlink" title="公网服务器搭建反向代理"></a>公网服务器搭建反向代理</h1><h2 id="反向代理的概念"><a href="#反向代理的概念" class="headerlink" title="反向代理的概念"></a>反向代理的概念</h2><p>正向代理和反向代理的概念图：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081946618.png" alt="image-20221208194609572"></p>
+<p>正向代理：代理的是客户端，例如GFW禁止某用户直接访问目标服务器的8080端口，但没有禁止访问正向代理服务器，客户端访问正向代理服务器，代理服务将用户请求转发给目标服务器，实现“蛙跳式”访问。对于目标服务器来说，正向代理服务器才是其客户端，用户ip对其是不可见的。<br>反向代理：代理的是服务端，应用于以下场景：</p>
+<ul>
+<li>出于安全考虑，目标服务器不直接暴露其ip和端口，用户通过访问反向代理服务器来间接访问目标服务器</li>
+<li>保证系统稳定性：反向代理服务器可以代理多个目标服务器，当用户请求量大时作为负载均衡(<a target="_blank" rel="noopener" href="https://blog.csdn.net/ywd1992/article/details/112858537">负载均衡和反向代理的区别</a>); 支持目标服务器作为集群管理，当某个目标服务器失效时将请求转发到其他服务器, 参考<a target="_blank" rel="noopener" href="https://www.cnblogs.com/jkko123/p/6426857.html">centos7下apache2.4反向代理</a></li>
+</ul>
+<p>对于本项目，树莓派的mjpg-streamer进程是真正提供流媒体服务的目标服务器，阿里云公网服务器上安装apache服务，实现反向代理。</p>
+<h2 id="安装apache服务"><a href="#安装apache服务" class="headerlink" title="安装apache服务"></a>安装apache服务</h2><p>Apache实现http web服务器；没有apache, 客户浏览器页面没办法访问对应服务。<br>阿里云主机 cent-OS 7 上的安装过程：</p>
+<pre><code>//安装Apache
+yum install httpd
+//设置服务器开机自动启动Apache
+systemctl enable httpd.service
+//启动Apache
+systemctl start httpd.service
+//重启
+systemctl restart httpd.service
+//停止
+systemctl stop httpd.service    
+</code></pre>
+<p>启动apache后，直接访问阿里云ip，默认端口 80 即为 apache 进程端口，得到如下页面说明服务正常<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081946493.png" alt="image-20221208194622426"></p>
+<h2 id="配置apache为反向代理"><a href="#配置apache为反向代理" class="headerlink" title="配置apache为反向代理"></a>配置apache为反向代理</h2><p>apache相关配置路径在&#x2F;etc&#x2F;httpd的几个conf目录<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081946576.png" alt="image-20221208194635517"></p>
+<p><code>vim /etc/httpd/conf/httpd.conf</code> 查看关键内容如下:</p>
+<pre><code>Listen 80 //监听80端口
+Include conf.modules.d/*.conf //包含module.d目录的所有conf
+DocumentRoot &quot;/var/www/html&quot; //默认返回该目录的html资源
+IncludeOptional conf.d/*.conf //包含conf.d目录的所有conf
+</code></pre>
+<p><code>/etc/httpd/conf.modules.d</code>目录下的<code>00-proxy.conf</code>是针对代理的配置项，其中有大量LoadModule加载proxy模块。<br>配置内容是XML格式，在此自定义反向代理，追加以下内容：</p>
+<pre><code>&lt;VirtualHost *:80&gt;
+    ProxyRequests off
+    &lt;Proxy raspi&gt;
+        Order allow,deny
+        Allow from all
+    &lt;/Proxy&gt;
+    ProxyPass /raspi http://127.0.0.1:9020
+    ProxyPassReverse /raspi http://127.0.0.1:9020
+&lt;/VirtualHost&gt;
+</code></pre>
+<p>含义：<br><code>&lt;VirtualHost *:80&gt;</code> 定义一个虚拟主机，<em>表示任意命名，端口80<br><code>ProxyRequests off</code> 关闭正向代理<br><code>&lt;Proxy raspi&gt;</code>定义一个代理对象，可以命名为</em>，这里命名为raspi因为后端服务是raspi流服务<br><code>ProxyPass</code> 和 <code>ProxyPassReverse</code> 内容要完全一样，<code>ProxyPassReverse /raspi http://127.0.0.1:9020</code> 表示用户访问&#x2F;raspi资源实际访问的是本地（apache所在云主机）的9020端口。</p>
+<p>注意阿里云端口要支持外部可访问，需要在控制台配置安装组，参考：<a target="_blank" rel="noopener" href="https://developer.aliyun.com/article/767328">阿里云服务器开放端口教程</a></p>
+<p>我个人的配置是直接(1~65535)全部端口打开（不推荐，有风险）<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081946296.png" alt="image-20221208194652256"></p>
+<p>配置完毕重启apache服务</p>
+<h2 id="配置SSH反向隧道"><a href="#配置SSH反向隧道" class="headerlink" title="配置SSH反向隧道"></a>配置SSH反向隧道</h2><p>树莓派的mjpg-streamer服务如何连接到阿里云的apache服务？<br>使用SSH连通。关于SSH，参考<a target="_blank" rel="noopener" href="https://www.ssh.com/academy/ssh">SSH (Secure Shell) Home Page</a></p>
+<p>前文的SecureCRT登陆树莓派就是使用SSH2协议，下面将树莓派的mjpg-streamer服务端口通过SSH反向隧道连接到apache的代理端口</p>
+<pre><code>ssh -fN -R &lt;阿里云apache代理端口&gt;:&lt;树莓派localhost&gt;:&lt;树莓派mjpg-streamer服务端口&gt; &lt;阿里云服务器用户名&gt;@&lt;服务器IP&gt;
+</code></pre>
+<p>例如 <code>ssh -fN -R 9020:localhost:8080 root@47.100.221.149</code><br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081947690.png" alt="image-20221208194724640"></p>
+<p>输入服务器的登录密码完成通道建立，在阿里云可以查看：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081947971.png" alt="image-20221208194733933"></p>
+<h1 id="验证公网可访问-mjpg-streamer-服务"><a href="#验证公网可访问-mjpg-streamer-服务" class="headerlink" title="验证公网可访问 mjpg-streamer 服务"></a>验证公网可访问 mjpg-streamer 服务</h1><ul>
+<li><p>1.验证树莓派到apache的视频流通道：</p>
+<ol>
+<li>阿里云服务器启动apache</li>
+<li>树莓派建立SSH反向隧道</li>
+<li>树莓派启动mjpg-streamer</li>
+<li>在阿里云curl访问本地的代理端口</li>
+</ol>
+<p> curl 127.0.0.1:9020&#x2F;?action&#x3D;stream</p>
+</li>
+</ul>
+<p>如果有大量数据输出，说明连接没问题</p>
+<ul>
+<li>2.验证apache到客户端浏览器的反向代理通道：</li>
+</ul>
+<p>使用处于任意网络的设备的浏览器，访问：</p>
+<pre><code>http://云服务器IP / Apache代理名 / ?action=stream
+</code></pre>
+<p>本文中配置对应的输入是：<code>47.100.221.149/raspi/?action=stream</code>，注意<code>?action=stream</code>不能掉，直接访问<code>/raspi</code>得到的是静态页面，跳转不到<code>action=stream</code>的页面<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081947462.png" alt="image-20221208194745374"></p>
+<p>直接访问 SSH 通道的 9020 端口支持主页面访问和跳转到<code>action=stream</code>页面：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081947787.png" alt="image-20221208194754703"></p>
+<p>自此验证完毕公网可访问树莓派的视频流服务</p>
+<h1 id="性能测试与优化"><a href="#性能测试与优化" class="headerlink" title="性能测试与优化"></a>性能测试与优化</h1><p>实测发现mjpg-streamer启动时使用 640x480分辨率, 30fps，MJPEG格式，延迟卡顿严重</p>
+<p>树莓派 ping 阿里云延迟很小：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081948699.png" alt="image-20221208194803656"><br>可能是阿里云带宽不足以支撑大数据量，只能降低分辨率和帧率</p>
+<p>我的阿里云服务器只有 3M 带宽，计算一下合适的配置：</p>
+<pre><code>3 * 1M/8 = 3 * 128KB = 384KB
+</code></pre>
+<p>理论上当分辨率 640x480 &#x3D; 300KB, fps 要设置为 1 才几乎无延迟</p>
+<p>测试一： 分辨率&#x3D;640x480, fps&#x3D;5<br>结果：初始延迟在 1s 以内，之后延迟增加到几秒；</p>
+<p>测试二： 分辨率&#x3D;640x480, fps&#x3D;1<br>结果：初始延迟在 0.5s 左右，半小时后延迟也稳定在1s以内，效果明显比 fps&#x3D;5 好；<br>测试符合理论预期，分辨率 和 FPS 要满足带宽</p>
+<p>延迟的测试方法：手机计时，网页视频显示，放一起拍照，时间差即视频延迟<br>以下显示都在1分47秒，延迟小于 1s<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081948279.png" alt="image-20221208194813177"></p>
+<p>注意: 树莓派长时间运行发热较明显，需要配散热片。</p>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2021/07/15/%E5%A4%9A%E7%BA%BF%E7%A8%8B%E7%AC%94%E8%AE%B0%EF%BC%9A%E4%BD%BF%E7%94%A8GDB%E8%B0%83%E8%AF%95%E5%A4%9A%E7%BA%BF%E7%A8%8B/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -3159,211 +3394,6 @@ void CmyMFCDlg::CloseLogFile()
   
   
 
-      
-  
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/12/03/%E5%BC%80%E6%BA%90%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0%EF%BC%9ATinyhttpd/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Cursorhu">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="ThinkNotes">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2020/12/03/%E5%BC%80%E6%BA%90%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0%EF%BC%9ATinyhttpd/" class="post-title-link" itemprop="url">开源项目学习：Tinyhttpd</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2020-12-03 14:45:44" itemprop="dateCreated datePublished" datetime="2020-12-03T14:45:44+08:00">2020-12-03</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2022-12-12 14:56:31" itemprop="dateModified" datetime="2022-12-12T14:56:31+08:00">2022-12-12</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/open-source/" itemprop="url" rel="index"><span itemprop="name">open source</span></a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h1 id="1-简介"><a href="#1-简介" class="headerlink" title="1.简介"></a>1.简介</h1><p>Tinyhttpd是一个C + CGI实现的简单http server，适合初学者学习。代码许可协议：GPL，copyright 1999, by J. David Blackstone.<br>本文对Tinyhttp稍作注释和改动，验证并理解其主要流程, 本文源码：<br>Github: <a target="_blank" rel="noopener" href="https://github.com/cursorhu/myTinyHttpd">cursorhu&#x2F;myTinyHttpd</a></p>
-<h1 id="2-背景知识"><a href="#2-背景知识" class="headerlink" title="2.背景知识"></a>2.背景知识</h1><h2 id="TCP套接字的通信流程"><a href="#TCP套接字的通信流程" class="headerlink" title="TCP套接字的通信流程"></a>TCP套接字的通信流程</h2><p>网络协议栈的核心是TCP&#x2F;IP协议，HTTP本质上是对TCP的应用层封装，要理解HTTP服务程序，首先要理解TCP层的通信机制，在Linux环境中TCP采用socket接口通信，流程如下图<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212121451104.png" alt="image-20221212145149039"><br>关于Linux网络编程相关知识，参考《Linux网络编程-第二版》<br>TinyHttpd实现服务端的流程。</p>
-<h2 id="HTTP的请求方式"><a href="#HTTP的请求方式" class="headerlink" title="HTTP的请求方式"></a>HTTP的请求方式</h2><p>参考：<br><a target="_blank" rel="noopener" href="https://www.cnblogs.com/williamjie/p/9099940.html">浅谈HTTP中GET、POST用法以及它们的区别</a><br><a target="_blank" rel="noopener" href="https://blog.csdn.net/eson_15/article/details/88083280">99%的人都理解错了HTTP中GET与POST的区别</a><br>理解以下几点：</p>
-<ul>
-<li>GET，POST，PUT，DELETE是http层对数据操作的封装，底层本质还是TCP的read&#x2F;write过程</li>
-<li>http server处理请求的基本流程：读取-拆解-处理-封装-回写，拆解和封装的就是http层的请求和数据格式，处理是指TCP层能理解的数据。就像快递退货时的流程：取件-拆包-查看-装包-寄出</li>
-</ul>
-<h2 id="CGI的时代背景"><a href="#CGI的时代背景" class="headerlink" title="CGI的时代背景"></a>CGI的时代背景</h2><p>参考：<a target="_blank" rel="noopener" href="https://www.jianshu.com/p/c4dc22699a42">CGI是什么</a></p>
-<ul>
-<li>CGI是2000年的web接口标准，后端部署perl-CGI脚本，连接server处理程序和web客户端</li>
-<li>CGI目前还应用在嵌入式web等C-based环境，这个和当前web主流的Java Spring + Vue(JS)是完全不同的应用场景，所以CGI技术本身并无过时一说。</li>
-</ul>
-<h1 id="3-调试httpd"><a href="#3-调试httpd" class="headerlink" title="3.调试httpd"></a>3.调试httpd</h1><h2 id="部署httpd服务"><a href="#部署httpd服务" class="headerlink" title="部署httpd服务"></a>部署httpd服务</h2><p>Aliyun CentOS环境，运行如下deploy.sh：</p>
-<pre><code>#!/bin/bash
-chmod +x htdocs/*.cgi
-yum install -y perl perl-CGI
-make clean &amp;&amp; make
-</code></pre>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212121452836.png" alt="image-20221212145206784"></p>
-<h2 id="浏览器访问httpd"><a href="#浏览器访问httpd" class="headerlink" title="浏览器访问httpd"></a>浏览器访问httpd</h2><p>服务端直接运行httpd，会分配随机可用端口，本地chrome浏览器访问该服务所在的ip:端口<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212121452831.png" alt="image-20221212145218796"></p>
-<p>这里ip即为httpd所在主机ip，默认访问资源是htdocs&#x2F;index.html，原因可见httpd.c的http Get请求解析url的处理<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212121452854.png" alt="image-20221212145227807"></p>
-<p>index.h调用color.cgi脚本：</p>
-<pre><code>&lt;HTML&gt;
-&lt;TITLE&gt;Index&lt;/TITLE&gt;
-&lt;BODY&gt;
-&lt;P&gt;Welcome to J. David&#39;s webserver.
-&lt;H1&gt;CGI demo: get color
-&lt;FORM ACTION=&quot;color.cgi&quot; METHOD=&quot;POST&quot;&gt;
-Enter color(example: red, pink, blue): &lt;INPUT TYPE=&quot;text&quot; NAME=&quot;color&quot;&gt;
-&lt;INPUT TYPE=&quot;submit&quot;&gt;
-&lt;/FORM&gt;
-&lt;/BODY&gt;
-&lt;/HTML&gt;
-</code></pre>
-<p>color.cgi内容：</p>
-<pre><code>#!/usr/bin/perl -Tw
-
-use strict;
-use CGI;
-
-my($cgi) = new CGI;
-
-print $cgi-&gt;header;
-my($color) = &quot;blue&quot;;
-$color = $cgi-&gt;param(&#39;color&#39;) if defined $cgi-&gt;param(&#39;color&#39;);
-
-print $cgi-&gt;start_html(-title =&gt; uc($color),
-                       -BGCOLOR =&gt; $color); 
-print $cgi-&gt;h1(&quot;This is $color&quot;);
-print $cgi-&gt;end_html;
-</code></pre>
-<p>干了两件事：</p>
-<ul>
-<li>html页面的bgcolor参数设置成了用户输入的color变量字符串</li>
-<li>显示字符串：This is $color</li>
-</ul>
-<p>输入“red”, 浏览器显示效果：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212121452042.png" alt="image-20221212145241997"></p>
-<p>F12打开浏览器调试窗口，可见：</p>
-<ul>
-<li>访问资源为color.cgi</li>
-<li>查看http head内容，浏览器客户端的请求是POST，类型是text文本，表单数据(Form data):color的值是red</li>
-<li>查看http response内容，即httpd返回的内容。返回了html文本，即浏览器可见的红色页面</li>
-</ul>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212121452614.png" alt="image-20221212145258548"></p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212121455408.png" alt="image-20221212145533364"></p>
-<p>现在理解以下整个流程：</p>
-<ul>
-<li>服务器上httpd先运行，处于监听(listen)客户端请求的状态</li>
-<li>本地浏览器输入服务器ip：端口，访问httpd，发送的http请求类型是GET,即获取文本</li>
-<li>httpd收到请求，在处理过程中调用cgi脚本，生成response的内容</li>
-<li>httpd打包内容成http层的格式(head+body+…)，返回浏览器客户端</li>
-<li>浏览器客户端解析html文本并显示成可见的页面。</li>
-</ul>
-<p>再看另外一个获取时间的功能：<br>浏览器输入<code>ip:port/date.html</code><br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212121453695.png" alt="image-20221212145316645"><br>访问的资源是date.cgi，返回了显示当前时间的页面<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212121453222.png" alt="image-20221212145338163"><br>看下http请求和响应<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212121453850.png" alt="image-20221212145345780"></p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212121453273.png" alt="image-20221212145353230"></p>
-<p>date.cgi的实现：shell直接调用linux <code>date</code>命令</p>
-<pre><code>#!/bin/bash
-echo &quot;Content-Type: text/html&quot;
-echo
-echo &quot;&lt;HTML&gt;&lt;BODY&gt;&quot;
-echo &quot;&lt;CENTER&gt;Today is:&lt;/CENTER&gt;&quot;
-echo &quot;&lt;CENTER&gt;&lt;B&gt;&quot;
-date
-echo &quot;&lt;/B&gt;&lt;/CENTER&gt;&quot;
-echo &quot;&lt;/BODY&gt;&lt;/HTML&gt;&quot;
-</code></pre>
-<h2 id="TCP-socket访问httpd-测试"><a href="#TCP-socket访问httpd-测试" class="headerlink" title="TCP socket访问httpd(测试)"></a>TCP socket访问httpd(测试)</h2><p>client.c直接使用socket接口访问httpd，这是个测试功能，因此用编译参数控制了该功能, <code>make test_sock=y</code>编译该版本的httpd<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212121454984.png" alt="image-20221212145401934"><br>client和httpd在同一主机，直接访问回环地址127.0.0.1，可见httpd返回了client发送的字符’A’</p>
-<h1 id="4-源码分析"><a href="#4-源码分析" class="headerlink" title="4.源码分析"></a>4.源码分析</h1><h2 id="1-httpd的处理http请求的主要流程"><a href="#1-httpd的处理http请求的主要流程" class="headerlink" title="(1) httpd的处理http请求的主要流程"></a>(1) httpd的处理http请求的主要流程</h2><p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212121454501.png" alt="image-20221212145417431"></p>
-<ol>
-<li>服务器启动，在指定端口或随机选取端口绑定 httpd 服务</li>
-<li>收到一个 HTTP 请求时（其实就是 listen 的端口 accpet 的时候），派生一个线程运行 accept_request 函数</li>
-<li>取出 HTTP 请求中的 method (GET 或 POST) 和 url,。对于 GET 方法，如果有携带参数，则 query_string 指针指向 url 中 ？ 后面的 GET 参数</li>
-<li>格式化 url 到 path 数组，表示浏览器请求的服务器文件路径，在 tinyhttpd 中服务器文件是在 htdocs 文件夹下。当 url 以 &#x2F; 结尾，或 url 是个目录，则默认在 path 中加上 index.html，表示访问主页</li>
-<li>如果文件路径合法，对于无参数的 GET 请求，直接输出服务器文件到浏览器，即用 HTTP 格式写到套接字上，然后跳到（10）。其他情况（带参数 GET，POST 方式，url 为可执行文件），则调用 excute_cgi 函数执行 cgi 脚本</li>
-<li>读取整个 HTTP 请求并丢弃，如果是 POST 则找出 Content-Length. 把 HTTP 200 状态码写到套接字</li>
-<li>建立两个管道，cgi_input 和 cgi_output, 并 fork 一个进程</li>
-<li>在子进程中，把 STDOUT 重定向到 cgi_outputt 的写入端，把 STDIN 重定向到 cgi_input 的读取端，关闭 cgi_input 的写入端 和 cgi_output 的读取端，设置 request_method 的环境变量，GET 的话设置 query_string 的环境变量，POST 的话设置 content_length 的环境变量，这些环境变量都是为了给 cgi 脚本调用，接着用 execl 运行 cgi 程序</li>
-<li>在父进程中，关闭 cgi_input 的读取端 和 cgi_output 的写入端，如果 POST 的话，把 POST 数据写入 cgi_input，已被重定向到 STDIN，读取 cgi_output 的管道输出到客户端，该管道输入是 STDOUT。接着关闭所有管道，等待子进程结束。管道状态参考下图。</li>
-<li>关闭与浏览器的连接，完成了一次 HTTP 请求与回应， HTTP是无连接的。</li>
-</ol>
-<p>管道初始状态：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212121454140.png" alt="image-20221212145427091"><br>管道最终状态：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212121454591.png" alt="image-20221212145432542"></p>
-<p>主要函数：</p>
-<ul>
-<li>startup: 初始化httpd服务，包括建立服务端的套接字，绑定端口，进行监听等</li>
-<li>accept_request: 处理从套接字上监听到的一个 HTTP 请求，是服务器处理请求的主流程</li>
-<li>execute_cgi: 运行cgi程序的处理，对应POST请求</li>
-<li>sever_file: 调用cat把服务器文件返回给浏览器，对应GET请求</li>
-</ul>
-<p>辅助功能函数：</p>
-<ul>
-<li>get_line: 读取套接字的一行，把回车换行等情况都统一为换行符结束</li>
-<li>unimplemented: 返回给浏览器表明收到的HTTP请求所用的method不支持，httpd只支持GET和POST</li>
-<li>headers: 把HTTP响应的头部写到套接字</li>
-<li>cat: 读取服务器上的指定文件写到socket套接字</li>
-</ul>
-<h2 id="2-httpd处理client的socket请求"><a href="#2-httpd处理client的socket请求" class="headerlink" title="(2)httpd处理client的socket请求"></a>(2)httpd处理client的socket请求</h2><p>参考TCP套接字流程，注意一点，server端回写数据后，要close掉，client才能正常close。<br>编译选项的实现讲一下：<br>Makefile根据输入参数，定义宏, 如果编译输入带参<code>make test_sock=y</code>，则定义宏TEST_SOCK，等价于在源码<code>#define TEST_SOCK</code></p>
-<pre><code>#用编译选项定义宏
-ifeq ($(test_sock), y)
-CFLAGS+= -D TEST_SOCK
-endif
-</code></pre>
-<p>httpd.c对宏的处理：</p>
-<pre><code>#ifdef TEST_SOCK
-void test_sock(int);
-#else
-#define test_sock(...)  do&#123;&#125;while(0)
-#endif
-</code></pre>
-<p>这里如果没定义TEST_SOCK，直接把test_sock函数声明成do{}while(0)形式，这种控制在linux kernel源码中很常见，好处是不需要在调用处加宏控制，若TEST_SOCK未定义，调用test_sock()等价于空语句。<code>...</code>代表所有入参</p>
-<p>扩展：httpd能否同时支持浏览器和client程序访问?<br>一个socket描述符只能对应一个客户端，如果server想要一对多的IO复用，需要select-poll机制，参考：<br><a target="_blank" rel="noopener" href="https://www.cnblogs.com/feily/articles/14030297.html">IO多路复用之select、poll、epoll</a><br><a target="_blank" rel="noopener" href="https://blog.csdn.net/zouli415/article/details/79696766">linux下socket编程实现一个服务器连接多个客户端</a></p>
-<h1 id="参考文章"><a href="#参考文章" class="headerlink" title="参考文章"></a>参考文章</h1><p><a target="_blank" rel="noopener" href="https://www.cnblogs.com/nengm1988/p/7816618.html">Tinyhttpd精读解析</a><br><a target="_blank" rel="noopener" href="https://github.com/EZLippi/Tinyhttpd">EZLippi&#x2F;Tinyhttpd</a></p>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
 
   
   <nav class="pagination">
@@ -3433,20 +3463,20 @@ void test_sock(int);
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">68</span>
+          <span class="site-state-item-count">69</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
       <div class="site-state-item site-state-categories">
             <a href="/categories/">
           
-        <span class="site-state-item-count">26</span>
+        <span class="site-state-item-count">27</span>
         <span class="site-state-item-name">分类</span></a>
       </div>
       <div class="site-state-item site-state-tags">
             <a href="/tags/">
           
-        <span class="site-state-item-count">41</span>
+        <span class="site-state-item-count">42</span>
         <span class="site-state-item-name">标签</span></a>
       </div>
   </nav>
