@@ -190,6 +190,266 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2023/02/02/Ubuntu-SSH%E6%9C%8D%E5%8A%A1%E9%85%8D%E7%BD%AE%E7%AC%94%E8%AE%B0/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2023/02/02/Ubuntu-SSH%E6%9C%8D%E5%8A%A1%E9%85%8D%E7%BD%AE%E7%AC%94%E8%AE%B0/" class="post-title-link" itemprop="url">Ubuntu SSH服务配置笔记</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2023-02-02 11:01:24" itemprop="dateCreated datePublished" datetime="2023-02-02T11:01:24+08:00">2023-02-02</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-08-22 10:58:27" itemprop="dateModified" datetime="2023-08-22T10:58:27+08:00">2023-08-22</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/linux/" itemprop="url" rel="index"><span itemprop="name">linux</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h1 id="SSH配置"><a href="#SSH配置" class="headerlink" title="SSH配置"></a>SSH配置</h1><h2 id="SSH基本概念"><a href="#SSH基本概念" class="headerlink" title="SSH基本概念"></a>SSH基本概念</h2><ul>
+<li>SSH是Secure Shell缩写，实现安全远程登录</li>
+</ul>
+<p>​    SSH的安全性好，原因是其对数据进行加密，方式主要有两种：对称加密（密钥加密）和非对称加密（公钥加密）<br>​    对称加密指加密解密使用的是同一套秘钥。Client端把密钥加密后发送给Server端，Server用同一套密钥解密。对称加密的加密强度比较高，很难破解。但是如果有一个Client端的密钥泄漏，那么整个系统的安全性就存在严重的漏洞。<br>​    为了解决对称加密的漏洞，于是就产生了非对称加密。<br>​    非对称加密有两个密钥：“公钥”和“私钥”。公钥加密后的密文，只能通过对应的私钥进行解密。想从公钥推理出私钥几乎不可能，所以非对称加密的安全性比较高。</p>
+<ul>
+<li>SSH的加密原理中，使用了RSA非对称加密算法。</li>
+</ul>
+<p>​    整个过程：</p>
+<p>​    （1）远程主机收到用户的登录请求，把自己的公钥发给用户。</p>
+<p>​    （2）用户使用这个公钥，将登录密码加密后，发送回来。</p>
+<p>​    （3）远程主机用自己的私钥，解密登录密码，如果密码正确，就同意用户登录。</p>
+<ul>
+<li>关于中间人攻击（Man-in-the-middle attack）</li>
+</ul>
+<p>​    中间人攻击的概念：如果有人冒充远程主机将伪造的公钥发给用户，用户很难辨别公钥真伪，用户    会和伪造主机通信而不是真正的主机。</p>
+<p>​    因为SSH不像https协议，SSH协议的公钥是没有证书中心（CA）公证的，是主机和用户之间自己签    发的，所有SSH从原理上无法彻底防止中间人攻击</p>
+<ul>
+<li><p>SSH使用首次验证方式减少中间人攻击的概率：</p>
+<p>SSH首次连接会下载服务端的公钥，用户确认后公钥将被保存并信任。</p>
+<p>下次访问时客户端将会核对服务端发来的公钥和本地保存的是否相同，如果不同就发出中间人攻击的警告拒绝连接，除非用户手动清除已保存的公钥。</p>
+<p>所以，只要SSH首次连接没有中间人攻击，之后的SSH连接就无需担心中间人攻击</p>
+</li>
+</ul>
+<h2 id="Ubuntu安装SSH服务"><a href="#Ubuntu安装SSH服务" class="headerlink" title="Ubuntu安装SSH服务"></a>Ubuntu安装SSH服务</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">sudo apt install ssh -y</span><br><span class="line">sudo service ssh start</span><br><span class="line">sudo service ssh status</span><br></pre></td></tr></table></figure>
+
+<p>在系统重启后ssh service会自启动，不需要<code>systemctl enable</code>去配置自启动</p>
+<h2 id="Windows访问SSH服务"><a href="#Windows访问SSH服务" class="headerlink" title="Windows访问SSH服务"></a>Windows访问SSH服务</h2><ul>
+<li><p>使用win+R CMD验证SSH连接</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ssh 远程主机用户名@远程主机IP</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>使用putty，xshell等工具访问主机</p>
+</li>
+</ul>
+<p>参考：<a target="_blank" rel="noopener" href="https://www.how2shout.com/how-to/how-to-login-into-ubuntu-using-ssh-from-windows-10-8-7.html#:~:text=How%20do%20I%20SSH%20into%20Ubuntu%20from%20Windows%3F,to%20Ubuntu%20server%20via%20Putty%20SSH%20client%20">how2shout.com&#x2F;how-to&#x2F;how-to-login-into-ubuntu-using-ssh-from-windows-10-8-7</a></p>
+<p>首次登陆会验证RSA公钥（1024位）的MD5 fingerprint（128位）</p>
+<blockquote>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">RSA key fingerprint is 98:2e:d7:e0:de:9f:ac:67:28:c2:42:2d:37:16:58:4d.</span><br><span class="line">Are you sure you want to continue connecting (yes/no)?</span><br></pre></td></tr></table></figure>
+</blockquote>
+<p>当首次连接的公钥被接受以后，会保存在本地文件。下次再连接这台主机会跳过公钥警告，直接提示输入密码。如果以后的连接是中间人攻击，其公钥和本地的首次公钥不同，从而保证安全性。</p>
+<ul>
+<li>使用xftp, filezilla工具传输文件</li>
+</ul>
+<p>和putty，xshell配置类似</p>
+<ul>
+<li>使用scp命令传输文件</li>
+</ul>
+<p>在linux主机之间可以用scp传输文件和目录</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">#从远程cp到本地</span><br><span class="line">scp username@ip_address:/home/username/filename .</span><br><span class="line">#从本地cp到远程</span><br><span class="line">scp filename username@ip_address:/home/username</span><br><span class="line">#拷贝目录</span><br><span class="line">scp -r source_dir username@ip_address:/home/username/target_dir</span><br></pre></td></tr></table></figure>
+
+<h2 id="SSH远程开发"><a href="#SSH远程开发" class="headerlink" title="SSH远程开发"></a>SSH远程开发</h2><p>示例一：在SSH server和客户端建立后，可以使用VSCode和source insight等代码编辑工具改代码，用xftp传输代码到SSH Linux主机，用xshell远程编译。</p>
+<p>示例二：VSCode安装SSH远程开发插件，可以直接远程SSH Linux主机完成代码编辑、编译，<a target="_blank" rel="noopener" href="https://www.how2shout.com/how-to/how-to-login-into-ubuntu-using-ssh-from-windows-10-8-7.html#:~:text=How%20do%20I%20SSH%20into%20Ubuntu%20from%20Windows%3F,to%20Ubuntu%20server%20via%20Putty%20SSH%20client%20">visualstudio.com&#x2F;Remote Development using SSH</a></p>
+<h1 id="远程连接相关的Ubuntu配置"><a href="#远程连接相关的Ubuntu配置" class="headerlink" title="远程连接相关的Ubuntu配置"></a>远程连接相关的Ubuntu配置</h1><h2 id="Ubuntu设置静态IP"><a href="#Ubuntu设置静态IP" class="headerlink" title="Ubuntu设置静态IP"></a>Ubuntu设置静态IP</h2><p>在使用SSH和Samba连远程Ubuntu PC时，发现IP有时候会改变，因此需要配置Ubuntu PC为静态IP</p>
+<p>1.ifconfig查看ethernet接口和当前IP</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">ubuntu@ubuntu-Z390-GAMING-X:~$ ifconfig</span><br><span class="line">eno1: flags=4163&lt;UP,BROADCAST,RUNNING,MULTICAST&gt;  mtu 1500</span><br><span class="line">        inet 10.52.4.71  netmask 255.255.255.0  broadcast 10.52.4.255</span><br></pre></td></tr></table></figure>
+
+<p>2.编辑Ubuntu的netplan配置文件&#x2F;etc&#x2F;netplan&#x2F;*.yaml，用tab补全找到具体的yaml，制定静态IP和DNS</p>
+<p>参考 <a target="_blank" rel="noopener" href="https://linuxconfig.org/netplan-network-configuration-tutorial-for-beginners">Netplan network configuration tutorial for beginners</a></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">network:</span><br><span class="line">  version: 2</span><br><span class="line">  renderer: NetworkManager</span><br><span class="line">  ethernets:</span><br><span class="line">    eno1:</span><br><span class="line">      addresses:</span><br><span class="line">        - 10.52.4.71/24</span><br><span class="line">      nameservers:</span><br><span class="line">         addresses:</span><br><span class="line">            - 10.52.1.1</span><br><span class="line">            - 10.52.1.2</span><br><span class="line">      #gateway4: 10.52.0.1</span><br><span class="line">      routes:</span><br><span class="line">         - to: default</span><br><span class="line">           via: 10.52.0.1</span><br></pre></td></tr></table></figure>
+
+<p>以上IP和nameservers(DNS)是必须的，gateway4是网关，在ubuntu22被废弃（ubuntu22显示 &#96;&#96;gateway4<code> has been deprecated, use default routes instead.</code>）使用routes配置网关，参考 <a target="_blank" rel="noopener" href="https://askubuntu.com/questions/1410750/netplan-gateway-has-been-deprecated">netplan-gateway-has-been-deprecated</a>。怎么获取这三个值，参考以下网络命令：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">#查看所有</span><br><span class="line">nmcli</span><br><span class="line">#查看gateway</span><br><span class="line">netstat -rn 或 route -n</span><br><span class="line">#DNS配置文件</span><br><span class="line">cat /etc/resolv.conf</span><br></pre></td></tr></table></figure>
+
+<p>例如nmcli输出如下，其中 <code> inet4 10.52.4.71/24</code>即当前IP&#x2F;mask， <code>route4 default via 10.52.0.1</code>即默认网关，<code>DNS configuration servers: 10.52.1.1 10.52.1.2</code>即nameservers</p>
+<blockquote>
+<p>eno1: connected to netplan-eno1<br>        “Intel I219-V”<br>        ethernet (e1000e), 18:C0:4D:1F:BA:B7, hw, mtu 1500<br>        ip4 default<br>        inet4 10.52.4.71&#x2F;24<br>        route4 10.52.4.0&#x2F;24 metric 100<br>        route4 10.52.0.1&#x2F;32 metric 100<br>        route4 default via 10.52.0.1 metric 100<br>        inet6 fe80::1ac0:4dff:fe1f:bab7&#x2F;64<br>        route6 fe80::&#x2F;64 metric 256</p>
+<p>virbr0: connected (externally) to virbr0<br>        “virbr0”<br>        bridge, 52:54:00:13:EB:68, sw, mtu 1500<br>        inet4 192.168.122.1&#x2F;24<br>        route4 169.254.0.0&#x2F;16 metric 1000<br>        route4 192.168.122.0&#x2F;24 metric 0</p>
+<p>lo: unmanaged<br>        “lo”<br>        loopback (unknown), 00:00:00:00:00:00, sw, mtu 65536</p>
+<p>DNS configuration:<br>        servers: 10.52.1.1 10.52.1.2<br>        interface: eno1</p>
+</blockquote>
+<p>3.生效</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo netplan apply</span><br></pre></td></tr></table></figure>
+
+<p>ping确认网络正常：</p>
+<blockquote>
+<p>ubuntu@ubuntu-Z390-GAMING-X:~$ ping <a target="_blank" rel="noopener" href="http://www.bing.com/">www.bing.com</a><br>PING china.bing123.com (202.89.233.101) 56(84) bytes of data.<br>64 bytes from 202.89.233.101 (202.89.233.101): icmp_seq&#x3D;1 ttl&#x3D;117 time&#x3D;27.1 ms<br>64 bytes from 202.89.233.101 (202.89.233.101): icmp_seq&#x3D;2 ttl&#x3D;117 time&#x3D;27.2 ms<br>64 bytes from 202.89.233.101 (202.89.233.101): icmp_seq&#x3D;3 ttl&#x3D;117 time&#x3D;27.2 ms</p>
+</blockquote>
+<p>如果DNS server或gateway不符合当前网络状况，ping会失败，输出：</p>
+<blockquote>
+<p>Name or service not known</p>
+</blockquote>
+<h2 id="Ubuntu禁止自动登出"><a href="#Ubuntu禁止自动登出" class="headerlink" title="Ubuntu禁止自动登出"></a>Ubuntu禁止自动登出</h2><p>自动登出会使SSH断开链接，按如下禁用</p>
+<blockquote>
+<p>setting-&gt;Privacy-&gt;Screen-&gt;Automatic Screen Lock (OFF)</p>
+</blockquote>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2023/01/30/Ubuntu%20Samba%E9%85%8D%E7%BD%AE%E7%AC%94%E8%AE%B0/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2023/01/30/Ubuntu%20Samba%E9%85%8D%E7%BD%AE%E7%AC%94%E8%AE%B0/" class="post-title-link" itemprop="url">Ubuntu Samba配置笔记</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2023-01-30 10:55:24" itemprop="dateCreated datePublished" datetime="2023-01-30T10:55:24+08:00">2023-01-30</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-07-27 19:35:38" itemprop="dateModified" datetime="2023-07-27T19:35:38+08:00">2023-07-27</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/linux/" itemprop="url" rel="index"><span itemprop="name">linux</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h2 id="Samba基本概念"><a href="#Samba基本概念" class="headerlink" title="Samba基本概念"></a>Samba基本概念</h2><p>Samba是SMB protocol的应用程序实现，分为服务端和客户端；</p>
+<p>Samba通常的使用场景：在同一局域网内的的Linux主机安装Samba服务，windows主机可以访问Linux Samba服务指定的共享目录。</p>
+<p>在嵌入式开发中通常在windows 上编辑Samba共享目录下的代码，通过 Linux环境编译代码，而无需在两个主机间拷贝代码文件。</p>
+<h2 id="Ubuntu安装Samba服务"><a href="#Ubuntu安装Samba服务" class="headerlink" title="Ubuntu安装Samba服务"></a>Ubuntu安装Samba服务</h2><p>Ubuntu 20.04和22.04 版本，安装Samba服务参考：</p>
+<p><a target="_blank" rel="noopener" href="https://linux.how2shout.com/how-to-install-samba-on-ubuntu-22-04-lts-jammy-linux/#:~:text=Steps%20to%20install%20SAMBA%20on%20Ubuntu%2022.04%20LTS,...%206%206.%20Access%20the%20shared%20folder%20">www.how2shout.com/linux/how-to-install-samba-on-ubuntu-22-04-lts-jammy-linux</a><br>主要流程：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">#install and run samba service</span><br><span class="line">sudo apt install samba -y</span><br><span class="line"></span><br><span class="line">#enable auto start samba service</span><br><span class="line">sudo systemctl enable --now smbd</span><br><span class="line"></span><br><span class="line">#firewall allow samba</span><br><span class="line">sudo ufw allow samba</span><br><span class="line"></span><br><span class="line">#add system user to sambashare group</span><br><span class="line">sudo usermod -aG sambashare $USER</span><br><span class="line"></span><br><span class="line">#set passwd for sambashare</span><br><span class="line">sudo smbpasswd -a $USER</span><br><span class="line"></span><br><span class="line">#check samba service is running</span><br><span class="line">systemctl status smbd</span><br><span class="line"></span><br><span class="line">#share the folder in ubuntu GUI checkbox</span><br><span class="line">右键要共享的home文件夹properties -&gt; local Network Share -&gt; share this folder -&gt;share name不能直接用用户名，可以用&#x27;用户名+Home&#x27;</span><br></pre></td></tr></table></figure>
+
+<p>显示无权共享：非root用户要共享&#x2F;home，需要修改smb.conf:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">sudo vim /etc/samba/smb.conf</span><br><span class="line">在[global]新增usershare owner only = false</span><br><span class="line">sudo systemctl restart smbd</span><br></pre></td></tr></table></figure>
+
+
+
+<h2 id="Windows访问Samba共享目录"><a href="#Windows访问Samba共享目录" class="headerlink" title="Windows访问Samba共享目录"></a>Windows访问Samba共享目录</h2><p>windows下可以在文件浏览器直接访问Linux主机ip查看共享的Linux目录</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202301301103020.png" alt="image-20230130110305978"></p>
+<p>首次windows访问共享目录有权限问题（不能写入），需要在Linux修改共享目录&#x2F;home的权限：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo chmod 777 /home -R </span><br></pre></td></tr></table></figure>
+
+<p>为了以后方便连接，可以创建网络位置，参考：<a href="www.how2shout.com/linux/how-to-install-samba-on-ubuntu-22-04-lts-jammy-linux">6. Access the shared folder On Windows 11 or 10</a></p>
+<p>如果一个主机有两个samba共享目录，windows不允许多重连接；</p>
+<p>要更改连接目录，操作如下：</p>
+<p>win10系统在搜索框搜索【凭据管理器】，然后删除已有的windows samba网络连接凭据</p>
+<p><code>win+R</code> CMD输入 <code>net use * /del /y</code>断开所有远程链接，包括samba网络连接</p>
+<p>重新配置windows samba网络连接</p>
+<h2 id="重装Samba"><a href="#重装Samba" class="headerlink" title="重装Samba"></a>重装Samba</h2><p>Samba的配置文件位于&#x2F;etc&#x2F;samba&#x2F;smb.conf，如果此文件被错误配置或者误删除，需要重装Samba，流程如下:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">sudo apt-get remove samba --purge //删掉samba服务</span><br><span class="line">sudo apt-get remove samba-common --purge //这一步是关键，只重装samba不会恢复smb.conf</span><br><span class="line">sudo apt-get autoremove //删掉其他samba依赖库</span><br><span class="line">sudo apt-get install samba //重装，包括samba和samba-common等</span><br></pre></td></tr></table></figure>
+
+<h2 id="Samba使用示例"><a href="#Samba使用示例" class="headerlink" title="Samba使用示例"></a>Samba使用示例</h2><p>Samba最重要的特性是两个主机之间直接共享目录，不需要用户去拷贝文件。</p>
+<p>在代码开发中，在windows主机的VSCode或其他编辑器直接打开Linux主机共享目录的代码，然后SSH远程Linux主机去编译。</p>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2023/01/30/Windows-CMD-%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4%E7%AC%94%E8%AE%B0/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -1149,302 +1409,10 @@
   
   
 
-      
-  
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2022/01/22/%E6%B5%85%E8%B0%88%E5%8A%A0%E5%AF%86%E5%92%8C%E7%BC%96%E7%A0%81%EF%BC%9Abase64/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Cursorhu">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="ThinkNotes">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2022/01/22/%E6%B5%85%E8%B0%88%E5%8A%A0%E5%AF%86%E5%92%8C%E7%BC%96%E7%A0%81%EF%BC%9Abase64/" class="post-title-link" itemprop="url">浅谈加密和编码：base64</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2022-01-22 14:36:51" itemprop="dateCreated datePublished" datetime="2022-01-22T14:36:51+08:00">2022-01-22</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2022-12-12 14:38:31" itemprop="dateModified" datetime="2022-12-12T14:38:31+08:00">2022-12-12</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/encrypt/" itemprop="url" rel="index"><span itemprop="name">encrypt</span></a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h1 id="1-什么是编码解码"><a href="#1-什么是编码解码" class="headerlink" title="1.什么是编码解码"></a>1.什么是编码解码</h1><p>编码：利用特定的算法，对原始内容进行处理，生成运算后的内容，形成另一种数据的表现形式，可以根据算法，再还原回来，这种操作称之为编码。<br>解码：利用编码使用的算法的逆运算，对经过编码的数据进行处理，还原出原始数据，这种操作称之为解码。</p>
-<h1 id="2-什么是Base64编码算法"><a href="#2-什么是Base64编码算法" class="headerlink" title="2.什么是Base64编码算法"></a>2.什么是Base64编码算法</h1><p>将任意的字节数组数据，通过Base64算法，生成只有（大小写英文、数字、+、&#x2F;）（一共64个字符）内容表示的字符串数据。即将任意的内容转换为可见的字符串形式。</p>
-<h1 id="3-为什么需要Base64编码"><a href="#3-为什么需要Base64编码" class="headerlink" title="3.为什么需要Base64编码"></a>3.为什么需要Base64编码</h1><p>Base64算法最开始是被用于解决电子邮件数据传输问题。以前发送邮件只支持可见字符的传送，但ASCII码中，有一部分不支持直接显示。由此，需要有一个方法将不可见的字符转换为可见的字符，便产生了Base64编码算法。</p>
-<h1 id="4-Base64算法的实现"><a href="#4-Base64算法的实现" class="headerlink" title="4.Base64算法的实现"></a>4.Base64算法的实现</h1><p>特点：</p>
-<ul>
-<li>将数据按照 3个字节一组的形式进行处理，每三个字节在编码之后被转换为4个字节。即：如果一个数据有6个字节，可编码后将包含6&#x2F;3*4&#x3D;8个字节</li>
-<li>当数据的长度无法满足3的倍数的情况下，最后的数据需要进行填充操作，即补“&#x3D;” ，这里“&#x3D;”是填充字符，不要理解为第65个字符。因此我们经常看见base64编码的字符串结尾有几个”&#x3D;”号</li>
-</ul>
-<p>示例：</p>
-<p> <img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212121437191.png" alt="image-20221212143753149"></p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212121438580.png" alt="image-20221212143830525"></p>
-<p>上面示例将原始数据的每三个字节分为一组，按位进行分割为每6位一个字节的形式，进行转换，形成新的4个字节。空缺的两个bit用0填补。<br>这四个字节才通过Base64编码表进行映射，形成最后实际的Base64编码结果。<br>如果原始数据最后无法凑成3个字节，则以“&#x3D;”填充。</p>
-<p>注：上图中的1234567表示bit的位置，不是bit的值。</p>
-<p>将字符串”ABC”进行Base64编码流程如下。</p>
-<p>1.使用ASCII编码方式将字符串”ABC”转换成二进制数据 01000001 | 01000010 | 01000011<br>2.将步骤1的二进制数据进行分组，每个分组6bit 010000 | 010100 | 001001 | 000011<br>3.将步骤2的4组6bit二进制编码数据进行补位（高位补0），变成4组8bit二进制 00010000 | 00010100 | 00001001 | 00000011<br>4.将步骤3中的4组8bit转换成十进制。16 | 20 | 9 | 3<br>5.以步骤4的十进制数据为索引，去Base64编码映射表中寻找对应的字符。16在编码表中映射的字符是Q，20映射的字符是U，9映射的字符是J，3映射的字符是D。<br>所以，字符串”ABC”经过Base64编码后的数据是”QUJD”。</p>
-<p><strong>Base64编码索引表</strong><br>26个字母 * 2(大小写) + 10个数字 + 2个运算符号 &#x3D; 64个字符<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212121438704.png" alt="image-20221212143820653"></p>
-<h1 id="5-应用场景"><a href="#5-应用场景" class="headerlink" title="5.应用场景"></a>5.应用场景</h1><p>http协议中，GET方式和POST方式是Http请求常用的两种方式，GET方法只能传递ASCII数据，但某些情况下会要求使用GET来传递二进制数据。<br>此时用Base64对Get传输的二进制数据，编码成ASCII数据，例如，客户端和服务器传递JSON数据时，经常会进行base64编解码。</p>
-<p>注意：</p>
-<ul>
-<li>Base64是编码算法，不是加密算法，只是用来编码二进制的字节数组，形成可视的ASCII字符串。</li>
-<li>Base64编码实际上是把原数据的3个字节映射成了4个字节，所以相比于原数据长度，编码后的长度会增加1&#x2F;3。会降低传输效率。</li>
-</ul>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-      
-  
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2021/09/09/%E6%A0%91%E8%8E%93%E6%B4%BE%E7%AC%94%E8%AE%B0%EF%BC%9A%E4%BD%BF%E7%94%A8ALSA-A2DP-PulseAudio%E8%87%AA%E5%88%B6%E8%93%9D%E7%89%99%E9%9F%B3%E7%AE%B1/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Cursorhu">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="ThinkNotes">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2021/09/09/%E6%A0%91%E8%8E%93%E6%B4%BE%E7%AC%94%E8%AE%B0%EF%BC%9A%E4%BD%BF%E7%94%A8ALSA-A2DP-PulseAudio%E8%87%AA%E5%88%B6%E8%93%9D%E7%89%99%E9%9F%B3%E7%AE%B1/" class="post-title-link" itemprop="url">树莓派笔记：使用ALSA+A2DP+PulseAudio自制蓝牙音箱</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2021-09-09 19:54:39" itemprop="dateCreated datePublished" datetime="2021-09-09T19:54:39+08:00">2021-09-09</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2022-12-08 19:49:24" itemprop="dateModified" datetime="2022-12-08T19:49:24+08:00">2022-12-08</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/raspi/" itemprop="url" rel="index"><span itemprop="name">raspi</span></a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h1 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h1><p>树莓派4B自带蓝牙和Wifi, 无需外接 USB dongle；<br>蓝牙最常见的应用是近距离传输数据，比如蓝牙传文件，蓝牙音箱等。正好家里有个普通的usb供电的便携音箱；</p>
-<p>本文用树莓派蓝牙+普通音箱，实现简单的蓝牙音箱。</p>
-<p>首先需要了解Linux音频系统的整体框架：<br><img src="C:\Users\thomas.hu\AppData\Roaming\Typora\typora-user-images\image-20221208194352559.png" alt="image-20221208194352559"></p>
-<p>大致分为三个部分：</p>
-<ul>
-<li>kernel&#x2F;driver层的ALSA驱动框架</li>
-<li>蓝牙音频协议栈：A2DP, 这是使蓝牙具有传输音频流能力的基石; Linux官方的bluez包实现了A2DP</li>
-<li>音频应用层, Linux最常用的音频服务器是Pulse Audio</li>
-</ul>
-<p>怎样理解这三层：可以类比Linux网络层：<br>ALSA 类似网络驱动框架<br>A2DP 类似TCP&#x2F;UDP层<br>PulseAudio 类似HTTP层的服务器，类比Apache</p>
-<p>而蓝牙连接类似http连接和会话；<br>声卡(输入、输出)类似网卡(Ethernet和wifi)，音频设备(音箱，麦克风)类似具体的网口设备</p>
-<p>深入了解 ALSA 音频驱动和 A2DP 蓝牙音频协议，参考：<br><a target="_blank" rel="noopener" href="https://www.alsa-project.org/wiki/Main_Page">Advanced Linux Sound Architecture (ALSA) project homepage</a><br><a target="_blank" rel="noopener" href="http://www.dslreports.com/r0/download/2285126~a70eb148e16b921dc323dbb977d4b4b1/A2DP_SPEC.pdf">A2DP Spec</a></p>
-<p>本文的环境<br>树莓派4B, 系统: ubuntu-server raspberry pi版本<br>音箱：usb供电，音频线<br>安卓手机：用于配对树莓派的蓝牙音频服务</p>
-<p>连接示意图</p>
-<pre><code> Audio source (i.e. smartphone) 
-                |
-                v
- (((  Wireless Bluetooth Channel  )))
-                |
-                v
-  Raspberry PI (with A2DP service)
-                |
-                v
-         Audio Interface
-                |
-                v
-             Speakers
-</code></pre>
-<h1 id="使用alsa-utils测试音频设备"><a href="#使用alsa-utils测试音频设备" class="headerlink" title="使用alsa-utils测试音频设备"></a>使用alsa-utils测试音频设备</h1><p>首先测试Linux上如何使用普通音箱<br>将音箱USB连到树莓派USB, 音频线连到音频接口</p>
-<h2 id="查看音频设备"><a href="#查看音频设备" class="headerlink" title="查看音频设备"></a>查看音频设备</h2><p>ALSA在应用层提供了alsa-utils包，其含有arecord、aplay等工具来查看和使用音频设备。</p>
-<pre><code>apt-get install alsa-utils
-</code></pre>
-<p>查看声卡列表：</p>
-<pre><code>cat /proc/asound/cards
-</code></pre>
-<p>可以看到当前有两张声卡</p>
-<p>card 0是树莓派的bcm2835集成声卡，card 1 是另外接的USB麦克风</p>
-<p>注意区分声卡和音频设备，一个声卡可以管理多个音频设备，类似于”总线”和”设备”的关系。</p>
-<p>音频设备可以细分为输入和输出两种：例如音箱是播放音频，属于输出；麦克风是录入音频，属于输入。下面分别查看这两类设备。</p>
-<p>查看音频输入设备：</p>
-<pre><code>arecord -l
-</code></pre>
-<p>查看音频输出设备：</p>
-<pre><code>aplay -l
-</code></pre>
-<h2 id="使用音频设备"><a href="#使用音频设备" class="headerlink" title="使用音频设备"></a>使用音频设备</h2><p>(1)测试音频输出：</p>
-<pre><code>aplay test.wav -D plughw:CARD=0,DEV=0
-</code></pre>
-<p>音频设备用 CARD 和 DEV 指定，来自于前文<code>aplay -l</code>查看音频设备的输出<br>测试音频(wav格式)可以在此下载：<a target="_blank" rel="noopener" href="https://www.ape8.cn/wav/">ape8.cn</a></p>
-<p>(2)测试音频输入：</p>
-<p>使用arecord录制音频输入<br>-f 录制音频格式。例如 cd 表示 (16 bit little endian, 44100, stereo)<br>-d 录制时间，单位秒<br>-c 输入通道的个数，如果是麦克风阵列可能有多通道<br>-D 使用的设备：-D hw:1,0 表示使用 card 1 下的device 0设备</p>
-<p>测试如下：</p>
-<pre><code>arecord -f cd -d 5 -c 1 -D hw:1,0 &gt; test.pcm
-</code></pre>
-<p>然后播放此音频：</p>
-<pre><code>aplay test.pcm
-</code></pre>
-<h1 id="蓝牙服务相关配置"><a href="#蓝牙服务相关配置" class="headerlink" title="蓝牙服务相关配置"></a>蓝牙服务相关配置</h1><h2 id="蓝牙协议栈和服务的安装"><a href="#蓝牙协议栈和服务的安装" class="headerlink" title="蓝牙协议栈和服务的安装"></a>蓝牙协议栈和服务的安装</h2><p>首先确保系统软件是最新：</p>
-<pre><code>sudo apt-get update
-sudo apt-get upgrade
-</code></pre>
-<p>安装 bluez，pulseaudio 等蓝牙基础组件，对于树莓派还要安装pi-bluetooth</p>
-<pre><code>sudo apt-get install pi-bluetooth bluez bluez-tools pulseaudio pulseaudio-module-bluetooth
-</code></pre>
-<p>bluez 是Linux官方的蓝牙协议栈，其内部实现 A2DP 蓝牙音频协议，参考<a target="_blank" rel="noopener" href="http://www.bluez.org/about/">bluez.org</a></p>
-<p>PulseAudio 是Linux音频服务器, 其最主要的作用是：<br>PulseAudio clients can send audio to “sinks” and receive audio from “sources”</p>
-<p>参考<a target="_blank" rel="noopener" href="https://www.freedesktop.org/wiki/Software/PulseAudio/About/">PulseAudio&#x2F;About</a></p>
-<p>简单说明下蓝牙的发送、接收的概念：<br>蓝牙的Source端为发送码流的端，Sink端为接收码流的端；可类比生产者和消费者模型</p>
-<h2 id="启动音频服务"><a href="#启动音频服务" class="headerlink" title="启动音频服务"></a>启动音频服务</h2><p>PulseAudio服务需要创建用户名和用户组，示例如下：</p>
-<pre><code>sudo usermod -G bluetooth -a ubuntu
-</code></pre>
-<p>启动服务器</p>
-<pre><code>pulseaudio --start
-</code></pre>
-<h2 id="启动蓝牙配对"><a href="#启动蓝牙配对" class="headerlink" title="启动蓝牙配对"></a>启动蓝牙配对</h2><p>蓝牙首次连接需要配对，使用 bluez 的 <code>bluetoothctl</code>工具</p>
-<p>参考：<a target="_blank" rel="noopener" href="https://www.makeuseof.com/manage-bluetooth-linux-with-bluetoothctl/">How to Manage Bluetooth Devices on Linux Using bluetoothctl</a></p>
-<pre><code>bluetoothctl //进入蓝牙配置模式，会显示用户为[bluetooth]#
-[bluetooth]# list //列出树莓派的蓝牙控制器列表
-[bluetooth]# agent on //注册蓝牙代理
-[bluetooth]# default-agent //使用默认代理
-[bluetooth]# discoverable on //树莓派的蓝牙可被其他设备发现
-[bluetooth]# scan on //开始扫描可连接蓝牙设备
-</code></pre>
-<p>此后选择要连接的蓝牙设备，手机蓝牙打开，<code>scan on</code>列表找到手机的 MAC地址 进行连接配对。<br>手机的MAC可在设置-&gt;系统信息查看</p>
-<pre><code>[bluetooth]# pair &lt;dev&gt; //配对设备，首次需要密码
-[bluetooth]# trust &lt;dev&gt; //信任该设备，此后可以自动配对无需密码
-[bluetooth]# connect &lt;dev&gt; //建立连接
-</code></pre>
-<p>现在可以退出 bluetoothctl模式，然后测试蓝牙音频播放：</p>
-<pre><code>[bluetooth]# quit
-aplay test.wav
-</code></pre>
-<p>关于蓝牙的agent，参考<a target="_blank" rel="noopener" href="https://askubuntu.com/questions/763939/bluetoothctl-what-is-a-bluetooth-agent">bluetoothctl - What is a bluetooth agent?</a></p>
-<h2 id="设置自动配对连接"><a href="#设置自动配对连接" class="headerlink" title="设置自动配对连接"></a>设置自动配对连接</h2><p>为了避免每次pair都要指定设备，可以配置蓝牙打开时，自动pair上次的设备。</p>
-<p>编辑PulseAudio配置文件 <code>/etc/pulse/default.pa</code> </p>
-<pre><code># automatically switch to newly-connected devices
-load-module module-switch-on-connect
-</code></pre>
-<p>编辑bluez配置文件 <code>/etc/bluetooth/main.conf</code></p>
-<pre><code>[Policy]
-AutoEnable=true
-</code></pre>
-<p>系统重启后只需要重启PulseAudio服务：</p>
-<pre><code>pulseaudio --start
-</code></pre>
-<h1 id="调试过程"><a href="#调试过程" class="headerlink" title="调试过程"></a>调试过程</h1><h2 id="找不到蓝牙controller"><a href="#找不到蓝牙controller" class="headerlink" title="找不到蓝牙controller"></a>找不到蓝牙controller</h2><p>最开始bluetoothctl list显示的蓝牙控制器列表是空的，我一度怀疑买了假的raspi-4B</p>
-<p>原因是树莓派需要安装专门的蓝牙包 pi-bluetooth，参考<a target="_blank" rel="noopener" href="https://raspberrypi.stackexchange.com/questions/114586/rpi-4b-bluetooth-unavailable-on-ubuntu-20-04">rpi-4b-bluetooth-unavailable-on-ubuntu</a></p>
-<p>树莓派很多功能都要求系统有定制包，大多数硬件失效都是定制包未安装。</p>
-<h2 id="蓝牙连接正常，播放没声音"><a href="#蓝牙连接正常，播放没声音" class="headerlink" title="蓝牙连接正常，播放没声音"></a>蓝牙连接正常，播放没声音</h2><p>首先确认音频设备物理连接是否正常；</p>
-<p>然后确认PulseAudio音频服务是否正常，检查服务状态和配置文件；</p>
-<pre><code>pacmd info
-pactl info
-</code></pre>
-<p>问题仍没有解决，仔细听似乎有很小的声音，检测音量配置：</p>
-<pre><code>pacmd list-sinks //找到sink设备，即音箱
-pacmd set-sink-volume &lt;sink&gt; &lt;value&gt; //设置音量，value取值 [0, 65536] 代表标准音量 0~100%
-</code></pre>
-<p>参考：<a target="_blank" rel="noopener" href="https://askubuntu.com/questions/219739/adjust-max-possible-volume-in-pulseaudio#:~:text=pactl%20set-sink-volume%200%20100%25%20Where%200%20is%20the,100%25%20to%20get%20audio%20boost%20%28200%25%20for%20example%29.">adjust max possible volume in pulseaudio</a></p>
-<p>此时播放音乐可以听到但声音极小；<br>检查音箱的线控音量调节，调到最大；<br>此时蓝牙音乐只有正常音箱大概 30% 的播放音量。</p>
-<p>原因是树莓派的USB供电驱动能力有限，同一音箱，在PC-USB供电下30%的音量大小等同于树莓派上100%的音量大小。</p>
-<p>自此蓝牙播放音量可以达到正常水平，需要更高音量和音质建议220V供电的音箱。</p>
-<h1 id="参考内容"><a href="#参考内容" class="headerlink" title="参考内容"></a>参考内容</h1><p><a target="_blank" rel="noopener" href="https://www.jianshu.com/p/1b79537da86d">Ubuntu音频设备检测</a><br><a target="_blank" rel="noopener" href="https://www.nicolabs.net/2020/Make-RPi-bluetooth-speaker-part-1">Make-RPi-bluetooth-speaker-part-1</a><br><a target="_blank" rel="noopener" href="https://gist.github.com/actuino/9548329d1bba6663a63886067af5e4cb">actuino&#x2F;bt_speaker-raspberry_pi-zero_w</a><br><a target="_blank" rel="noopener" href="https://gist.github.com/oleq/24e09112b07464acbda1#file-a2dp-autoconnect-L17">A2DP audio streaming using Raspberry PI</a></p>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
 
   
   <nav class="pagination">
-    <a class="extend prev" rel="prev" href="/page/2/"><i class="fa fa-angle-left" aria-label="上一页"></i></a><a class="page-number" href="/">1</a><a class="page-number" href="/page/2/">2</a><span class="page-number current">3</span><a class="page-number" href="/page/4/">4</a><span class="space">&hellip;</span><a class="page-number" href="/page/7/">7</a><a class="extend next" rel="next" href="/page/4/"><i class="fa fa-angle-right" aria-label="下一页"></i></a>
+    <a class="extend prev" rel="prev" href="/page/2/"><i class="fa fa-angle-left" aria-label="上一页"></i></a><a class="page-number" href="/">1</a><a class="page-number" href="/page/2/">2</a><span class="page-number current">3</span><a class="page-number" href="/page/4/">4</a><span class="space">&hellip;</span><a class="page-number" href="/page/8/">8</a><a class="extend next" rel="next" href="/page/4/"><i class="fa fa-angle-right" aria-label="下一页"></i></a>
   </nav>
 
 
@@ -1510,20 +1478,20 @@ pacmd set-sink-volume &lt;sink&gt; &lt;value&gt; //设置音量，value取值 [0
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">69</span>
+          <span class="site-state-item-count">71</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
       <div class="site-state-item site-state-categories">
             <a href="/categories/">
           
-        <span class="site-state-item-count">27</span>
+        <span class="site-state-item-count">28</span>
         <span class="site-state-item-name">分类</span></a>
       </div>
       <div class="site-state-item site-state-tags">
             <a href="/tags/">
           
-        <span class="site-state-item-count">42</span>
+        <span class="site-state-item-count">43</span>
         <span class="site-state-item-name">标签</span></a>
       </div>
   </nav>

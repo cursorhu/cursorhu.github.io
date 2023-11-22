@@ -190,6 +190,248 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/04/16/%E6%B5%85%E8%B0%88C%E7%9A%84%E5%AE%8F%E5%87%BD%E6%95%B0/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2020/04/16/%E6%B5%85%E8%B0%88C%E7%9A%84%E5%AE%8F%E5%87%BD%E6%95%B0/" class="post-title-link" itemprop="url">浅谈C的宏函数</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-04-16 15:07:37" itemprop="dateCreated datePublished" datetime="2020-04-16T15:07:37+08:00">2020-04-16</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2022-12-06 15:18:54" itemprop="dateModified" datetime="2022-12-06T15:18:54+08:00">2022-12-06</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/c-c/" itemprop="url" rel="index"><span itemprop="name">c/c++</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h1 id="1-连接操作符"><a href="#1-连接操作符" class="headerlink" title="1. 连接操作符:##"></a>1. 连接操作符:##</h1><pre><code>#define Conn(x,y) x##y
+</code></pre>
+<p><code>##</code> 表示连接 , <code>x##y</code> 表示x连接y</p>
+<p>示例：</p>
+<pre><code>int n = Conn(123,456);
+     ==&gt; int n=123456;
+char* str = Conn(&quot;asdf&quot;, &quot;adf&quot;);
+     ==&gt; char* str = &quot;asdfadf&quot;;
+</code></pre>
+<p><code>##</code> 的左右符号必须能够组成一个有意义的符号，否则预处理器会报错</p>
+<h1 id="2-字符串化和字符化"><a href="#2-字符串化和字符化" class="headerlink" title="2.字符串化和字符化: #, #@"></a>2.字符串化和字符化: #, #@</h1><p>(1) # 把任意类型的宏入参转化成字符串：</p>
+<pre><code>#define ToString(x) #x
+</code></pre>
+<p>符号 # 表示字符串化操作符（stringification）。<br>其作用是：将宏定义中的传入参数名转换成用一对双引号括起来参数名字符串。<br>其只能用于有传入参数的宏定义中，且必须置于宏定义体中的参数名前。</p>
+<p>示例：</p>
+<pre><code> char* str = ToString(123132);
+ ==&gt; char* str=&quot;123132&quot;;
+</code></pre>
+<p>如果要对展开后的宏参数进行字符串化，则需要使用两层宏。</p>
+<pre><code>#define xstr(s) str(s)
+#define str(s) #s
+#define foo 4
+
+str (foo)
+     ==&gt; &quot;foo&quot;
+xstr (foo)
+     ==&gt; xstr (4)
+     ==&gt; str (4)
+     ==&gt; &quot;4&quot;
+</code></pre>
+<p>(2) #@ 把任意类型的宏入参转化成单字符：</p>
+<pre><code>#define ToChar(x) #@x
+</code></pre>
+<p>示例：</p>
+<pre><code>char a = ToChar(1);
+     ==&gt; char a=&#39;1&#39;
+</code></pre>
+<h1 id="3-不定参数宏-VA-ARGS"><a href="#3-不定参数宏-VA-ARGS" class="headerlink" title="3. 不定参数宏: __VA_ARGS__"></a>3. 不定参数宏: <code>__VA_ARGS__</code></h1><p><code>__VA_ARGS__</code>宏用来接受不定数量的参数。例如：</p>
+<pre><code>#define eprintf(...) fprintf (stderr, __VA_ARGS__)
+
+eprintf (&quot;%s:%d: &quot;, input_file, lineno)
+==&gt;  fprintf (stderr, &quot;%s:%d: &quot;, input_file, lineno)
+</code></pre>
+<p>当<code>__VA_ARGS__</code>宏前面加 <code>##</code> 时，可以省略参数输入。<br>例如：</p>
+<pre><code>#define eprintf(format, ...) fprintf (stderr, format, ##__VA_ARGS__)
+
+eprintf (&quot;success!\n&quot;)
+==&gt; fprintf(stderr, &quot;success!\n&quot;);
+</code></pre>
+<h1 id="4-宏函数定义-do-while-0-与换行"><a href="#4-宏函数定义-do-while-0-与换行" class="headerlink" title="4. 宏函数定义: do-while(0)与换行"></a>4. 宏函数定义: do-while(0)与换行</h1><p>(1) 用 do{}while(0) 定义宏函数</p>
+<pre><code>#define foo() do&#123;...&#125;while(0)
+</code></pre>
+<p>宏函数可能在任意地方被调用，如果在if-else语句中，为了确保宏函数作为整体单元被编译器替换后不产生歧义，一般用do-while(0)包起来定义<br>这种定义有点像其他语言的“闭包函数”，纯粹是C语言中为了避免语法歧义的可靠性定义。</p>
+<p>(2) 用显式换行符</p>
+<p>宏函数定义不能直接回车换行，需要在回车换行前，用\（反斜线）表示下一行继续此宏的定义<br>预处理器在编译之前会自动将\与换行回车去掉。</p>
+<p>例如：</p>
+<pre><code>#define PRINT_INT(a)    \
+do&#123;                     \
+    printf(&quot;%d \n&quot;, a); \
+&#125;while(0)
+</code></pre>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/04/01/%E6%B5%85%E8%B0%88C%E7%9A%84%E5%87%BD%E6%95%B0%E6%8C%87%E9%92%88/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2020/04/01/%E6%B5%85%E8%B0%88C%E7%9A%84%E5%87%BD%E6%95%B0%E6%8C%87%E9%92%88/" class="post-title-link" itemprop="url">浅谈C的函数指针</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-04-01 12:30:00" itemprop="dateCreated datePublished" datetime="2020-04-01T12:30:00+08:00">2020-04-01</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2022-12-06 15:18:49" itemprop="dateModified" datetime="2022-12-06T15:18:49+08:00">2022-12-06</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/c-c/" itemprop="url" rel="index"><span itemprop="name">c/c++</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h2 id="1-函数指针基本概念"><a href="#1-函数指针基本概念" class="headerlink" title="1. 函数指针基本概念"></a>1. 函数指针基本概念</h2><p>C语言调用函数的本质是什么？</p>
+<ol>
+<li>CPU PC指针(program counter)跳转到函数的入口地址，传入参数，传入返回位置</li>
+<li>在函数栈内生成临时变量并执行函数内容指令，执行完毕后返回参数</li>
+<li>CPU返回原调用处执行</li>
+</ol>
+<p>这里，函数的入口地址实际上就存储在函数名中，也就是说，C代码中的函数名就是函数的入口地址。<br>既然是地址，就可以用来初始化一个指针，使指针指向该地址。<br>函数指针，就是存放函数首地址的指针。</p>
+<h3 id="1-2-函数指针变量"><a href="#1-2-函数指针变量" class="headerlink" title="1.2 函数指针变量"></a>1.2 函数指针变量</h3><p>首先声明普通函数是如下格式：<br><code>void Func(int);</code><br>定义一个同类型函数的函数指针变量，只需要用<code>*p</code>表示函数名即可：<br><code>void (*p)(int);</code><br>注意，上面是定义了函数指针变量，而不是声明函数指针类型。</p>
+<p>函数指针变量的定义，和普通变量格式不一样。</p>
+<ul>
+<li>普通变量： &lt;类型&gt; &lt;变量名&gt;</li>
+<li>函数指针：&lt;函数类型 变量名&gt;，按函数声明的格式定义，变量是包含在类型内部</li>
+</ul>
+<p>那么此函数指针的类型是什么：<br><code>void (*)(int);</code></p>
+<p>怎么使用此函数指针：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">void Func(int x) // 声明一个函数*/</span><br><span class="line">&#123;</span><br><span class="line">    printf(&quot;%d&quot;,x);</span><br><span class="line">&#125;</span><br><span class="line">void (*p)(int); // 定义一个函数指针*/</span><br><span class="line">p = Func; // 将Func函数的首地址赋给函数指针变量p*/</span><br><span class="line">(*p)(100);  // 通过函数指针调用Func函数</span><br></pre></td></tr></table></figure>
+
+<h3 id="1-3-函数指针类型"><a href="#1-3-函数指针类型" class="headerlink" title="1.3 函数指针类型"></a>1.3 函数指针类型</h3><p>typedef可以定义某种类型的别名，例如将unsigned char定义为u8<br><code>typedef unsigned char u8;</code><br>可见其格式是：typedef &lt;原类型&gt; &lt;别名类型&gt;</p>
+<p>那么如何定义函数指针类型：<br>只需要在函数指针声明的格式前加typedef, p就定义为函数指针类型而不是变量:<br><code>typedef void (*p)(int);</code></p>
+<p>这里定义了<code>void (*)(int)</code>类型的函数指针类型，其别名为p</p>
+<p>怎么使用此函数指针类型：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">//定义类型</span><br><span class="line">typedef void (*pFuncType)(int); </span><br><span class="line">//定义变量  </span><br><span class="line">pFuncType p;   </span><br><span class="line"></span><br><span class="line">void Func(int x)</span><br><span class="line">&#123;</span><br><span class="line">	printf(&quot;%d&quot;,x);</span><br><span class="line">&#125; </span><br><span class="line"></span><br><span class="line">void main()   </span><br><span class="line">&#123;   </span><br><span class="line">    p = Func; //初始化变量   </span><br><span class="line">    (*p)(100);   //使用变量</span><br><span class="line">&#125; </span><br></pre></td></tr></table></figure>
+
+<h2 id="2-函数指针的应用"><a href="#2-函数指针的应用" class="headerlink" title="2. 函数指针的应用"></a>2. 函数指针的应用</h2><h3 id="2-1-Linux驱动软件设计的分层"><a href="#2-1-Linux驱动软件设计的分层" class="headerlink" title="2.1 Linux驱动软件设计的分层"></a>2.1 Linux驱动软件设计的分层</h3><p>C++中有多态的概念，父类定义某种函数类型，子类实现具体的函数内容，之后父类对象就可以调用子类的实现内容。<br>这样实现“父类定义格式，子类实现细节”的软件分层设计。</p>
+<p>Linux驱动中也大量使用这种分层设计，C使用结构体和函数指针，分别对应C++的类和方法。<br>例如某驱动模块，顶层框架定义open, read, write, 而底层驱动根据具体硬件，实现xxx_open, xxx_read, xxx_write，然后按结构体成员赋值实现上下层联通：</p>
+<p>以s3c的SDHCI驱动为例：<br>sdhci_ops即父类框架结构体，sdhci_s3c_ops为s3c芯片的具体实现结构体。<br><code>.set_clock = sdhci_s3c_set_clock</code>就实现了父类的set_clock方法被子类sdhci_s3c_set_clock实现的效果。<br>其本质是函数指针的赋值，父类和子类的函数名都指向同一个函数地址，所以父类可以通过调用set_clock来实现调用sdhci_s3c_set_clock的效果。<br>这样，父类设计者根本不关心底层用什么函数名实现set_clock的功能，只需要调用set_clock这个函数名即可。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">static struct sdhci_ops sdhci_s3c_ops = &#123;</span><br><span class="line">	.get_max_clock		= sdhci_s3c_get_max_clk,</span><br><span class="line">	.set_clock		= sdhci_s3c_set_clock,</span><br><span class="line">	.get_min_clock		= sdhci_s3c_get_min_clock,</span><br><span class="line">	.set_bus_width		= sdhci_set_bus_width,</span><br><span class="line">	.reset			= sdhci_reset,</span><br><span class="line">	.set_uhs_signaling	= sdhci_set_uhs_signaling,</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-2-函数指针实现指令跳转"><a href="#2-2-函数指针实现指令跳转" class="headerlink" title="2.2 函数指针实现指令跳转"></a>2.2 函数指针实现指令跳转</h3><p>调用一个函数，其内部就包含跳转操作(jump指令)<br>那么，如何用C语言实现跳转到某个绝对地址去执行？具体场景：<br>在Bootloader过程中，加载完kernel到RAM后，要跳转到kernel首地址开始执行，如何实现？</p>
+<p>方案一：C嵌入汇编<br>以下是基于SPARC CPU的汇编，跳转到0x40000000, 即RAM首地址执行firmware.<br>对于其他CPU，汇编实现也不同，因此此方法不能跨平台。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">void boot_exit()</span><br><span class="line">&#123;</span><br><span class="line">    /* jump to RAM entry to execute firmware. */</span><br><span class="line"></span><br><span class="line">    asm(</span><br><span class="line">        &quot;set 0x40000000, %g2\n&quot;</span><br><span class="line">        &quot;jmp %g2\n&quot;</span><br><span class="line">        &quot;nop&quot;</span><br><span class="line">    );</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>方案二：函数指针<br>Bootloader中很常用的一种跳转方法</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">typedef void (*pFuncType)(); //定义无入参无返回类型的函数指针类型</span><br><span class="line">pFuncType Reset = (pFuncType)0xF000FFF0; //函数指针指向待跳转地址</span><br><span class="line">Reset(); //调用函数，实际上执行了跳转</span><br></pre></td></tr></table></figure>
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/03/21/C-%E9%9D%A2%E5%90%91%E5%AF%B9%E8%B1%A1%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%A8%A1%E6%9D%BF%E3%80%81%E6%B3%9B%E5%9E%8B%E4%B8%8ESTL/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -3818,118 +4060,10 @@ read(fd, &amp;val, 1);  //读fd文件（设备）的值到val变量
   
   
 
-      
-  
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2019/07/06/Office%E5%B8%B8%E7%94%A8%E6%93%8D%E4%BD%9C%E7%AC%94%E8%AE%B0/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Cursorhu">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="ThinkNotes">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2019/07/06/Office%E5%B8%B8%E7%94%A8%E6%93%8D%E4%BD%9C%E7%AC%94%E8%AE%B0/" class="post-title-link" itemprop="url">Office常用操作笔记</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2019-07-06 14:19:23" itemprop="dateCreated datePublished" datetime="2019-07-06T14:19:23+08:00">2019-07-06</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2023-05-06 10:05:05" itemprop="dateModified" datetime="2023-05-06T10:05:05+08:00">2023-05-06</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/Office/" itemprop="url" rel="index"><span itemprop="name">Office</span></a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h1 id="Word"><a href="#Word" class="headerlink" title="Word"></a>Word</h1><h2 id="Word设置自动推导的标题列表"><a href="#Word设置自动推导的标题列表" class="headerlink" title="Word设置自动推导的标题列表"></a>Word设置自动推导的标题列表</h2><p>word自动标题列表的是写文档必不可少的，自动标题能自动推导更新各级标题的序号，增删改查任何标题都不需要手动的写标题序号。</p>
-<p>（1）创建多级列表<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061423943.png" alt="image-20221206142307899"></p>
-<p>（2）设置一级标题</p>
-<ul>
-<li>设置一级标题的序号样式为1,2,3</li>
-<li>链接一级标题的字体样式到word文档的一级标题字体样式<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061423121.png" alt="image-20221206142315070"></li>
-</ul>
-<p>（2）设置二级、三级、n级标题</p>
-<p>需要设置列表序号，标题字体两部分。注意列表序号的正确设置是序号自动推导的关键。<br>以二级标题为例，其他子级类推。</p>
-<ul>
-<li><p>设置二级标题中的一级序号来自于level1。这一步保证二级标题中的一级序号是自动推导的。<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061423795.png" alt="image-20221206142327739"></p>
-</li>
-<li><p>设置二级标题中的二级序号的样式，二级标题中的一、二级序号用.号隔开<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061424185.png" alt="image-20221206142401132"></p>
-</li>
-<li><p>二级标题最终的序号样式如下<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061424492.png" alt="image-20221206142411436"></p>
-</li>
-<li><p>然后设置二级标题的字体风格，直接链接到word的二级标题字体风格<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061424730.png" alt="image-20221206142420685"></p>
-</li>
-<li><p>二级标题列表的所有设置完毕，如下<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061424880.png" alt="image-20221206142428828"></p>
-</li>
-</ul>
-<p>(3)依次完成所有标题列表设置，例如三级标题，前两级的值来自于level1,level2，第三级设置数字格式即可，中间用.号隔开。完成以后各级标题就可以自动推导。</p>
-<h2 id="Word导出原图"><a href="#Word导出原图" class="headerlink" title="Word导出原图"></a>Word导出原图</h2><p>Word默认图片如果直接复制出来，不是原图是压缩后的图。<br>保存原图方法： 文档另存为html网页格式，会把word文档转换成资源文件夹，里面有原始图片。</p>
-<h1 id="Excel"><a href="#Excel" class="headerlink" title="Excel"></a>Excel</h1><h2 id="excel设置筛选"><a href="#excel设置筛选" class="headerlink" title="excel设置筛选"></a>excel设置筛选</h2><p>参考<a target="_blank" rel="noopener" href="https://support.microsoft.com/zh-cn/office/%E7%AD%9B%E9%80%89%E5%8C%BA%E5%9F%9F%E6%88%96%E8%A1%A8%E4%B8%AD%E7%9A%84%E6%95%B0%E6%8D%AE-01832226-31b5-4568-8806-38c37dcc180e#:~:text=%E5%AF%B9%E8%A1%A8%E4%B8%AD%E7%9A%84%E6%95%B0%E6%8D%AE%E8%BF%9B%E8%A1%8C%E7%AD%9B%E9%80%89%201%20%E9%80%89%E6%8B%A9%E8%A6%81%E7%AD%9B%E9%80%89%20%E5%88%97%E7%9A%84%E5%88%97%E6%A0%87%E9%A2%98%E7%AE%AD%E5%A4%B4%E3%80%82%202%20%E5%8F%96%E6%B6%88%20%28%E9%80%89%E6%8B%A9%22%29%20%22%EF%BC%8C,%E5%8D%95%E5%87%BB%E2%80%9C%20%E7%A1%AE%E5%AE%9A%20%E2%80%9D%E3%80%82%20%E5%88%97%E6%A0%87%E9%A2%98%E7%AE%AD%E5%A4%B4%20%22%E7%AD%9B%E9%80%89%20%E6%9B%B4%E6%94%B9%20%E3%80%82%20%E9%80%89%E6%8B%A9%E6%AD%A4%E5%9B%BE%E6%A0%87%E5%8F%AF%E6%9B%B4%E6%94%B9%E6%88%96%E6%B8%85%E9%99%A4%E7%AD%9B%E9%80%89%E3%80%82">筛选区域或表中的数据</a></p>
-<ol>
-<li><p>选中列，点击筛选</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202302091144706.png" alt="image-20230209114432580"></p>
-</li>
-<li><p>可以按文字或者颜色筛选</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202302091145967.png" alt="image-20230209114508910"></p>
-</li>
-</ol>
-<h2 id="冻结首行"><a href="#冻结首行" class="headerlink" title="冻结首行"></a>冻结首行</h2><p>筛选行一般需要固定显示，因此设置冻结首行：</p>
-<p>选中要固定显示行的下一行, 视图 -&gt; 冻结窗格 -&gt; 冻结首行</p>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
 
   
   <nav class="pagination">
-    <a class="extend prev" rel="prev" href="/page/6/"><i class="fa fa-angle-left" aria-label="上一页"></i></a><a class="page-number" href="/">1</a><span class="space">&hellip;</span><a class="page-number" href="/page/6/">6</a><span class="page-number current">7</span>
+    <a class="extend prev" rel="prev" href="/page/6/"><i class="fa fa-angle-left" aria-label="上一页"></i></a><a class="page-number" href="/">1</a><span class="space">&hellip;</span><a class="page-number" href="/page/6/">6</a><span class="page-number current">7</span><a class="page-number" href="/page/8/">8</a><a class="extend next" rel="next" href="/page/8/"><i class="fa fa-angle-right" aria-label="下一页"></i></a>
   </nav>
 
 
@@ -3995,20 +4129,20 @@ read(fd, &amp;val, 1);  //读fd文件（设备）的值到val变量
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">69</span>
+          <span class="site-state-item-count">71</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
       <div class="site-state-item site-state-categories">
             <a href="/categories/">
           
-        <span class="site-state-item-count">27</span>
+        <span class="site-state-item-count">28</span>
         <span class="site-state-item-name">分类</span></a>
       </div>
       <div class="site-state-item site-state-tags">
             <a href="/tags/">
           
-        <span class="site-state-item-count">42</span>
+        <span class="site-state-item-count">43</span>
         <span class="site-state-item-name">标签</span></a>
       </div>
   </nav>

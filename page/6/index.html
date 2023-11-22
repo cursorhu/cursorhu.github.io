@@ -190,6 +190,522 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/09/06/Git%E5%A4%9A%E4%BA%BA%E5%8D%8F%E4%BD%9C%E4%B8%8B%E7%9A%84%E6%8D%A2%E8%A1%8C%E7%AC%A6%E9%97%AE%E9%A2%98/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2020/09/06/Git%E5%A4%9A%E4%BA%BA%E5%8D%8F%E4%BD%9C%E4%B8%8B%E7%9A%84%E6%8D%A2%E8%A1%8C%E7%AC%A6%E9%97%AE%E9%A2%98/" class="post-title-link" itemprop="url">Git多人协作下的换行符问题</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-09-06 11:23:00" itemprop="dateCreated datePublished" datetime="2020-09-06T11:23:00+08:00">2020-09-06</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2022-12-05 15:01:43" itemprop="dateModified" datetime="2022-12-05T15:01:43+08:00">2022-12-05</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Git/" itemprop="url" rel="index"><span itemprop="name">Git</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h1 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h1><p>项目文件中有如下类型文件：</p>
+<pre><code>Makefile, .sh, .bat, .cfg, .exe
+</code></pre>
+<p>源码用git管理，客户端用cygwin实现windows内的linux环境</p>
+<p>问题：如何解决git多人协作下的linux、windows换行符差异问题？</p>
+<p>(1)什么是换行符<br>LF：”\n”，Linux的换行符, 只包含“换行”；<br>CRLF：”\r\n”，Windows的换行符，包含“回车+换行”;</p>
+<p>(2)不同换行符带来什么问题<br>用git管理代码，必定有远程端和本地端两个仓库，两端的操作系统不同，换行符可能有差异;</p>
+<p>多人协作时，本地端可能有linux环境和windows, 如果所有人都是linux就不存在换行符差异的问题；如果有windows和linux就有该问题;<br>例如A上传了Linux换行符LF的代码到远程，B 本地环境是windows, B git pull下来，其git-config设置了自动转换成本地换行，将代码换行全成了CRLF，B上传后，远程仓库变成CRLF换行。此时A git diff查看，所有代码都有换行差异，扰乱真正的代码diff。</p>
+<p>不仅是影响git diff， 换行差异还影响脚本执行</p>
+<ul>
+<li>例如LF换行的.sh，git pull到windows环境后换行转换成CRLF, 导致sh无法正常执行；</li>
+<li>.bat调用.exe读取.cfg内的一行，.exe是windows程序，其readline方法只能识别CRLF换行，无法读取LF换行的.cfg文件内容</li>
+</ul>
+<h1 id="git的自动换行符转换配置"><a href="#git的自动换行符转换配置" class="headerlink" title="git的自动换行符转换配置"></a>git的自动换行符转换配置</h1><p>参考：<a target="_blank" rel="noopener" href="https://git-scm.com/book/zh/v2/%E8%87%AA%E5%AE%9A%E4%B9%89-Git-%E9%85%8D%E7%BD%AE-Git">core.autocrlf</a></p>
+<p>假如你正在 Windows 上写程序，而其他人用的是其他系统（或相反），你可能会遇到 CRLF 问题。 这是因为 Windows 使用回车（CR）和换行（LF）两个字符来结束一行，而 macOS 和 Linux 只使用换行（LF）一个字符。 虽然这是小问题，但它会极大地扰乱跨平台协作。许多 Windows 上的编辑器会悄悄把行尾的换行字符转换成回车和换行， 或在用户按下 Enter 键时，插入回车和换行两个字符。</p>
+<p>Git 可以在你提交时自动地把回车和换行转换成换行，而在检出代码时把换行转换成回车和换行。 你可以用 core.autocrlf 来打开此项功能。 如果是在 Windows 系统上，把它设置成 true，这样在检出代码时，换行会被转换成回车和换行：</p>
+<pre><code>$ git config --global core.autocrlf true
+</code></pre>
+<p>如果使用以换行作为行结束符的 Linux 或 macOS，你不需要 Git 在检出文件时进行自动的转换； 然而当一个以回车加换行作为行结束符的文件不小心被引入时，你肯定想让 Git 修正。 你可以把 core.autocrlf 设置成 input 来告诉 Git 在提交时把回车和换行转换成换行，检出时不转换：</p>
+<pre><code>$ git config --global core.autocrlf input
+</code></pre>
+<p>这样在 Windows 上的检出文件中会保留回车和换行，而在 macOS 和 Linux 上，以及版本库中会保留换行。</p>
+<p>如果你是 Windows 程序员，且正在开发仅运行在 Windows 上的项目，可以设置 false 取消此功能，把回车保留在版本库中：</p>
+<pre><code>$ git config --global core.autocrlf false
+</code></pre>
+<p><strong>使用<code>git config --global core.autocrlf input</code>就可以做到windows的CRLF换行自动转换成LF换行存储在git远程仓库，且git pull&#x2F;clone到本地时维持LF换行，不影响.sh等linux shell script执行。</strong></p>
+<h1 id="手动换行符转换"><a href="#手动换行符转换" class="headerlink" title="手动换行符转换"></a>手动换行符转换</h1><ul>
+<li><p>dos2unix FilePath</p>
+</li>
+<li><p>unix2dos FilePath</p>
+</li>
+<li><p>windows2linux</p>
+<p> sed -i ‘s&#x2F;.$&#x2F;&#x2F;‘ FilePath</p>
+</li>
+<li><p>linux2windows</p>
+<p> sed -i ‘s&#x2F;$&#x2F;\r&#x2F;‘ FilePath</p>
+</li>
+</ul>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/09/05/Linux-Shell%E7%AC%94%E8%AE%B0%EF%BC%9ASSD%E7%9A%84S3-S4-S5%E5%8E%8B%E5%8A%9B%E6%B5%8B%E8%AF%95%E8%84%9A%E6%9C%AC/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2020/09/05/Linux-Shell%E7%AC%94%E8%AE%B0%EF%BC%9ASSD%E7%9A%84S3-S4-S5%E5%8E%8B%E5%8A%9B%E6%B5%8B%E8%AF%95%E8%84%9A%E6%9C%AC/" class="post-title-link" itemprop="url">Linux Shell笔记：SSD的S3/S4/S5压力测试脚本</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-09-05 15:52:13" itemprop="dateCreated datePublished" datetime="2020-09-05T15:52:13+08:00">2020-09-05</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2022-12-05 16:11:43" itemprop="dateModified" datetime="2022-12-05T16:11:43+08:00">2022-12-05</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/linux/" itemprop="url" rel="index"><span itemprop="name">linux</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h1 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h1><p>存储设备产品（如SSD&#x2F;eMMC）的读写速度和稳定性测试，是量产前必不可少的步骤。除了常规的两个设备来回拷贝读写，存储设备做系统盘的情况下，反复的启动，睡眠，休眠，也是重要的测试项。本文介绍这几种测试的原理，工具实现，和调试过程</p>
+<h1 id="系统电源状态"><a href="#系统电源状态" class="headerlink" title="系统电源状态"></a>系统电源状态</h1><p>ACPI（高级配置与电源接口）是电源配置和接口的规范，供操作系统和应用程序管理所有电源，其定义了几种状态（State）：S1~S6<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051553199.png" alt="image-20221205155311145"></p>
+<p>操作系统在ACPI基础上实现各自的电源状态划分<br>Linux电源状态划分为如下：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051554689.png" alt="image-20221205155406635"></p>
+<p>其中，常见的几种状态有别称，如S3通常也称Suspend，S4也称Hibernation, S5即shutdown。下面描述这几种状态的区别</p>
+<p>S3:<br>1、将系统当前的运行状态等数据保存在内存中，此时仍需要向RAM供电，以保证后续快速恢复至工作状态<br>2、冻结用户态的进程和内核态的任务（进入内核态的进程或内核自己的task）<br>3、关闭外围设备，如显示屏、鼠标等,中断唤醒外设不会关闭，如电源键<br>4、CPU停止工作</p>
+<p>S4：<br>挂起到硬盘，俗称休眠（Hibernation）将系统当前的运行状态等数据保存到硬盘上，并自动关机。下次开机时便从硬盘上读取之前保存的数据，恢复到休眠关机之前的状态。<br>譬如在休眠关机时，桌面打开了一个应用，那么下一次开机启动时，该应用也处于打开状态。而正常的关机-开机流程，该应用是不会打开的</p>
+<p>S5:<br>关机并断电，实际上，S5在不同场景下，可以指代关机和重启两种操作，关机是彻底power off的，而重启不是彻底断电，只是重新启动了系统，（当然基本所有设备都被reset），重启！&#x3D;关机再启动。</p>
+<h1 id="测试工具设计"><a href="#测试工具设计" class="headerlink" title="测试工具设计"></a>测试工具设计</h1><p>需求：设计工具使系统从S0(working)进入S3&#x2F;S4&#x2F;S5状态，维持一段时间，然后退出该状态，在S0维持一段时间，再次进入S3&#x2F;S4&#x2F;S5状态，如此反复循环。用户输入工作模式（S3&#x2F;S4&#x2F;S5）和循环次数，工具输出运行日志，包含已运行次数和时间戳。</p>
+<h2 id="Linux测试脚本实现"><a href="#Linux测试脚本实现" class="headerlink" title="Linux测试脚本实现"></a>Linux测试脚本实现</h2><p>Linux环境有现成的工具：rtcwake，参看其man page：</p>
+<pre><code>NAME
+       rtcwake - enter a system sleep state until specified wakeup time
+SYNOPSIS
+       rtcwake [options] [-d device] [-m standby_mode] &#123;-s seconds|-t time_t&#125;
+DESCRIPTION
+       This program is used to enter a system sleep state and to automatically wake from it at a specified time.
+       This uses cross-platform Linux interfaces to enter a system sleep state, and leave it no later than a specified time.  It uses any RTC framework driver that supports standard driver model wakeup flags.
+       This is normally used like the old apmsleep utility, to wake from a suspend state like ACPI S1 (standby) or S3 (suspend-to-RAM).  Most platforms can implement those without analogues of BIOS, APM, or ACPI.
+       On some systems, this can also be used like nvram-wakeup, waking from states like ACPI S4 (suspend to disk).  Not all systems have persistent media that are appropriate for such suspend modes.
+       Note that alarm functionality depends on hardware; not every RTC is able to setup an alarm up to 24 hours in the future.
+       The suspend setup may be interrupted by active hardware; for example wireless USB input devices that continue to send events for some fraction of a second after the return key is pressed.  rtcwake tries to avoid this problem and it waits to terminal to settle down before entering a system sleep.
+</code></pre>
+<p>其重要option如下：</p>
+<pre><code>      -m, --mode mode
+              Go into the given standby state.  Valid values for mode are:
+
+              standby
+                     ACPI state S1.  This state offers minimal, though real,
+                     power savings, while providing a very low-latency
+                     transition back to a working system.  This is the
+                     default mode.
+
+              freeze The processes are frozen, all the devices are suspended
+                     and all the processors idled.  This state is a general
+                     state that does not need any platform-specific support,
+                     but it saves less power than Suspend-to-RAM, because
+                     the system is still in a running state.  (Available
+                     since Linux 3.9.)
+
+              mem    ACPI state S3 (Suspend-to-RAM).  This state offers
+                     significant power savings as everything in the system
+                     is put into a low-power state, except for memory, which
+                     is placed in self-refresh mode to retain its contents.
+
+              disk   ACPI state S4 (Suspend-to-disk).  This state offers the
+                     greatest power savings, and can be used even in the
+                     absence of low-level platform support for power
+                     management.  This state operates similarly to Suspend-
+                     to-RAM, but includes a final step of writing memory
+                     contents to disk.
+
+              off    ACPI state S5 (Poweroff).  This is done by calling
+                     &#39;/sbin/shutdown&#39;.  Not officially supported by ACPI,
+                     but it usually works.
+
+              no     Don&#39;t suspend, only set the RTC wakeup time.
+
+              on     Don&#39;t suspend, but read the RTC device until an alarm
+                     time appears.  This mode is useful for debugging.
+
+              disable
+                     Disable a previously set alarm.
+
+              show   Print alarm information in format: &quot;alarm: off|on
+                     &lt;time&gt;&quot;.  The time is in ctime() output format, e.g.,
+                     &quot;alarm: on  Tue Nov 16 04:48:45 2010&quot;.
+                     
+       -s, --seconds seconds
+              Set the wakeup time to seconds in the future from now.
+
+       -t, --time time_t
+              Set the wakeup time to the absolute time time_t.  time_t is
+              the time in seconds since 1970-01-01, 00:00 UTC.  Use the
+              date(1) tool to convert between human-readable time and
+              time_t.
+</code></pre>
+<p>只需要写shell script调用rtcwake即可<br>注意要求跨状态记录日志，S3&#x2F;S4很容易，运行信息只是被挪到内存、硬盘，不会丢失，但S5会shutdown, 因此循环次数和时间只能记录在掉电不丢失的硬盘里。<br>S3S4可以用一个脚本完成，而S5需要单独设计<br>S3S4.sh如下：<br>接受用户输入：<br>opt: S3或S4模式；COUNT：循环次数<br>每次执行rtcwake，日志写入LOG</p>
+<pre><code>opt=$1
+COUNT=$2
+interval=30
+s3timer=120
+s4timer=120
+
+mkdir -p log
+DATE=$(date +%Y-%m-%d)
+LOG=log/$&#123;opt&#125;_$&#123;DATE&#125;.log
+cat /dev/null &gt; $&#123;LOG&#125;
+
+echo &quot;=============================== $opt test start ===============================&quot; |tee -a $&#123;LOG&#125;
+
+for (( i=1; i&lt;=$COUNT; i++ ))
+do 
+    if [ $opt == &quot;s3&quot; ];then
+        echo &quot;************************* S3 Cycle: $i start *************************&quot; |tee -a $&#123;LOG&#125;
+        echo `date +%Y-%m-%d&#39; &#39;%H:%M:%S` &quot;Going to S3, Duration &quot;$s3timer&quot; sec&quot; |tee -a $&#123;LOG&#125;
+        sudo rtcwake -m mem -s $s3timer &gt;&gt; $&#123;LOG&#125; 2&gt;&amp;1
+        echo `date +%Y-%m-%d&#39; &#39;%H:%M:%S`&quot; Waitable timer triggered.&quot; |tee -a $&#123;LOG&#125;
+        echo `date +%Y-%m-%d&#39; &#39;%H:%M:%S`&quot; Wake up from S3, Cycle &quot;$i&quot;&quot; |tee -a $&#123;LOG&#125;
+        echo `date +%Y-%m-%d&#39; &#39;%H:%M:%S`&quot; Successfully left sleep state S3...&quot; |tee -a $&#123;LOG&#125;
+    elif [ $opt == &quot;s4&quot; ];then
+        echo &quot;************************* S4 Cycle: $i start *************************&quot; |tee -a $&#123;LOG&#125;
+        echo `date +%Y-%m-%d&#39; &#39;%H:%M:%S` &quot;Going to S4, Duration &quot;$s4timer&quot; sec&quot; |tee -a $&#123;LOG&#125;
+        sudo rtcwake -m disk -s $s4timer &gt;&gt; $&#123;LOG&#125; 2&gt;&amp;1
+        echo `date +%Y-%m-%d&#39; &#39;%H:%M:%S`&quot; Waitable timer triggered.&quot; |tee -a $&#123;LOG&#125;
+        echo `date +%Y-%m-%d&#39; &#39;%H:%M:%S`&quot; Wake up from S4, Cycle &quot;$i&quot;&quot; |tee -a $&#123;LOG&#125;
+        echo `date +%Y-%m-%d&#39; &#39;%H:%M:%S`&quot; Successfully left sleep state S4...&quot; |tee -a $&#123;LOG&#125;
+    else
+        echo &quot;error input, use s3 or s4 as input&quot;
+    fi
+    echo `date +%Y-%m-%d&#39; &#39;%H:%M:%S` &quot;wake up for $interval seconds&quot; |tee -a $&#123;LOG&#125;
+    echo &quot;************************* $opt Cycle: $i finish *************************&quot; |tee -a $&#123;LOG&#125;
+    #keep wake up time
+    sleep $interval
+done
+
+echo &quot;=============================== $opt test finished =============================== &quot; |tee -a $&#123;LOG&#125;
+</code></pre>
+<p>S5必须要解决两个问题：<br>1.每次测试的信息如何跨越重启<br>2.如何使系统自动不断的重启</p>
+<p>对于1，可以将日志写入固定文件，每次重启后读该文件并追加，知道S5循环结束<br>对于2，Linux有开机自动启动某些桌面程序、shellscript的机制</p>
+<p>S5测试脚本分为三部分：<br>配置自启动并执行首次重启的脚本：s5_start.sh<br>执行单次S5的脚本，即自启动调用的脚本：s5.sh<br>停止S5，清楚自启动配置的脚本：s5_stop.sh</p>
+<p>s5_start.sh</p>
+<pre><code>#!/bin/bash
+USER=$(users)
+opt=s5
+interval=30
+s5timer=180
+
+#config autostart
+mkdir -p /home/$USER/.config/autostart
+touch /home/$USER/.config/autostart/s5.desktop
+echo &quot;
+[Desktop Entry]
+Type=Application
+Exec=gnome-terminal -e /home/$USER/s5.sh
+Terminal=true
+X-GNOME-Autostart-enabled=true
+&quot; &gt; /home/$USER/.config/autostart/s5.desktop
+chmod 777 /home/$USER/.config/autostart/s5.desktop
+echo &quot;config autostart finished&quot;
+
+#config sudo
+echo &quot;$USER ALL=(ALL) NOPASSWD:ALL&quot; &gt;&gt; /etc/sudoers
+
+#config s5 log and temp file 
+mkdir -p log
+DATE=$(date +%Y-%m-%d)
+LOG=log/$&#123;opt&#125;_$&#123;DATE&#125;.log
+cat /dev/null &gt; $&#123;LOG&#125;
+echo &quot;1&quot; &gt; $&#123;opt&#125;_cycle.txt
+echo &quot;$LOG&quot; &gt; $&#123;opt&#125;_log.txt
+chmod 777 -R ./*.sh ./log/*.log ./*.txt
+
+echo &quot;System will shutdown after &quot;$interval&quot; sec, then restart after &quot;$s5timer&quot; sec&quot;
+echo &quot;*********************** S5 Cycle: 1 *************************&quot; |tee -a $&#123;LOG&#125;
+echo `date +%Y-%m-%d&#39; &#39;%H:%M:%S` &quot;Going to S5 after &quot;$interval&quot; sec&quot; |tee -a $&#123;LOG&#125;
+sleep $interval
+
+rtcwake -m off -s $s5timer &gt;&gt; $&#123;LOG&#125; 2&gt;&amp;1
+</code></pre>
+<p>s5.sh</p>
+<pre><code>#!/bin/bash
+COUNT=&quot;999&quot;
+opt=s5
+interval=30
+s5timer=180
+cycle=$(&lt;$&#123;opt&#125;_cycle.txt)
+LOG=$(&lt;$&#123;opt&#125;_log.txt)
+
+#update cycle
+((cycle++))
+echo &quot;$cycle&quot; &gt; $&#123;opt&#125;_cycle.txt 
+
+#keep wake
+echo &quot;*********************** S5 Cycle: $cycle *************************&quot; |tee -a $&#123;LOG&#125;
+echo `date +%Y-%m-%d&#39; &#39;%H:%M:%S` &quot;Going to S5 after &quot;$interval&quot; sec&quot; |tee -a $&#123;LOG&#125;
+sleep $interval
+
+sudo rtcwake -m off -s $s5timer &gt;&gt; $&#123;LOG&#125; 2&gt;&amp;1
+</code></pre>
+<p>s5_stop.sh</p>
+<pre><code>#!/bin/bash
+USER=$(users)
+opt=s5
+rm -f /home/$USER/.config/autostart/s5.desktop
+rm -f $&#123;opt&#125;_cycle.txt $&#123;opt&#125;_log.txt
+sed -i &#39;/NOPASSWD/d&#39; /etc/sudoers
+</code></pre>
+<h2 id="测试脚本使用"><a href="#测试脚本使用" class="headerlink" title="测试脚本使用"></a>测试脚本使用</h2><h3 id="S3"><a href="#S3" class="headerlink" title="S3"></a>S3</h3><pre><code>./s3s4.sh s3 999      启动s3测试,运行999次
+</code></pre>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051554212.png" alt="image-20221205155429129"></p>
+<h3 id="S4"><a href="#S4" class="headerlink" title="S4"></a>S4</h3><p>S4在内存和硬盘直接读写运行时映像，硬盘需要指定那一块区域用于和内存交换，即交换分区。Linux一切皆文件，交换分区也可以用swapfile配置。以下配置swapfile</p>
+<ol>
+<li><p>df –h 查看挂载点为&#x2F;对应的文件系统是&#x2F;dev&#x2F;nvme0n1p2,根据你具体情况记录<img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051554816.png"></p>
+</li>
+<li><p><code>blkid</code>查看UUID值，根据1对应的nvme文件系统记录UUID<img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051554581.png"></p>
+</li>
+<li><p><code>filefrag –v /swapfile</code>查看swapfile的物理起始地址，记录physical_offset左侧值<img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051554581.png"></p>
+</li>
+<li><p>将UUID和physical_offset值写入grub：<br>终端输入gedit &#x2F;etc&#x2F;default&#x2F;grub ，修改以下参数并保存<br><code>GRUB_CMDLINE_LINUX_DEFAULT=&quot;quiet splash resume=UUID=你的UUID值 resume_offset=你的physical_offset值</code>“</p>
+<p> <img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051555015.png" alt="image-20221205155518922"></p>
+</li>
+<li><p>重新生成grub: 终端输入 <code>update-grub</code> 回车并重启电脑。</p>
+</li>
+</ol>
+<p>启动S4脚本</p>
+<pre><code>./s3s4.sh s4 999
+</code></pre>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051557197.png" alt="image-20221205155749113"></p>
+<h3 id="S5"><a href="#S5" class="headerlink" title="S5"></a>S5</h3><p>自动重启需要先解决账户密码问题<br>设置普通账户自动登录：<br>普通账户为装系统时设置的账户，重启后默认以普通账户登录<br>1.终端输入<code>gedit /usr/share/lightdm/lightdm.conf.d/50-ubuntu.conf</code>弹出编辑界面<br>设置以下参数，ctrl+s保存后关闭</p>
+<pre><code>[Seat:*]
+user-session=ubuntu
+autologin-user=你的账户名
+</code></pre>
+<p>2.终端输入<code>gedit /etc/gdm3/custom.conf</code>，设置以下几行的值为如下</p>
+<pre><code># Enabling automatic login
+AutomaticLoginEnable = true
+AutomaticLogin =你的账户名
+</code></pre>
+<p>重启，确认可免密码登录桌面。</p>
+<pre><code>./s5_start.sh 启动s5
+./s5_stop.sh 结束S5
+</code></pre>
+<h1 id="Dmesg分析和调试"><a href="#Dmesg分析和调试" class="headerlink" title="Dmesg分析和调试"></a>Dmesg分析和调试</h1><h2 id="dmesg简介"><a href="#dmesg简介" class="headerlink" title="dmesg简介"></a>dmesg简介</h2><p>dmesg命令显示linux内核的环形缓冲区信息，我们可以从中获得诸如系统架构、cpu、挂载的硬件，RAM等多个运行级别的大量的系统信息。当计算机启动时，系统内核（操作系统的核心部分）将会被加载到内存中。在加载的过程中会显示很多的信息，在这些信息中我们可以看到内核检测硬件设备<br>注意：<br>dmesg只记录从启动到当前时间的信息，掉电丢失</p>
+<p>使用示例：</p>
+<pre><code>dmesg //默认输出
+dmesg | less //从头分页显示
+dmesg | tail -100 //显示最后100行
+dmesg | head  -100 //显示最早100行
+dmesg | grep -i usb //包含usb的信息，忽略大小写
+dmesg -C //清除log
+</code></pre>
+<p>输出示例：</p>
+<pre><code>[root]# dmesg | grep sda
+ 
+[    1.280971] sd 2:0:0:0: [sda] 488281250 512-byte logical blocks: (250 GB/232 GiB)
+[    1.281014] sd 2:0:0:0: [sda] Write Protect is off
+[    1.281016] sd 2:0:0:0: [sda] Mode Sense: 00 3a 00 00
+[    1.281039] sd 2:0:0:0: [sda] Write cache: enabled, read cache: enabled, doesn&#39;t support DPO or FUA
+[    1.359585]  sda: sda1 sda2 &lt; sda5 sda6 sda7 sda8 &gt;
+[    1.360052] sd 2:0:0:0: [sda] Attached SCSI disk
+[    2.347887] EXT4-fs (sda1): mounted filesystem with ordered data mode. Opts: (null)
+[   22.928440] Adding 3905532k swap on /dev/sda6.  Priority:-1 extents:1 across:3905532k FS
+[   23.950543] EXT4-fs (sda1): re-mounted. Opts: errors=remount-ro
+[   24.134016] EXT4-fs (sda5): mounted filesystem with ordered data mode. Opts: (null)
+[   24.330762] EXT4-fs (sda7): mounted filesystem with ordered data mode. Opts: (null)
+[   24.561015] EXT4-fs (sda8): mounted filesystem with ordered data mode. Opts: (null)
+</code></pre>
+<p>输出时间戳是从上电开始，到当前的时间，以秒为单位。</p>
+<h2 id="调试S4-hang"><a href="#调试S4-hang" class="headerlink" title="调试S4 hang"></a>调试S4 hang</h2><p>在测试中发现，nvme存储设备，首次进入S4的时间较长，约30s, 且系统处于hang状态，鼠标无法移动。<br>dmesg查看单次S4 enter &amp; resume的过程，log如下</p>
+<pre><code>[   43.090180] PM: hibernation entry          //开机43秒进s4流程
+[   43.090579] PM: Syncing filesystems ...   
+[   43.090682] PM: done.
+[   43.090684] Freezing user space processes ... (elapsed 0.003 seconds) done.   //冻结用户进程，这个时候会hang
+[   43.093699] OOM killer disabled.
+[   43.093876] PM: Marking nosave pages: [mem 0x00000000-0x00000fff]       //准备哪些内存要转存到disk
+[   43.093878] PM: Marking nosave pages: [mem 0x0005f000-0x0005ffff]
+[   43.093880] PM: Marking nosave pages: [mem 0x000a0000-0x000fffff]
+[   43.093887] PM: Marking nosave pages: [mem 0x80185000-0x80186fff]
+[   43.093889] PM: Marking nosave pages: [mem 0x88c4f000-0x890acfff]
+[   43.093944] PM: Marking nosave pages: [mem 0x89214000-0x89efefff]
+[   43.094102] PM: Marking nosave pages: [mem 0x89f00000-0xffffffff]
+[   43.098151] PM: Basic memory bitmaps created
+[   43.098541] PM: Preallocating image memory... 
+[   43.143802] hpet_rtc_timer_reinit: 29 callbacks suppressed
+[   43.143803] hpet1: lost 2 rtc interrupts
+[   43.197779] hpet1: lost 2 rtc interrupts
+[   43.251708] done (allocated 333315 pages)               //分配内存侧的交换页
+[   43.251709] PM: Allocated 1333260 kbytes in 0.15 seconds (8888.40 MB/s)
+[   43.251710] Freezing remaining freezable tasks ... (elapsed 0.126 seconds) done.
+[   43.379023] printk: Suspending console(s) (use no_console_suspend to debug)
+[   43.381268] serial 00:02: disabled
+[   43.382187] parport_pc 00:01: disabled
+[   43.701432] ACPI: Preparing to enter system sleep state S4  //准备进S4, 关CPU, 中断，
+[   44.400195] PM: Saving platform NVS memory
+[   44.404308] Disabling non-boot CPUs ...
+[   44.404935] IRQ 123: no longer affine to CPU1
+[   44.404942] IRQ 132: no longer affine to CPU1
+[   44.405979] smpboot: CPU 1 is now offline
+[   44.410695] smpboot: CPU 2 is now offline
+[   44.414738] IRQ 122: no longer affine to CPU3
+[   44.415784] smpboot: CPU 3 is now offline
+[   44.422078] PM: Creating hibernation image:           //准备创建disk映像
+[   44.503241] PM: Need to copy 330336 pages
+[   44.503242] PM: Normal pages needed: 330336 + 1024, available pages: 1731140
+                                                                                       //磁盘写入操作和时间没有记录
+[   44.901845] PM: free pages cleared after restore    //S4已被唤醒，这里不是绝对时间，S4休眠时间未记入
+[   44.901889] PM: Restoring platform NVS memory  
+[   44.903440] Enabling non-boot CPUs ...
+[   44.903474] x86: Booting SMP configuration:
+[   44.903474] smpboot: Booting Node 0 Processor 1 APIC 0x2
+[   44.904974]  cache: parent cpu1 should not be sleeping
+[   44.905085] CPU1 is up
+[   44.905101] smpboot: Booting Node 0 Processor 2 APIC 0x4
+[   44.905478]  cache: parent cpu2 should not be sleeping
+[   44.905602] CPU2 is up
+[   44.905618] smpboot: Booting Node 0 Processor 3 APIC 0x6
+[   44.905995]  cache: parent cpu3 should not be sleeping
+[   44.906125] CPU3 is up
+[   44.908816] ACPI: Waking up from system sleep state S4
+[   45.003392] usb usb1: root hub lost power or was reset
+[   45.003393] usb usb2: root hub lost power or was reset
+[   45.006573] sd 0:0:0:0: [sda] Starting disk
+[   45.006732] parport_pc 00:01: activated
+[   45.008262] serial 00:02: activated
+[   45.384656] ata1: SATA link up 3.0 Gbps (SStatus 123 SControl 300)
+[   45.384717] ata2: SATA link down (SStatus 4 SControl 300)
+[   45.384741] ata3: SATA link down (SStatus 4 SControl 300)
+[   45.384758] ata6: SATA link down (SStatus 4 SControl 300)
+[   45.384779] ata5: SATA link down (SStatus 4 SControl 300)
+[   45.384798] ata4: SATA link down (SStatus 4 SControl 300)
+[   45.387712] ata1.00: configured for UDMA/100
+[   45.500662] usb 1-9: reset low-speed USB device number 2 using xhci_hcd
+[   46.056539] usb 1-10: reset low-speed USB device number 3 using xhci_hcd
+[   46.318112] nvme nvme0: 4/0/0 default/read/poll queues
+[   46.336791] nvme nvme0: ctrl returned bogus length: 2 for NVME_NIDT_EUI64
+[   46.363904] acpi LNXPOWER:07: Turning OFF
+[   46.363916] acpi LNXPOWER:06: Turning OFF
+[   46.364472] PM: Basic memory bitmaps freed
+[   46.364474] OOM killer enabled.
+[   46.364475] Restarting tasks ... done.   //恢复进程
+[   47.098831] e1000e: eno1 NIC Link is Up 100 Mbps Full Duplex, Flow Control: None
+[   47.098837] e1000e 0000:00:1f.6 eno1: 10/100 speed: disabling TSO
+[   49.489104] video LNXVIDEO:00: Restoring backlight state
+[   49.489109] PM: hibernation exit    //S4退出完成
+</code></pre>
+<p>比较奇怪的是，dmesg没记录写磁盘的操作,时间戳上也反映不出来。可能这时候IO交给DMA了，kernel就挂起了，所以dmesg无法工作，包括时间戳记录？？<br>为了验证S4 hang原因在于写磁盘，对不同SSD做读写测速：</p>
+<pre><code>DISK               :         R/W speed MB/s   :       S4 hang time
+Samsung SATA SSD   :         567/529          :       4s
+Our SSD            :         170.1/104.7      :       25s
+</code></pre>
+<p>基本验证读写速度和S4 hang是线性关系。</p>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/08/27/Github%E5%B8%B8%E7%94%A8%E9%85%8D%E7%BD%AE%E7%AC%94%E8%AE%B0/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -1887,252 +2403,10 @@ git push -u origin master
   
   
 
-      
-  
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/04/16/%E6%B5%85%E8%B0%88C%E7%9A%84%E5%AE%8F%E5%87%BD%E6%95%B0/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Cursorhu">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="ThinkNotes">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2020/04/16/%E6%B5%85%E8%B0%88C%E7%9A%84%E5%AE%8F%E5%87%BD%E6%95%B0/" class="post-title-link" itemprop="url">浅谈C的宏函数</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2020-04-16 15:07:37" itemprop="dateCreated datePublished" datetime="2020-04-16T15:07:37+08:00">2020-04-16</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2022-12-06 15:18:54" itemprop="dateModified" datetime="2022-12-06T15:18:54+08:00">2022-12-06</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/c-c/" itemprop="url" rel="index"><span itemprop="name">c/c++</span></a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h1 id="1-连接操作符"><a href="#1-连接操作符" class="headerlink" title="1. 连接操作符:##"></a>1. 连接操作符:##</h1><pre><code>#define Conn(x,y) x##y
-</code></pre>
-<p><code>##</code> 表示连接 , <code>x##y</code> 表示x连接y</p>
-<p>示例：</p>
-<pre><code>int n = Conn(123,456);
-     ==&gt; int n=123456;
-char* str = Conn(&quot;asdf&quot;, &quot;adf&quot;);
-     ==&gt; char* str = &quot;asdfadf&quot;;
-</code></pre>
-<p><code>##</code> 的左右符号必须能够组成一个有意义的符号，否则预处理器会报错</p>
-<h1 id="2-字符串化和字符化"><a href="#2-字符串化和字符化" class="headerlink" title="2.字符串化和字符化: #, #@"></a>2.字符串化和字符化: #, #@</h1><p>(1) # 把任意类型的宏入参转化成字符串：</p>
-<pre><code>#define ToString(x) #x
-</code></pre>
-<p>符号 # 表示字符串化操作符（stringification）。<br>其作用是：将宏定义中的传入参数名转换成用一对双引号括起来参数名字符串。<br>其只能用于有传入参数的宏定义中，且必须置于宏定义体中的参数名前。</p>
-<p>示例：</p>
-<pre><code> char* str = ToString(123132);
- ==&gt; char* str=&quot;123132&quot;;
-</code></pre>
-<p>如果要对展开后的宏参数进行字符串化，则需要使用两层宏。</p>
-<pre><code>#define xstr(s) str(s)
-#define str(s) #s
-#define foo 4
-
-str (foo)
-     ==&gt; &quot;foo&quot;
-xstr (foo)
-     ==&gt; xstr (4)
-     ==&gt; str (4)
-     ==&gt; &quot;4&quot;
-</code></pre>
-<p>(2) #@ 把任意类型的宏入参转化成单字符：</p>
-<pre><code>#define ToChar(x) #@x
-</code></pre>
-<p>示例：</p>
-<pre><code>char a = ToChar(1);
-     ==&gt; char a=&#39;1&#39;
-</code></pre>
-<h1 id="3-不定参数宏-VA-ARGS"><a href="#3-不定参数宏-VA-ARGS" class="headerlink" title="3. 不定参数宏: __VA_ARGS__"></a>3. 不定参数宏: <code>__VA_ARGS__</code></h1><p><code>__VA_ARGS__</code>宏用来接受不定数量的参数。例如：</p>
-<pre><code>#define eprintf(...) fprintf (stderr, __VA_ARGS__)
-
-eprintf (&quot;%s:%d: &quot;, input_file, lineno)
-==&gt;  fprintf (stderr, &quot;%s:%d: &quot;, input_file, lineno)
-</code></pre>
-<p>当<code>__VA_ARGS__</code>宏前面加 <code>##</code> 时，可以省略参数输入。<br>例如：</p>
-<pre><code>#define eprintf(format, ...) fprintf (stderr, format, ##__VA_ARGS__)
-
-eprintf (&quot;success!\n&quot;)
-==&gt; fprintf(stderr, &quot;success!\n&quot;);
-</code></pre>
-<h1 id="4-宏函数定义-do-while-0-与换行"><a href="#4-宏函数定义-do-while-0-与换行" class="headerlink" title="4. 宏函数定义: do-while(0)与换行"></a>4. 宏函数定义: do-while(0)与换行</h1><p>(1) 用 do{}while(0) 定义宏函数</p>
-<pre><code>#define foo() do&#123;...&#125;while(0)
-</code></pre>
-<p>宏函数可能在任意地方被调用，如果在if-else语句中，为了确保宏函数作为整体单元被编译器替换后不产生歧义，一般用do-while(0)包起来定义<br>这种定义有点像其他语言的“闭包函数”，纯粹是C语言中为了避免语法歧义的可靠性定义。</p>
-<p>(2) 用显式换行符</p>
-<p>宏函数定义不能直接回车换行，需要在回车换行前，用\（反斜线）表示下一行继续此宏的定义<br>预处理器在编译之前会自动将\与换行回车去掉。</p>
-<p>例如：</p>
-<pre><code>#define PRINT_INT(a)    \
-do&#123;                     \
-    printf(&quot;%d \n&quot;, a); \
-&#125;while(0)
-</code></pre>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-      
-  
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/04/01/%E6%B5%85%E8%B0%88C%E7%9A%84%E5%87%BD%E6%95%B0%E6%8C%87%E9%92%88/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Cursorhu">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="ThinkNotes">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2020/04/01/%E6%B5%85%E8%B0%88C%E7%9A%84%E5%87%BD%E6%95%B0%E6%8C%87%E9%92%88/" class="post-title-link" itemprop="url">浅谈C的函数指针</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2020-04-01 12:30:00" itemprop="dateCreated datePublished" datetime="2020-04-01T12:30:00+08:00">2020-04-01</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2022-12-06 15:18:49" itemprop="dateModified" datetime="2022-12-06T15:18:49+08:00">2022-12-06</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/c-c/" itemprop="url" rel="index"><span itemprop="name">c/c++</span></a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h2 id="1-函数指针基本概念"><a href="#1-函数指针基本概念" class="headerlink" title="1. 函数指针基本概念"></a>1. 函数指针基本概念</h2><p>C语言调用函数的本质是什么？</p>
-<ol>
-<li>CPU PC指针(program counter)跳转到函数的入口地址，传入参数，传入返回位置</li>
-<li>在函数栈内生成临时变量并执行函数内容指令，执行完毕后返回参数</li>
-<li>CPU返回原调用处执行</li>
-</ol>
-<p>这里，函数的入口地址实际上就存储在函数名中，也就是说，C代码中的函数名就是函数的入口地址。<br>既然是地址，就可以用来初始化一个指针，使指针指向该地址。<br>函数指针，就是存放函数首地址的指针。</p>
-<h3 id="1-2-函数指针变量"><a href="#1-2-函数指针变量" class="headerlink" title="1.2 函数指针变量"></a>1.2 函数指针变量</h3><p>首先声明普通函数是如下格式：<br><code>void Func(int);</code><br>定义一个同类型函数的函数指针变量，只需要用<code>*p</code>表示函数名即可：<br><code>void (*p)(int);</code><br>注意，上面是定义了函数指针变量，而不是声明函数指针类型。</p>
-<p>函数指针变量的定义，和普通变量格式不一样。</p>
-<ul>
-<li>普通变量： &lt;类型&gt; &lt;变量名&gt;</li>
-<li>函数指针：&lt;函数类型 变量名&gt;，按函数声明的格式定义，变量是包含在类型内部</li>
-</ul>
-<p>那么此函数指针的类型是什么：<br><code>void (*)(int);</code></p>
-<p>怎么使用此函数指针：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">void Func(int x) // 声明一个函数*/</span><br><span class="line">&#123;</span><br><span class="line">    printf(&quot;%d&quot;,x);</span><br><span class="line">&#125;</span><br><span class="line">void (*p)(int); // 定义一个函数指针*/</span><br><span class="line">p = Func; // 将Func函数的首地址赋给函数指针变量p*/</span><br><span class="line">(*p)(100);  // 通过函数指针调用Func函数</span><br></pre></td></tr></table></figure>
-
-<h3 id="1-3-函数指针类型"><a href="#1-3-函数指针类型" class="headerlink" title="1.3 函数指针类型"></a>1.3 函数指针类型</h3><p>typedef可以定义某种类型的别名，例如将unsigned char定义为u8<br><code>typedef unsigned char u8;</code><br>可见其格式是：typedef &lt;原类型&gt; &lt;别名类型&gt;</p>
-<p>那么如何定义函数指针类型：<br>只需要在函数指针声明的格式前加typedef, p就定义为函数指针类型而不是变量:<br><code>typedef void (*p)(int);</code></p>
-<p>这里定义了<code>void (*)(int)</code>类型的函数指针类型，其别名为p</p>
-<p>怎么使用此函数指针类型：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">//定义类型</span><br><span class="line">typedef void (*pFuncType)(int); </span><br><span class="line">//定义变量  </span><br><span class="line">pFuncType p;   </span><br><span class="line"></span><br><span class="line">void Func(int x)</span><br><span class="line">&#123;</span><br><span class="line">	printf(&quot;%d&quot;,x);</span><br><span class="line">&#125; </span><br><span class="line"></span><br><span class="line">void main()   </span><br><span class="line">&#123;   </span><br><span class="line">    p = Func; //初始化变量   </span><br><span class="line">    (*p)(100);   //使用变量</span><br><span class="line">&#125; </span><br></pre></td></tr></table></figure>
-
-<h2 id="2-函数指针的应用"><a href="#2-函数指针的应用" class="headerlink" title="2. 函数指针的应用"></a>2. 函数指针的应用</h2><h3 id="2-1-Linux驱动软件设计的分层"><a href="#2-1-Linux驱动软件设计的分层" class="headerlink" title="2.1 Linux驱动软件设计的分层"></a>2.1 Linux驱动软件设计的分层</h3><p>C++中有多态的概念，父类定义某种函数类型，子类实现具体的函数内容，之后父类对象就可以调用子类的实现内容。<br>这样实现“父类定义格式，子类实现细节”的软件分层设计。</p>
-<p>Linux驱动中也大量使用这种分层设计，C使用结构体和函数指针，分别对应C++的类和方法。<br>例如某驱动模块，顶层框架定义open, read, write, 而底层驱动根据具体硬件，实现xxx_open, xxx_read, xxx_write，然后按结构体成员赋值实现上下层联通：</p>
-<p>以s3c的SDHCI驱动为例：<br>sdhci_ops即父类框架结构体，sdhci_s3c_ops为s3c芯片的具体实现结构体。<br><code>.set_clock = sdhci_s3c_set_clock</code>就实现了父类的set_clock方法被子类sdhci_s3c_set_clock实现的效果。<br>其本质是函数指针的赋值，父类和子类的函数名都指向同一个函数地址，所以父类可以通过调用set_clock来实现调用sdhci_s3c_set_clock的效果。<br>这样，父类设计者根本不关心底层用什么函数名实现set_clock的功能，只需要调用set_clock这个函数名即可。</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">static struct sdhci_ops sdhci_s3c_ops = &#123;</span><br><span class="line">	.get_max_clock		= sdhci_s3c_get_max_clk,</span><br><span class="line">	.set_clock		= sdhci_s3c_set_clock,</span><br><span class="line">	.get_min_clock		= sdhci_s3c_get_min_clock,</span><br><span class="line">	.set_bus_width		= sdhci_set_bus_width,</span><br><span class="line">	.reset			= sdhci_reset,</span><br><span class="line">	.set_uhs_signaling	= sdhci_set_uhs_signaling,</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
-
-<h3 id="2-2-函数指针实现指令跳转"><a href="#2-2-函数指针实现指令跳转" class="headerlink" title="2.2 函数指针实现指令跳转"></a>2.2 函数指针实现指令跳转</h3><p>调用一个函数，其内部就包含跳转操作(jump指令)<br>那么，如何用C语言实现跳转到某个绝对地址去执行？具体场景：<br>在Bootloader过程中，加载完kernel到RAM后，要跳转到kernel首地址开始执行，如何实现？</p>
-<p>方案一：C嵌入汇编<br>以下是基于SPARC CPU的汇编，跳转到0x40000000, 即RAM首地址执行firmware.<br>对于其他CPU，汇编实现也不同，因此此方法不能跨平台。</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">void boot_exit()</span><br><span class="line">&#123;</span><br><span class="line">    /* jump to RAM entry to execute firmware. */</span><br><span class="line"></span><br><span class="line">    asm(</span><br><span class="line">        &quot;set 0x40000000, %g2\n&quot;</span><br><span class="line">        &quot;jmp %g2\n&quot;</span><br><span class="line">        &quot;nop&quot;</span><br><span class="line">    );</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>方案二：函数指针<br>Bootloader中很常用的一种跳转方法</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">typedef void (*pFuncType)(); //定义无入参无返回类型的函数指针类型</span><br><span class="line">pFuncType Reset = (pFuncType)0xF000FFF0; //函数指针指向待跳转地址</span><br><span class="line">Reset(); //调用函数，实际上执行了跳转</span><br></pre></td></tr></table></figure>
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
 
   
   <nav class="pagination">
-    <a class="extend prev" rel="prev" href="/page/5/"><i class="fa fa-angle-left" aria-label="上一页"></i></a><a class="page-number" href="/">1</a><span class="space">&hellip;</span><a class="page-number" href="/page/5/">5</a><span class="page-number current">6</span><a class="page-number" href="/page/7/">7</a><a class="extend next" rel="next" href="/page/7/"><i class="fa fa-angle-right" aria-label="下一页"></i></a>
+    <a class="extend prev" rel="prev" href="/page/5/"><i class="fa fa-angle-left" aria-label="上一页"></i></a><a class="page-number" href="/">1</a><span class="space">&hellip;</span><a class="page-number" href="/page/5/">5</a><span class="page-number current">6</span><a class="page-number" href="/page/7/">7</a><a class="page-number" href="/page/8/">8</a><a class="extend next" rel="next" href="/page/7/"><i class="fa fa-angle-right" aria-label="下一页"></i></a>
   </nav>
 
 
@@ -2198,20 +2472,20 @@ do&#123;                     \
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">69</span>
+          <span class="site-state-item-count">71</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
       <div class="site-state-item site-state-categories">
             <a href="/categories/">
           
-        <span class="site-state-item-count">27</span>
+        <span class="site-state-item-count">28</span>
         <span class="site-state-item-name">分类</span></a>
       </div>
       <div class="site-state-item site-state-tags">
             <a href="/tags/">
           
-        <span class="site-state-item-count">42</span>
+        <span class="site-state-item-count">43</span>
         <span class="site-state-item-name">标签</span></a>
       </div>
   </nav>

@@ -190,6 +190,298 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2022/01/22/%E6%B5%85%E8%B0%88%E5%8A%A0%E5%AF%86%E5%92%8C%E7%BC%96%E7%A0%81%EF%BC%9Abase64/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2022/01/22/%E6%B5%85%E8%B0%88%E5%8A%A0%E5%AF%86%E5%92%8C%E7%BC%96%E7%A0%81%EF%BC%9Abase64/" class="post-title-link" itemprop="url">浅谈加密和编码：base64</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2022-01-22 14:36:51" itemprop="dateCreated datePublished" datetime="2022-01-22T14:36:51+08:00">2022-01-22</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2022-12-12 14:38:31" itemprop="dateModified" datetime="2022-12-12T14:38:31+08:00">2022-12-12</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/encrypt/" itemprop="url" rel="index"><span itemprop="name">encrypt</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h1 id="1-什么是编码解码"><a href="#1-什么是编码解码" class="headerlink" title="1.什么是编码解码"></a>1.什么是编码解码</h1><p>编码：利用特定的算法，对原始内容进行处理，生成运算后的内容，形成另一种数据的表现形式，可以根据算法，再还原回来，这种操作称之为编码。<br>解码：利用编码使用的算法的逆运算，对经过编码的数据进行处理，还原出原始数据，这种操作称之为解码。</p>
+<h1 id="2-什么是Base64编码算法"><a href="#2-什么是Base64编码算法" class="headerlink" title="2.什么是Base64编码算法"></a>2.什么是Base64编码算法</h1><p>将任意的字节数组数据，通过Base64算法，生成只有（大小写英文、数字、+、&#x2F;）（一共64个字符）内容表示的字符串数据。即将任意的内容转换为可见的字符串形式。</p>
+<h1 id="3-为什么需要Base64编码"><a href="#3-为什么需要Base64编码" class="headerlink" title="3.为什么需要Base64编码"></a>3.为什么需要Base64编码</h1><p>Base64算法最开始是被用于解决电子邮件数据传输问题。以前发送邮件只支持可见字符的传送，但ASCII码中，有一部分不支持直接显示。由此，需要有一个方法将不可见的字符转换为可见的字符，便产生了Base64编码算法。</p>
+<h1 id="4-Base64算法的实现"><a href="#4-Base64算法的实现" class="headerlink" title="4.Base64算法的实现"></a>4.Base64算法的实现</h1><p>特点：</p>
+<ul>
+<li>将数据按照 3个字节一组的形式进行处理，每三个字节在编码之后被转换为4个字节。即：如果一个数据有6个字节，可编码后将包含6&#x2F;3*4&#x3D;8个字节</li>
+<li>当数据的长度无法满足3的倍数的情况下，最后的数据需要进行填充操作，即补“&#x3D;” ，这里“&#x3D;”是填充字符，不要理解为第65个字符。因此我们经常看见base64编码的字符串结尾有几个”&#x3D;”号</li>
+</ul>
+<p>示例：</p>
+<p> <img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212121437191.png" alt="image-20221212143753149"></p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212121438580.png" alt="image-20221212143830525"></p>
+<p>上面示例将原始数据的每三个字节分为一组，按位进行分割为每6位一个字节的形式，进行转换，形成新的4个字节。空缺的两个bit用0填补。<br>这四个字节才通过Base64编码表进行映射，形成最后实际的Base64编码结果。<br>如果原始数据最后无法凑成3个字节，则以“&#x3D;”填充。</p>
+<p>注：上图中的1234567表示bit的位置，不是bit的值。</p>
+<p>将字符串”ABC”进行Base64编码流程如下。</p>
+<p>1.使用ASCII编码方式将字符串”ABC”转换成二进制数据 01000001 | 01000010 | 01000011<br>2.将步骤1的二进制数据进行分组，每个分组6bit 010000 | 010100 | 001001 | 000011<br>3.将步骤2的4组6bit二进制编码数据进行补位（高位补0），变成4组8bit二进制 00010000 | 00010100 | 00001001 | 00000011<br>4.将步骤3中的4组8bit转换成十进制。16 | 20 | 9 | 3<br>5.以步骤4的十进制数据为索引，去Base64编码映射表中寻找对应的字符。16在编码表中映射的字符是Q，20映射的字符是U，9映射的字符是J，3映射的字符是D。<br>所以，字符串”ABC”经过Base64编码后的数据是”QUJD”。</p>
+<p><strong>Base64编码索引表</strong><br>26个字母 * 2(大小写) + 10个数字 + 2个运算符号 &#x3D; 64个字符<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212121438704.png" alt="image-20221212143820653"></p>
+<h1 id="5-应用场景"><a href="#5-应用场景" class="headerlink" title="5.应用场景"></a>5.应用场景</h1><p>http协议中，GET方式和POST方式是Http请求常用的两种方式，GET方法只能传递ASCII数据，但某些情况下会要求使用GET来传递二进制数据。<br>此时用Base64对Get传输的二进制数据，编码成ASCII数据，例如，客户端和服务器传递JSON数据时，经常会进行base64编解码。</p>
+<p>注意：</p>
+<ul>
+<li>Base64是编码算法，不是加密算法，只是用来编码二进制的字节数组，形成可视的ASCII字符串。</li>
+<li>Base64编码实际上是把原数据的3个字节映射成了4个字节，所以相比于原数据长度，编码后的长度会增加1&#x2F;3。会降低传输效率。</li>
+</ul>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2021/09/09/%E6%A0%91%E8%8E%93%E6%B4%BE%E7%AC%94%E8%AE%B0%EF%BC%9A%E4%BD%BF%E7%94%A8ALSA-A2DP-PulseAudio%E8%87%AA%E5%88%B6%E8%93%9D%E7%89%99%E9%9F%B3%E7%AE%B1/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2021/09/09/%E6%A0%91%E8%8E%93%E6%B4%BE%E7%AC%94%E8%AE%B0%EF%BC%9A%E4%BD%BF%E7%94%A8ALSA-A2DP-PulseAudio%E8%87%AA%E5%88%B6%E8%93%9D%E7%89%99%E9%9F%B3%E7%AE%B1/" class="post-title-link" itemprop="url">树莓派笔记：使用ALSA+A2DP+PulseAudio自制蓝牙音箱</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2021-09-09 19:54:39" itemprop="dateCreated datePublished" datetime="2021-09-09T19:54:39+08:00">2021-09-09</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2022-12-08 19:49:24" itemprop="dateModified" datetime="2022-12-08T19:49:24+08:00">2022-12-08</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/raspi/" itemprop="url" rel="index"><span itemprop="name">raspi</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h1 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h1><p>树莓派4B自带蓝牙和Wifi, 无需外接 USB dongle；<br>蓝牙最常见的应用是近距离传输数据，比如蓝牙传文件，蓝牙音箱等。正好家里有个普通的usb供电的便携音箱；</p>
+<p>本文用树莓派蓝牙+普通音箱，实现简单的蓝牙音箱。</p>
+<p>首先需要了解Linux音频系统的整体框架：<br><img src="C:\Users\thomas.hu\AppData\Roaming\Typora\typora-user-images\image-20221208194352559.png" alt="image-20221208194352559"></p>
+<p>大致分为三个部分：</p>
+<ul>
+<li>kernel&#x2F;driver层的ALSA驱动框架</li>
+<li>蓝牙音频协议栈：A2DP, 这是使蓝牙具有传输音频流能力的基石; Linux官方的bluez包实现了A2DP</li>
+<li>音频应用层, Linux最常用的音频服务器是Pulse Audio</li>
+</ul>
+<p>怎样理解这三层：可以类比Linux网络层：<br>ALSA 类似网络驱动框架<br>A2DP 类似TCP&#x2F;UDP层<br>PulseAudio 类似HTTP层的服务器，类比Apache</p>
+<p>而蓝牙连接类似http连接和会话；<br>声卡(输入、输出)类似网卡(Ethernet和wifi)，音频设备(音箱，麦克风)类似具体的网口设备</p>
+<p>深入了解 ALSA 音频驱动和 A2DP 蓝牙音频协议，参考：<br><a target="_blank" rel="noopener" href="https://www.alsa-project.org/wiki/Main_Page">Advanced Linux Sound Architecture (ALSA) project homepage</a><br><a target="_blank" rel="noopener" href="http://www.dslreports.com/r0/download/2285126~a70eb148e16b921dc323dbb977d4b4b1/A2DP_SPEC.pdf">A2DP Spec</a></p>
+<p>本文的环境<br>树莓派4B, 系统: ubuntu-server raspberry pi版本<br>音箱：usb供电，音频线<br>安卓手机：用于配对树莓派的蓝牙音频服务</p>
+<p>连接示意图</p>
+<pre><code> Audio source (i.e. smartphone) 
+                |
+                v
+ (((  Wireless Bluetooth Channel  )))
+                |
+                v
+  Raspberry PI (with A2DP service)
+                |
+                v
+         Audio Interface
+                |
+                v
+             Speakers
+</code></pre>
+<h1 id="使用alsa-utils测试音频设备"><a href="#使用alsa-utils测试音频设备" class="headerlink" title="使用alsa-utils测试音频设备"></a>使用alsa-utils测试音频设备</h1><p>首先测试Linux上如何使用普通音箱<br>将音箱USB连到树莓派USB, 音频线连到音频接口</p>
+<h2 id="查看音频设备"><a href="#查看音频设备" class="headerlink" title="查看音频设备"></a>查看音频设备</h2><p>ALSA在应用层提供了alsa-utils包，其含有arecord、aplay等工具来查看和使用音频设备。</p>
+<pre><code>apt-get install alsa-utils
+</code></pre>
+<p>查看声卡列表：</p>
+<pre><code>cat /proc/asound/cards
+</code></pre>
+<p>可以看到当前有两张声卡</p>
+<p>card 0是树莓派的bcm2835集成声卡，card 1 是另外接的USB麦克风</p>
+<p>注意区分声卡和音频设备，一个声卡可以管理多个音频设备，类似于”总线”和”设备”的关系。</p>
+<p>音频设备可以细分为输入和输出两种：例如音箱是播放音频，属于输出；麦克风是录入音频，属于输入。下面分别查看这两类设备。</p>
+<p>查看音频输入设备：</p>
+<pre><code>arecord -l
+</code></pre>
+<p>查看音频输出设备：</p>
+<pre><code>aplay -l
+</code></pre>
+<h2 id="使用音频设备"><a href="#使用音频设备" class="headerlink" title="使用音频设备"></a>使用音频设备</h2><p>(1)测试音频输出：</p>
+<pre><code>aplay test.wav -D plughw:CARD=0,DEV=0
+</code></pre>
+<p>音频设备用 CARD 和 DEV 指定，来自于前文<code>aplay -l</code>查看音频设备的输出<br>测试音频(wav格式)可以在此下载：<a target="_blank" rel="noopener" href="https://www.ape8.cn/wav/">ape8.cn</a></p>
+<p>(2)测试音频输入：</p>
+<p>使用arecord录制音频输入<br>-f 录制音频格式。例如 cd 表示 (16 bit little endian, 44100, stereo)<br>-d 录制时间，单位秒<br>-c 输入通道的个数，如果是麦克风阵列可能有多通道<br>-D 使用的设备：-D hw:1,0 表示使用 card 1 下的device 0设备</p>
+<p>测试如下：</p>
+<pre><code>arecord -f cd -d 5 -c 1 -D hw:1,0 &gt; test.pcm
+</code></pre>
+<p>然后播放此音频：</p>
+<pre><code>aplay test.pcm
+</code></pre>
+<h1 id="蓝牙服务相关配置"><a href="#蓝牙服务相关配置" class="headerlink" title="蓝牙服务相关配置"></a>蓝牙服务相关配置</h1><h2 id="蓝牙协议栈和服务的安装"><a href="#蓝牙协议栈和服务的安装" class="headerlink" title="蓝牙协议栈和服务的安装"></a>蓝牙协议栈和服务的安装</h2><p>首先确保系统软件是最新：</p>
+<pre><code>sudo apt-get update
+sudo apt-get upgrade
+</code></pre>
+<p>安装 bluez，pulseaudio 等蓝牙基础组件，对于树莓派还要安装pi-bluetooth</p>
+<pre><code>sudo apt-get install pi-bluetooth bluez bluez-tools pulseaudio pulseaudio-module-bluetooth
+</code></pre>
+<p>bluez 是Linux官方的蓝牙协议栈，其内部实现 A2DP 蓝牙音频协议，参考<a target="_blank" rel="noopener" href="http://www.bluez.org/about/">bluez.org</a></p>
+<p>PulseAudio 是Linux音频服务器, 其最主要的作用是：<br>PulseAudio clients can send audio to “sinks” and receive audio from “sources”</p>
+<p>参考<a target="_blank" rel="noopener" href="https://www.freedesktop.org/wiki/Software/PulseAudio/About/">PulseAudio&#x2F;About</a></p>
+<p>简单说明下蓝牙的发送、接收的概念：<br>蓝牙的Source端为发送码流的端，Sink端为接收码流的端；可类比生产者和消费者模型</p>
+<h2 id="启动音频服务"><a href="#启动音频服务" class="headerlink" title="启动音频服务"></a>启动音频服务</h2><p>PulseAudio服务需要创建用户名和用户组，示例如下：</p>
+<pre><code>sudo usermod -G bluetooth -a ubuntu
+</code></pre>
+<p>启动服务器</p>
+<pre><code>pulseaudio --start
+</code></pre>
+<h2 id="启动蓝牙配对"><a href="#启动蓝牙配对" class="headerlink" title="启动蓝牙配对"></a>启动蓝牙配对</h2><p>蓝牙首次连接需要配对，使用 bluez 的 <code>bluetoothctl</code>工具</p>
+<p>参考：<a target="_blank" rel="noopener" href="https://www.makeuseof.com/manage-bluetooth-linux-with-bluetoothctl/">How to Manage Bluetooth Devices on Linux Using bluetoothctl</a></p>
+<pre><code>bluetoothctl //进入蓝牙配置模式，会显示用户为[bluetooth]#
+[bluetooth]# list //列出树莓派的蓝牙控制器列表
+[bluetooth]# agent on //注册蓝牙代理
+[bluetooth]# default-agent //使用默认代理
+[bluetooth]# discoverable on //树莓派的蓝牙可被其他设备发现
+[bluetooth]# scan on //开始扫描可连接蓝牙设备
+</code></pre>
+<p>此后选择要连接的蓝牙设备，手机蓝牙打开，<code>scan on</code>列表找到手机的 MAC地址 进行连接配对。<br>手机的MAC可在设置-&gt;系统信息查看</p>
+<pre><code>[bluetooth]# pair &lt;dev&gt; //配对设备，首次需要密码
+[bluetooth]# trust &lt;dev&gt; //信任该设备，此后可以自动配对无需密码
+[bluetooth]# connect &lt;dev&gt; //建立连接
+</code></pre>
+<p>现在可以退出 bluetoothctl模式，然后测试蓝牙音频播放：</p>
+<pre><code>[bluetooth]# quit
+aplay test.wav
+</code></pre>
+<p>关于蓝牙的agent，参考<a target="_blank" rel="noopener" href="https://askubuntu.com/questions/763939/bluetoothctl-what-is-a-bluetooth-agent">bluetoothctl - What is a bluetooth agent?</a></p>
+<h2 id="设置自动配对连接"><a href="#设置自动配对连接" class="headerlink" title="设置自动配对连接"></a>设置自动配对连接</h2><p>为了避免每次pair都要指定设备，可以配置蓝牙打开时，自动pair上次的设备。</p>
+<p>编辑PulseAudio配置文件 <code>/etc/pulse/default.pa</code> </p>
+<pre><code># automatically switch to newly-connected devices
+load-module module-switch-on-connect
+</code></pre>
+<p>编辑bluez配置文件 <code>/etc/bluetooth/main.conf</code></p>
+<pre><code>[Policy]
+AutoEnable=true
+</code></pre>
+<p>系统重启后只需要重启PulseAudio服务：</p>
+<pre><code>pulseaudio --start
+</code></pre>
+<h1 id="调试过程"><a href="#调试过程" class="headerlink" title="调试过程"></a>调试过程</h1><h2 id="找不到蓝牙controller"><a href="#找不到蓝牙controller" class="headerlink" title="找不到蓝牙controller"></a>找不到蓝牙controller</h2><p>最开始bluetoothctl list显示的蓝牙控制器列表是空的，我一度怀疑买了假的raspi-4B</p>
+<p>原因是树莓派需要安装专门的蓝牙包 pi-bluetooth，参考<a target="_blank" rel="noopener" href="https://raspberrypi.stackexchange.com/questions/114586/rpi-4b-bluetooth-unavailable-on-ubuntu-20-04">rpi-4b-bluetooth-unavailable-on-ubuntu</a></p>
+<p>树莓派很多功能都要求系统有定制包，大多数硬件失效都是定制包未安装。</p>
+<h2 id="蓝牙连接正常，播放没声音"><a href="#蓝牙连接正常，播放没声音" class="headerlink" title="蓝牙连接正常，播放没声音"></a>蓝牙连接正常，播放没声音</h2><p>首先确认音频设备物理连接是否正常；</p>
+<p>然后确认PulseAudio音频服务是否正常，检查服务状态和配置文件；</p>
+<pre><code>pacmd info
+pactl info
+</code></pre>
+<p>问题仍没有解决，仔细听似乎有很小的声音，检测音量配置：</p>
+<pre><code>pacmd list-sinks //找到sink设备，即音箱
+pacmd set-sink-volume &lt;sink&gt; &lt;value&gt; //设置音量，value取值 [0, 65536] 代表标准音量 0~100%
+</code></pre>
+<p>参考：<a target="_blank" rel="noopener" href="https://askubuntu.com/questions/219739/adjust-max-possible-volume-in-pulseaudio#:~:text=pactl%20set-sink-volume%200%20100%25%20Where%200%20is%20the,100%25%20to%20get%20audio%20boost%20%28200%25%20for%20example%29.">adjust max possible volume in pulseaudio</a></p>
+<p>此时播放音乐可以听到但声音极小；<br>检查音箱的线控音量调节，调到最大；<br>此时蓝牙音乐只有正常音箱大概 30% 的播放音量。</p>
+<p>原因是树莓派的USB供电驱动能力有限，同一音箱，在PC-USB供电下30%的音量大小等同于树莓派上100%的音量大小。</p>
+<p>自此蓝牙播放音量可以达到正常水平，需要更高音量和音质建议220V供电的音箱。</p>
+<h1 id="参考内容"><a href="#参考内容" class="headerlink" title="参考内容"></a>参考内容</h1><p><a target="_blank" rel="noopener" href="https://www.jianshu.com/p/1b79537da86d">Ubuntu音频设备检测</a><br><a target="_blank" rel="noopener" href="https://www.nicolabs.net/2020/Make-RPi-bluetooth-speaker-part-1">Make-RPi-bluetooth-speaker-part-1</a><br><a target="_blank" rel="noopener" href="https://gist.github.com/actuino/9548329d1bba6663a63886067af5e4cb">actuino&#x2F;bt_speaker-raspberry_pi-zero_w</a><br><a target="_blank" rel="noopener" href="https://gist.github.com/oleq/24e09112b07464acbda1#file-a2dp-autoconnect-L17">A2DP audio streaming using Raspberry PI</a></p>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2021/08/23/%E6%A0%91%E8%8E%93%E6%B4%BE%E7%AC%94%E8%AE%B0%EF%BC%9A%E4%BD%BF%E7%94%A8mjpg-streamer-Apache+SSH%E8%87%AA%E5%88%B6%E7%BD%91%E7%BB%9C%E6%91%84%E5%83%8F%E5%A4%B4/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -3193,211 +3485,10 @@ void CmyMFCDlg::CloseLogFile()
   
   
 
-      
-  
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/12/09/%E5%A6%82%E4%BD%95%E7%9C%8B%E6%87%82UML%E7%B1%BB%E5%9B%BE/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Cursorhu">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="ThinkNotes">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2020/12/09/%E5%A6%82%E4%BD%95%E7%9C%8B%E6%87%82UML%E7%B1%BB%E5%9B%BE/" class="post-title-link" itemprop="url">如何看懂UML类图</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2020-12-09 14:33:00" itemprop="dateCreated datePublished" datetime="2020-12-09T14:33:00+08:00">2020-12-09</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2022-12-05 16:05:42" itemprop="dateModified" datetime="2022-12-05T16:05:42+08:00">2022-12-05</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/UML/" itemprop="url" rel="index"><span itemprop="name">UML</span></a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>统一建模语言（Unified Modeling Language，UML）是用来设计软件蓝图的可视化建模语言，1997年被国际对象管理组织（OMG）采纳为面向对象的建模语言的国际标准。它的特点是简单、统一、图形化、能表达软件设计中的动态与静态信息。<br>统一建模语言能为软件开发的所有阶段提供模型化和可视化支持。而且融入了软件工程领域的新思想、新方法和新技术，使软件设计人员沟通更简明，进一步缩短了设计时间，减少开发成本。它的应用领域很宽，不仅适合于一般系统的开发，而且适合于并行与分布式系统的建模。<br>UML从目标系统的不同角度出发，定义了用例图、类图、对象图、状态图、活动图、时序图、协作图、构件图、部署图等 9 种图<br>本文介绍开发中常用的类图</p>
-<h1 id="类图"><a href="#类图" class="headerlink" title="类图"></a>类图</h1><p>类（Class）是指具有相同属性、方法和关系的对象的抽象，它封装了数据和行为，是面向对象程序设计（OOP）的基础，具有封装性、继承性和多态性等三大特性。在 UML 中，类使用包含类名、属性和操作且带有分隔线的矩形来表示。<br>首先讲解关系, 先来看一个例子：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051148263.png" alt="image-20221205114810203"></p>
-<p>分析一下上面的图, 首先从动物开始<br>动物是一个类 动物依赖氧气和水<br>然后鸟继承了动物，所以鸟的父类是动物 所以鸟是属于动物<br>然后鸟和翅膀是组合关系 一只鸟有两个翅膀<br>大雁鸭子和企鹅都是鸟所以继承了鸟类<br>大雁会有大雁群，大雁群是由大雁组成所以是聚合关系<br>企鹅和气候是关联关系因为企鹅需要依赖气候<br>然后再看大雁 大雁会飞翔 所以就实现了飞翔接口<br>唐老鸭是属于鸭子的 所以唐老鸭继承了鸭子这个类<br>上图是借鉴了大话设计模式里面的图。下面具体介绍各个符号的作用</p>
-<h2 id="类"><a href="#类" class="headerlink" title="类"></a>类</h2><p>类一般是用三层矩形框表示，第一层表示类的名称，第二层表示的是字段和属性，第三层则是类的方法。第一层中，如果是抽象类，需用斜体显示<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051148740.png" alt="image-20221205114819689"></p>
-<h2 id="类符号"><a href="#类符号" class="headerlink" title="类符号"></a>类符号</h2><p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051148030.png" alt="image-20221205114830981"><br>看上面的学生类里面有五个属性和两个方法</p>
-<pre><code>+号表示公共的 public
--表示 私有的 private
-#表示protected
-</code></pre>
-<p>带下划线表示静态属性，一般表示方法: +属性:类型。<br>括号内表示参数，后面是返回类型, 没有表示无返回值</p>
-<h2 id="包"><a href="#包" class="headerlink" title="包"></a>包</h2><p>包(Package)： 是一种常规用途的组合机制。在UML中用一个Tab框表示，Tab里写上包的名称，框里则用来放一些其他子元素，比如类，子包等等。<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051148985.png" alt="image-20221205114837947"></p>
-<h2 id="接口"><a href="#接口" class="headerlink" title="接口"></a>接口</h2><p>接口(interface)：接口包含操作但不包含属性，且它没有对外界可见的关联<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051148968.png" alt="image-20221205114843929"></p>
-<h2 id="关系"><a href="#关系" class="headerlink" title="关系"></a>关系</h2><h3 id="依赖"><a href="#依赖" class="headerlink" title="依赖"></a>依赖</h3><p>依赖(Dependency) 表示的是类之间的调用关系。UML中用带箭头的虚线表示依赖关系，而箭头所指的则是被依赖的类。<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051148704.png" alt="image-20221205114849672"></p>
-<h3 id="泛化"><a href="#泛化" class="headerlink" title="泛化"></a>泛化</h3><p>泛化(Generalization)： 表示的是类之间的继承关系，注意是子类指向父类。UML中用带空心三角箭头的实线表示泛化关系，箭头指向的是一般个体。<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051148143.png" alt="image-20221205114855112"></p>
-<h3 id="关联"><a href="#关联" class="headerlink" title="关联"></a>关联</h3><p>关联(Association) 表示的是类与类之间存在某种特定的对应关系。UML中用双向带箭头的虚线表示关联关系，箭头两端为相互关联的两个类<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051149187.png" alt="image-20221205114902153"></p>
-<h3 id="聚合"><a href="#聚合" class="headerlink" title="聚合"></a>聚合</h3><p>聚合(Aggregation)： 是关联关系的一种特例，表示的是整体与部分之间的关系，部分不能离开整体单独存在。UML中用空心菱形头的实线表示聚合关系，菱形头指向整体<br><img src="C:\Users\thomas.hu\AppData\Roaming\Typora\typora-user-images\image-20221205114909206.png" alt="image-20221205114909206"></p>
-<h3 id="组合"><a href="#组合" class="headerlink" title="组合"></a>组合</h3><p>组合(Composition)： 是聚合的一种特殊形式，表示的是类之间更强的组合关系。UML中用实心菱形头的实线来表示组合，菱形头指向整体。<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051149567.png" alt="image-20221205114949528"></p>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-      
-  
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/12/07/%E6%B5%85%E8%B0%88Linux%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B-IO%E5%A4%9A%E8%B7%AF%E5%A4%8D%E7%94%A8%E4%B9%8Bselect%E3%80%81poll%E3%80%81epoll/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Cursorhu">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="ThinkNotes">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2020/12/07/%E6%B5%85%E8%B0%88Linux%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B-IO%E5%A4%9A%E8%B7%AF%E5%A4%8D%E7%94%A8%E4%B9%8Bselect%E3%80%81poll%E3%80%81epoll/" class="post-title-link" itemprop="url">浅谈Linux网络编程: IO多路复用之select、poll、epoll</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2020-12-07 13:58:53" itemprop="dateCreated datePublished" datetime="2020-12-07T13:58:53+08:00">2020-12-07</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2022-12-05 14:03:05" itemprop="dateModified" datetime="2022-12-05T14:03:05+08:00">2022-12-05</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/linux/" itemprop="url" rel="index"><span itemprop="name">linux</span></a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p>I&#x2F;O多路复用：通过一种机制，可以监视多个描述符，一旦某个描述符就绪（一般是读就绪或者写就绪），能够通知程序进行相应的读写操作。</p>
-<p>但select，poll，epoll本质上都是同步I&#x2F;O，因为他们都需要在读写事件就绪后自己负责进行读写，也就是说这个读写过程是阻塞的，而异步I&#x2F;O则无需自己负责进行读写，异步I&#x2F;O的实现会负责把数据从内核拷贝到用户空间。</p>
-<p>IO多路复用适用如下场合：</p>
-<ul>
-<li>当客户处理多个描述符时（一般是交互式输入和网络套接口），必须使用I&#x2F;O复用。</li>
-<li>当一个客户同时处理多个套接口时，而这种情况是可能的，但很少出现。</li>
-<li>如果一个TCP服务器既要处理监听套接口，又要处理已连接套接口，一般也要用到I&#x2F;O复用。</li>
-<li>如果一个服务器即要处理TCP，又要处理UDP，一般要使用I&#x2F;O复用。</li>
-<li>如果一个服务器要处理多个服务或多个协议，一般要使用I&#x2F;O复用。</li>
-</ul>
-<p>与多进程和多线程技术相比，I&#x2F;O多路复用技术的最大优势是系统开销小，系统不必创建进程&#x2F;线程，也不必维护这些进程&#x2F;线程，从而大大减小了系统的开销。</p>
-<h1 id="select实现"><a href="#select实现" class="headerlink" title="select实现"></a>select实现</h1><p>逻辑时序：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051401453.png" alt="1"><br>具体实现：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051401118.png" alt="2"></p>
-<p>fd_set(监听的端口个数)：32位机默认是1024个，64位机默认是2048。</p>
-<p>（1）使用copy_from_user从用户空间拷贝fd_set到内核空间<br>（2）注册回调函数__pollwait<br>（3）遍历所有fd，调用其对应的poll方法（对于socket，这个poll方法是sock_poll，sock_poll根据情况会调用到tcp_poll,udp_poll或者datagram_poll）<br>（4）以tcp_poll为例，其核心实现就是__pollwait，也就是上面注册的回调函数。<br>（5）__pollwait的主要工作就是把current（当前进程）挂到设备的等待队列中，不同的设备有不同的等待队列，对于tcp_poll来说，其等待队列是sk-&gt;sk_sleep（注意把进程挂到等待队列中并不代表进程已经睡眠了）。在设备收到一条消息（网络设备）或填写完文件数据（磁盘设备）后，会唤醒设备等待队列上睡眠的进程，这时current便被唤醒了。<br>（6）poll方法返回时会返回一个描述读写操作是否就绪的mask掩码，根据这个mask掩码给fd_set赋值。<br>（7）如果遍历完所有的fd，还没有返回一个可读写的mask掩码，则会调用schedule_timeout是调用select的进程（也就是current）进入睡眠。当设备驱动发生自身资源可读写后，会唤醒其等待队列上睡眠的进程。如果超过一定的超时时间（schedule_timeout指定），还是没人唤醒，则调用select的进程会重新被唤醒获得CPU，进而重新遍历fd，判断有没有就绪的fd。<br>（8）把fd_set从内核空间拷贝到用户空间。</p>
-<p>select的几大缺点：<br>（1）每次调用select，都需要把fd集合从用户态拷贝到内核态，这个开销在fd很多时会很大<br>（2）同时每次调用select都需要在内核遍历传递进来的所有fd，这个开销在fd很多时也很大<br>（3）select支持的文件描述符数量太小了，默认是1024</p>
-<h1 id="poll实现"><a href="#poll实现" class="headerlink" title="poll实现"></a>poll实现</h1><p>poll的实现和select非常相似，只是描述fd集合的方式不同，poll使用pollfd结构而不是select的fd_set结构，而使其没有连接数的限制。其他的都差不多。</p>
-<h1 id="epoll"><a href="#epoll" class="headerlink" title="epoll"></a>epoll</h1><p>epoll支持水平触发和边缘触发，最大的特点在于边缘触发，它只告诉进程哪些fd刚刚变为就绪态，并且只会通知一次。还有一个特点是，epoll使用“事件”的就绪通知方式，通过epoll_ctl注册fd，一旦该fd就绪，内核就会采用类似callback的回调机制来激活该fd，epoll_wait便可以收到通知。<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051401522.png" alt="3"></p>
-<h2 id="epoll的几大改进"><a href="#epoll的几大改进" class="headerlink" title="epoll的几大改进"></a>epoll的几大改进</h2><p>epoll既然是对select和poll的改进，就应该能避免上述的三个缺点。那epoll都是怎么解决的呢？在此之前，我们先看一下epoll和select和poll的调用接口上的不同，select和poll都只提供了一个函数——select或者poll函数。而epoll提供了三个函数，epoll_create,epoll_ctl和epoll_wait，epoll_create是创建一个epoll句柄；epoll_ctl是注册要监听的事件类型；epoll_wait则是等待事件的产生。</p>
-<p>对于第一个缺点，epoll的解决方案在epoll_ctl函数中。<br>每次注册新的事件到epoll句柄中时（在epoll_ctl中指定EPOLL_CTL_ADD），会把所有的fd拷贝进内核，而不是在epoll_wait的时候重复拷贝。epoll保证了每个fd在整个过程中只会拷贝一次。</p>
-<p>对于第二个缺点，epoll的解决方案不像select或poll一样每次都把current轮流加入fd对应的设备等待队列中。<br>而只在epoll_ctl时把current挂一遍（这一遍必不可少）并为每个fd指定一个回调函数，当设备就绪，唤醒等待队列上的等待者时，就会调用这个回调函数，而这个回调函数会把就绪的fd加入一个就绪链表）。epoll_wait的工作实际上就是在这个就绪链表中查看有没有就绪的fd（利用schedule_timeout()实现睡一会，判断一会的效果，和select实现中的第7步是类似的）。即epoll最大的优点就在于它只管你“活跃”的连接，而跟连接总数无关。</p>
-<p>对于第三个缺点，epoll没有这个限制。<br>它所支持的FD上限是最大可以打开文件的数目，这个数字一般远大于2048,举个例子,在1GB内存的机器上大约是10万左右，具体数目可以cat &#x2F;proc&#x2F;sys&#x2F;fs&#x2F;file-max察看,一般来说这个数目和系统内存关系很大。</p>
-<h2 id="epoll小结："><a href="#epoll小结：" class="headerlink" title="epoll小结："></a>epoll小结：</h2><p>（1）select，poll实现需要自己不断轮询所有fd集合，直到设备就绪，期间可能要睡眠和唤醒多次交替。而epoll其实也需要调用epoll_wait不断轮询就绪链表，期间也可能多次睡眠和唤醒交替，但是它是设备就绪时，调用回调函数，把就绪fd放入就绪链表中，并唤醒在epoll_wait中进入睡眠的进程。虽然都要睡眠和交替，但是select和poll在“醒着”的时候要遍历整个fd集合，而epoll在“醒着”的时候只要判断一下就绪链表是否为空就行了，这节省了大量的CPU时间。这就是回调机制带来的性能提升。<br>（2）select，poll每次调用都要把fd集合从用户态往内核态拷贝一次，并且要把current往设备等待队列中挂一次，而epoll只要一次拷贝，而且把current往等待队列上挂也只挂一次（在epoll_wait的开始，注意这里的等待队列并不是设备等待队列，只是一个epoll内部定义的等待队列）。这也能节省不少的开销。</p>
-<h1 id="select、poll、epoll区别"><a href="#select、poll、epoll区别" class="headerlink" title="select、poll、epoll区别"></a>select、poll、epoll区别</h1><ol>
-<li><p>支持一个进程所能打开的最大连接数<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051402990.png" alt="4"></p>
-</li>
-<li><p>FD剧增后带来的IO效率问题<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051402536.png" alt="5"></p>
-</li>
-<li><p>消息传递方式<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051403370.png"></p>
-</li>
-</ol>
-<h1 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h1><p>在选择select，poll，epoll时要根据具体的使用场合以及这三种方式的自身特点：</p>
-<ul>
-<li>连接数多，活跃链接占比不高的场景下，epoll的性能最好</li>
-<li>在连接数少并且连接都十分活跃的情况下，select和poll的性能可能比epoll好，毕竟epoll的通知机制需要很多函数回调。</li>
-<li>select低效是因为每次它都需要轮询。但低效也是相对的，可通过良好的设计改善。</li>
-</ul>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
 
   
   <nav class="pagination">
-    <a class="extend prev" rel="prev" href="/page/3/"><i class="fa fa-angle-left" aria-label="上一页"></i></a><a class="page-number" href="/">1</a><span class="space">&hellip;</span><a class="page-number" href="/page/3/">3</a><span class="page-number current">4</span><a class="page-number" href="/page/5/">5</a><span class="space">&hellip;</span><a class="page-number" href="/page/7/">7</a><a class="extend next" rel="next" href="/page/5/"><i class="fa fa-angle-right" aria-label="下一页"></i></a>
+    <a class="extend prev" rel="prev" href="/page/3/"><i class="fa fa-angle-left" aria-label="上一页"></i></a><a class="page-number" href="/">1</a><span class="space">&hellip;</span><a class="page-number" href="/page/3/">3</a><span class="page-number current">4</span><a class="page-number" href="/page/5/">5</a><span class="space">&hellip;</span><a class="page-number" href="/page/8/">8</a><a class="extend next" rel="next" href="/page/5/"><i class="fa fa-angle-right" aria-label="下一页"></i></a>
   </nav>
 
 
@@ -3463,20 +3554,20 @@ void CmyMFCDlg::CloseLogFile()
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">69</span>
+          <span class="site-state-item-count">71</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
       <div class="site-state-item site-state-categories">
             <a href="/categories/">
           
-        <span class="site-state-item-count">27</span>
+        <span class="site-state-item-count">28</span>
         <span class="site-state-item-name">分类</span></a>
       </div>
       <div class="site-state-item site-state-tags">
             <a href="/tags/">
           
-        <span class="site-state-item-count">42</span>
+        <span class="site-state-item-count">43</span>
         <span class="site-state-item-name">标签</span></a>
       </div>
   </nav>
