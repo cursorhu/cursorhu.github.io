@@ -909,7 +909,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2023-09-07 16:14:46" itemprop="dateModified" datetime="2023-09-07T16:14:46+08:00">2023-09-07</time>
+                <time title="修改时间：2024-04-12 15:19:03" itemprop="dateModified" datetime="2024-04-12T15:19:03+08:00">2024-04-12</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -933,6 +933,7 @@
 
       
           <h2 id="Printk详解"><a href="#Printk详解" class="headerlink" title="Printk详解"></a>Printk详解</h2><p>printk参考Kernel document: <a target="_blank" rel="noopener" href="https://www.kernel.org/doc/html/latest/translations/zh_CN/core-api/printk-basics.html">使用printk记录消息</a></p>
+<p>其中printk是一组4个值,分别是:<em>current</em>, <em>default</em>, <em>minimum</em> 和 <em>boot-time-default</em>. 调试打印一般只配置current和boot-time-default &#x3D; 7 (支持&lt; pr_debug的打印)或者8 (支持&#x3D; pr_debug的打印).</p>
 <h3 id="printk的基础用法"><a href="#printk的基础用法" class="headerlink" title="printk的基础用法"></a>printk的基础用法</h3><p>常用示例如下，一般是手动添加打印代码时使用：</p>
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">step1: 例如要打印当前函数被调用，添加pr_info(&quot;%s\n&quot;, __FUNCTION__)</span><br><span class="line">step2: echo 7 &gt; /proc/sys/kernel/printk</span><br></pre></td></tr></table></figure>
 
@@ -946,10 +947,12 @@
 
 <p>再<code>cat /proc/sys/kernel/printk</code>可见printk已变成7,4,1,7(默认是4,4,1,7)</p>
 <p><strong>Tips2: (printk持久化)系统启动自动设置打印级别：</strong></p>
-<p>&#x2F;proc&#x2F;sys&#x2F;kernel&#x2F;printk每次启动后都恢复为默认值4,4,1,7，要系统启动时自动配置7,4,1,7，在&#x2F;etc&#x2F;sysctl.conf添加如下内容即可：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kernel.printk = 7 4 1 7</span><br></pre></td></tr></table></figure>
+<p>&#x2F;proc&#x2F;sys&#x2F;kernel&#x2F;printk每次启动后都恢复为默认值4,4,1,7.</p>
+<p>在&#x2F;etc&#x2F;sysctl.conf添加kernel.printk可以系统启动时自动配置打印级别, 通常用于记录kernel boot阶段的打印：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">sudo vim /etc/sysctl.conf</span><br><span class="line">kernel.printk = 8 4 1 8   #8: 打开包括pr_debug的所有打印级别 </span><br></pre></td></tr></table></figure>
 
-<p><strong>如果要观测系统启动中的driver debug打印，必须配置kernel.printk</strong></p>
+<p>小结:</p>
+<p><strong>如果要观测系统启动中的driver debug打印，必须&#x2F;etc&#x2F;sysctl.conf配置kernel.printk</strong></p>
 <p><strong>如果要观测系统启动后的driver debug打印，建议使用dmesg -n修改printk</strong></p>
 <h3 id="printk在driver-subsystem中的使用"><a href="#printk在driver-subsystem中的使用" class="headerlink" title="printk在driver subsystem中的使用"></a>printk在driver subsystem中的使用</h3><p>Linux driver子系统通常使用printk的封装版。以pci driver为例，pci driver代码已经提供了pci_dbg, pci_info, pci_err等打印函数，其不仅打印arg信息，也打印pci port设备信息，例如以下PCIe driver的log:</p>
 <p>pcieport 0000:00:1b.4 显示了当前的PCIe port。如果有多个PCIe port的打印，可以区分是哪个port的打印输出。</p>
@@ -961,7 +964,7 @@
 
 <p>其他驱动模块的xxx_info, xxx_err也是一样</p>
 <p><strong>如何设置dev_dbg:</strong></p>
-<p>dev_dbg是比较特殊和最常用的打印方式，定义如下。</p>
+<p>dev_dbg是比较特殊但常用的打印方式，定义如下。</p>
 <p>可见dev_dbg的开启依赖于两个条件：</p>
 <ul>
 <li><p>driver定义了CONFIG_DYNAMIC_DEBUG 或者 DEBUG 宏才能开启，一般使用DEBUG宏</p>
@@ -1480,7 +1483,7 @@
 <div class="copyright">
   
   &copy; 
-  <span itemprop="copyrightYear">2023</span>
+  <span itemprop="copyrightYear">2024</span>
   <span class="with-love">
     <i class="fa fa-heart"></i>
   </span>
