@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 8.0.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Noto+Serif+SC|Roboto/css?family=Noto Serif SC:300,300italic,400,400italic,700,700italic|Roboto:300,300italic,400,400italic,700,700italic&display=swap&subset=latin,latin-ext">
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"cursorhu.github.io","root":"/","scheme":"Pisces","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="飞腾派Linux SD驱动分析和调试SD初始化流程分析SD初始化的起始点带SD卡启动系统时，初始化SD host和card的调用链： probe -&gt; mmc_alloc_host -&gt; mmc_start_host -&gt; _mmc_detect_change -&gt; mmc_schedule_delayed_work(&amp;host-&gt;detect) -&gt;">
+<meta property="og:type" content="article">
+<meta property="og:title" content="飞腾派Linux SD驱动分析和调试">
+<meta property="og:url" content="https://cursorhu.github.io/2024/05/18/%E9%A3%9E%E8%85%BE%E6%B4%BELinux%20SD%E9%A9%B1%E5%8A%A8%E5%88%86%E6%9E%90%E5%92%8C%E8%B0%83%E8%AF%95/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="飞腾派Linux SD驱动分析和调试SD初始化流程分析SD初始化的起始点带SD卡启动系统时，初始化SD host和card的调用链： probe -&gt; mmc_alloc_host -&gt; mmc_start_host -&gt; _mmc_detect_change -&gt; mmc_schedule_delayed_work(&amp;host-&gt;detect) -&gt;">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202404191529248.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202404191555610.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202404191611726.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202404191701745.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202404191627573.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202404192014746.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202404191656210.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202404191706848.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202404221108662.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202404191701745.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202404191807768.png">
+<meta property="og:image" content="https://cursorhu.github.io/home/cursorhu/.config/Typora/typora-user-images/image-20240419194003739.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202404192040132.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202404192034201.png">
+<meta property="article:published_time" content="2024-05-18T07:50:54.000Z">
+<meta property="article:modified_time" content="2025-11-04T09:35:50.088Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="phytium">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202404191529248.png">
+
+<link rel="canonical" href="https://cursorhu.github.io/2024/05/18/%E9%A3%9E%E8%85%BE%E6%B4%BELinux%20SD%E9%A9%B1%E5%8A%A8%E5%88%86%E6%9E%90%E5%92%8C%E8%B0%83%E8%AF%95/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>飞腾派Linux SD驱动分析和调试 | ThinkNotes</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">ThinkNotes</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Simple is not easy</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于我</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2024/05/18/%E9%A3%9E%E8%85%BE%E6%B4%BELinux%20SD%E9%A9%B1%E5%8A%A8%E5%88%86%E6%9E%90%E5%92%8C%E8%B0%83%E8%AF%95/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          飞腾派Linux SD驱动分析和调试
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2024-05-18 15:50:54" itemprop="dateCreated datePublished" datetime="2024-05-18T15:50:54+08:00">2024-05-18</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2025-11-04 17:35:50" itemprop="dateModified" datetime="2025-11-04T17:35:50+08:00">2025-11-04</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/linux/" itemprop="url" rel="index"><span itemprop="name">linux</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="飞腾派Linux-SD驱动分析和调试"><a href="#飞腾派Linux-SD驱动分析和调试" class="headerlink" title="飞腾派Linux SD驱动分析和调试"></a>飞腾派Linux SD驱动分析和调试</h1><h2 id="SD初始化流程分析"><a href="#SD初始化流程分析" class="headerlink" title="SD初始化流程分析"></a>SD初始化流程分析</h2><h3 id="SD初始化的起始点"><a href="#SD初始化的起始点" class="headerlink" title="SD初始化的起始点"></a>SD初始化的起始点</h3><p>带SD卡启动系统时，初始化SD host和card的调用链：</p>
+<p>probe -&gt; mmc_alloc_host -&gt; mmc_start_host -&gt; _mmc_detect_change -&gt; mmc_schedule_delayed_work(&amp;host-&gt;detect) -&gt; mmc_rescan（注释1）-&gt; mmc_rescan_try_freq（注释2）</p>
+<p>注释1：mmc_alloc_host时用INIT_DELAYED_WORK绑定delayed_work detect和mmc_rescan回调函数</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">INIT_DELAYED_WORK(&amp;host-&gt;detect, mmc_rescan);</span><br></pre></td></tr></table></figure>
+
+<p>注释2：这里可能执行多次，从SD接口最低频率开始初始化，一般是400KHz，代码如下。 注意host-&gt;f_min是host driver设置。	</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">static const unsigned freqs[] = &#123; 400000, 300000, 200000, 100000 &#125;;</span><br><span class="line"></span><br><span class="line">for (i = 0; i &lt; ARRAY_SIZE(freqs); i++) &#123;</span><br><span class="line">    if (!mmc_rescan_try_freq(host, max(freqs[i], host-&gt;f_min)))</span><br><span class="line">        break;</span><br><span class="line">    if (freqs[i] &lt;= host-&gt;f_min)</span><br><span class="line">        break;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="SD初始化的过程"><a href="#SD初始化的过程" class="headerlink" title="SD初始化的过程"></a>SD初始化的过程</h3><p>以下具体分析mmc_rescan_try_freq流程，并用飞腾SD卡的初始化log对照理解。</p>
+<h4 id="第一阶段：mmc通用初始化："><a href="#第一阶段：mmc通用初始化：" class="headerlink" title="第一阶段：mmc通用初始化："></a>第一阶段：mmc通用初始化：</h4><p>此时的host还没有指定卡是SD还是eMMC还是SDIO，这个阶段主要做卡power up和host reset，然后对卡reset（go_idle + send_if_cond）</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202404191529248.png" alt="image-20240419152855006"></p>
+<p>对应log如下，以下CMD8 fail属于正常，因为此时还没指定是SD type</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202404191555610.png" alt="image-20240419155547556"></p>
+<h4 id="第二阶段：SD卡的初始化入口："><a href="#第二阶段：SD卡的初始化入口：" class="headerlink" title="第二阶段：SD卡的初始化入口："></a>第二阶段：SD卡的初始化入口：</h4><p>SD模式的初始化入口：</p>
+<p>根据host的能力(caps)，依次尝试初始化SDIO, then SD, then MMC，如果host能力指定了不支持SDIO或SD或MMC，将进入host支持的初始化入口</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">/* Order&#x27;s important: probe SDIO, then SD, then MMC */</span><br><span class="line">if (!(host-&gt;caps2 &amp; MMC_CAP2_NO_SDIO))</span><br><span class="line">    if (!mmc_attach_sdio(host))</span><br><span class="line">        return 0;</span><br><span class="line"></span><br><span class="line">if (!(host-&gt;caps2 &amp; MMC_CAP2_NO_SD))</span><br><span class="line">    if (!mmc_attach_sd(host))</span><br><span class="line">        return 0;</span><br><span class="line"></span><br><span class="line">if (!(host-&gt;caps2 &amp; MMC_CAP2_NO_MMC))</span><br><span class="line">    if (!mmc_attach_mmc(host))</span><br><span class="line">        return 0;</span><br></pre></td></tr></table></figure>
+
+<p>怎么配置host能力：</p>
+<p>host能力是指该SD&#x2F;MMC&#x2F;SDIO接口具体用作哪种类型，这个和平台外设的设计相关。例如飞腾Pi平台的SOC有两个SD&#x2F;MMC&#x2F;SDIO控制器接口：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202404191611726.png" alt="Image 14"></p>
+<p>对于SD0控制器, 只作为SD&#x2F;eMMC接口使用，因此host driver对SD0可以设置host-cap能力如下：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">host-&gt;caps2 |= MMC_CAP2_NO_SDIO | MMC_CAP2_NO_MMC;</span><br></pre></td></tr></table></figure>
+
+<p>这样在mmc_rescan_try_freq就可以跳过mmc_attach_sdio和mmc_attach_mmc， 只执行mmc_attach_sd去启动SD初始化流程。</p>
+<h4 id="SD卡初始化的基本概念"><a href="#SD卡初始化的基本概念" class="headerlink" title="SD卡初始化的基本概念"></a>SD卡初始化的基本概念</h4><h5 id="SD卡初始化的流程总览"><a href="#SD卡初始化的流程总览" class="headerlink" title="SD卡初始化的流程总览"></a>SD卡初始化的流程总览</h5><p>SD spec的UHS-I流程总览：几个关键节点1～9。</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202404191701745.png" alt="image-20240419170130663"></p>
+<p>以上UHS-I流程兼容SD3.0的SDR50, SDR25, SDR12等UHS模式，以及SD2.0的HS模式, DS模式：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202404191627573.png" alt="image-20240419162710488"></p>
+<h5 id="SD卡初始化的接口概念"><a href="#SD卡初始化的接口概念" class="headerlink" title="SD卡初始化的接口概念"></a>SD卡初始化的接口概念</h5><p>如下图SD host和card接口，卡初始化过程最核心的工作就是协商host侧和card侧的能力，最终以双方都能支持的最高速度通信，即完成卡初始化。</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202404192014746.png" alt="image-20240419201436682"></p>
+<p>所谓高速通信，无外乎以下几点：</p>
+<p>更高的比特率：可以提高时钟频率和增加带宽。其中时钟CLK是host和card能力决定上限，host通过配置分频去控制接口频率（ios clock）；带宽是指SD接口有DATA[3:0] 4根数据线，但默认1bit模式只用了1根，切换到4bit模式后用4根线可同时传输4个bit。 </p>
+<p>更低的信号电平：由于逻辑电平是梯形有建立时间，更低的电平信号能减少建立时间，达到更快的波特率；所以UHS模式一定要1.8V通信电平。</p>
+<h4 id="第四阶段：SD卡初始化"><a href="#第四阶段：SD卡初始化" class="headerlink" title="第四阶段：SD卡初始化"></a>第四阶段：SD卡初始化</h4><p>在正式卡初始化之前， 有一个状态清理和协商工作</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">mmc_attach_sd： </span><br><span class="line"></span><br><span class="line">mmc_send_app_op_cond （这里是为了确认卡left busy state，有时候刚reset需要等状态恢复到IDLE）</span><br><span class="line"></span><br><span class="line">host-&gt;ocr_avail = host-&gt;ocr_avail_sd; （这里拿到host支持的sd ocr电压值，例如3.3V）</span><br><span class="line"></span><br><span class="line">mmc_select_voltage （这里查询卡支持的ocr电压值，以协商一致电压，一般而言这里是3.3V）</span><br></pre></td></tr></table></figure>
+
+<h5 id="SD卡初始化（上半部分）：-卡能力查询"><a href="#SD卡初始化（上半部分）：-卡能力查询" class="headerlink" title="**SD卡初始化（上半部分）：**卡能力查询"></a>**SD卡初始化（上半部分）：**卡能力查询</h5><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">mmc_sd_init_card：</span><br><span class="line"></span><br><span class="line">	mmc_sd_get_cid：</span><br><span class="line"></span><br><span class="line">		mmc_go_idle (节点1，CMD0使卡进入IDLE state)</span><br><span class="line"></span><br><span class="line">		mmc_send_if_cond（节点2，CMD8使卡配置OCR电压）</span><br><span class="line"></span><br><span class="line">		mmc_send_app_op_cond（节点3，CMD41查询卡容量，是否支持1.8V信号电）</span><br><span class="line"></span><br><span class="line">		mmc_set_uhs_voltage（节点4，CMD11切换卡到1.8V信号电）</span><br><span class="line"></span><br><span class="line">			mmc_host_set_uhs_voltage （调用host-&gt;ops-&gt;start_signal_voltage_switch切host侧到1.8V信号电，使两端通信电平一致）	</span><br><span class="line">		</span><br><span class="line">		mmc_send_cid（节点5，CMD2获取卡CID）</span><br></pre></td></tr></table></figure>
+
+<h6 id="关键节点描述："><a href="#关键节点描述：" class="headerlink" title="关键节点描述："></a>关键节点描述：</h6><p>节点2：CMD8应该设置arg[19:8] &#x3D; 1aa,  1 来自前面host ocr &#x3D; 2.7-3.6V support.</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202404191656210.png" alt="image-20240419165618097"></p>
+<p>有时候CMD41没设置arg bit24&#x3D;1, 可能是host cap没有正确配置：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">phytium_mci_common_probe：</span><br><span class="line">mmc-&gt;ocr_avail_sd = MMC_VDD_32_33 | MMC_VDD_33_34;</span><br></pre></td></tr></table></figure>
+
+<p>节点3：CMD41应该设置arg bit24  &#x3D; 1去查询卡是否支持S18R，去切换信号电到1.8V， 这个切换能力决定是否启动后面的UHS模式的初始化。这个CMD41有一定retry次数。</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202404191706848.png" alt="image-20240419170626765"></p>
+<p>有时候CMD41没设置arg bit24&#x3D;1, 可能是host cap没有使能UHS模式和4bit bus width</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">mmc_sd_get_cid：</span><br><span class="line">/*</span><br><span class="line"> * If the host supports one of UHS-I modes, request the card</span><br><span class="line"> * to switch to 1.8V signaling level. If the card has failed</span><br><span class="line"> * repeatedly to switch however, skip this.</span><br><span class="line"> */</span><br><span class="line">if (retries &amp;&amp; mmc_host_uhs(host))&#123;</span><br><span class="line">    ocr |= SD_OCR_S18R;</span><br><span class="line">    pr_info(&quot;%s: %s: set SD_OCR_S18R \n&quot;, mmc_hostname(host), __func__);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">mmc_host_uhs：</span><br><span class="line">static inline int mmc_host_uhs(struct mmc_host *host)</span><br><span class="line">&#123;</span><br><span class="line">	pr_info(&quot;%s: %s: host-&gt;caps = 0x%X \n&quot;, mmc_hostname(host), __func__, host-&gt;caps);</span><br><span class="line">	return host-&gt;caps &amp;</span><br><span class="line">		(MMC_CAP_UHS_SDR12 | MMC_CAP_UHS_SDR25 |</span><br><span class="line">		 MMC_CAP_UHS_SDR50 | MMC_CAP_UHS_SDR104 |</span><br><span class="line">		 MMC_CAP_UHS_DDR50) &amp;&amp;</span><br><span class="line">	       host-&gt;caps &amp; MMC_CAP_4_BIT_DATA;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h6 id="host设置caps的两种方式：probe赋值，使用DTS"><a href="#host设置caps的两种方式：probe赋值，使用DTS" class="headerlink" title="host设置caps的两种方式：probe赋值，使用DTS"></a><strong>host设置caps的两种方式：probe赋值，使用DTS</strong></h6><p>一种方式是在host probe中对某个已知地址空间的mmc device直接设置：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">phytium_mci_probe：</span><br><span class="line"></span><br><span class="line">host-&gt;sd0 = (0 == strcmp(dev_name(dev), &quot;28000000.mmc&quot;));</span><br><span class="line">if(host-&gt;sd0)&#123;</span><br><span class="line">	host-&gt;caps |= MMC_CAP_UHS_SDR12 | MMC_CAP_UHS_SDR25 | MMC_CAP_UHS_SDR50 | MMC_CAP_4_BIT_DATA;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>另外的方式是设备树中添加property描述，通过mmc_of_parse解析能力，参考：<a target="_blank" rel="noopener" href="https://gitee.com/phytium_embedded/phytium-linux-kernel/issues/I9H1ZS?from=project-issue">https://gitee.com/phytium_embedded/phytium-linux-kernel/issues/I9H1ZS?from=project-issue</a></p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202404221108662.png" alt="image-20240422110810589"></p>
+<p>DTS位于arch&#x2F;arm&#x2F;boot&#x2F;dts, 用于描述某个开发板的设备信息；DTS是.dts或.dtsi后缀，dtsi是共性的dts配置，相当于头文件可被dts include。</p>
+<p>搜索sd-uhs-sdrxx相关的dts，一个示例如下（rk3288-veyron-sdmmc.dtsi）</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">&amp;sdmmc &#123;					//该SD/MMC/SDIO控制器是用于SD/MMC模式，不是SDIO模式</span><br><span class="line">	status = &quot;okay&quot;;		//用于enable或者disable此dts项，一般probe调用of_device_is_available检测此status.</span><br><span class="line">	bus-width = &lt;4&gt;;		//SD支持4bit线宽</span><br><span class="line">	cap-mmc-highspeed;		//支持eMMC HS</span><br><span class="line">	cap-sd-highspeed;		//支持SD HS（SD2.0）</span><br><span class="line">	card-detect-delay = &lt;200&gt;;</span><br><span class="line">	cd-gpios = &lt;&amp;gpio7 RK_PA5 GPIO_ACTIVE_LOW&gt;;		//卡检测（CD#）用的是GPIO7，低有效</span><br><span class="line">	rockchip,default-sample-phase = &lt;90&gt;;</span><br><span class="line">	sd-uhs-sdr12;			//支持UHS SDR12速率（SD3.0），时钟频率不超过24M</span><br><span class="line">	sd-uhs-sdr25;			//支持UHS SDR25速率（SD3.0），时钟频率不超过50M</span><br><span class="line">	sd-uhs-sdr50;			//支持UHS SDR50速率（SD3.0），时钟频率不超过100M</span><br><span class="line">	sd-uhs-sdr104;			//支持UHS SDR104速率（SD3.0），时钟频率不超过208M</span><br><span class="line">	vmmc-supply = &lt;&amp;vcc33_sd&gt;;	//卡供电VCC = 3.3V</span><br><span class="line">	vqmmc-supply = &lt;&amp;vccio_sd&gt;;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+
+
+<h5 id="SD卡初始化（下半部分-part1）：UHS高速模式（SD3-0）配置"><a href="#SD卡初始化（下半部分-part1）：UHS高速模式（SD3-0）配置" class="headerlink" title="SD卡初始化（下半部分-part1）：UHS高速模式（SD3.0）配置"></a><strong>SD卡初始化（下半部分-part1）：UHS高速模式（SD3.0）配置</strong></h5><p>在UHS下半部分初始化之前：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">host-&gt;ops-&gt;init_card：如果host有什么自定义寄存器配置，在此完成</span><br></pre></td></tr></table></figure>
+
+<p>开始UHS下半部分：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202404191701745.png" alt="image-20240419170130663"></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">mmc_sd_init_card：</span><br><span class="line"></span><br><span class="line">	mmc_set_relative_addr (节点6，CMD3获取卡地址：bus-device相对地址)</span><br><span class="line">	mmc_select_card (节点7，CMD7选中bus上的某card)</span><br><span class="line">                    （节点8，CMD42 unlock card，只有在CMD7的response显示card处于lock状态才发，此处一般不会lock，不发CMD42）</span><br><span class="line">                    </span><br><span class="line">	mmc_sd_setup_card：针对该card进行UHS初始化</span><br><span class="line">		step1：一些信息准备工作</span><br><span class="line">    	mmc_app_send_scr &amp; mmc_decode_scr（ACMD51,读卡的SCR register，见注释1）</span><br><span class="line">    	mmc_read_ssr（ACMD13,读卡的status register SSR，见注释2）</span><br><span class="line">		mmc_read_switch（ACMD6读卡能支持的driver strength和bus_width，下一步切换要用）</span><br><span class="line">	mmc_sd_init_uhs_card：切换到UHS模式的初始化（见注释3：需要host和card前面的协商结果是支持1.8V电平 &amp;&amp; UHS模式支持 &amp;&amp; bus width 4bit支持）</span><br><span class="line">		step2：执行切换：</span><br><span class="line">		一个ACMD6：</span><br><span class="line">            mmc_app_set_bus_width（节点9，ACMD6执行bus width切换4bit）</span><br><span class="line">            mmc_set_bus_width（host-ops也执行bus width切换到4bit）</span><br><span class="line">		几个CMD6如下（见注释4）</span><br><span class="line">            sd_select_driver_type（CMD6,设置卡侧driver strength并调用host ops也设置host侧register）</span><br><span class="line">            sd_set_current_limit（CMD6, 根据vdd设置最大电流）</span><br><span class="line">            sd_set_bus_speed_mode（CMD6，卡切换bus-speed到UHS中的SDRXX模式，并mmc_set_ios也设置host侧bus-speed）</span><br><span class="line">		step3：切完后调频：tuning</span><br><span class="line">			mmc_execute_tuning（节点10,CMD19，注释5）</span><br><span class="line"></span><br><span class="line">mmc_sd_init_card end.</span><br></pre></td></tr></table></figure>
+
+<p>注释1：SCR register包含卡支持SD3.0以上版本与否，支持3.0以上则卡bus_width支持4BIT</p>
+<p>注释2：SSR register包含卡的bus width，secured mode，card type等卡功能的配置</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202404191807768.png" alt="image-20240419180712652"></p>
+<p>注释3：切换到UHS模式的条件：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">/* Initialization sequence for UHS-I cards */</span><br><span class="line">if (rocr &amp; SD_ROCR_S18A &amp;&amp; mmc_host_uhs(host)) &#123;</span><br><span class="line">		err = mmc_sd_init_uhs_card(card);</span><br></pre></td></tr></table></figure>
+
+<p>注释4：CMD6配合Function Function Group配置不同功能，注意和ACMD6区分.</p>
+<p><img src="/home/cursorhu/.config/Typora/typora-user-images/image-20240419194003739.png" alt="image-20240419194003739"></p>
+<p>注释5：tuning是高速模式下利用特定模式的数据（tuning block pattern）去模拟测试数据读写的CRC错误率，来反馈微调SD host和card接口的时钟频率，数据采样相位等，以适配不同PCB环境对高速信号干扰；如下图。</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202404192040132.png" alt="image-20240419204049080"></p>
+<p>注意：UHS较低速的SDR12～SDR25 &lt; SDR50 &lt; 100MHz的，不需要tuning, SDR50可以tuning也可以不tuning。</p>
+<p>注意：tuning需要SD host硬件支持，有的host时钟分频能支持UHS SDR104但不支持tuning，如下图的SDR fixed-delay， 此时SD UHS卡最高只能工作在SDR50 &lt;100MHz的速度，即这种host最高只能支持UHS SDR50模式。</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202404192034201.png" alt="image-20240419203428136"></p>
+<h5 id="SD卡初始化（下半部分-part2）：HS模式（SD2-0）配置"><a href="#SD卡初始化（下半部分-part2）：HS模式（SD2-0）配置" class="headerlink" title="SD卡初始化（下半部分-part2）：HS模式（SD2.0）配置"></a><strong>SD卡初始化（下半部分-part2）：HS模式（SD2.0）配置</strong></h5><p>如果卡不支持UHS模式，即不调用mmc_sd_init_uhs_card流程，或者该流程失败，会进入mmc_sd_switch_hs初始化流程，该模式指非UHS的低速模式，不需要切换信号电平，通信线宽，tuning等操作。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">mmc_sd_switch_hs：</span><br><span class="line">	mmc_sd_switch（CMD6 switch to high speed）</span><br><span class="line">	mmc_set_clock（设置host ios clock）</span><br><span class="line">	mmc_app_set_bus_width（如果支持4bit bus-width，就CMD6切换）</span><br></pre></td></tr></table></figure>
+
+<h2 id="附录：SD性能测试"><a href="#附录：SD性能测试" class="headerlink" title="附录：SD性能测试"></a>附录：SD性能测试</h2><p>在飞腾Pi上SD是作为系统盘启动，读写性能测试一般用fio或者dd。</p>
+<p>如果没联外网下载fio，用系统自带的dd即可：</p>
+<p>dd参数注释：</p>
+<ol>
+<li>if&#x3D;文件名：输入文件名，缺省为标准输入。即指定源文件。&lt; if&#x3D;input file &gt;</li>
+<li>of&#x3D;文件名：输出文件名，缺省为标准输出。即指定目的文件。&lt; of&#x3D;output file &gt;</li>
+<li>bs&#x3D;bytes：同时设置读入&#x2F;输出的块大小为bytes个字节。</li>
+<li>count&#x3D;blocks：仅拷贝blocks个块，块大小等于ibs指定的字节数。</li>
+</ol>
+<p>dd测试写和读的用例如下：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">#测试写</span><br><span class="line">root@phytiumpi:~# dd if=/dev/zero of=/dd-test.bin bs=1M count=256 conv=fdatasync</span><br><span class="line">256+0 records in</span><br><span class="line">256+0 records out</span><br><span class="line">268435456 bytes (268 MB, 256 MiB) copied, 19.6135 s, 13.7 MB/s</span><br><span class="line"></span><br><span class="line">#测试读</span><br><span class="line">root@phytiumpi:~# dd if=/dd-test.bin of=/dev/zero bs=1M count=256 iflag=direct</span><br><span class="line">256+0 records in</span><br><span class="line">256+0 records out</span><br><span class="line">268435456 bytes (268 MB, 256 MiB) copied, 11.3607 s, 23.6 MB/s</span><br><span class="line"></span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>注意两个参数很重要，是为了绕开写缓存直接写硬盘：</p>
+<p>‘fdatasync’：Synchronize output data just before finishing. This forces a physical write of output data. 写数据测试包括写入物理盘，而不是写到buffer就算完。dd命令执行到最后会真正执行一次“同步(sync)”操作。</p>
+<p>iflag&#x3D;direct：读数据测试，直接读不经过读缓存。</p>
+<p>这样测试也可以：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">root@phytiumpi:~# dd if=/dev/zero of=/dd-test.bin bs=256M count=1 conv=fdatasync1+0 records in</span><br><span class="line">1+0 records out</span><br><span class="line">268435456 bytes (268 MB, 256 MiB) copied, 19.4769 s, 13.8 MB/s</span><br><span class="line"></span><br><span class="line">root@phytiumpi:~# dd if=/dd-test.bin of=/dev/zero bs=256M count=1 iflag=direct</span><br><span class="line">1+0 records in</span><br><span class="line">1+0 records out</span><br><span class="line">268435456 bytes (268 MB, 256 MiB) copied, 11.327 s, 23.7 MB/s</span><br></pre></td></tr></table></figure>
+
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/phytium/" rel="tag"># phytium</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2024/05/18/%E9%A3%9E%E8%85%BE%E6%B4%BELinux%E8%B0%83%E8%AF%95%E7%8E%AF%E5%A2%83%EF%BC%9A%E4%B8%B2%E5%8F%A3%E8%B0%83%E8%AF%95%E4%BA%A4%E5%8F%89%E7%BC%96%E8%AF%91uboot%E9%85%8D%E7%BD%AE/" rel="prev" title="飞腾派Linux调试环境-串口调试交叉编译uboot配置">
+      <i class="fa fa-chevron-left"></i> 飞腾派Linux调试环境-串口调试交叉编译uboot配置
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2024/07/30/BSOD%200xCA%20Analysis/" rel="next" title="Windows BSOD 0xCA Analysis">
+      Windows BSOD 0xCA Analysis <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E9%A3%9E%E8%85%BE%E6%B4%BELinux-SD%E9%A9%B1%E5%8A%A8%E5%88%86%E6%9E%90%E5%92%8C%E8%B0%83%E8%AF%95"><span class="nav-number">1.</span> <span class="nav-text">飞腾派Linux SD驱动分析和调试</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#SD%E5%88%9D%E5%A7%8B%E5%8C%96%E6%B5%81%E7%A8%8B%E5%88%86%E6%9E%90"><span class="nav-number">1.1.</span> <span class="nav-text">SD初始化流程分析</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#SD%E5%88%9D%E5%A7%8B%E5%8C%96%E7%9A%84%E8%B5%B7%E5%A7%8B%E7%82%B9"><span class="nav-number">1.1.1.</span> <span class="nav-text">SD初始化的起始点</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#SD%E5%88%9D%E5%A7%8B%E5%8C%96%E7%9A%84%E8%BF%87%E7%A8%8B"><span class="nav-number">1.1.2.</span> <span class="nav-text">SD初始化的过程</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E7%AC%AC%E4%B8%80%E9%98%B6%E6%AE%B5%EF%BC%9Ammc%E9%80%9A%E7%94%A8%E5%88%9D%E5%A7%8B%E5%8C%96%EF%BC%9A"><span class="nav-number">1.1.2.1.</span> <span class="nav-text">第一阶段：mmc通用初始化：</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E7%AC%AC%E4%BA%8C%E9%98%B6%E6%AE%B5%EF%BC%9ASD%E5%8D%A1%E7%9A%84%E5%88%9D%E5%A7%8B%E5%8C%96%E5%85%A5%E5%8F%A3%EF%BC%9A"><span class="nav-number">1.1.2.2.</span> <span class="nav-text">第二阶段：SD卡的初始化入口：</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#SD%E5%8D%A1%E5%88%9D%E5%A7%8B%E5%8C%96%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5"><span class="nav-number">1.1.2.3.</span> <span class="nav-text">SD卡初始化的基本概念</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#SD%E5%8D%A1%E5%88%9D%E5%A7%8B%E5%8C%96%E7%9A%84%E6%B5%81%E7%A8%8B%E6%80%BB%E8%A7%88"><span class="nav-number">1.1.2.3.1.</span> <span class="nav-text">SD卡初始化的流程总览</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#SD%E5%8D%A1%E5%88%9D%E5%A7%8B%E5%8C%96%E7%9A%84%E6%8E%A5%E5%8F%A3%E6%A6%82%E5%BF%B5"><span class="nav-number">1.1.2.3.2.</span> <span class="nav-text">SD卡初始化的接口概念</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E7%AC%AC%E5%9B%9B%E9%98%B6%E6%AE%B5%EF%BC%9ASD%E5%8D%A1%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="nav-number">1.1.2.4.</span> <span class="nav-text">第四阶段：SD卡初始化</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#SD%E5%8D%A1%E5%88%9D%E5%A7%8B%E5%8C%96%EF%BC%88%E4%B8%8A%E5%8D%8A%E9%83%A8%E5%88%86%EF%BC%89%EF%BC%9A-%E5%8D%A1%E8%83%BD%E5%8A%9B%E6%9F%A5%E8%AF%A2"><span class="nav-number">1.1.2.4.1.</span> <span class="nav-text">**SD卡初始化（上半部分）：**卡能力查询</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#%E5%85%B3%E9%94%AE%E8%8A%82%E7%82%B9%E6%8F%8F%E8%BF%B0%EF%BC%9A"><span class="nav-number">1.1.2.4.1.1.</span> <span class="nav-text">关键节点描述：</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#host%E8%AE%BE%E7%BD%AEcaps%E7%9A%84%E4%B8%A4%E7%A7%8D%E6%96%B9%E5%BC%8F%EF%BC%9Aprobe%E8%B5%8B%E5%80%BC%EF%BC%8C%E4%BD%BF%E7%94%A8DTS"><span class="nav-number">1.1.2.4.1.2.</span> <span class="nav-text">host设置caps的两种方式：probe赋值，使用DTS</span></a></li></ol></li><li class="nav-item nav-level-5"><a class="nav-link" href="#SD%E5%8D%A1%E5%88%9D%E5%A7%8B%E5%8C%96%EF%BC%88%E4%B8%8B%E5%8D%8A%E9%83%A8%E5%88%86-part1%EF%BC%89%EF%BC%9AUHS%E9%AB%98%E9%80%9F%E6%A8%A1%E5%BC%8F%EF%BC%88SD3-0%EF%BC%89%E9%85%8D%E7%BD%AE"><span class="nav-number">1.1.2.4.2.</span> <span class="nav-text">SD卡初始化（下半部分-part1）：UHS高速模式（SD3.0）配置</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#SD%E5%8D%A1%E5%88%9D%E5%A7%8B%E5%8C%96%EF%BC%88%E4%B8%8B%E5%8D%8A%E9%83%A8%E5%88%86-part2%EF%BC%89%EF%BC%9AHS%E6%A8%A1%E5%BC%8F%EF%BC%88SD2-0%EF%BC%89%E9%85%8D%E7%BD%AE"><span class="nav-number">1.1.2.4.3.</span> <span class="nav-text">SD卡初始化（下半部分-part2）：HS模式（SD2.0）配置</span></a></li></ol></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%99%84%E5%BD%95%EF%BC%9ASD%E6%80%A7%E8%83%BD%E6%B5%8B%E8%AF%95"><span class="nav-number">1.2.</span> <span class="nav-text">附录：SD性能测试</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="cursorhu"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">cursorhu</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">113</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">41</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">55</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/cursorhu" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;cursorhu" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:2449055512@qq.com" title="E-Mail → mailto:2449055512@qq.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2025</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">cursorhu</span>
+</div>
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

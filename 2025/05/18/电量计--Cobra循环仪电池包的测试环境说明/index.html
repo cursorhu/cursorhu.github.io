@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 8.0.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Noto+Serif+SC|Roboto/css?family=Noto Serif SC:300,300italic,400,400italic,700,700italic|Roboto:300,300italic,400,400italic,700,700italic&display=swap&subset=latin,latin-ext">
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"cursorhu.github.io","root":"/","scheme":"Pisces","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="电量计–Cobra&#x2F;循环仪&#x2F;电池包的测试环境说明以Newton FW项目(77561, 77226)为例，介绍cobra工具配合客户环境电池包的使用。 客户环境指：电量计内置在电池包，通信接口只有I2C，不支持串口调试和Jtag下载FW；而开发环境的电量计是独立开发板，支持串口打印和Jtag下载。 在实验室环境：使用Chroma循环仪模拟真实的客户Charger，对电量计和电池">
+<meta property="og:type" content="article">
+<meta property="og:title" content="电量计--Cobra&#x2F;循环仪&#x2F;电池包的测试环境说明">
+<meta property="og:url" content="https://cursorhu.github.io/2025/05/18/%E7%94%B5%E9%87%8F%E8%AE%A1--Cobra%E5%BE%AA%E7%8E%AF%E4%BB%AA%E7%94%B5%E6%B1%A0%E5%8C%85%E7%9A%84%E6%B5%8B%E8%AF%95%E7%8E%AF%E5%A2%83%E8%AF%B4%E6%98%8E/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="电量计–Cobra&#x2F;循环仪&#x2F;电池包的测试环境说明以Newton FW项目(77561, 77226)为例，介绍cobra工具配合客户环境电池包的使用。 客户环境指：电量计内置在电池包，通信接口只有I2C，不支持串口调试和Jtag下载FW；而开发环境的电量计是独立开发板，支持串口打印和Jtag下载。 在实验室环境：使用Chroma循环仪模拟真实的客户Charger，对电量计和电池">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503191558616.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503191608196.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503191613694.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503191614471.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503191635013.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503191930845.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503191935049.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503191941173.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503191943097.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503191945945.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503192008717.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503192020659.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503192014937.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503192016127.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503192035028.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503192040622.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503201021090.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503201023474.PNG">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503201024587.PNG">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503201025579.PNG">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503201025475.PNG">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503201027970.PNG">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503201034525.PNG">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503211526999.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503211528188.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503211525757.png">
+<meta property="og:image" content="c:\Users\cursorhu\AppData\Roaming\Typora\typora-user-images\image-20250321152447765.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202504081924569.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202504081918994.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202504081931949.png">
+<meta property="article:published_time" content="2025-05-18T07:50:54.000Z">
+<meta property="article:modified_time" content="2025-11-04T09:03:04.848Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="电量计">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503191558616.png">
+
+<link rel="canonical" href="https://cursorhu.github.io/2025/05/18/%E7%94%B5%E9%87%8F%E8%AE%A1--Cobra%E5%BE%AA%E7%8E%AF%E4%BB%AA%E7%94%B5%E6%B1%A0%E5%8C%85%E7%9A%84%E6%B5%8B%E8%AF%95%E7%8E%AF%E5%A2%83%E8%AF%B4%E6%98%8E/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>电量计--Cobra/循环仪/电池包的测试环境说明 | ThinkNotes</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">ThinkNotes</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Simple is not easy</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于我</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2025/05/18/%E7%94%B5%E9%87%8F%E8%AE%A1--Cobra%E5%BE%AA%E7%8E%AF%E4%BB%AA%E7%94%B5%E6%B1%A0%E5%8C%85%E7%9A%84%E6%B5%8B%E8%AF%95%E7%8E%AF%E5%A2%83%E8%AF%B4%E6%98%8E/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          电量计--Cobra/循环仪/电池包的测试环境说明
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2025-05-18 15:50:54" itemprop="dateCreated datePublished" datetime="2025-05-18T15:50:54+08:00">2025-05-18</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2025-11-04 17:03:04" itemprop="dateModified" datetime="2025-11-04T17:03:04+08:00">2025-11-04</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/BMS/" itemprop="url" rel="index"><span itemprop="name">BMS</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="电量计–Cobra-循环仪-电池包的测试环境说明"><a href="#电量计–Cobra-循环仪-电池包的测试环境说明" class="headerlink" title="电量计–Cobra&#x2F;循环仪&#x2F;电池包的测试环境说明"></a>电量计–Cobra&#x2F;循环仪&#x2F;电池包的测试环境说明</h1><p>以Newton FW项目(77561, 77226)为例，介绍cobra工具配合客户环境电池包的使用。</p>
+<p>客户环境指：电量计内置在电池包，通信接口只有I2C，不支持串口调试和Jtag下载FW；而开发环境的电量计是独立开发板，支持串口打印和Jtag下载。</p>
+<p>在实验室环境：使用Chroma循环仪模拟真实的客户Charger，对电量计和电池系统充放电测试，用cobra配置电量计FW和参数并采集数据，调试客户遇到的问题。</p>
+<h2 id="Cobra编辑和下载project文件"><a href="#Cobra编辑和下载project文件" class="headerlink" title="Cobra编辑和下载project文件"></a>Cobra编辑和下载project文件</h2><ol>
+<li><p>启动项目匹配的Cobra shell版本，加载项目oce文件</p>
+<p>cobra shell是程序启动器，版本号在 About查看，目前使用1.01.19版本</p>
+<p>oce是cobra功能文件，决定具体项目支持的功能，不同项目的oce不同；oce分为X版本和Y版本，X为发布给用户使用版本，Y仅用于内部Debug。</p>
+<p>下图在Extension Manager中select SD77226SBS_X_20250315.oce，oce路径在COBRA\Extensions</p>
+</li>
+</ol>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503191558616.png" alt="img"></p>
+<ol start="2">
+<li>（对于Newton项目）加载prj</li>
+</ol>
+<p>prj文件(project)是cobra对Newton FW bin和Flash参数文件xml（parameter_newton，OCV table， RCtable，user_setting）的打包。</p>
+<p>加载prj后默认显示newton FW bin：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503191608196.png" alt="img"></p>
+<p>加载prj后可查看(show)参数：根据电池规格书配置Design Capacity容量，Limited Charge Voltage电压等参数；根据常温和高低温需求配置CC转CV的电压值(Constant Current切换的Constant Voltage转折点)的电压值和温度阈值。</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503191613694.png" alt="image-20250319161351611"></p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503191614471.png" alt="image-20250319161401395"></p>
+<p>OCV(Open Circuit Voltage) table和RC(Remaining Capacity) table都是根据具体电池实测的电池数据，一般不会更改（除非测试数据有问题或者更换电池）。</p>
+<p>以RC table为例，数组对应关系如下同颜色的标号</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503191635013.png" alt="image-20250319163556911"></p>
+<p><strong>关于RC table：</strong></p>
+<p>RC table反映的是在不同环境下的充放电过程中的电压和剩余容量的对应关系。</p>
+<p>RC table的采集方法是对电池放电（从满电以恒流放到截止电压），在不同温度下，用不同电流放电，分别采集到电池输出电压和电池剩余容量的关系。</p>
+<p>为什么RC table是采集放电过程而不是充电过程：（可能）是因为放电过程可以保持恒流，如果采集充电过程，充电CC-CV阶段开始后电流会降低，破坏了恒定电流值的要求。</p>
+<p>为什么RC table要考虑问题温度和电流：锂电池特性决定，温度影响锂电池的放电容量，温度降低，电池内阻加大，电池放电容量下降；温度过高有风险，有时应用上需要调低满电容量。电流实际能反映负载的分压，由于电池开路电压一定，电池内置在某时刻一定，那么电池带负载时输出电流越大说明外部负载电阻小，大电流放电，电池内阻导致的压降更多，放电到截止电压就会提前到来，满电对应的输出电压也不一样，最终反映到RC table。</p>
+<p><strong>关于OCV table：</strong></p>
+<p>OCV table反映的是电池开路(非充放电)状态下的电压和剩余容量的对应关系。</p>
+<p>严格的OCV table应该是用极小的电流放电采集容量变化。小电流说明负载电阻极大，可以近似开路环境。但这种采集时间太长，一般没搞。</p>
+<p>项目实际用的OCV table是RC table采集过程中提取出来的数据，会有误差。</p>
+<p>对于电量计FW，OCV table一般用于电池在持续Idle&#x2F;sleep状态下查询剩余容量，因为此时没有电流，只能靠电压查询。</p>
+<p>充放电过程中查询容量主要使用RC table，初始充电时也会参考OCV table。</p>
+<p><strong>关于电量计计算SOC（State-of-charge）是否符合标准的判定方法：</strong></p>
+<p>SOC（State-of-charge）可以简单理解成剩余电荷容量（RC）占满充总容量(FCC，Full Charge Capacity)的百分比[0 ~ 100]</p>
+<p>理论上，电量计应该在每个时刻都反映精确的剩余容量百分比，但很难做到（原因？？？？）</p>
+<p>项目的SOC算法的目标：</p>
+<p>(1) 应用层目标：在充电达到截止电流时，SOC要报100；在放电达到截止电压时，SOC要报0。SOC误差 &lt; 3%</p>
+<p>(2) 基于(1)的两个测试标准，如果FW只靠RC table和OCV table计算SOC，可能不能达到要求。因此SOC算法添加了追赶机制：</p>
+<p>当充电进入CV阶段恒流升压转恒压降流，SOC算法可能会开启SOC追赶，确保电流达到截止时SOC能到100。CV过程的SOC并不能反映真实电量变化。</p>
+<p>当放电接近截止电压，SOC算法可能会开启SOC追赶，确保达到截止电压时SOC能到0。这个过程的SOC也不能反映真实电量变化。</p>
+<p>中间的过程SOC值主要来自RC table数据，SOC算法可能只做一些消抖平滑处理。</p>
+<p>3.（对于Newton项目）下载prj到电量计芯片(ARM M0)的Flash</p>
+<p>Full download下载当前prj内的所有bin和参数数据到电量计（通信方式是I2C）</p>
+<p>4.（对于Newton项目）更新prj</p>
+<p>如果FW bin需要修改，可以在当前prj界面open用KEIL MDK编译出的新newton_encript.bin，再save as新的prj</p>
+<p>如果有参数需要修改，直接改参数，再save as新的prj</p>
+<h2 id="Cobra使用SBS采集数据"><a href="#Cobra使用SBS采集数据" class="headerlink" title="Cobra使用SBS采集数据"></a>Cobra使用SBS采集数据</h2><h3 id="连接电量计"><a href="#连接电量计" class="headerlink" title="连接电量计"></a>连接电量计</h3><p>Bus setting选择port连接。使用o2link gen1 USB转I2C转接板(8051芯片)，需要先安装windows转接板驱动。</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503191930845.png" alt="img"></p>
+<h3 id="初始界面"><a href="#初始界面" class="headerlink" title="初始界面"></a>初始界面</h3><p>默认可勾选查询哪些电量计信息，下方可切换页面到log信息页面</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503191935049.png" alt="image-20250319193558973"></p>
+<h3 id="开启调试内存GGMEM-（可选）"><a href="#开启调试内存GGMEM-（可选）" class="headerlink" title="开启调试内存GGMEM#（可选）"></a>开启调试内存GGMEM#（可选）</h3><p>GGMEM0~GGMEM8是Cobra查询电量计内存中指定RAM区域数据的接口，是Cobra环境监测电量计参数变化的主要手段。</p>
+<p>选中FWVersion，Ctrl+ALT+Y输入密码888888，使能GGMEM0~GGMEM8</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503191941173.png" alt="image-20250319194120118"></p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503191943097.png" alt="image-20250319194304045"></p>
+<h3 id="查看Cobra-log"><a href="#查看Cobra-log" class="headerlink" title="查看Cobra log"></a>查看Cobra log</h3><p>Cobra log是每秒发送一次之前勾选的SBS命令给电量计，查询电量计已获取的电池信息（电量计可能每秒轮询一次电池信息）。</p>
+<p>主要关注电压(Battery Voltage)，外部温度(ETHM), 电流(Battery Current)和电量计算法输出的SOC容量（RSOC）</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503191945945.png" alt="image-20250319194542869"></p>
+<h3 id="查看GGMEM"><a href="#查看GGMEM" class="headerlink" title="查看GGMEM"></a>查看GGMEM</h3><p>查看GGMEM0值</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503192008717.png" alt="image-20250319200834671"></p>
+<p>查看GGMEM7的值和Cobra参数设定一致（高温环境，EOC电压是4100mV，EOC电流是500）</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503192020659.png" alt="image-20250319202040571"></p>
+<h3 id="详细了解ggmem的映射过程"><a href="#详细了解ggmem的映射过程" class="headerlink" title="详细了解ggmem的映射过程"></a>详细了解ggmem的映射过程</h3><p>GGMEM字段在电量计FW中的定义：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503192014937.png" alt="image-20250319201430891"></p>
+<p>GGMEM是如何从电量计RAM对应到Cobra SBS命令的：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503192016127.png" alt="image-20250319201605094"></p>
+<p>如果要打开更多GGMEM9显示到Cobra log，需要更新cobra oce支持新SBSD9_GGMEM9，修改FW新增绑定SBS SBSD9_GGMEM9 &#x3D; gg_mem[X]，X可以是任何偏移，不一定是72。</p>
+<h2 id="Cobra电流校准"><a href="#Cobra电流校准" class="headerlink" title="Cobra电流校准"></a>Cobra电流校准</h2><p>更新新的prj到电量计后，有时候Cobra采集的电流和charger&#x2F;循环仪的真实电量不一致，需要calibration校准电流，分为3步：</p>
+<p>0电流校准；3V充电校准；-3V放电校准。</p>
+<p>先用循环仪设置对应的电流，再点击cobra calibrate按钮即可；分别校准3种电流情况之后，SBS log的电流误差应该会消除。</p>
+<p>如果没有更新prj，校准过的数据无需再校准</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503192035028.png" alt="image-20250319203521951"></p>
+<h2 id="Cobra应用示例"><a href="#Cobra应用示例" class="headerlink" title="Cobra应用示例"></a>Cobra应用示例</h2><p>如下图是充电进入CV阶段的部分log，电压恒压，电流减少。但RSOC只有62%，后面算法应该会加速追赶，确保在达到满充（电流降到500）时SOC到100%</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503192040622.png" alt="image-20250319204006543"></p>
+<p>这是export log导出csv文件，用曲线图分析</p>
+<h2 id="循环仪Chroma-17020的使用"><a href="#循环仪Chroma-17020的使用" class="headerlink" title="循环仪Chroma 17020的使用"></a>循环仪Chroma 17020的使用</h2><h3 id="选择充电和放电配方"><a href="#选择充电和放电配方" class="headerlink" title="选择充电和放电配方"></a>选择充电和放电配方</h3><p>选择1A恒流充电（CC_1A），勾选连接到电量计的通道1-3，可开始充电和停止充电。</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503201021090.png" alt="image-20250320102129025"></p>
+<p>1A恒流放电（DS_1A）同理：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503201023474.PNG" alt="img"></p>
+<p>在Cobra电流校准时，使用CC_3A和DS_3A，启动充电和放电后，再点击Cobra校准。</p>
+<h3 id="编辑充放电配方"><a href="#编辑充放电配方" class="headerlink" title="编辑充放电配方"></a>编辑充放电配方</h3><p>配方编辑器可查看现有的配方，也可以编辑和新增配方</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503201024587.PNG" alt="img"></p>
+<p>查看已有的CC_3A配方的具体设置：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503201025579.PNG" alt="img"></p>
+<p>CC转CV电压模式充电：</p>
+<p>CC阶段恒流3A充电电压逐渐升高到4.53，之后开始CV阶段恒压4.53，电流从3A逐渐减少到截止电流0.12A停止；关闭所有过流保护。</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503201025475.PNG" alt="img"></p>
+<p>查看DS_1A放电的配方设置：</p>
+<p>恒流放电：</p>
+<p>1A恒流放电，电压从4.xV左右逐渐降低到截止电压3V就停止；关闭所有过流保护。</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503201027970.PNG" alt="img">对于不同的电池测试需求，可以修改参数之后存储档案。</p>
+<h3 id="新建充放电配方"><a href="#新建充放电配方" class="headerlink" title="新建充放电配方"></a>新建充放电配方</h3><p>可以配置“放电+静置+充电”的自动运行配方，方便自动测试</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503201034525.PNG" alt="img"></p>
+<h2 id="Cobra采集数据分析"><a href="#Cobra采集数据分析" class="headerlink" title="Cobra采集数据分析"></a>Cobra采集数据分析</h2><p>示例数据：<a target="_blank" rel="noopener" href="https://o2micro-my.sharepoint.com/:x:/p/thomas_hu/EftK5pMRry5HtS552GzuDRcBmb_yms6TSJNWoHF33muY4A?e=noJtCx">Scan_03_19_2025_11_44_14.csv</a></p>
+<p>从放电快结束开始记录，静置，然后CC-CV充电到截止电流。</p>
+<p>电压-电流曲线：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503211526999.png" alt="image-20250321152603963"></p>
+<p>比较真实电荷变化(mAh)和电量计评估的容量（RSOC）：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503211528188.png" alt="image-20250321152851154"></p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503211525757.png" alt="image-20250321152538723"></p>
+<p><img src="C:\Users\cursorhu\AppData\Roaming\Typora\typora-user-images\image-20250321152447765.png" alt="image-20250321152447765"></p>
+<h2 id="Cobra调试FW"><a href="#Cobra调试FW" class="headerlink" title="Cobra调试FW"></a>Cobra调试FW</h2><p>Y版本发指定SBS命令，格式参考FW代码和FW spec文档。</p>
+<h3 id="SBS-F9打开串口、关闭串口"><a href="#SBS-F9打开串口、关闭串口" class="headerlink" title="SBS F9打开串口、关闭串口"></a>SBS F9打开串口、关闭串口</h3><p>串口测试环境必须要demo板子，电池包只有i2c不能看串口信息。测试环境如下</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202504081924569.png" alt="image-20250408192436055"></p>
+<p>Cobra Y版本，发送 SBS F9 + 01 28，打开串口。 发送 SBS F9 + 01 29，关闭串口。</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202504081918994.png" alt="image-20250408191814914"></p>
+<h3 id="SBS51读高温次数和时间的数据"><a href="#SBS51读高温次数和时间的数据" class="headerlink" title="SBS51读高温次数和时间的数据"></a>SBS51读高温次数和时间的数据</h3><p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202504081931949.png" alt="image-20250408193124921"></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E7%94%B5%E9%87%8F%E8%AE%A1/" rel="tag"># 电量计</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2025/05/18/%E7%94%B5%E9%87%8F%E8%AE%A1--77561(77226)%E7%9A%84Firmware%20Architecture/" rel="prev" title="电量计--77561(77226)的Firmware Architecture">
+      <i class="fa fa-chevron-left"></i> 电量计--77561(77226)的Firmware Architecture
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2025/05/18/%E7%94%B5%E9%87%8F%E8%AE%A1--77428%E5%90%88%E5%B9%B6%E5%8F%82%E6%95%B0%E5%88%B0MCU%20baseline%E7%9A%84%E6%96%B9%E6%B3%95/" rel="next" title="电量计--77428的MCU sample代码交付">
+      电量计--77428的MCU sample代码交付 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%94%B5%E9%87%8F%E8%AE%A1%E2%80%93Cobra-%E5%BE%AA%E7%8E%AF%E4%BB%AA-%E7%94%B5%E6%B1%A0%E5%8C%85%E7%9A%84%E6%B5%8B%E8%AF%95%E7%8E%AF%E5%A2%83%E8%AF%B4%E6%98%8E"><span class="nav-number">1.</span> <span class="nav-text">电量计–Cobra&#x2F;循环仪&#x2F;电池包的测试环境说明</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Cobra%E7%BC%96%E8%BE%91%E5%92%8C%E4%B8%8B%E8%BD%BDproject%E6%96%87%E4%BB%B6"><span class="nav-number">1.1.</span> <span class="nav-text">Cobra编辑和下载project文件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Cobra%E4%BD%BF%E7%94%A8SBS%E9%87%87%E9%9B%86%E6%95%B0%E6%8D%AE"><span class="nav-number">1.2.</span> <span class="nav-text">Cobra使用SBS采集数据</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%BF%9E%E6%8E%A5%E7%94%B5%E9%87%8F%E8%AE%A1"><span class="nav-number">1.2.1.</span> <span class="nav-text">连接电量计</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%88%9D%E5%A7%8B%E7%95%8C%E9%9D%A2"><span class="nav-number">1.2.2.</span> <span class="nav-text">初始界面</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%BC%80%E5%90%AF%E8%B0%83%E8%AF%95%E5%86%85%E5%AD%98GGMEM-%EF%BC%88%E5%8F%AF%E9%80%89%EF%BC%89"><span class="nav-number">1.2.3.</span> <span class="nav-text">开启调试内存GGMEM#（可选）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%9F%A5%E7%9C%8BCobra-log"><span class="nav-number">1.2.4.</span> <span class="nav-text">查看Cobra log</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%9F%A5%E7%9C%8BGGMEM"><span class="nav-number">1.2.5.</span> <span class="nav-text">查看GGMEM</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%AF%A6%E7%BB%86%E4%BA%86%E8%A7%A3ggmem%E7%9A%84%E6%98%A0%E5%B0%84%E8%BF%87%E7%A8%8B"><span class="nav-number">1.2.6.</span> <span class="nav-text">详细了解ggmem的映射过程</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Cobra%E7%94%B5%E6%B5%81%E6%A0%A1%E5%87%86"><span class="nav-number">1.3.</span> <span class="nav-text">Cobra电流校准</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Cobra%E5%BA%94%E7%94%A8%E7%A4%BA%E4%BE%8B"><span class="nav-number">1.4.</span> <span class="nav-text">Cobra应用示例</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%BE%AA%E7%8E%AF%E4%BB%AAChroma-17020%E7%9A%84%E4%BD%BF%E7%94%A8"><span class="nav-number">1.5.</span> <span class="nav-text">循环仪Chroma 17020的使用</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%80%89%E6%8B%A9%E5%85%85%E7%94%B5%E5%92%8C%E6%94%BE%E7%94%B5%E9%85%8D%E6%96%B9"><span class="nav-number">1.5.1.</span> <span class="nav-text">选择充电和放电配方</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%BC%96%E8%BE%91%E5%85%85%E6%94%BE%E7%94%B5%E9%85%8D%E6%96%B9"><span class="nav-number">1.5.2.</span> <span class="nav-text">编辑充放电配方</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%96%B0%E5%BB%BA%E5%85%85%E6%94%BE%E7%94%B5%E9%85%8D%E6%96%B9"><span class="nav-number">1.5.3.</span> <span class="nav-text">新建充放电配方</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Cobra%E9%87%87%E9%9B%86%E6%95%B0%E6%8D%AE%E5%88%86%E6%9E%90"><span class="nav-number">1.6.</span> <span class="nav-text">Cobra采集数据分析</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Cobra%E8%B0%83%E8%AF%95FW"><span class="nav-number">1.7.</span> <span class="nav-text">Cobra调试FW</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#SBS-F9%E6%89%93%E5%BC%80%E4%B8%B2%E5%8F%A3%E3%80%81%E5%85%B3%E9%97%AD%E4%B8%B2%E5%8F%A3"><span class="nav-number">1.7.1.</span> <span class="nav-text">SBS F9打开串口、关闭串口</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#SBS51%E8%AF%BB%E9%AB%98%E6%B8%A9%E6%AC%A1%E6%95%B0%E5%92%8C%E6%97%B6%E9%97%B4%E7%9A%84%E6%95%B0%E6%8D%AE"><span class="nav-number">1.7.2.</span> <span class="nav-text">SBS51读高温次数和时间的数据</span></a></li></ol></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="cursorhu"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">cursorhu</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">113</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">41</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">55</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/cursorhu" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;cursorhu" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:2449055512@qq.com" title="E-Mail → mailto:2449055512@qq.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2025</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">cursorhu</span>
+</div>
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

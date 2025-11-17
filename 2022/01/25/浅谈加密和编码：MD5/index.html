@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 8.0.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Noto+Serif+SC|Roboto/css?family=Noto Serif SC:300,300italic,400,400italic,700,700italic|Roboto:300,300italic,400,400italic,700,700italic&display=swap&subset=latin,latin-ext">
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"cursorhu.github.io","root":"/","scheme":"Pisces","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="1.MD5简介MD5的全称是Message-Digest Algorithm 5（信息摘要算法），经MD2、MD3和MD4发展而来。所谓信息摘要，就是包含数据关键特性，能（唯一）识别原数据的关键信息。 MD5也称为单向散列算法，这是从其实现方式命名，因为：  MD5能对大量数据，进行哈希映射，输出固定长度(128bit)的数据，输出数据也称为原数据的信息摘要。 不能由摘要推测出原数据，即MD5算法">
+<meta property="og:type" content="article">
+<meta property="og:title" content="浅谈加密和编码：MD5">
+<meta property="og:url" content="https://cursorhu.github.io/2022/01/25/%E6%B5%85%E8%B0%88%E5%8A%A0%E5%AF%86%E5%92%8C%E7%BC%96%E7%A0%81%EF%BC%9AMD5/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="1.MD5简介MD5的全称是Message-Digest Algorithm 5（信息摘要算法），经MD2、MD3和MD4发展而来。所谓信息摘要，就是包含数据关键特性，能（唯一）识别原数据的关键信息。 MD5也称为单向散列算法，这是从其实现方式命名，因为：  MD5能对大量数据，进行哈希映射，输出固定长度(128bit)的数据，输出数据也称为原数据的信息摘要。 不能由摘要推测出原数据，即MD5算法">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212121430277.png">
+<meta property="article:published_time" content="2022-01-25T06:28:58.000Z">
+<meta property="article:modified_time" content="2024-11-04T03:43:03.129Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="md5">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212121430277.png">
+
+<link rel="canonical" href="https://cursorhu.github.io/2022/01/25/%E6%B5%85%E8%B0%88%E5%8A%A0%E5%AF%86%E5%92%8C%E7%BC%96%E7%A0%81%EF%BC%9AMD5/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>浅谈加密和编码：MD5 | ThinkNotes</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">ThinkNotes</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Simple is not easy</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于我</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2022/01/25/%E6%B5%85%E8%B0%88%E5%8A%A0%E5%AF%86%E5%92%8C%E7%BC%96%E7%A0%81%EF%BC%9AMD5/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          浅谈加密和编码：MD5
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2022-01-25 14:28:58" itemprop="dateCreated datePublished" datetime="2022-01-25T14:28:58+08:00">2022-01-25</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2024-11-04 11:43:03" itemprop="dateModified" datetime="2024-11-04T11:43:03+08:00">2024-11-04</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/encrypt/" itemprop="url" rel="index"><span itemprop="name">encrypt</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="1-MD5简介"><a href="#1-MD5简介" class="headerlink" title="1.MD5简介"></a>1.MD5简介</h1><p>MD5的全称是Message-Digest Algorithm 5（<strong>信息摘要算法</strong>），经MD2、MD3和MD4发展而来。<br>所谓信息摘要，就是包含数据关键特性，能（唯一）识别原数据的关键信息。</p>
+<p>MD5也称为<strong>单向散列算法</strong>，这是从其实现方式命名，因为：</p>
+<ul>
+<li>MD5能对大量数据，进行哈希映射，输出固定长度(128bit)的数据，输出数据也称为原数据的信息摘要。</li>
+<li>不能由摘要推测出原数据，即MD5算法是单向的，当加密来用的话，只能加密不能解密。</li>
+</ul>
+<p>MD5的特点：</p>
+<ul>
+<li>固定长度：输入任意长度的信息，经过MD5处理，输出总是128位的信息。</li>
+<li>唯一性：不同的输入得到的不同的结果；同样的输入一定得到相同的结果。</li>
+<li>不可逆：根据128位的输出结果不可能反推出输入的信息。</li>
+</ul>
+<h1 id="2-MD5的应用"><a href="#2-MD5的应用" class="headerlink" title="2.MD5的应用"></a>2.MD5的应用</h1><p>1、防止被篡改：<br>1）比如A和B发送一个电子文档，发送前，A先自己计算出数据的MD5输出结果a。<br>然后在B收到电子文档后，B计算得到一个MD5的输出结果b。<br>如果a与b一样就代表传输中途数据未被篡改。<br>2）比如A提供文件下载，为了防止不法分子在文件中添加木马，伪装成A的文件。A可以在网站上公布由安装文件得到的MD5输出结果。<br>要下载文件的人只需要下载后，验证MD5是否和A一致，如果不一致，就是被其他人修改过。</p>
+<p>2、防止暴露明文：<br>基本上存储用户密码的场景，都用到MD5加密明文。<br>1）例如网站服务器在其数据库存储用户的密码，都是存储用户密码的MD5值。就算不法分子得用户密码的MD5值，也无法知道用户的密码。<br>2）在UNIX、Linux系统中，用户密码就是以MD5（或其它类似的算法）经加密后存储在文件系统中。当用户登录的时候，系统把用户输入的密码计算成MD5值，然后再去和保存在文件系统中的MD5值进行比较，进而确定输入的密码是否正确。通过这样的步骤，系统在并不知道用户密码的明码的情况下就可以确定用户登录系统的合法性。这不但可以避免用户的密码被具有系统管理员权限的用户知道，而且还在一定程度上增加了密码被破解的难度。</p>
+<p>3、防止抵赖（数字签名）：<br>这需要一个存储MD5值的第三方认证机构。例如A写了一个文件，认证机构对此文件用MD5算法产生摘要信息并做好记录。若以后A说这文件不是他写的，权威机构只需对此文件重新产生摘要信息，然后跟记录在册的摘要信息进行比对，相同的话，就证明是A写的了。这就是所谓的“数字签名”。</p>
+<h1 id="3-MD5算法实现"><a href="#3-MD5算法实现" class="headerlink" title="3.MD5算法实现"></a>3.MD5算法实现</h1><p>对MD5算法简要的叙述可以为：<br>MD5以512位分组来处理输入的信息，且每一分组又被划分为16个32位子分组，经过了一系列的处理后，算法的输出由四个32位分组组成，将这四个32位分组级联后将生成一个128位散列值。</p>
+<p>第一步、填充：如果输入信息的长度(bit)对512求余的结果不等于448，就需要填充使得对512求余的结果等于448。填充的方法是填充一个1和n个0。填充完后，信息的长度就为N<em>512+448(bit)；<br>第二步、记录信息长度：用64位来存储填充前信息长度。这64位加在第一步结果的后面，这样信息长度就变为N</em>512+448+64&#x3D;(N+1)*512位。<br>第三步、装入标准的幻数（四个整数）：标准的幻数（物理顺序）是（A&#x3D;(01234567) 16 ，B&#x3D;(89ABCDEF) 16 ，C&#x3D;(FEDCBA98) 16 ，D&#x3D;(76543210) 16 ）。如果在程序中定义应该考虑大小端（A&#x3D;0X67452301L，B&#x3D;0XEFCDAB89L，C&#x3D;0X98BADCFEL，D&#x3D;0X10325476L）。<br>第四步、四轮循环运算：循环的次数是分组的个数（N+1）。 最终由4个32bit数据拼成128bit的结果。</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212121430277.png" alt="image-20221212143002209"></p>
+<h1 id="4-MD5的安全性"><a href="#4-MD5的安全性" class="headerlink" title="4.MD5的安全性"></a>4.MD5的安全性</h1><p>普遍认为MD5是很安全，因为哈希散列是强抗碰撞的：已知原数据和其MD5值，想通过枚举找到一个相同MD5值的数据，基本不可能。如果暴力破解MD5，其运算时间是不可想象的。</p>
+<p>但是实际应用上，如果把用户密码仅仅MD5处理后再存储到数据库，其实是很不安全的。因为用户的密码的固有特征，让枚举集合变小了许多，原因：</p>
+<ul>
+<li>用户密码是比较短的一般8位左右。</li>
+<li>很多用户的密码有规律，例如使用生日，手机号码，或者使用常用数字组合，或某个英文单词。</li>
+<li>许多用户的常用密码只有一个，也就是说，泄漏了微信的密码，也很有可能QQ,支付宝密码也泄漏了</li>
+</ul>
+<p>如果把常用的密码先MD5处理后存储结果，然后再跟用户的MD5结果匹配，这时就有较大概率“碰撞”，得到明文。这种预先存储的MD5表称为rainbow-table。<br>因此MD5作为“信息摘要”的用途多一些，作为加密，还需要配合其他的算法（例如AES等几种公钥算法），或者“加盐”。<br>安全性比较好的网站，都会用一种叫做 “加盐”(salt)的方式来存储密码:</p>
+<ul>
+<li>先将用户输入的密码进行一次MD5（或其它哈希算法）加密。</li>
+<li>将得到的MD5值前后加上一些只有管理员自己知道的随机串，再进行一次MD5加密。</li>
+<li>这个随机串中可以包括某些固定的串，也可以包括用户名（用来保证每个用户加密使用的密钥都不一样）。</li>
+<li>在管理员和用户的两个salt没有泄露的情况下，黑客拿到加密串，就几乎不可能推算出原始的密码是什么了。</li>
+</ul>
+<h1 id="5-MD5库"><a href="#5-MD5库" class="headerlink" title="5.MD5库"></a>5.MD5库</h1><p>在涉及到文件传输的场景，通常用MD5校验文件的一致性，openSSL库提供MD5计算函数：</p>
+<p><a target="_blank" rel="noopener" href="https://www.openssl.org/docs/man3.0/man3/MD5_Update.html">MD5_Update</a></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">int MD5_Init(MD5_CTX *c);</span><br><span class="line">int MD5_Update(MD5_CTX *c, const void *data, unsigned long len);</span><br><span class="line">int MD5_Final(unsigned char *md, MD5_CTX *c);</span><br></pre></td></tr></table></figure>
+
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/md5/" rel="tag"># md5</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/01/22/%E6%B5%85%E8%B0%88%E5%8A%A0%E5%AF%86%E5%92%8C%E7%BC%96%E7%A0%81%EF%BC%9Abase64/" rel="prev" title="浅谈加密和编码：base64">
+      <i class="fa fa-chevron-left"></i> 浅谈加密和编码：base64
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2022/02/28/%E6%90%AD%E5%BB%BA%E9%AB%98%E5%8F%AF%E7%A7%BB%E6%A4%8D%E7%9A%84Markdown%E5%86%99%E4%BD%9C%E5%92%8C%E5%8D%9A%E5%AE%A2%E7%8E%AF%E5%A2%83%EF%BC%9AObsidian+PicGo+Hexo+Github/" rel="next" title="搭建高可移植的Markdown写作和博客环境：Obsidian+PicGo+Hexo+Github">
+      搭建高可移植的Markdown写作和博客环境：Obsidian+PicGo+Hexo+Github <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#1-MD5%E7%AE%80%E4%BB%8B"><span class="nav-number">1.</span> <span class="nav-text">1.MD5简介</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#2-MD5%E7%9A%84%E5%BA%94%E7%94%A8"><span class="nav-number">2.</span> <span class="nav-text">2.MD5的应用</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#3-MD5%E7%AE%97%E6%B3%95%E5%AE%9E%E7%8E%B0"><span class="nav-number">3.</span> <span class="nav-text">3.MD5算法实现</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#4-MD5%E7%9A%84%E5%AE%89%E5%85%A8%E6%80%A7"><span class="nav-number">4.</span> <span class="nav-text">4.MD5的安全性</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#5-MD5%E5%BA%93"><span class="nav-number">5.</span> <span class="nav-text">5.MD5库</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="cursorhu"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">cursorhu</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">113</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">41</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">55</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/cursorhu" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;cursorhu" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:2449055512@qq.com" title="E-Mail → mailto:2449055512@qq.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2025</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">cursorhu</span>
+</div>
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

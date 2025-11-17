@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 8.0.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Noto+Serif+SC|Roboto/css?family=Noto Serif SC:300,300italic,400,400italic,700,700italic|Roboto:300,300italic,400,400italic,700,700italic&display=swap&subset=latin,latin-ext">
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"cursorhu.github.io","root":"/","scheme":"Pisces","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="Samba基本概念Samba是SMB protocol的应用程序实现，分为服务端和客户端； Samba通常的使用场景：在同一局域网内的的Linux主机安装Samba服务，windows主机可以访问Linux Samba服务指定的共享目录。 在嵌入式开发中通常在windows 上编辑Samba共享目录下的代码，通过 Linux环境编译代码，而无需在两个主机间拷贝代码文件。 Ubuntu安装Samba">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Ubuntu Samba配置笔记">
+<meta property="og:url" content="https://cursorhu.github.io/2023/01/30/Ubuntu%20Samba%E9%85%8D%E7%BD%AE%E7%AC%94%E8%AE%B0/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="Samba基本概念Samba是SMB protocol的应用程序实现，分为服务端和客户端； Samba通常的使用场景：在同一局域网内的的Linux主机安装Samba服务，windows主机可以访问Linux Samba服务指定的共享目录。 在嵌入式开发中通常在windows 上编辑Samba共享目录下的代码，通过 Linux环境编译代码，而无需在两个主机间拷贝代码文件。 Ubuntu安装Samba">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202301301103020.png">
+<meta property="article:published_time" content="2023-01-30T02:55:24.000Z">
+<meta property="article:modified_time" content="2024-11-04T03:43:03.162Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="samba">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202301301103020.png">
+
+<link rel="canonical" href="https://cursorhu.github.io/2023/01/30/Ubuntu%20Samba%E9%85%8D%E7%BD%AE%E7%AC%94%E8%AE%B0/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>Ubuntu Samba配置笔记 | ThinkNotes</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">ThinkNotes</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Simple is not easy</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于我</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2023/01/30/Ubuntu%20Samba%E9%85%8D%E7%BD%AE%E7%AC%94%E8%AE%B0/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Ubuntu Samba配置笔记
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2023-01-30 10:55:24" itemprop="dateCreated datePublished" datetime="2023-01-30T10:55:24+08:00">2023-01-30</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2024-11-04 11:43:03" itemprop="dateModified" datetime="2024-11-04T11:43:03+08:00">2024-11-04</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/linux/" itemprop="url" rel="index"><span itemprop="name">linux</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="Samba基本概念"><a href="#Samba基本概念" class="headerlink" title="Samba基本概念"></a>Samba基本概念</h2><p>Samba是SMB protocol的应用程序实现，分为服务端和客户端；</p>
+<p>Samba通常的使用场景：在同一局域网内的的Linux主机安装Samba服务，windows主机可以访问Linux Samba服务指定的共享目录。</p>
+<p>在嵌入式开发中通常在windows 上编辑Samba共享目录下的代码，通过 Linux环境编译代码，而无需在两个主机间拷贝代码文件。</p>
+<h2 id="Ubuntu安装Samba服务"><a href="#Ubuntu安装Samba服务" class="headerlink" title="Ubuntu安装Samba服务"></a>Ubuntu安装Samba服务</h2><p>Ubuntu 20.04和22.04 版本，安装Samba服务参考：</p>
+<p><a target="_blank" rel="noopener" href="https://linux.how2shout.com/how-to-install-samba-on-ubuntu-22-04-lts-jammy-linux/#:~:text=Steps%20to%20install%20SAMBA%20on%20Ubuntu%2022.04%20LTS,...%206%206.%20Access%20the%20shared%20folder%20">www.how2shout.com/linux/how-to-install-samba-on-ubuntu-22-04-lts-jammy-linux</a><br>主要流程：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">#install and run samba service</span><br><span class="line">sudo apt install samba -y</span><br><span class="line"></span><br><span class="line">#enable auto start samba service</span><br><span class="line">sudo systemctl enable --now smbd</span><br><span class="line"></span><br><span class="line">#firewall allow samba</span><br><span class="line">sudo ufw allow samba</span><br><span class="line"></span><br><span class="line">#add system user to sambashare group</span><br><span class="line">sudo usermod -aG sambashare $USER</span><br><span class="line"></span><br><span class="line">#set passwd for sambashare</span><br><span class="line">sudo smbpasswd -a $USER</span><br><span class="line"></span><br><span class="line">#check samba service is running</span><br><span class="line">systemctl status smbd</span><br><span class="line"></span><br><span class="line">#share the folder in ubuntu GUI checkbox</span><br><span class="line">右键要共享的home文件夹properties -&gt; local Network Share -&gt; share this folder -&gt;share name不能直接用用户名，可以用&#x27;用户名+Home&#x27;</span><br></pre></td></tr></table></figure>
+
+<p>显示无权共享：非root用户要共享&#x2F;home，需要修改smb.conf:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">sudo vim /etc/samba/smb.conf</span><br><span class="line">在[global]新增usershare owner only = false</span><br><span class="line">sudo systemctl restart smbd</span><br></pre></td></tr></table></figure>
+
+
+
+<h2 id="Windows访问Samba共享目录"><a href="#Windows访问Samba共享目录" class="headerlink" title="Windows访问Samba共享目录"></a>Windows访问Samba共享目录</h2><p>windows下可以在文件浏览器直接访问Linux主机ip查看共享的Linux目录</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202301301103020.png" alt="image-20230130110305978"></p>
+<p>首次windows访问共享目录有权限问题（不能写入），需要在Linux修改共享目录&#x2F;home的权限：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo chmod 777 /home -R </span><br></pre></td></tr></table></figure>
+
+<p>为了以后方便连接，可以创建网络位置，参考：<a href="www.how2shout.com/linux/how-to-install-samba-on-ubuntu-22-04-lts-jammy-linux">6. Access the shared folder On Windows 11 or 10</a></p>
+<p>如果一个主机有两个samba共享目录，windows不允许多重连接；</p>
+<p>要更改连接目录，操作如下：</p>
+<p>win10系统在搜索框搜索【凭据管理器】，然后删除已有的windows samba网络连接凭据</p>
+<p><code>win+R</code> CMD输入 <code>net use * /del /y</code>断开所有远程链接，包括samba网络连接</p>
+<p>重新配置windows samba网络连接</p>
+<h2 id="重装Samba"><a href="#重装Samba" class="headerlink" title="重装Samba"></a>重装Samba</h2><p>Samba的配置文件位于&#x2F;etc&#x2F;samba&#x2F;smb.conf，如果此文件被错误配置或者误删除，需要重装Samba，流程如下:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">sudo apt-get remove samba --purge //删掉samba服务</span><br><span class="line">sudo apt-get remove samba-common --purge //这一步是关键，只重装samba不会恢复smb.conf</span><br><span class="line">sudo apt-get autoremove //删掉其他samba依赖库</span><br><span class="line">sudo apt-get install samba //重装，包括samba和samba-common等</span><br></pre></td></tr></table></figure>
+
+<h2 id="Samba使用示例"><a href="#Samba使用示例" class="headerlink" title="Samba使用示例"></a>Samba使用示例</h2><p>Samba最重要的特性是两个主机之间直接共享目录，不需要用户去拷贝文件。</p>
+<p>在代码开发中，在windows主机的VSCode或其他编辑器直接打开Linux主机共享目录的代码，然后SSH远程Linux主机去编译。</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/samba/" rel="tag"># samba</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2023/01/30/Windows-CMD-%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4%E7%AC%94%E8%AE%B0/" rel="prev" title="Windows CMD 常用命令笔记">
+      <i class="fa fa-chevron-left"></i> Windows CMD 常用命令笔记
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2023/02/02/Ubuntu-SSH%E6%9C%8D%E5%8A%A1%E9%85%8D%E7%BD%AE%E7%AC%94%E8%AE%B0/" rel="next" title="Ubuntu SSH服务配置笔记">
+      Ubuntu SSH服务配置笔记 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#Samba%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5"><span class="nav-number">1.</span> <span class="nav-text">Samba基本概念</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Ubuntu%E5%AE%89%E8%A3%85Samba%E6%9C%8D%E5%8A%A1"><span class="nav-number">2.</span> <span class="nav-text">Ubuntu安装Samba服务</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Windows%E8%AE%BF%E9%97%AESamba%E5%85%B1%E4%BA%AB%E7%9B%AE%E5%BD%95"><span class="nav-number">3.</span> <span class="nav-text">Windows访问Samba共享目录</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%87%8D%E8%A3%85Samba"><span class="nav-number">4.</span> <span class="nav-text">重装Samba</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Samba%E4%BD%BF%E7%94%A8%E7%A4%BA%E4%BE%8B"><span class="nav-number">5.</span> <span class="nav-text">Samba使用示例</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="cursorhu"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">cursorhu</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">113</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">41</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">55</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/cursorhu" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;cursorhu" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:2449055512@qq.com" title="E-Mail → mailto:2449055512@qq.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2025</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">cursorhu</span>
+</div>
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

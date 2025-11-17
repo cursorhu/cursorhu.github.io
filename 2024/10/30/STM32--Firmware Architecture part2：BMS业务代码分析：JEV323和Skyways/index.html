@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 8.0.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Noto+Serif+SC|Roboto/css?family=Noto Serif SC:300,300italic,400,400italic,700,700italic|Roboto:300,300italic,400,400italic,700,700italic&display=swap&subset=latin,latin-ext">
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"cursorhu.github.io","root":"/","scheme":"Pisces","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="STM32–Firmware Architecture part2：业务代码分析–o2link FWso2link FWs的架构区别o2link FWs指三类：  o2link original FW(gen2): 用于老项目的对外发布版FW o2link JEV323 FW: 在o2link original FW上，针对JEV323做了功能改动和架构改动 o2link Skyways FW:">
+<meta property="og:type" content="article">
+<meta property="og:title" content="STM32--Firmware Architecture part2：业务代码分析">
+<meta property="og:url" content="https://cursorhu.github.io/2024/10/30/STM32--Firmware%20Architecture%20part2%EF%BC%9ABMS%E4%B8%9A%E5%8A%A1%E4%BB%A3%E7%A0%81%E5%88%86%E6%9E%90%EF%BC%9AJEV323%E5%92%8CSkyways/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="STM32–Firmware Architecture part2：业务代码分析–o2link FWso2link FWs的架构区别o2link FWs指三类：  o2link original FW(gen2): 用于老项目的对外发布版FW o2link JEV323 FW: 在o2link original FW上，针对JEV323做了功能改动和架构改动 o2link Skyways FW:">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202405171036206.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202405171037852.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202405171117725.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202405171037152.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202405171055206.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202405171138048.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202405171723698.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202405171747713.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202405171745110.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202405171756653.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202405171859345.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202405201046576.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202405201047437.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202405201112900.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202405201112614.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202405201112851.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202405201104475.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202405201155089.png">
+<meta property="article:published_time" content="2024-10-30T09:52:38.000Z">
+<meta property="article:modified_time" content="2025-11-04T09:22:20.436Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="STM32">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202405171036206.png">
+
+<link rel="canonical" href="https://cursorhu.github.io/2024/10/30/STM32--Firmware%20Architecture%20part2%EF%BC%9ABMS%E4%B8%9A%E5%8A%A1%E4%BB%A3%E7%A0%81%E5%88%86%E6%9E%90%EF%BC%9AJEV323%E5%92%8CSkyways/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>STM32--Firmware Architecture part2：业务代码分析 | ThinkNotes</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">ThinkNotes</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Simple is not easy</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于我</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2024/10/30/STM32--Firmware%20Architecture%20part2%EF%BC%9ABMS%E4%B8%9A%E5%8A%A1%E4%BB%A3%E7%A0%81%E5%88%86%E6%9E%90%EF%BC%9AJEV323%E5%92%8CSkyways/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          STM32--Firmware Architecture part2：业务代码分析
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2024-10-30 17:52:38" itemprop="dateCreated datePublished" datetime="2024-10-30T17:52:38+08:00">2024-10-30</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2025-11-04 17:22:20" itemprop="dateModified" datetime="2025-11-04T17:22:20+08:00">2025-11-04</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/MCU%E9%A9%B1%E5%8A%A8/" itemprop="url" rel="index"><span itemprop="name">MCU驱动</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="STM32–Firmware-Architecture-part2：业务代码分析–o2link-FWs"><a href="#STM32–Firmware-Architecture-part2：业务代码分析–o2link-FWs" class="headerlink" title="STM32–Firmware Architecture part2：业务代码分析–o2link FWs"></a>STM32–Firmware Architecture part2：业务代码分析–o2link FWs</h1><h1 id="o2link-FWs的架构区别"><a href="#o2link-FWs的架构区别" class="headerlink" title="o2link FWs的架构区别"></a>o2link FWs的架构区别</h1><p>o2link FWs指三类：</p>
+<ul>
+<li>o2link original FW(gen2): 用于老项目的对外发布版FW</li>
+<li>o2link JEV323 FW: 在o2link original FW上，针对JEV323做了功能改动和架构改动</li>
+<li>o2link Skyways FW: 在o2link original FW上，针对Skyways做了功能改动</li>
+</ul>
+<h2 id="Bootloader和Firmware结构"><a href="#Bootloader和Firmware结构" class="headerlink" title="Bootloader和Firmware结构"></a>Bootloader和Firmware结构</h2><h3 id="bootloader和Firmware在Flash的分布"><a href="#bootloader和Firmware在Flash的分布" class="headerlink" title="bootloader和Firmware在Flash的分布"></a>bootloader和Firmware在Flash的分布</h3><ol>
+<li>o2link original FW和o2link Skyways FW是分为bootloader和Firmware两部分，两者共同构成烧录的bin文件</li>
+</ol>
+<ul>
+<li><p>bootloader：放在Flash的0x0800_0000 ~ 0x0x0800_8000空间，空间32KB；用作USB上位机烧录Firmware到Flash功能。</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202405171036206.png" alt="image-20240517103655180"></p>
+</li>
+<li><p>Firmware: 放在Flash的0x0800_8000~ 0x0801_0000空间，空间32KB；用作处理USB上位机下发的各种控制、读写请求。</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202405171037852.png" alt="image-20240517103700830"></p>
+<p>bootloader和Firmware所有代码在Flash的分布如下：</p>
+</li>
+</ul>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202405171117725.png" alt="image-20240517111755697"></p>
+<p>注意：ROM&#x2F;RAM空间分布对应到.sct的配置内容需要特别小心：</p>
+<p>Bootloader的.sct:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">LR_IROM1 0x08000000 0x00008000  &#123;    ; load region size_region</span><br><span class="line">  ER_IROM1 0x08000000 0x00008000  &#123;  ; load address = execution address</span><br><span class="line">   *.o (RESET, +First)</span><br><span class="line">   *(InRoot$$Sections)</span><br><span class="line">   .ANY (+RO)</span><br><span class="line">   .ANY (+XO)</span><br><span class="line">  &#125;</span><br><span class="line">  RW_IRAM1 0x200000C0 0x00003F30  &#123;  ; RW data</span><br><span class="line">   .ANY (+RW +ZI)</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>Firmware的.sct: </p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">LR_IROM1 0x08008000 0x00008000  &#123;    ; load region size_region</span><br><span class="line">  ER_IROM1 0x08008000 0x00008000  &#123;  ; load address = execution address</span><br><span class="line">   *.o (RESET, +First)</span><br><span class="line">   *(InRoot$$Sections)</span><br><span class="line">   .ANY (+RO)</span><br><span class="line">   .ANY (+XO)</span><br><span class="line">  &#125;</span><br><span class="line">  RW_IRAM1 0x200000C0 0x00003F30  &#123;  ; RW data</span><br><span class="line">   .ANY (+RW +ZI)</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>如果没有正确配置.sct, 例如把Firmware的.sct LR&#x2F;ER起始地址配成0x0800_0000,后面用JLink烧录时就报错：No Algorithm for 0x80000000~0x….，Flash program fail. 因为JLink发现program的地址和.sct指定的LR&#x2F;ER地址不一致。</p>
+<p>2.o2link JEV323 FW是简化后的架构，只包含firmware部分，不支持USB上位机烧录FW bin：</p>
+<ul>
+<li><p>Firmware: 放在Flash的0x0800_0000~ 0x0801_0000空间，空间64KB；用作处理USB上位机下发的各种控制、读写请求。</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202405171037152.png" alt="image-20240517103730129"></p>
+</li>
+</ul>
+<p>3.RAM空间的分布</p>
+<p>上面bootloader+FW架构的Keil配置中，bootloader和FW的RAM空间都是从0xC0偏移开始的，不是从RAM的0x00，</p>
+<p>而单FW架构，FW是从RAM的0开始。</p>
+<p>原因是bootloader跳转执行FW时，需要从Flash拷贝中断向量表192bytes(0xC0)到RAM起始地址，所以FW代码的RAM数据区不划分这块空间。详见direct_jump_to_app()</p>
+<h3 id="IAP和ICP的概念"><a href="#IAP和ICP的概念" class="headerlink" title="IAP和ICP的概念"></a>IAP和ICP的概念</h3><p>为什么有两种代码结构分布？涉及到以下两种烧录Firmware的方式：参考STM32 RM0091文档</p>
+<p>• IAP (in-application programming): IAP is the ability to re-program the flash memory of a microcontroller while the user program is running.</p>
+<p>• ICP (in-circuit programming): ICP is the ability to program the flash memory of amicrocontroller using the JTAG protocol, the SWD protocol or the bootloader while thedevice is mounted on the user application board.</p>
+<p>o2link作为成熟的产品，需要支持用户侧烧录firmware(IAP)，因此开发了USB接口的IAP烧录功能，这部分划分为bootloader。</p>
+<blockquote>
+<p>An important requirement for most Flash-memory-based systems is the ability to update firmware when installed in the end product. This ability is referred to as in-application programming (IAP).</p>
+<p>The IAP code uses the USB to:</p>
+<p>● Download a binary file from the USB HID to the STM32F0xx’s internal Flash memory.</p>
+<p>● Upload the STM32F0xx’s internal Flash memory content (starting from the defined user </p>
+<p>application address) into a binary file.</p>
+<p>● Execute the user program.</p>
+</blockquote>
+<p>（实质上这不是真正意义的bootloader，仅仅是firmware update功能；如果firmware代码在SRAM运行，这部分功能完全可以做到Firmware代码中去，不用占用32KB空间）</p>
+<p>jev323 firmware目前是内部测试用，因此不需要IAP，用Jlink的ICP方式烧录。全部Flash空间(64KB)可用于业务流程。</p>
+<h3 id="bootloader和firmware的执行流程"><a href="#bootloader和firmware的执行流程" class="headerlink" title="bootloader和firmware的执行流程"></a>bootloader和firmware的执行流程</h3><p>参考o2link spec:</p>
+<ul>
+<li><p>bootloader基本逻辑是：每次上电RESET时，先执行bootloader判断当前Flash的firmware区域（app）有没有valid FW能执行？如果有，就跳转firmware的main去执行；如果没有，bootloader启动IAP流程，响应USB上位机的erase flash、program firmware的指令，完成以后再跳转执行firmware指令；</p>
+</li>
+<li><p>firmware在执行时，如果收到USB上位机的IAP命令(USB_IAP_JUMP_TO_BOOT)，就是要跳转到bootloader，准备IAP去下载新的firmware bin；其他情况不会跳转到bootloader。</p>
+</li>
+</ul>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202405171055206.png" alt="image-20240517105536135"></p>
+<h2 id="bootloader代码分析（重要-难点）"><a href="#bootloader代码分析（重要-难点）" class="headerlink" title="bootloader代码分析（重要+难点）"></a>bootloader代码分析（重要+难点）</h2><p>整个bootloader代码和Firmware流程都是main初始化+While1轮询USB请求的结构，区别在于执行流程。</p>
+<h3 id="bootloader校验FW"><a href="#bootloader校验FW" class="headerlink" title="bootloader校验FW"></a>bootloader校验FW</h3><p>bootloader的main初始化系统时钟后，就立即check FW是否valid：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">int main(void)</span><br><span class="line">&#123;</span><br><span class="line">	HAL_Init();</span><br><span class="line">	SystemClock_Config();</span><br><span class="line">	//判断FW是否valid</span><br><span class="line">	check_if_jump_to_app();</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">check_if_jump_to_app():</span><br><span class="line"></span><br><span class="line">    if(*(uint32_t *)RAM_FROM_APP_FLAG_ADDR != RAM_FROM_APP_FLAG_DATA)&#123;</span><br><span class="line">            *(uint32_t *)RAM_FROM_APP_FLAG_ADDR = 0;</span><br><span class="line">            if((*(uint32_t *)APP_FILE_EDN_ADDR == APP_FILE_END_DATA) &amp;&amp; </span><br><span class="line">                ( *(uint32_t *)APP_FILE_START_ADDR == APP_FILE_START_DATA) &amp;&amp;</span><br><span class="line">                (pin_state == GPIO_PIN_SET)) //PB4</span><br><span class="line">                direct_jump_to_app();</span><br><span class="line">	&#125;</span><br></pre></td></tr></table></figure>
+
+<p>校验FW有效包括三个条件都要满足：</p>
+<ol>
+<li>查看RAM 0x3f3C位置(0x20003f3C)的DWORD是否为RAM_FROM_APP_FLAG_DATA(0x6a756d70)，然后清0。这个flag是USB上位机下发USB_IAP_JUMP_TO_BOOT时调用jump_to_boot()设置的，这个USB请求在bootloader或FW阶段都可能被发起。</li>
+</ol>
+<p>​      目的：确认是上位机发起的jump to boot，而不是其他原因比如CPU异常reset进入的boot。</p>
+<ol start="2">
+<li><p>查看Flash的FW区域（0x0800_8000开始）的开始（0x08008014）和尾部区域（0x0800fffc）的两个DWORD是否分别为0x00617070和0x00656e64。</p>
+<p>目的：确认Flash的FW是valid，确认尾部是确保数据完整</p>
+</li>
+<li><p>查看PB4 pin是否为高。</p>
+<p>目的：根据原例图，可能是防止和one-wire功能冲突？待确认</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202405171138048.png" alt="image-20240517113801021"></p>
+</li>
+</ol>
+<h3 id="bootloader跳转到FW代码的过程"><a href="#bootloader跳转到FW代码的过程" class="headerlink" title="bootloader跳转到FW代码的过程"></a>bootloader跳转到FW代码的过程</h3>   <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line">direct_jump_to_app():</span><br><span class="line"></span><br><span class="line">#define  APPLICATION_ADDRESS   (0x08000000 + 0x8000) //FW在Flash的起始地址 </span><br><span class="line"></span><br><span class="line">void direct_jump_to_app(void)</span><br><span class="line">&#123;</span><br><span class="line">	int i;</span><br><span class="line">	uint32_t JumpAddress;</span><br><span class="line">	pFunction Jump_To_Application;</span><br><span class="line">	</span><br><span class="line">	__disable_irq(); </span><br><span class="line">	</span><br><span class="line">	//拷贝Firmwware的192bytes的中断向量表到SRAM</span><br><span class="line">	for(i = 0; i &lt; 48; i++)</span><br><span class="line">	&#123;</span><br><span class="line">		*((uint32_t*)(0x20000000 + (i &lt;&lt; 2)))=*(__IO uint32_t*)(APPLICATION_ADDRESS + (i&lt;&lt;2));</span><br><span class="line">	&#125;</span><br><span class="line">	</span><br><span class="line">	 /* Test if user code is programmed starting from address &quot;APPLICATION_ADDRESS&quot; */</span><br><span class="line">	 //判断栈指针是否位于SRAM</span><br><span class="line">	if (((*(__IO uint32_t*)APPLICATION_ADDRESS) &amp; 0x2FFE0000 ) == 0x20000000)</span><br><span class="line">    &#123; /* Jump to user application */</span><br><span class="line">      </span><br><span class="line">      	//设置函数指针，跳转到Firmware的RESET入口</span><br><span class="line">		JumpAddress = *(__IO uint32_t*) (APPLICATION_ADDRESS + 4);</span><br><span class="line">		Jump_To_Application = (pFunction) JumpAddress;</span><br><span class="line">		</span><br><span class="line">		/* Initialize user application&#x27;s Stack Pointer */</span><br><span class="line">		__set_MSP(*(__IO uint32_t*) APPLICATION_ADDRESS);</span><br><span class="line">		</span><br><span class="line">		//执行跳转</span><br><span class="line">		Jump_To_Application();</span><br><span class="line">	&#125;  </span><br><span class="line">	else</span><br><span class="line">	&#123;</span><br><span class="line">		__enable_irq();</span><br><span class="line">		return ;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>（1）拷贝Firmwware的192bytes的中断向量表到SRAM</strong></p>
+<p><strong>Q1：为什么要拷贝？中断向量表放在Flash中不能执行吗？</strong></p>
+<p>Cortex M0的限制：Flash的中断向量表一定要放在Flash开始的地方，不能relocation到Flash的其他偏移地址，参考Reference Manual RM0091：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202405171723698.png" alt="image-20240517172328661"></p>
+<p>Firmware中断向量表是放在Flash的32KB offset的地方，是不能被硬件使用的；</p>
+<p>RM0091给出Cortex M0对此问题的方案：将中断向量表拷贝到SRAM的0地址，再设置SYSCFG register，remap SRAM空间作为CPU 0地址。这样CPU异常、中断发生时，就能进入SRAM的中断向量表。</p>
+<p><strong>Q2：为什么只需要拷贝中断向量表的192bytes，而不是拷贝整个Firmware的32KB？SRAM空间都remap为CPU 0地址了，Flash中的Firmware代码不拷贝到SRAM还能执行到吗？</strong></p>
+<p>这里要分析MCU的PC指针取指令的流程：</p>
+<ol>
+<li>在bootloader开始阶段，PC指针取指令都是在Flash 起始地址~32KB之间取bootloader指令执行</li>
+<li>bootloader拷贝FW中断向量表到SRAM的0地址，并设置CPU memory空间为SRAM空间 (注释1)</li>
+<li>bootloader跳转，注意看上面代码，跳转到Flash的Firmware空间(Flash 32KB~64KB)的Firmware入口，也就是说，PC指针还是从Flash取指令，只不过指令是Firmware的main</li>
+<li>Firmware执行main初始化和while1，PC指针始终在while1中转圈</li>
+<li>如果中断或者异常发生，硬件跳转到SRAM的Firmware中断向量表，取中断回调指令执行，这个中断回调指令还是在Flash的Firmware空间(Flash 32KB~64KB)，中断返回后，PC指针恢复之前在Firmware while1里的位置。</li>
+</ol>
+<p>根据以上分析，PC指针仅仅在中断发生时需要用跳到SRAM的中断向量表，其他时间都在Flash的Firmware区域取指令，所有Firmware代码都能被执行到。因此SRAM remap不影响Flash的代码执行，不需要拷贝Firmware代码到SRAM (要拷贝FW到SRAM以提高执行速度也行，要改Firmware编译的基地址为SRAM)。</p>
+<p>（注释1）CPU remap实际在main才设置（但应该在bootloader里设置），代码如下：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">__HAL_REMAPMEMORY_SRAM();</span><br><span class="line"></span><br><span class="line">#define __HAL_REMAPMEMORY_SRAM                __HAL_SYSCFG_REMAPMEMORY_SRAM</span><br><span class="line">#define __HAL_SYSCFG_REMAPMEMORY_SRAM()         do &#123;SYSCFG-&gt;CFGR1 &amp;= ~(SYSCFG_CFGR1_MEM_MODE); \</span><br><span class="line">                                             SYSCFG-&gt;CFGR1 |= (SYSCFG_CFGR1_MEM_MODE_0 | SYSCFG_CFGR1_MEM_MODE_1); \</span><br><span class="line">                                            &#125;while(0) </span><br></pre></td></tr></table></figure>
+
+<p><strong>关于CPU空间的remapping，有两个概念需清楚：</strong></p>
+<ol>
+<li><p>CPU空间remap到SRAM还是Flash，并不影响CPU对Flash和SRAM的访问；</p>
+<p>不管谁被remap为CPU memory空间，pc取指令都可以用0x0800_0000 + offset访问Flash，0x2000_0000 + offset访问SRAM</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202405171747713.png" alt="image-20240517174752681"></p>
+</li>
+<li><p>CPU remap只影响”MCU的0地址在哪个设备空间“，和启动位置相关；</p>
+<p>SYSCFG register的CPU memory mapping定义：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202405171745110.png" alt="image-20240517174553060"></p>
+<p>注意该SYSCFG register配置会被reset，即reset启动后的CPU space是BOOT0 pin和nBOOT1 register共同决定的：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202405171756653.png" alt="image-20240517175619616"></p>
+</li>
+</ol>
+<p><strong>Q3：Firmware和bootloader的中断向量表的指令应该差不多，为什么不能公用一套中断向量表？</strong></p>
+<p>这个问题涉及到编译和链接：bootloader和Firmware的中断向量表的指令还是有区别，因为中断回调不同，导致必须要分两套中断向量表；</p>
+<p>两套中断向量表编译出的基础地址不一样：如下图bootloader中断向量表指令都是基于0x0800_8000，FW的都是0x0800_0000。这个基础地址是.sct链接文件指定。</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202405171859345.png" alt="image-20240517185911311"></p>
+<p><strong>（2）跳转到Firmwware指令</strong></p>
+<p>跳转的条件判断是个难点：为什么要判断FW代码的首个DWORD的值是否在SRAM空间？</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">if (((*(__IO uint32_t*)APPLICATION_ADDRESS) &amp; 0x2FFE0000 ) == 0x20000000)</span><br></pre></td></tr></table></figure>
+
+<p>FW代码的首个DWORD的值是什么：</p>
+<p>参考FW的startup.s：是__initial_sp符号，找不到具体指令</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">__Vectors       DCD     __initial_sp                   ; Top of Stack</span><br><span class="line">                DCD     Reset_Handler                  ; Reset Handler</span><br></pre></td></tr></table></figure>
+
+<p>__initial_sp符号符号是什么：</p>
+<p>FW的startup.s只能找到声明：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">Stack_Size		EQU     0x500</span><br><span class="line">                AREA    STACK, NOINIT, READWRITE, ALIGN=3</span><br><span class="line">Stack_Mem       SPACE   Stack_Size</span><br><span class="line">__initial_sp</span><br></pre></td></tr></table></figure>
+
+<p>对此代码的解释：</p>
+<p>__initial_sp is a label which takes the origin (ORG) value of the assembler after it allocates the space. Look at a .LST or .MAP file.</p>
+<p>参考：<a target="_blank" rel="noopener" href="https://community.st.com/t5/stm32-mcus-products/about-initial-sp/td-p/551812">https://community.st.com/t5/stm32-mcus-products/about-initial-sp/td-p/551812</a></p>
+<p>基于此解释，查看FW的.map，找到symbol的分布：</p>
+<p>最后一个Data symbol是uwTick，尾部地址是0x20003514 + 4 &#x3D; 0x20003518；</p>
+<p>__initial_sp符号的起始地址正好是0x20003518 + 0x500（startup.s指定的Stack_Size），因此验证了以上解释。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">Global Symbols</span><br><span class="line"></span><br><span class="line">    Symbol Name                              Value     Ov Type        Size  Object(Section)</span><br><span class="line">	......</span><br><span class="line">	</span><br><span class="line">    huart1                                   0x20001a3c   Data         132  usart.o(.bss.huart1)</span><br><span class="line">    huart2                                   0x20001ac0   Data         132  usart.o(.bss.huart2)</span><br><span class="line">    huart3                                   0x20001b44   Data         132  usart.o(.bss.huart3)</span><br><span class="line">    one_wire_data                            0x20001fcc   Data         152  one_wire.o(.bss.one_wire_data)</span><br><span class="line">    uart_rx_fifo_buf                         0x20002064   Data        5120  main.o(.bss.uart_rx_fifo_buf)</span><br><span class="line">    uwTick                                   0x20003514   Data           4  stm32f0xx_hal.o(.bss.uwTick)</span><br><span class="line">    __initial_sp                             0x20003a18   Data           0  startup_stm32f072xb.o(STACK)</span><br></pre></td></tr></table></figure>
+
+<p>基于以上，__initial_sp 是编译器自动形成的值，作为RAM中的栈顶位置。</p>
+<p>bootloader设置Stack_Size为0x500，编译器就在RAM中把所有全局变量排列完后，在加0x500作为栈空间，也就是说这个值最后是取决于代码数据占的RAM空间的，并不是固定的RAM最尾部的地址。</p>
+<p>注：Stack_Size值应该根据.map情况，设置成和RAM可用栈空间接近，不然RAM空间没充分利用，形成爆栈。</p>
+<p>所以FW的第一个指令保存了RAM中的栈顶（栈起始地址），第二个指令才是RESET。</p>
+<p>前面代码是bootloader对__initial_sp 判断是否在RAM空间，因为跳转时要设置栈指针的安全性判断：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">/* Initialize user application&#x27;s Stack Pointer */</span><br><span class="line">__set_MSP(*(__IO uint32_t*) APPLICATION_ADDRESS);</span><br></pre></td></tr></table></figure>
+
+<p><strong>（3）Jump_To_Application函数指针</strong></p>
+<p>这里不详细分析。STM32 bootloader跳转FW有模板代码，参考原厂固件库代码。</p>
+<h2 id="Flash烧录问题（重要）"><a href="#Flash烧录问题（重要）" class="headerlink" title="Flash烧录问题（重要）"></a>Flash烧录问题（重要）</h2><h3 id="用Keil的JLink烧录Flash"><a href="#用Keil的JLink烧录Flash" class="headerlink" title="用Keil的JLink烧录Flash"></a>用Keil的JLink烧录Flash</h3><p>Keil内置安装JLink，Keil烧录.bin到开发板的Flash，实际是调用内置的JLink烧录。</p>
+<p>对于Bootloader和Firmware，需要正确配置烧录区域：</p>
+<ul>
+<li>Address Range： .bin文件烧录到Flash的区域(一般是Flash空间)；这个区域应该和Keil项目配置的ROM区域一致</li>
+<li>Erase Sectors：只擦除选中的Flash Address Range的sectors</li>
+<li>RAM for Algorithm：这个跟烧录的.bin运行时RAM没关系，是指烧录程序本身要占用的RAM，参考：<a target="_blank" rel="noopener" href="https://www.keil.com/support/man/docs/ulinkme/ulinkme_su_ram_for_algorithm.htm">https://www.keil.com/support/man/docs/ulinkme/ulinkme_su_ram_for_algorithm.htm</a></li>
+</ul>
+<p>o2link的bootloader：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202405201046576.png" alt="image-20240520104651534"></p>
+<p>o2link的firmware：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202405201047437.png" alt="image-20240520104700405"></p>
+<h3 id="如何确认Flash正确烧录"><a href="#如何确认Flash正确烧录" class="headerlink" title="如何确认Flash正确烧录"></a>如何确认Flash正确烧录</h3><p>参考： <a target="_blank" rel="noopener" href="https://blog.csdn.net/lnfiniteloop/article/details/134575496?spm=1001.2101.3001.6650.1&utm_medium=distribute.pc_relevant.none-task-blog-2~default~CTRLIST~Rate-1-134575496-blog-118443669.235%5Ev43%5Epc_blog_bottom_relevance_base4&depth_1-utm_source=distribute.pc_relevant.none-task-blog-2~default~CTRLIST~Rate-1-134575496-blog-118443669.235%5Ev43%5Epc_blog_bottom_relevance_base4&utm_relevant_index=2">J-Flash读取STM32内部程序，导出Hex&#x2F;Bin文件</a></p>
+<p>JLink安装，需要安装包里的USB驱动：SEGGER\JLink_V796e\USBDriver\x64\dpinst_x64.exe</p>
+<p>使用JLink读Flash并比较：</p>
+<ol>
+<li>JLink: Target -&gt; Connect</li>
+<li>读Flash(一般Range或者Entire chip)</li>
+</ol>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202405201112900.png" alt="image-20240520111220863"></p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202405201112614.png" alt="image-20240520111250598"></p>
+<ol start="3">
+<li>保存数据到.bin</li>
+</ol>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202405201112851.png" alt="image-20240520111256831"></p>
+<ol start="4">
+<li>比较bootloader.bin和从Flash读出的数据.bin是否一致：</li>
+</ol>
+<p>使用Winmerge比较二进制文件：</p>
+<p>左侧bootloader.bin，右侧Flash读出的bootloader；</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202405201104475.png" alt="image-20240520110440432"></p>
+<p>可见bootloader真实数据约0x7524 bytes；Flash擦除整个bootloader区域0~0x8000, 所以Flash读的后部分数据为0xFF。</p>
+<p>Firmware区域比较同理，JLink的Flash读出区域改成0x08008000~0x08010000</p>
+<h2 id="特殊的编译和代码修改记录"><a href="#特殊的编译和代码修改记录" class="headerlink" title="特殊的编译和代码修改记录"></a>特殊的编译和代码修改记录</h2><p>编译问题：</p>
+<ol>
+<li><p>Firmware编译无法输出.bin文件但Keil没报错，输出了ER$$.ARM.__at_0x0800fffc文件</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202405201155089.png" alt="image-20240520115554066"></p>
+<p>原因：main定义了以下section，但链接器找不到这个符号，所以生成bin时报error</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">const uint32_t file_end __attribute__((section(&quot;.ARM.__at_0x0800fffc&quot;))) = 0x00656e64;</span><br></pre></td></tr></table></figure>
+
+<p>目前没找到根本性的解决办法；因为代码没用到这个file_end，所以注释掉这个定义。这个定义地址本身是合理的，是Firmware的Flash区域的最后一个DWORD。</p>
+<p>参考：</p>
+<p><a target="_blank" rel="noopener" href="https://developer.arm.com/documentation/dui0474/m/scatter-loading-features/root-execution-regions/methods-of-placing-functions-and-data-at-specific-addresses?lang=en">Methods of placing functions and data at specific addresses</a></p>
+<p><a target="_blank" rel="noopener" href="https://documentation-service.arm.com/static/63eb51fc9567172d4e2aa918">ARM asmlink User Guide</a></p>
+</li>
+</ol>
+<p>代码问题：</p>
+<p>bootloader+Firmware只支持用USB上位机更新Firmware，不支持JLink烧录Firmware，因为bootloader校验Dword不通过；所以需要修改bootloader代码：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">void check_if_jump_to_app(void):</span><br><span class="line"></span><br><span class="line">#ifdef SKYWAYS_TEST</span><br><span class="line">	direct_jump_to_app(); //这里直接跳转，不校验是USB上位机发起的跳转</span><br><span class="line">#else</span><br><span class="line">	if (*(uint32_t *)RAM_FROM_APP_FLAG_ADDR != RAM_FROM_APP_FLAG_DATA)</span><br><span class="line">	&#123;</span><br><span class="line">		*(uint32_t *)RAM_FROM_APP_FLAG_ADDR = 0;</span><br><span class="line">		if ((*(uint32_t *)APP_FILE_EDN_ADDR == APP_FILE_END_DATA) &amp;&amp;</span><br><span class="line">			(*(uint32_t *)APP_FILE_START_ADDR == APP_FILE_START_DATA) &amp;&amp;</span><br><span class="line">			(pin_state == GPIO_PIN_SET))</span><br><span class="line">			direct_jump_to_app();</span><br><span class="line">	&#125;</span><br><span class="line">#endif</span><br></pre></td></tr></table></figure>
+
+<h1 id="Skyways业务代码分析"><a href="#Skyways业务代码分析" class="headerlink" title="Skyways业务代码分析"></a>Skyways业务代码分析</h1><p>在《STM32–Firmware Architecture part1：开发环境和HAL API应用》中已经分析了整体的Firmware-USB上位机之间的请求处理流程，这里针对Skyways Firmware具体分析业务流程的差异点。</p>
+<h2 id="UART"><a href="#UART" class="headerlink" title="UART"></a>UART</h2><h3 id="USB下发数据给UART（TX-no-buffer）"><a href="#USB下发数据给UART（TX-no-buffer）" class="headerlink" title="USB下发数据给UART（TX, no buffer）"></a>USB下发数据给UART（TX, no buffer）</h3><p>调用过程：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">CUSTOM_HID_OutEvent_FS -&gt; write_uart_function() -&gt; HAL_UART_Transmit()</span><br></pre></td></tr></table></figure>
+
+<p>Skyways版本的UART TX代码有几点需要注意：</p>
+<ol>
+<li>usb_send_buf[0] |&#x3D; 0x80;表示错误，用于通知USB上位机。Tx一次发送超过60bytes, 或者HAL_UART_Transmit有Timeout，则上报USB上位机有错。</li>
+<li>以下代码的UART返回数据没发送给USB，和o2link Spec不一致：UART没有返回USB：0101+buffer data.</li>
+</ol>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">void write_uart_function()</span><br><span class="line">&#123;</span><br><span class="line">	uint8_t ret = 0;</span><br><span class="line">	uint32_t i;</span><br><span class="line">	length = usb_send_buf[2] &lt;&lt; 8 | usb_send_buf[3];</span><br><span class="line">	if(length &gt; MAX_UART_WRITE_LENGTH)&#123; //60bytes</span><br><span class="line">		usb_send_buf[0] |= 0x80;</span><br><span class="line">		usb_send_buf[2] = UART_PARAMETER_ERROR;</span><br><span class="line">		usb_send(usb_send_buf,USB_TIMEOUT_TIME);</span><br><span class="line">		return;</span><br><span class="line">	&#125;</span><br><span class="line">	</span><br><span class="line">	cdc_receive_flag = CDC_FLAG_HID;</span><br><span class="line">	ret = HAL_UART_Transmit(&amp;huart2,(uint8_t *)&amp;usb_send_buf[4],length,UART_TIMEOUT_TIME);</span><br><span class="line"></span><br><span class="line">	if(ret)</span><br><span class="line">	&#123;</span><br><span class="line">		usb_send_buf[0] |= 0x80;</span><br><span class="line">		usb_send_buf[2] = ret;</span><br><span class="line">		usb_send(usb_send_buf,USB_TIMEOUT_TIME);</span><br><span class="line">	&#125;</span><br><span class="line">	//usb_send(usb_send_buf,USB_TIMEOUT_TIME); //这里和o2link Spec不一致，UART没有返回USB：0101+buffer.</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="USB从UART接收数据（RX-1KB-buffer-DMA）"><a href="#USB从UART接收数据（RX-1KB-buffer-DMA）" class="headerlink" title="USB从UART接收数据（RX, 1KB buffer, DMA）"></a>USB从UART接收数据（RX, 1KB buffer, DMA）</h3><p>代码流程在《STM32–Firmware Architecture part1：开发环境和HAL API应用》的”UART2部分”有详细分析。</p>
+<p>应用上的结论：UART2 DMA使用UART IDLE frame作为传输完成中断的触发源，只要应用上保证一次UART读数据中没有异常的IDLE frame，则UART2 DMA IDLE frame产生的完成中断可作为一次完整的UART数据传输结束标志。</p>
+<h2 id="SPI"><a href="#SPI" class="headerlink" title="SPI"></a>SPI</h2><p>Skyways的SPI data transmission底层操作在的”8.1 usb_to_spi”有详细描述，这里看到以下区别：</p>
+<ul>
+<li>发起spi数据传输之前，Deinit了I2C，把I2C的SDA&#x2F;SCL两个pin作为GPIO输入模式拉高。</li>
+<li>完成spi数据传输之后，重新init了I2C到100K速度.</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">void usb_handle_process(void):</span><br><span class="line"></span><br><span class="line">case USB_TO_SKYWAY_SPI_WRITE:</span><br><span class="line">		HAL_I2C_DeInit(&amp;hi2c1);</span><br><span class="line">		i2c_gpio_fun();</span><br><span class="line">		usb_to_spi_convert_skyway_write();</span><br><span class="line">		MX_I2C1_Init(100000, 7);</span><br><span class="line">		break;</span><br><span class="line">case USB_TO_SKYWAY_SPI_READ:</span><br><span class="line">		HAL_I2C_DeInit(&amp;hi2c1);</span><br><span class="line">		i2c_gpio_fun();</span><br><span class="line">		usb_to_spi_convert_skyway_read();</span><br><span class="line">		MX_I2C1_Init(100000, 7);</span><br><span class="line">		break;</span><br></pre></td></tr></table></figure>
+
+<p>根据Skyways和MCU的连接，SPI和I2C并没有复用；Skyways和MCU的SPI通信也没要求对I2C的pin做什么特殊操作（测试SPI read、write甚至都没连接I2C），因此猜测此处代码只是早期开发时，预防I2C和SPI同时使用时有冲突，实际没这个需求。 – 下个版本删除此I2C代码，测试SPI read、write.</p>
+<h2 id="CAN"><a href="#CAN" class="headerlink" title="CAN"></a>CAN</h2><p>TODO</p>
+<h2 id="one-wire"><a href="#one-wire" class="headerlink" title="one-wire"></a>one-wire</h2><p>TODO</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/STM32/" rel="tag"># STM32</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2024/10/30/STM32--%E4%B8%B2%E5%8F%A3%EF%BC%9AUART%E5%92%8CUSB-COM/" rel="prev" title="STM32--串口：UART和USB-COM">
+      <i class="fa fa-chevron-left"></i> STM32--串口：UART和USB-COM
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2025/05/18/%E7%94%B5%E9%87%8F%E8%AE%A1--%E9%97%AE%E9%A2%98%E5%92%8C%E5%8A%9F%E8%83%BD%E8%AE%B0%E5%BD%95/" rel="next" title="电量计--问题和功能记录">
+      电量计--问题和功能记录 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#STM32%E2%80%93Firmware-Architecture-part2%EF%BC%9A%E4%B8%9A%E5%8A%A1%E4%BB%A3%E7%A0%81%E5%88%86%E6%9E%90%E2%80%93o2link-FWs"><span class="nav-number">1.</span> <span class="nav-text">STM32–Firmware Architecture part2：业务代码分析–o2link FWs</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#o2link-FWs%E7%9A%84%E6%9E%B6%E6%9E%84%E5%8C%BA%E5%88%AB"><span class="nav-number">2.</span> <span class="nav-text">o2link FWs的架构区别</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Bootloader%E5%92%8CFirmware%E7%BB%93%E6%9E%84"><span class="nav-number">2.1.</span> <span class="nav-text">Bootloader和Firmware结构</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#bootloader%E5%92%8CFirmware%E5%9C%A8Flash%E7%9A%84%E5%88%86%E5%B8%83"><span class="nav-number">2.1.1.</span> <span class="nav-text">bootloader和Firmware在Flash的分布</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#IAP%E5%92%8CICP%E7%9A%84%E6%A6%82%E5%BF%B5"><span class="nav-number">2.1.2.</span> <span class="nav-text">IAP和ICP的概念</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#bootloader%E5%92%8Cfirmware%E7%9A%84%E6%89%A7%E8%A1%8C%E6%B5%81%E7%A8%8B"><span class="nav-number">2.1.3.</span> <span class="nav-text">bootloader和firmware的执行流程</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#bootloader%E4%BB%A3%E7%A0%81%E5%88%86%E6%9E%90%EF%BC%88%E9%87%8D%E8%A6%81-%E9%9A%BE%E7%82%B9%EF%BC%89"><span class="nav-number">2.2.</span> <span class="nav-text">bootloader代码分析（重要+难点）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#bootloader%E6%A0%A1%E9%AA%8CFW"><span class="nav-number">2.2.1.</span> <span class="nav-text">bootloader校验FW</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#bootloader%E8%B7%B3%E8%BD%AC%E5%88%B0FW%E4%BB%A3%E7%A0%81%E7%9A%84%E8%BF%87%E7%A8%8B"><span class="nav-number">2.2.2.</span> <span class="nav-text">bootloader跳转到FW代码的过程</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Flash%E7%83%A7%E5%BD%95%E9%97%AE%E9%A2%98%EF%BC%88%E9%87%8D%E8%A6%81%EF%BC%89"><span class="nav-number">2.3.</span> <span class="nav-text">Flash烧录问题（重要）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%94%A8Keil%E7%9A%84JLink%E7%83%A7%E5%BD%95Flash"><span class="nav-number">2.3.1.</span> <span class="nav-text">用Keil的JLink烧录Flash</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%A6%82%E4%BD%95%E7%A1%AE%E8%AE%A4Flash%E6%AD%A3%E7%A1%AE%E7%83%A7%E5%BD%95"><span class="nav-number">2.3.2.</span> <span class="nav-text">如何确认Flash正确烧录</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%89%B9%E6%AE%8A%E7%9A%84%E7%BC%96%E8%AF%91%E5%92%8C%E4%BB%A3%E7%A0%81%E4%BF%AE%E6%94%B9%E8%AE%B0%E5%BD%95"><span class="nav-number">2.4.</span> <span class="nav-text">特殊的编译和代码修改记录</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Skyways%E4%B8%9A%E5%8A%A1%E4%BB%A3%E7%A0%81%E5%88%86%E6%9E%90"><span class="nav-number">3.</span> <span class="nav-text">Skyways业务代码分析</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#UART"><span class="nav-number">3.1.</span> <span class="nav-text">UART</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#USB%E4%B8%8B%E5%8F%91%E6%95%B0%E6%8D%AE%E7%BB%99UART%EF%BC%88TX-no-buffer%EF%BC%89"><span class="nav-number">3.1.1.</span> <span class="nav-text">USB下发数据给UART（TX, no buffer）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#USB%E4%BB%8EUART%E6%8E%A5%E6%94%B6%E6%95%B0%E6%8D%AE%EF%BC%88RX-1KB-buffer-DMA%EF%BC%89"><span class="nav-number">3.1.2.</span> <span class="nav-text">USB从UART接收数据（RX, 1KB buffer, DMA）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#SPI"><span class="nav-number">3.2.</span> <span class="nav-text">SPI</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#CAN"><span class="nav-number">3.3.</span> <span class="nav-text">CAN</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#one-wire"><span class="nav-number">3.4.</span> <span class="nav-text">one-wire</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="cursorhu"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">cursorhu</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">113</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">41</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">55</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/cursorhu" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;cursorhu" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:2449055512@qq.com" title="E-Mail → mailto:2449055512@qq.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2025</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">cursorhu</span>
+</div>
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

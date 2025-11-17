@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 8.0.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Noto+Serif+SC|Roboto/css?family=Noto Serif SC:300,300italic,400,400italic,700,700italic|Roboto:300,300italic,400,400italic,700,700italic&display=swap&subset=latin,latin-ext">
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"cursorhu.github.io","root":"/","scheme":"Pisces","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="背景某软件有不同的配置参数，实现不同功能版本的编译批量测试需要批量编译各种版本，实现方式为：1.将编译参数组合，生成大量配置文件2.编译过程遍历这些配置文件，依次编译对应版本3.有参数加入，修改，删除，只需要更新这些配置文件如何实现这些配置文件的更新？ 实例某芯片的Firmware批量编译实现：Firmware代码为C, 配置参数用宏实现，后缀为.def目录结构如下 |–project_folde">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux Shell笔记：实现芯片固件的批量编译">
+<meta property="og:url" content="https://cursorhu.github.io/2020/08/12/Linux-Shell%E7%AC%94%E8%AE%B0%EF%BC%9A%E5%AE%9E%E7%8E%B0%E8%8A%AF%E7%89%87%E5%9B%BA%E4%BB%B6%E7%9A%84%E6%89%B9%E9%87%8F%E7%BC%96%E8%AF%91/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="背景某软件有不同的配置参数，实现不同功能版本的编译批量测试需要批量编译各种版本，实现方式为：1.将编译参数组合，生成大量配置文件2.编译过程遍历这些配置文件，依次编译对应版本3.有参数加入，修改，删除，只需要更新这些配置文件如何实现这些配置文件的更新？ 实例某芯片的Firmware批量编译实现：Firmware代码为C, 配置参数用宏实现，后缀为.def目录结构如下 |–project_folde">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2020-08-12T06:58:37.000Z">
+<meta property="article:modified_time" content="2024-04-26T08:13:35.966Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="shell">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="https://cursorhu.github.io/2020/08/12/Linux-Shell%E7%AC%94%E8%AE%B0%EF%BC%9A%E5%AE%9E%E7%8E%B0%E8%8A%AF%E7%89%87%E5%9B%BA%E4%BB%B6%E7%9A%84%E6%89%B9%E9%87%8F%E7%BC%96%E8%AF%91/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>Linux Shell笔记：实现芯片固件的批量编译 | ThinkNotes</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">ThinkNotes</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Simple is not easy</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于我</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/08/12/Linux-Shell%E7%AC%94%E8%AE%B0%EF%BC%9A%E5%AE%9E%E7%8E%B0%E8%8A%AF%E7%89%87%E5%9B%BA%E4%BB%B6%E7%9A%84%E6%89%B9%E9%87%8F%E7%BC%96%E8%AF%91/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Linux Shell笔记：实现芯片固件的批量编译
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-08-12 14:58:37" itemprop="dateCreated datePublished" datetime="2020-08-12T14:58:37+08:00">2020-08-12</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2024-04-26 16:13:35" itemprop="dateModified" datetime="2024-04-26T16:13:35+08:00">2024-04-26</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/linux/" itemprop="url" rel="index"><span itemprop="name">linux</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h1><p>某软件有不同的配置参数，实现不同功能版本的编译<br>批量测试需要批量编译各种版本，实现方式为：<br>1.将编译参数组合，生成大量配置文件<br>2.编译过程遍历这些配置文件，依次编译对应版本<br>3.有参数加入，修改，删除，只需要更新这些配置文件<br>如何实现这些配置文件的更新？</p>
+<h1 id="实例"><a href="#实例" class="headerlink" title="实例"></a>实例</h1><p>某芯片的Firmware批量编译实现：<br>Firmware代码为C, 配置参数用宏实现，后缀为.def<br>目录结构如下</p>
+<p>|–project_folder<br>　　|–config<br>　　　|–build.def<br>　　　|–defs<br>　　　　　|–1.def 2.def … n.def<br>　　|–src<br>　　|–Makefile<br>　　|–build_All.sh<br>　　|–update.sh</p>
+<h2 id="批量编译脚本"><a href="#批量编译脚本" class="headerlink" title="批量编译脚本"></a>批量编译脚本</h2><p>批量编译脚本如下<br>基本过程：<br>1.依次拷贝def文件夹中的每个def，替换默认的build.def<br>2.编译，接受所有编译参数<br>3.拷贝编译输出的image到包含git tag, def名，时间等信息的文件夹</p>
+<pre><code>#!/bin/bash
+
+echo &quot;Batch build support args:&quot;
+echo &quot;1. functin version:&quot;
+echo &quot;verargs=mp_fpga&quot;
+echo &quot;verargs=mpw_asic&quot;
+echo &quot;2. boot debug:&quot;
+echo &quot;bootargs=debug&quot;
+
+OUTPUT=batch_build_$1$2
+
+mkdir -p ${OUTPUT}
+rm -rf ./batch_build_*
+
+build_time=`date +%Y%m%d%H%M%S`
+
+#commit_id=`git rev-parse HEAD`
+
+tag_name=`git describe --exact-match --tags 2&gt;/dev/null`
+
+if [ -z &quot;${tag_name}&quot; ]; then
+	tag_name=&quot;NO_TAG&quot;
+fi
+
+mv ./config/build.def ./config/build.def.bak 
+
+for file in `ls ./config/defs/*.def`;
+do
+	file_name=${file##*/}
+	config_name=${file_name%.def}
+	
+	cp -rf ${file} ./config/build.def
+	make clean
+	make -j4 $@
+	#mv ./build/image ./batch_build/${tag_name}_${config_name}_time_${build_time}_cid_${commit_id}
+	mkdir -p ./${OUTPUT}/${tag_name}_${config_name}_time_${build_time}
+	mv ./build/image/* ./${OUTPUT}/${tag_name}_${config_name}_time_${build_time}
+done
+
+mv ./config/build.def.bak ./config/build.def
+</code></pre>
+<p>def文件内的.def文件即各种参数配置文件，.def文件名即参数功能的别名组合<br>例如：</p>
+<pre><code>CQ_emmc_two_card_enhance_hs400_always_l0_MSIx_dllphase14_tuning_on.def
+</code></pre>
+<p>对应的内容是：</p>
+<pre><code>/*0: Non-CQ mode 1:CQ mode enable*/
+#define BB_CQ_MODE_ENABLE 1
+/*the card number support emmc#0:0 emmc#1:1 two card:2*/
+#define BB_CARD_NUMBER 2
+/*0:legacy 1:High Speed 50MHz 2:HS200 3:HS400 4:Enhance HS400*/
+#define BB_MAX_TRANSFER_MODE 4
+/* power mode management: 0: Low Power 1:Balance 2:High Performance 3:Direct HP 4:Always L0*/
+#define POWER_MANAGEMENT_MODE 4
+/* INT_MODE: 0:MSI_X 1:INTx 2:MSI_MULTIPLE 3:MSI_SINGLE */
+#define INT_MODE 0
+/* The selection of DLL PHASE COUNT is 11 or 14 */
+#define DLL_phase_cnt 14
+/* 0: fixed output phase  1: auto output tuning */
+#define AUTO_OUTPUT_TUNING 1
+</code></pre>
+<h2 id="批量编辑配置文件"><a href="#批量编辑配置文件" class="headerlink" title="批量编辑配置文件"></a>批量编辑配置文件</h2><p>配置文件def有两个属性<br>1.文件名每个词代表一个功能，各词用下划线“_”分隔<br>2.内部用宏定义实现功能配置，宏定义的值要和外部文件名匹配</p>
+<p>基于以上属性，编辑脚本需求为：<br>1.新增：增加一个宏定义，并增加对应的功能缩写到文件名<br>2.修改：修改一个已存在的宏定义，并修改对应的功能缩写到文件名<br>3.删除：删除一个已存在的宏定义，并删除对应的功能缩写到文件名<br>4.其他功能，如直接删除含某缩写的文件，备份原配置文件</p>
+<p>shell实现为update.sh,如下:</p>
+<pre><code>#!/bin/bash
+
+DEFS_PATH=&quot;./config/defs&quot;
+DEFS_BACKUP_PATH=&quot;./config/defs_backup&quot;
+DEFS_TEMP_PATH=&quot;./config/defs_temp&quot;
+
+if [ $# -lt 1 ];then
+		echo &quot;usage: ./update.sh [option] [args]&quot;
+
+		echo &quot;example 0:&quot;
+		echo &quot;		backup defs files:&quot;
+		echo &quot;		./update.sh -bf&quot;
+		echo &quot;&quot;
+
+		echo &quot;example 1:&quot;
+		echo &quot;		add a macro name and macro value to defs, and add file postfix:&quot;
+		echo &quot;		./update.sh -b&quot;
+		echo &quot;		./update.sh -a balance POWER_MANAGEMENT_MODE 1 &quot;
+		echo &quot;		./update.sh -a high_performance POWER_MANAGEMENT_MODE 2 &quot;
+		echo &quot;		add other values...&quot;
+		echo &quot;&quot;
+
+		echo &quot;example 2:&quot;
+		echo &quot;		update a macro name and macro value to defs, and update file postfix:&quot;
+		echo &quot;		./update.sh -u balance lowpower POWER_MANAGEMENT_MODE 1 &quot;
+		echo &quot;&quot;
+
+		echo &quot;example 3:&quot;
+		echo &quot;		delete a macro name and macro value of defs, and delete file postfix:&quot;
+		echo &quot;		./update.sh -d lowpower POWER_MANAGEMENT_MODE&quot;
+		echo &quot;&quot;
+
+		echo &quot;example 4:&quot;
+		echo &quot;		delete target files:&quot;
+		echo &quot;		./update.sh -df lowpower&quot;
+		echo &quot;&quot;
+
+		echo &quot;example 5:&quot;
+		echo &quot;		clean backup defs files:&quot;
+		echo &quot;		./update.sh -cf&quot;
+		echo &quot;&quot;
+
+		exit;
+	fi
+
+if [ $1 = &quot;-bf&quot; ];then #backup defs
+	mkdir -p $DEFS_BACKUP_PATH
+	mv $DEFS_PATH/*.def $DEFS_BACKUP_PATH
+
+elif [ $1 = &quot;-cf&quot; ];then #clear backup defs
+	rm -rf $DEFS_BACKUP_PATH
+</code></pre>
+<p>​<br>​    #add a macro name and macro value to defs, and add file postfix<br>​    elif [ $1 &#x3D; “-a” ];then<br>​<br>    	if [ $# !&#x3D; 4 ];then<br>    		echo “usage: .&#x2F;update.sh -a FILE_POSTFIX MACRO_NAME MACRO_VALUE”<br>    		exit;<br>    	fi</p>
+<pre><code>	mkdir -p $DEFS_TEMP_PATH &amp;&amp; cp -rf $DEFS_BACKUP_PATH/*.def $DEFS_TEMP_PATH
+	
+	FILE_POSTFIX=$2
+	MACRO_NAME=$3
+	MACRO_VALUE=$4
+	# sed -i makes change on original file, otherwise on stream
+	# xargs transfer multiple output from stream to multiple args to sed
+	find ${DEFS_TEMP_PATH} -name &#39;*.def&#39; | xargs sed -i &#39;$a\#define\ &#39;&quot;$MACRO_NAME&quot;&#39;\ &#39;&quot;$MACRO_VALUE&quot;&#39;&#39;
+	
+	for file in `ls ${DEFS_TEMP_PATH}/*.def`
+	do
+	 mv $file `echo $file | sed &#39;s/\(.*\)\(\..*\)/\1_&#39;&quot;$FILE_POSTFIX&quot;&#39;\2/g&#39;`
+	done
+	
+	cp -rf $DEFS_TEMP_PATH/*.def $DEFS_PATH
+	rm -rf $DEFS_TEMP_PATH
+
+#update a macro name and macro value to defs, and update file postfix
+elif [ $1 = &quot;-u&quot; ];then
+
+	if [ $# != 5 ];then
+		echo &quot;usage: ./update.sh -u ORIGIN_POSTFIX UPDATED_POSTFIX MACRO_NAME MACRO_UPDATED_VALUE&quot;
+		exit;
+	fi
+
+	ORIGIN_POSTFIX=$2
+	UPDATED_POSTFIX=$3
+	MACRO_NAME=$4
+	MACRO_UPDATED_VALUE=$5
+
+	#replace all lines that pattern matches $MACRO_NAME
+	find ${DEFS_PATH} -name &#39;*.def&#39; | grep $ORIGIN_POSTFIX | xargs sed -i &#39;s/.*&#39;&quot;$MACRO_NAME&quot;&#39;.*/#define\ &#39;&quot;$MACRO_NAME&quot;&#39;\ &#39;&quot;$MACRO_UPDATED_VALUE&quot;&#39;/g&#39;
+	#update file postfix
+	for file in `ls ${DEFS_PATH}/*$ORIGIN_POSTFIX*.def`
+	do
+	 	mv $file `echo $file | sed &#39;s/&#39;&quot;$ORIGIN_POSTFIX&quot;&#39;/&#39;&quot;$UPDATED_POSTFIX&quot;&#39;/g&#39;`
+	done
+</code></pre>
+<p>​<br>​    #delete a macro name and macro value of defs, and delete file postfix<br>​    elif [ $1 &#x3D; “-d” ];then<br>​    	<br>    	if [ $# !&#x3D; 3 ];then<br>    		echo “usage: .&#x2F;update.sh -d DELETE_POSTFIX MACRO_NAME”<br>    		exit;<br>    	fi</p>
+<pre><code>	DELETE_POSTFIX=$2
+	MACRO_NAME=$3
+	#delete all lines that contain $MACRO_NAME
+	find ${DEFS_PATH} -name &#39;*.def&#39; | grep $DELETE_POSTFIX | xargs sed -i &#39;/&#39;&quot;$MACRO_NAME&quot;&#39;/d&#39;
+	#delete file postfix
+	for file in `ls ${DEFS_PATH}/*.def`
+	do
+	 	mv $file `echo $file | sed &#39;s/_&#39;&quot;$DELETE_POSTFIX&quot;&#39;//g&#39;`
+	done
+
+#delete target file by postfix
+elif [ $1 = &quot;-df&quot; ];then
+	
+	if [ $# != 2 ];then
+		echo &quot;usage: ./update.sh -df DELETE_POSTFIX&quot;
+		exit;
+	fi
+
+	DELETE_POSTFIX=$2
+	rm -f ${DEFS_PATH}/*$DELETE_POSTFIX*.def
+
+fi
+</code></pre>
+<p><strong>重点讲下其中的几个sed和文件操作</strong><br>1.多个文件，每个文件最后一行追加内容</p>
+<pre><code>find ${DEFS_TEMP_PATH} -name &#39;*.def&#39; | xargs sed -i &#39;$a\#define\ &#39;&quot;$MACRO_NAME&quot;&#39;\ &#39;&quot;$MACRO_VALUE&quot;&#39;&#39;
+</code></pre>
+<ul>
+<li>xargs的作用： find <path> -name <string> 输出的是多个文件名，不能直接传给sed， <strong>xargs将多个文件名转化成多个参数</strong>，每个参数是一个文件名，sed可以接收</li>
+<li>-i的作用：sed本身是在文件的拷贝上操作，不直接在文件本身修改，-i（insert）使sed的操作在文件上生效，<strong>如果不加-i，源文件不会被修改</strong></li>
+<li>$：表示最后一行，sed ‘a\string’是基础格式</li>
+<li>注意sed怎么用带空格和变量的字符串：<strong>空格用转义’\ ‘表示，变量是单引号内加双引号</strong>，即’”$ARG”‘</li>
+</ul>
+<p>2.找到包含字符串A的所有文件，替换内容：将字符串B替换为C</p>
+<pre><code>#replace all lines that pattern matches $MACRO_NAME
+find ${DEFS_PATH} -name &#39;*.def&#39; | grep $ORIGIN_POSTFIX | xargs sed -i &#39;s/.*&#39;&quot;$MACRO_NAME&quot;&#39;.*/#define\ &#39;&quot;$MACRO_NAME&quot;&#39;\ &#39;&quot;$MACRO_UPDATED_VALUE&quot;&#39;/g&#39;
+</code></pre>
+<ul>
+<li>find | grep 是常用套路，先找在过滤，注意find -name 可以使用*， grep不要用*，否则grep会把它当成要匹配的字符</li>
+<li>sed ‘s&#x2F;stringB&#x2F;stringC’是基础格式，g表示全局，注意要-i</li>
+</ul>
+<p>3.找到包含字符串A的所有文件，删除内容：包含字符串B的行</p>
+<pre><code>#delete all lines that contain $MACRO_NAME
+find ${DEFS_PATH} -name &#39;*.def&#39; | grep $DELETE_POSTFIX | xargs sed -i &#39;/&#39;&quot;$MACRO_NAME&quot;&#39;/d&#39;
+</code></pre>
+<p>4.对多个文件的文件名，增加，修改，删除特定字符串</p>
+<pre><code>#在原文件名最后，后缀之前，增加字符串“_$FILE_POSTFIX”
+for file in `ls ${DEFS_TEMP_PATH}/*.def`
+	do
+	 mv $file `echo $file | sed &#39;s/\(.*\)\(\..*\)/\1_&#39;&quot;$FILE_POSTFIX&quot;&#39;\2/g&#39;`
+	done
+
+#替换文件名中匹配的字符
+for file in `ls ${DEFS_PATH}/*$ORIGIN_POSTFIX*.def`
+do
+ 	mv $file `echo $file | sed &#39;s/&#39;&quot;$ORIGIN_POSTFIX&quot;&#39;/&#39;&quot;$UPDATED_POSTFIX&quot;&#39;/g&#39;`
+done
+
+#删除文件名指定字符
+for file in `ls ${DEFS_PATH}/*.def`
+do
+ 	mv $file `echo $file | sed &#39;s/_&#39;&quot;$DELETE_POSTFIX&quot;&#39;//g&#39;`
+done
+</code></pre>
+<ul>
+<li>for &lt; args &gt; in `ls &lt; path &gt;`是把多个文件名依次写入变量args的常用操作，类似于xargs，不过是用循环每次处理一个文件名变量</li>
+<li>mv $file `echo $file | sed ‘s&#x2F;stringA&#x2F;stringB&#x2F;g’&#96;实际是两个步骤：先用echo把当前处理的文件名传给sed, sed处理完的输出文件名，作为mv的目标文件名，覆盖了原文件</li>
+<li>注意，文件名xargs传给sed,处理的是文件内容，for-in-do一个个mv，才是处理文件名本身</li>
+</ul>
+<h1 id="相关文章"><a href="#相关文章" class="headerlink" title="相关文章"></a>相关文章</h1><p><a target="_blank" rel="noopener" href="https://linux.cn/article-11367-1.html">使用 sed 命令查找和替换文件中的字符串的 16 个示例</a><br><a target="_blank" rel="noopener" href="https://blog.csdn.net/weixin_40572607/article/details/90812959">sed引入变量的几种方法</a><br><a target="_blank" rel="noopener" href="https://blog.csdn.net/elong490/article/details/52587171">sed 批量替换文件内容</a></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/shell/" rel="tag"># shell</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/06/22/GCC%E4%BD%BF%E7%94%A8%E7%AC%94%E8%AE%B0/" rel="prev" title="GCC使用笔记">
+      <i class="fa fa-chevron-left"></i> GCC使用笔记
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2020/08/27/Github%E5%B8%B8%E7%94%A8%E9%85%8D%E7%BD%AE%E7%AC%94%E8%AE%B0/" rel="next" title="Github常用配置笔记">
+      Github常用配置笔记 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E8%83%8C%E6%99%AF"><span class="nav-number">1.</span> <span class="nav-text">背景</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%AE%9E%E4%BE%8B"><span class="nav-number">2.</span> <span class="nav-text">实例</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%89%B9%E9%87%8F%E7%BC%96%E8%AF%91%E8%84%9A%E6%9C%AC"><span class="nav-number">2.1.</span> <span class="nav-text">批量编译脚本</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%89%B9%E9%87%8F%E7%BC%96%E8%BE%91%E9%85%8D%E7%BD%AE%E6%96%87%E4%BB%B6"><span class="nav-number">2.2.</span> <span class="nav-text">批量编辑配置文件</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%9B%B8%E5%85%B3%E6%96%87%E7%AB%A0"><span class="nav-number">3.</span> <span class="nav-text">相关文章</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="cursorhu"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">cursorhu</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">113</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">41</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">55</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/cursorhu" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;cursorhu" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:2449055512@qq.com" title="E-Mail → mailto:2449055512@qq.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2025</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">cursorhu</span>
+</div>
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

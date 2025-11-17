@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 8.0.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Noto+Serif+SC|Roboto/css?family=Noto Serif SC:300,300italic,400,400italic,700,700italic|Roboto:300,300italic,400,400italic,700,700italic&display=swap&subset=latin,latin-ext">
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"cursorhu.github.io","root":"/","scheme":"Pisces","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="基础操作拉取和同步git clone http:&#x2F;&#x2F;xxx.xxx.git &#x2F;&#x2F;http方式, 从远程clone仓库，注意这种方式只clone master到本地，本地要其他分支要手动checkout branchname. git pull &#x2F;&#x2F;拉取远程分支 git branch &#x2F;&#x2F;查看本地 git branch -a &#x2F;&#x2F;查看远程和本地 git checkout xxxbranch &#x2F;&#x2F;本地">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Git常用操作笔记">
+<meta property="og:url" content="https://cursorhu.github.io/2020/12/03/Git%E5%B8%B8%E7%94%A8%E6%93%8D%E4%BD%9C%E7%AC%94%E8%AE%B0/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="基础操作拉取和同步git clone http:&#x2F;&#x2F;xxx.xxx.git &#x2F;&#x2F;http方式, 从远程clone仓库，注意这种方式只clone master到本地，本地要其他分支要手动checkout branchname. git pull &#x2F;&#x2F;拉取远程分支 git branch &#x2F;&#x2F;查看本地 git branch -a &#x2F;&#x2F;查看远程和本地 git checkout xxxbranch &#x2F;&#x2F;本地">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051005366.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051006842.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051007268.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051008610.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051008970.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051019814.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051020311.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051023197.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051024479.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051024531.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051026868.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051027201.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051038438.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051039238.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051039681.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051040545.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051040453.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051040782.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051046241.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051046320.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051046886.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212091106114.png">
+<meta property="article:published_time" content="2020-12-03T04:02:00.000Z">
+<meta property="article:modified_time" content="2025-04-16T02:29:28.571Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="Git">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051005366.png">
+
+<link rel="canonical" href="https://cursorhu.github.io/2020/12/03/Git%E5%B8%B8%E7%94%A8%E6%93%8D%E4%BD%9C%E7%AC%94%E8%AE%B0/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>Git常用操作笔记 | ThinkNotes</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">ThinkNotes</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Simple is not easy</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于我</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/12/03/Git%E5%B8%B8%E7%94%A8%E6%93%8D%E4%BD%9C%E7%AC%94%E8%AE%B0/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Git常用操作笔记
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-12-03 12:02:00" itemprop="dateCreated datePublished" datetime="2020-12-03T12:02:00+08:00">2020-12-03</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2025-04-16 10:29:28" itemprop="dateModified" datetime="2025-04-16T10:29:28+08:00">2025-04-16</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Git/" itemprop="url" rel="index"><span itemprop="name">Git</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="基础操作"><a href="#基础操作" class="headerlink" title="基础操作"></a>基础操作</h1><h2 id="拉取和同步"><a href="#拉取和同步" class="headerlink" title="拉取和同步"></a>拉取和同步</h2><pre><code>git clone http://xxx.xxx.git //http方式, 从远程clone仓库，注意这种方式只clone master到本地，本地要其他分支要手动checkout branchname.
+git pull //拉取远程分支
+git branch //查看本地
+git branch -a //查看远程和本地
+git checkout xxxbranch //本地切到某分支
+git checkout xxx/xxx //仅拉取部分目录或文件
+</code></pre>
+<h2 id="查看日志"><a href="#查看日志" class="headerlink" title="查看日志"></a>查看日志</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">git log //回车下一行，空格下一页，q退出</span><br><span class="line">git log --pretty=oneline //单行显示每个commit，用于查看大量提交</span><br><span class="line">git log --author=“author” //查看某人的提交</span><br></pre></td></tr></table></figure>
+
+<h2 id="推送到远程"><a href="#推送到远程" class="headerlink" title="推送到远程"></a>推送到远程</h2><pre><code>git add -A //推送所有修改到本地仓库
+git commit -m &quot;change logs&quot; //提交到本地仓库（记录修改信息）
+git push //推送本地分支到远程的同名分支，需要先关联
+git push origin &lt;本地分支名&gt; //推送本地分支到远程同名分支
+git push origin &lt;本地分支名&gt;:&lt;远程分支名&gt; //推送本地分支到远程指定分支
+</code></pre>
+<h2 id="加tag-删tag"><a href="#加tag-删tag" class="headerlink" title="加tag&#x2F;删tag"></a>加tag&#x2F;删tag</h2><pre><code>git tag -a TAGNAME -m &quot;TAG LOG&quot; //加tag
+git push origin TAGNAME //推送tag到远程
+git tag -d TAGNAME //删除本地tag
+git push origin :refs/tags/TAGNAME //删除远程tag
+</code></pre>
+<h2 id="创建-删除-修改分支"><a href="#创建-删除-修改分支" class="headerlink" title="创建&#x2F;删除&#x2F;修改分支"></a>创建&#x2F;删除&#x2F;修改分支</h2><p>创建分支并关联远程</p>
+<pre><code>git checkout -b BRANCH_NAME //本地创建分支(包含当前分支的历史提交记录)
+git push origin BRANCH_NAME //推送到远程
+git push --set-upstream origin BRANCH_NAME //关联远程，便于以后分支pull/push
+
+#创建不带历史提交记录的新分支（孤儿分支）
+git checkout --orphan BRANCH_NAME
+</code></pre>
+<p>删除本地分支  </p>
+<pre><code>git branch -d branch_name
+git branch -D branch_name //强制删除
+</code></pre>
+<p>删除远程分支</p>
+<pre><code>git push origin -d branch_name
+</code></pre>
+<p>分支重命名</p>
+<pre><code>git branch -m OLD_NAME NEW_NAME //本地分支重命名
+git push origin NEW_NAME //推送远程
+#推送新分支到远程不会删除远程的旧分支，需要手动删除远程的旧分支
+git push origin -d 旧分支名
+</code></pre>
+<h2 id="更换远程"><a href="#更换远程" class="headerlink" title="更换远程"></a>更换远程</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"># 重新设置远程仓库</span><br><span class="line">git remote set-url origin https://gitee.com/xx/xx.git (新地址)</span><br><span class="line"># 查看远端地址</span><br><span class="line">git remote -v</span><br><span class="line"># 更换完后的示例：</span><br><span class="line">origin  git@10.22.1.90:thomas.hu/o2link-jev323.git (fetch)</span><br><span class="line">origin  git@10.22.1.90:thomas.hu/o2link-jev323.git (push)</span><br></pre></td></tr></table></figure>
+
+<h2 id="版本比较"><a href="#版本比较" class="headerlink" title="版本比较"></a>版本比较</h2><p>可以用<code>git diff --help</code>直接查看git diff的Manual Page</p>
+<pre><code>git diff COMMIT_ID //比较本地和某commit_id的内容
+git diff ID1 ID2 //比较两个提交的内容，比较新增时，旧版本在前，新版本在后
+git diff --name-only ID1 ID2 //只显示有差异的文件名列表，不显示内容
+git diff &lt;path&gt; //比较某文件夹下所有文件的差异
+git diff &lt;path&gt;/*.c //比较指定路径下所有.c文件的差异
+git diff &lt;commit&gt;..&lt;commit&gt; [&lt;path&gt;…] //比较两个提交中指定文件或路径的差异
+</code></pre>
+<h2 id="版本回退"><a href="#版本回退" class="headerlink" title="版本回退"></a>版本回退</h2><pre><code>git reset --hard HEAD^ //回退到上个版本
+git reset --hard HEAD^^ //回退到上上个版本
+git reset --hard COMMIT_ID //回退到指定提交
+git push -f //强制提交，覆盖远程，使远程也回退
+git push origin master -f //强制推送到远程的master分支
+</code></pre>
+<h2 id="文件回退"><a href="#文件回退" class="headerlink" title="文件回退"></a>文件回退</h2><h3 id="回退未提交的改动"><a href="#回退未提交的改动" class="headerlink" title="回退未提交的改动"></a>回退未提交的改动</h3><p>格式：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git restore &lt;file&gt;</span><br></pre></td></tr></table></figure>
+
+<h3 id="回退指定文件到历史commit"><a href="#回退指定文件到历史commit" class="headerlink" title="回退指定文件到历史commit"></a>回退指定文件到历史commit</h3><p>格式：git restore –source &lt;指定commit id sha256&gt; –worktree – &lt;要回退的文件路径&gt;</p>
+<p>例如：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">PS C:\edk2&gt; git restore --source e70bb4ae7 --worktree -- MdeModulePkg/Bus/Pci/SdMmcPciHcDxe/SdMmcPciHcDxe.c      </span><br><span class="line">PS C:\edk2&gt; git status</span><br><span class="line">Changes not staged for commit:</span><br><span class="line">  (use &quot;git add &lt;file&gt;...&quot; to update what will be committed)</span><br><span class="line">  (use &quot;git restore &lt;file&gt;...&quot; to discard changes in working directory)</span><br><span class="line">        modified:   MdeModulePkg/Bus/Pci/SdMmcPciHcDxe/SdMmcPciHcDxe.c</span><br></pre></td></tr></table></figure>
+
+
+
+<h2 id="合并分支"><a href="#合并分支" class="headerlink" title="合并分支"></a>合并分支</h2><p>两个分支A和B，要把分支B的所有提交合并到A分支上</p>
+<pre><code>git checkout &lt;branch A&gt; //切到待合并分支A
+git merge &lt;branch B&gt; //拉取分支B，合并到当前分支A
+git merge &lt;branch B&gt;  --squash //合并分支，将B的多个提交融合成一个再合并到A，而不是B的所有提交记录都照搬到A（这个更常用）
+git merge --abort //终止合并
+</code></pre>
+<p>如果有<code>merge conflict</code>,手动修改冲突文件-&gt;保存文件-&gt;<code>git add -A</code>提交修改-&gt;<code>git commit -m &quot;xxx&quot;</code>提交该合并</p>
+<p>如果本地仓库已经处于待merge状态，又想取消merge,同步成远程仓库状态，只需要reset本地仓库到当前commit-id</p>
+<pre><code>git reset --hard HEAD
+</code></pre>
+<p>也可以reset到指定commit-id:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git reflog &amp;&amp; git reset --hard commit-id</span><br></pre></td></tr></table></figure>
+
+<h2 id="合并提交"><a href="#合并提交" class="headerlink" title="合并提交"></a>合并提交</h2><h3 id="合并当前提交"><a href="#合并当前提交" class="headerlink" title="合并当前提交"></a>合并当前提交</h3><p>如果当前修改还未提交, 想合并到最近的一次提交里，例如最近提交有个错误，可以用<code>--amend</code>修订提交</p>
+<pre><code>git add -A
+git commit --amend
+git push -f //amend后通常强制推送，因为没有新增commit
+</code></pre>
+<h3 id="合并历史提交"><a href="#合并历史提交" class="headerlink" title="合并历史提交"></a>合并历史提交</h3><p>有时同一个功能分多次提交，提交过于频繁，需要合并成一个提交。<br>如下有三次提交</p>
+<pre><code>$git log
+commit_3: xxxxx
+    message_3 ....
+commit_2: xxxxx
+    message_2 ....
+commit_1: xxxxx
+    message_1 ....
+</code></pre>
+<p>现在想把commit_3 和 commit_2合并成一个commit.</p>
+<pre><code>git rebase -i commit_1 //重定位到要合并的前一个提交
+</code></pre>
+<p>进入commit信息编辑模式：</p>
+<pre><code>pick commit_2 message_2...
+pick commit_3 message_3...
+</code></pre>
+<p>将要合并的commit_3前的属性<code>pick</code>（选用）改为<code>squash</code>（压扁），<code>wq</code>保存，进入当前合并commit的信息提交界面，再次<code>wq</code>保存, 查看合并后提交记录如下：</p>
+<pre><code>$git log
+commit_4: xxxxx
+    message_3 ....
+    message_2 ....
+commit_1: xxxxx
+    message_1 ....
+</code></pre>
+<p>两次提交已合成一次（新的）提交</p>
+<h2 id="git-clone远程所有分支到本地"><a href="#git-clone远程所有分支到本地" class="headerlink" title="git clone远程所有分支到本地"></a>git clone远程所有分支到本地</h2><p>仓库备份时需要一次git clone所有远程分支到本地，默认的git clone是只有master分支到本地，如果远程（origin remote）仓库没了，git checkout也无法拉取其他分支。</p>
+<p>方法：</p>
+<p>手动创建仓库文件夹名，在此目录open git bash </p>
+<p>使用 <code>git clone --mirror</code> 命令克隆你的仓库，<code>--mirror</code> 选项设置包含所有分支的源仓库的镜像。</p>
+<p>以下克隆了远程仓库整个镜像repo.git, 并保存到本地项目文件夹的.git</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git clone --mirror git://xxx/repo.git .git</span><br></pre></td></tr></table></figure>
+
+<p>注意–mirror命令会将仓库设置为裸仓库。要将其变回常规仓库，请将 <code>git config</code> 的 <code>bare</code> 布尔值更改为 <code>false</code></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git config --bool core.bare false</span><br></pre></td></tr></table></figure>
+
+<p>使用 <code>git reset</code> 命令设置 <code>HEAD</code>。它从当前文件夹中获取所有内容并在本地计算机上创建所有分支。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git reset --hard</span><br></pre></td></tr></table></figure>
+
+<p>最后使用git branch查看本地仓库的分支列表，和git branch -a的远程分支完全一样。</p>
+<p>因为此方式是完整的镜像clone，所以分支和tag都和远程完全一样。</p>
+<p>示例：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">cursorhu@DESKTOP-73G2O3N MINGW64 /e/801-software-team-git/storport</span><br><span class="line">$ git clone --mirror git@10.52.1.103:software/storport.git .git</span><br><span class="line">Cloning into bare repository &#x27;.git&#x27;...</span><br><span class="line">remote: Enumerating objects: 12836, done.</span><br><span class="line">remote: Counting objects: 100% (12836/12836), done.</span><br><span class="line">remote: Compressing objects: 100% (3447/3447), done.</span><br><span class="line">remote: Total 12836 (delta 9626), reused 12368 (delta 9251)</span><br><span class="line">Receiving objects: 100% (12836/12836), 259.92 MiB | 47.75 MiB/s, done.</span><br><span class="line">Resolving deltas: 100% (9626/9626), done.</span><br><span class="line"></span><br><span class="line">cursorhu@DESKTOP-73G2O3N MINGW64 /e/801-software-team-git/storport (master)</span><br><span class="line">$ git config --bool core.bare false</span><br><span class="line"></span><br><span class="line">cursorhu@DESKTOP-73G2O3N MINGW64 /e/801-software-team-git/storport (master)</span><br><span class="line">$ git reset --hard</span><br><span class="line">HEAD is now at 2ada62d 1.change .sys file name to bhtsddr.sys; 2.change version to 07/20/2020,29.1.3.1010</span><br><span class="line"></span><br><span class="line">cursorhu@DESKTOP-73G2O3N MINGW64 /e/801-software-team-git/storport (master)</span><br><span class="line">$ git branch</span><br><span class="line">  * master</span><br><span class="line">  storport</span><br><span class="line">  storport_win10</span><br><span class="line">  storport_win11</span><br><span class="line">  ...</span><br></pre></td></tr></table></figure>
+
+<h1 id="账户免密码配置"><a href="#账户免密码配置" class="headerlink" title="账户免密码配置"></a>账户免密码配置</h1><h2 id="全局免密码配置"><a href="#全局免密码配置" class="headerlink" title="全局免密码配置"></a>全局免密码配置</h2><h3 id="https-方式的免密码配置"><a href="#https-方式的免密码配置" class="headerlink" title="https 方式的免密码配置"></a>https 方式的免密码配置</h3><p>配置credential存储</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git config --global credential.helper store</span><br></pre></td></tr></table></figure>
+
+<p>然后在项目目录，执行git pull命令会提示输入账号密码。这次输入账号密码之后，credential store就会记住账号密码，并且当前用户目录下生成.git-credentials文件，之后就不用再输入账号密码</p>
+<h3 id="ssh-方式的免密码配置"><a href="#ssh-方式的免密码配置" class="headerlink" title="ssh 方式的免密码配置"></a>ssh 方式的免密码配置</h3><p>对每个git账户生成对应的ssh公钥-私钥即可，参考：</p>
+<p><a target="_blank" rel="noopener" href="https://blog.csdn.net/qq_55558061/article/details/124117445">如何在同一电脑上生成配置多个ssh key 公钥 私钥</a></p>
+<h1 id="gitignore语法"><a href="#gitignore语法" class="headerlink" title="gitignore语法"></a>gitignore语法</h1><p>参考：<a target="_blank" rel="noopener" href="https://git-scm.com/docs/gitignore">git-scm.com&#x2F;docs&#x2F;gitignore</a></p>
+<p>参考：<a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/52885189">.gitignore文件的配置使用</a></p>
+<p>示例：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">/**/MDK-ARM/stm32f072c8t6/  		#忽略stm32f072c8t6文件夹的所有文件</span><br><span class="line">!/**/MDK-ARM/stm32f072c8t6/*.sct 	#不要忽略stm32f072c8t6文件夹的.sct文件</span><br><span class="line">/**/MDK-ARM/*.bin</span><br></pre></td></tr></table></figure>
+
+<h1 id="多人提交的冲突解决办法"><a href="#多人提交的冲突解决办法" class="headerlink" title="多人提交的冲突解决办法"></a>多人提交的冲突解决办法</h1><p>A和B同时开发某项目的同一个分支，A拉取最新版本1.0后，在本地新增功能，此时B也在1.0上修改并提交到了新版本1.1到远程仓库。A在B提交之后再提交，发现自己本地的修改已是旧版本，无法直接提交，如下图是A的add,commit,push三连的结果</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051005366.png" alt="1631249531971_115"></p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051006842.png" alt="image-20221205100655798"></p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051007268.png" alt="image-20221205100726224"></p>
+<h3 id="手动解决conflict"><a href="#手动解决conflict" class="headerlink" title="手动解决conflict"></a>手动解决conflict</h3><p><code>git pull</code> 拉取远程仓库最新版本，此时有两种情况</p>
+<ul>
+<li>代码有冲突，需手动修改冲突区域的代码块，二选一，然后重新add-commit-push三连提交</li>
+<li>无冲突，pull代码会自动合并，直接重新三连提交即可</li>
+</ul>
+<p>以下是有冲突的情况<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051008610.png" alt="image-20221205100836563"></p>
+<p>找到冲突源码，冲突的符号定义如下：</p>
+<ul>
+<li><code>&lt;&lt;&lt;&lt;&lt; HEAD</code>：当前本地的代码块</li>
+<li><code>======</code>：分割冲突块</li>
+<li><code>&gt;&gt;&gt;&gt;&gt;&gt;b699a7fc</code>：远程最新hash版本号的代码块</li>
+</ul>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051008970.png" alt="image-20221205100855921"></p>
+<p>修改方法：先拷贝冲突关键语句，再删除所有冲突域符号，最后只保留如下代码<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051019814.png" alt="image-20221205101900769"></p>
+<p>修改完后，<code>git add, git commit, git push</code>，成功提交<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051020311.png" alt="image-20221205102021265"></p>
+<p>查看提交后版本：<code>git log</code></p>
+<h3 id="修改某次提交的commit信息"><a href="#修改某次提交的commit信息" class="headerlink" title="修改某次提交的commit信息"></a>修改某次提交的commit信息</h3><p>有时需要修改commit信息便于区分哪个是解决冲突后的提交<br>解决方案：</p>
+<ul>
+<li>修改最新的commit，只需要amend修改commit信息后，再push</li>
+<li>修改历史的commit，需要先rebase修改属性为edit后，再commit –amend</li>
+</ul>
+<p>下面讲修改历史commit<br>如下图，想修改9877的commit信息<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051023197.png" alt="image-20221205102348131"></p>
+<p>先rebase到之前的commit<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051024479.png" alt="image-20221205102432433"><br>显示其后的版本属性如下<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051024531.png" alt="image-20221205102447476"><br>修改9877的属性为edit(待编辑模式)，将原始commit改成如下内容,<code>:wq</code>保存:</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051026868.png" alt="image-20221205102658821"></p>
+<p>然后<code>commit --amend, rebase --continue</code><br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051027201.png" alt="image-20221205102751155"><br>再查看下git og修改成功<br>最后<code>git push</code>同步到远程仓库</p>
+<h1 id="从分支拉取指定的commit"><a href="#从分支拉取指定的commit" class="headerlink" title="从分支拉取指定的commit"></a>从分支拉取指定的commit</h1><p>A和B都在git的master分支提交代码，一天发现master某个版本有问题，回退n各版本都找不到是谁提交引起的问题，由于master还要作稳定测试等其他用途，决定先回退master分支到较早的指定版本，而master最新版和稳定版之间提交的内容，分别由各自A和B“认领”，拉取master上自己提交的功能到自己的分支，debug好以后在合并回master。<br>需求：<br>如何在开发者分支上拉取master分支的指定几个commit的内容，注意不是某个commit以前的内容，是commit内的内容？</p>
+<h2 id="创建自己分支，回退master"><a href="#创建自己分支，回退master" class="headerlink" title="创建自己分支，回退master"></a>创建自己分支，回退master</h2><p>首先切到master分支上，创建一个自己的分支thomas，自己分支是master的拷贝</p>
+<pre><code>git checkout master //当前在那个分支，决定创建分支的内容
+git checkout -b thomas //做两件事：在本地创建thomas分支，内容和master一样；切到thomas分支
+git push --set-upstream origin thomas //推送分支到远程，这步很容易漏掉
+git branch //查看当前在哪个分支
+git branch -a //查看所有分支
+</code></pre>
+<p>以上操作完成后，自己分支就创建好了，注意动作只影响到本地仓库的.git文件，要同步远程仓库还要push到远程<br>下面备份master, 再回退master</p>
+<pre><code>git checkout master
+git checkout -b master_backup //先备份master,上面有自己分支要拉取的内容
+git checkout master //切到master,准备回退
+git reset --hard COMMIT_ID //回退到稳定版本commit_id
+git push -f //由于是回退，提交比远程的还早，一般需要强制提交，这个操作也会把本地的.git修改一同提交到远程
+</code></pre>
+<p>这样就有三个分支：</p>
+<pre><code>master: 包含稳定版本的旧代码
+master_backup: master的备份，包含稳定版和之后的A、B的一些提交
+thomas: 开发者A的个人分支，现在和master稳定版完全一样
+</code></pre>
+<p>下面只需要从master_backup拉取自己相关的提交到thomas分支即可。</p>
+<h2 id="cherry-pick拉取指定commit"><a href="#cherry-pick拉取指定commit" class="headerlink" title="cherry-pick拉取指定commit"></a>cherry-pick拉取指定commit</h2><p>先把要拉取的commit id存起来：</p>
+<pre><code>git checkout master_backup
+git log &gt; ../master_backup.log
+</code></pre>
+<p>截取commit log片段如图<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051038438.png" alt="image-20221205103857374"></p>
+<p>切到thomas分支，拉取master_backup的commit</p>
+<pre><code>git checkout thomas
+git cherry-pick 3d6b3be
+</code></pre>
+<p>这种方法只拉了一个commit, 更好的方式是按功能，一次拉多个commit,甚至一次把所有的commit都拉完。<br>cherry-pick支持多个pick一步到位<br>例如git log如下</p>
+<pre><code>commit4 id4
+commit3 id3
+commit2 id2
+commit1 id1
+</code></pre>
+<p>离散拉取：只拉取id1和id4：</p>
+<pre><code>git cherry-pick id1 id4
+</code></pre>
+<p>！注意，提交顺序很重要，旧版本写在前新版本写在后<br>如果是区间拉取,即全部的id1，id2, id3，id4</p>
+<pre><code>git cherry-pick id1..id4 //加两个点即为区间拉取
+</code></pre>
+<p>为了验证是不是真的拉取了多个版本，可以<code>git diff --name-only id1 id4</code>看下拉取后的修改哪些文件，对比被拉取分支的修改，如果一致，说明确实拉取多个commit<br>对于上图的commit，建议按功能多次cherry-pick并commit+push，便于后续debug。</p>
+<h2 id="cherry-pick的冲突问题"><a href="#cherry-pick的冲突问题" class="headerlink" title="cherry-pick的冲突问题"></a>cherry-pick的冲突问题</h2><p>cherry-pick也是合并，只要是合并代码，就可能有冲突<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051039238.png" alt="image-20221205103926181"><br>合并单个commit,使用使用常规的冲突解决办法即可：</p>
+<ul>
+<li>到源码改冲突， <code>&lt;&lt;&lt;&lt; ===== &gt;&gt;&gt;&gt;</code>三个标记之间代码块二选一</li>
+<li><code>git status</code>查看哪些待提交</li>
+<li><code>git add -A</code>提交修改后的源码到本地.git</li>
+</ul>
+<h3 id="单个提交的冲突解决"><a href="#单个提交的冲突解决" class="headerlink" title="单个提交的冲突解决"></a>单个提交的冲突解决</h3><p>由于是从其他分支的commit id合并到当前分支（HEAD）,可以不加考虑的删掉<code>&lt;&lt;&lt;&lt;HEAD</code>和<code>====</code>之间的内容，采用<code>====</code>和<code>commit_id</code>之间的内容，随后删掉三个标记即可。<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051039681.png" alt="image-20221205103951579"><br>有可能出现冲突代码块有重叠区的情况</p>
+<pre><code>&lt;&lt;&lt;&lt; HEAD
+code 1
+=====
+&lt;&lt;&lt;&lt; commit_id 1
+code 2
+&gt;&gt;&gt;&gt; commit_id 2
+code 3
+=====
+code 4
+&gt;&gt;&gt;&gt; commit_id 3
+</code></pre>
+<p>只要确定一个原则：&lt;&lt;&lt;&lt;是冲突块的起始点，&#x3D;&#x3D;&#x3D;&#x3D;是分界，&gt;&gt;&gt;&gt;是终止点，分两步删代码就可以了。</p>
+<h3 id="多个提交的冲突解决："><a href="#多个提交的冲突解决：" class="headerlink" title="多个提交的冲突解决："></a>多个提交的冲突解决：</h3><p>如果是cherry-pick多个commit，冲突的解决方法就不一样了。<br>其区别在于，多个commit_id的cherry-pick，一旦遇到冲突，就会停下pick,需要手动解决冲突后，用<code>cherry-pick --continue</code>继续接下来的commit合并，直到由遇到冲突，再次手动解决。也就是说冲突会阻塞多个commit的cherry-pick，它不会一次性合并所有commit,让你一次性解决冲突。具体流程如下：</p>
+<ul>
+<li><code>cherry-pick id1 id2 id3 id4 .... idn</code></li>
+<li>冲突报错，到源码手动解决</li>
+<li><code>git add -A</code> 添加解决冲突后的文件到.git</li>
+<li><code>cherry-pick --continue</code> 继续后面的合并,cherry-pick成功会自动提交commit信息</li>
+<li>再遇到冲突，再次解决….</li>
+<li>所有id1 … idn全部pick完成</li>
+</ul>
+<p>批量cherry-pick每次成功后都会有一次commit信息，有时候会报错，需要手动commit之后再continue</p>
+<h3 id="特殊的冲突情况"><a href="#特殊的冲突情况" class="headerlink" title="特殊的冲突情况"></a>特殊的冲突情况</h3><p>提示有一个commit是合并的提交，即这个提交是两个分支的交汇，cherry-pick不知道以哪个分支为准<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051040545.png" alt="image-20221205104005491"><br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051040453.png" alt="image-20221205104017399"></p>
+<p>如何解决：cherry-pick添加-m 1选项</p>
+<pre><code>For example, if your commit tree is like below:
+
+- A - D - E - F -   master
+   \     /
+    B - C           branch one
+then git cherry-pick E will produce the issue you faced.
+
+git cherry-pick E -m 1 means using D-E, while git cherry-pick E -m 2 means using B-C-E
+</code></pre>
+<p>例如选择cherry-pick commid_id -m 1, 结果如下，可手动解决冲突了<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051040782.png" alt="image-20221205104053730"><br>注意有merge的commit,会包含其他人的更新，如果只是pick自己的代码，不需要pick带merge的commit.</p>
+<h1 id="跨仓库合并代码"><a href="#跨仓库合并代码" class="headerlink" title="跨仓库合并代码"></a>跨仓库合并代码</h1><p>假设某公司windows driver主线仓库为storport, 为了某产品定制的driver仓库为gg8, 现在gg8的所有feature已充分测试，准备合并到主线仓库storport, 这两个仓库的代码差异非常大，维护者众多，如何处理？</p>
+<p>首先划分代码各部分归谁负责：<br>每个人用git，找出其在gg8仓库的个人修改，用winmerge手动合并到主线仓库storport<br>那么具体如何高效，可靠的合并：</p>
+<p>git部分：<br>用git只找差异部分，具体操作：</p>
+<pre><code>git diff commit_a commit_b //找所有文件+代码差异
+git diff commit_a commit_b --stat //只显示有差异的文件名，这个信息对应winmerge手动合并很重要
+git diff commit_a commit_b 指定文件路径 //只显示指定文件的内容差异，这个信息对应winmerge手动合并很重要
+</code></pre>
+<p>winmerge部分：<br>winmerge可以比较两个仓库所有差异，但是有些差异可能不需要合并，例如换行，修改时间等。总之winmerge的差异有很多“误报”<br>如果只一个个打开有差异的文件去比效率太低，需要借助git定位到哪些该开发者负责的文件有改变，以及文件内哪些代码是该开发者改变的。</p>
+<p>找出某开发者A的提交改了哪些文件：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051046241.png" alt="image-20221205104623191"></p>
+<p>找出具体代码：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051046320.png"></p>
+<p>winmerge直接合并：<br>只是一句打印差异，但是如果不用git先定位，要从左侧差异栏找出此代码，相当困难<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051046886.png" alt="image-20221205104642794"></p>
+<p>这样，开发者A在代码合并过程中，完全不受其他开发者B, C的差异代码干扰</p>
+<h1 id="强制覆盖本地代码"><a href="#强制覆盖本地代码" class="headerlink" title="强制覆盖本地代码"></a>强制覆盖本地代码</h1><p>git本地代码有时checkout到旧版本代码，想回到最新版本时，直接pull无法成功，且强制pull也不行。有以下两种方式解决：</p>
+<h2 id="重新克隆"><a href="#重新克隆" class="headerlink" title="重新克隆"></a>重新克隆</h2><p>最简单是直接删掉本地项目，再重新<code>git clone</code></p>
+<h2 id="fetch覆盖"><a href="#fetch覆盖" class="headerlink" title="fetch覆盖"></a>fetch覆盖</h2><pre><code>git fetch --all //拉取远程repo所有branch到本地，但不合并到本地repo
+git reset --hard origin/master //本地repo强制同步远程repo的master分支
+git pull -f //强制拉取远程repo最新代码
+</code></pre>
+<p>注意，如果本地旧版本代码有xxx.c，而远程最新代码没这个文件，本地需要手动删掉这个文件。因为以上操作不会删除本地文件，只会拉取本地没有的，或者覆盖不同的文件到本地。为了确保旧版本多出的文件删除，直接删除目录下除了<code>.git</code>以外的所有项目文件，再<code>fetch,reset,pull</code></p>
+<h1 id="将本地未初始化git的项目上传到远程已初始化的git仓库"><a href="#将本地未初始化git的项目上传到远程已初始化的git仓库" class="headerlink" title="将本地未初始化git的项目上传到远程已初始化的git仓库"></a>将本地未初始化git的项目上传到远程已初始化的git仓库</h1><p>有一些项目代码是基于开源的庞大项目基础上开发，例如UEFI EDK2, Linux kernel.</p>
+<p>项目开发时，可能基于不同的开源项目版本，例如：</p>
+<p>远程git仓库是EDK2版本A0 + 自定义功能B0；本地的新功能是基于EDK2版本A1 + 自定义功能B1，且本地项目还没有初始化git。这种情况如何将本地项目直接上传到远程已有的项目上面去？</p>
+<p>1.首先在本地建立git仓库</p>
+<p>在本地新项目目录初始化git仓库：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">git init</span><br><span class="line">git add .</span><br><span class="line">git commit -m &quot;commit信息&quot;</span><br></pre></td></tr></table></figure>
+
+<p>2.将本地git仓库关联到远程已有的git仓库</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git remote add origin http://远程仓库地址.git</span><br></pre></td></tr></table></figure>
+
+<p>3.拉取远程仓库到本地 (如果远程仓库为空不需要此步)</p>
+<p>注意<code>--allow-unrelated-histories</code>是忽略本地项目和远程项目没有历史关联的关键参数，否则不能pull成功</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git pull origin master --allow-unrelated-histories</span><br></pre></td></tr></table></figure>
+
+<p>合并代码通常会有冲突，手动解决冲突后再<code>git add, git commit -m &quot;fix merge conflict&quot;</code></p>
+<p>4.最后推送本地仓库到远程</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git push -u origin master</span><br></pre></td></tr></table></figure>
+
+
+
+<h1 id="链接外部repo作为子模块"><a href="#链接外部repo作为子模块" class="headerlink" title="链接外部repo作为子模块"></a>链接外部repo作为子模块</h1><p>在github的项目仓库中，通常看到如下有@符号的外部仓库链接，点进去可能打开其他的项目仓库。这种外部仓库相当于当前项目仓库的子模块。</p>
+<p>类似于Linux的软链接，子模块方式可以链接到其他项目仓库，并自动同步其他仓库最新的代码。</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212091106114.png" alt="image-20221209110659056"></p>
+<p>1.如何创建外部repo的链接:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git submodule add &quot;外部repo地址.git&quot; 外部repo文件夹名</span><br></pre></td></tr></table></figure>
+
+<p>本地就clone了外部仓库到外部repo文件夹名中, 提交本项目和正常的提交流程相同</p>
+<p>2.如何clone带外部repo的项目：</p>
+<p>git clone 的时候需要加上<code>--recursive</code>，否则外部repo文件夹是空文件夹</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git clone --recursive &quot;项目地址.git&quot;</span><br></pre></td></tr></table></figure>
+
+<p>如果已经忘记加<code>--recursive</code>，可以手动初始化子模块</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git submodule update --init --recursive</span><br></pre></td></tr></table></figure>
+
+<h1 id="Git的常用配置"><a href="#Git的常用配置" class="headerlink" title="Git的常用配置"></a>Git的常用配置</h1><h2 id="配置多组用户信息"><a href="#配置多组用户信息" class="headerlink" title="配置多组用户信息"></a>配置多组用户信息</h2><p>git上传代码时会提交用户信息，包括姓名和邮箱，这个配置是本地的git配置文件决定。</p>
+<p>如果要按项目配置多组用户信息，例如公司的代码以公司邮箱提交到公司内部的gitlab，个人项目的代码以个人邮箱提交到github，如何配置？</p>
+<p>下面分别介绍全局配置、按项目配置和按文件目录配置三种git配置方法。</p>
+<p>（1）git配置文件的位置</p>
+<p>git配置文件为.gitconfig。对于windows, 一般在’C:\Users\用户名‘目录下，可以用everything查找.gitconfig，对于Linux, 一般在home目录。本文以windows为例。</p>
+<p>（2）全局配置</p>
+<p>.gitconfig里面默认的user字段就是全局的配置，首次使用git提交会提示用户输入此信息。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">[user]</span><br><span class="line">    name = youName</span><br><span class="line">    email = youEmail@example.com</span><br></pre></td></tr></table></figure>
+
+<p>全局配置的查看和修改使用<code>--global</code>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">git config --global user.name                           // 查询全局用户名</span><br><span class="line">git config --global user.name youName                   // 修改全局用户名</span><br><span class="line">git config --global user.email                          // 查询全局邮箱</span><br><span class="line">git config --global user.email youEmail@example.com     // 修改全局邮箱</span><br></pre></td></tr></table></figure>
+
+<p>（3）对某个git项目自定义配置</p>
+<p>这种方法的作用域只是某一个git项目，用的比较少</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">git config user.name                           // 查询项目用户名</span><br><span class="line">git config user.name youName                   // 修改项目用户名</span><br><span class="line">git config user.email                          // 查询项目邮箱</span><br><span class="line">git config user.email youEmail@example.com     // 修改项目邮箱</span><br></pre></td></tr></table></figure>
+
+<p>（3）对某个路径下的所有git项目自定义配置</p>
+<p>git的<code>Conditional Includes</code>可以针对文件夹配置，在.gitconfig添加如下格式的includeIf字段</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">[includeIf &quot;gitdir:path/to/you/gitdir/&quot;]</span><br><span class="line">    path = ~/.gitconfig_self</span><br></pre></td></tr></table></figure>
+
+<p>其中path&#x2F;to&#x2F;you&#x2F;gitdir&#x2F;是要自定义配置的路径，可以包含很多git项目。注意尾部必须要加&#x2F;</p>
+<p>.gitconfig_self是自定义配置的gitconfig文件，在里面指定[user]字段</p>
+<p>例如我的自定义路径是F:&#x2F;github-my， 自定义配置文件.gitconfig_mygithub，配置如下：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">[includeIf &quot;gitdir:F:/github-my/&quot;]</span><br><span class="line">    path = C:/Users/thomas.hu/.gitconfig_mygithub</span><br></pre></td></tr></table></figure>
+
+<p>注意windows上不能直接右键创建只有后缀名的文件，会提示“必须键入文件名”。</p>
+<p>使用CMD或Powershell的命令行创建.gitconfig_mygithub：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">cd C:\Users\thomas.hu</span><br><span class="line">echo &gt; .gitconfig_mygithub</span><br></pre></td></tr></table></figure>
+
+<p>.gitconfig_mygithub定义我个人项目的信息，内容如下：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">[user]</span><br><span class="line">    name = cursorhu</span><br><span class="line">    email = 2449055512@qq.com</span><br></pre></td></tr></table></figure>
+
+<p>全局的.gitconfig是公司项目信息，内容如下：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">[user]</span><br><span class="line">	name = thomas.hu</span><br><span class="line">	email = thomas.hu@xxx.com</span><br></pre></td></tr></table></figure>
+
+<p>配置.gitconfig_mygithub完成后可见两种配置都生效：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">&gt; git config --global user.name</span><br><span class="line">thomas.hu</span><br><span class="line">&gt; git config user.name</span><br><span class="line">cursorhu</span><br></pre></td></tr></table></figure>
+
+<p>（4）三种配置文件的优先级</p>
+<p>git使用以上三种配置的优先级为：项目配置 &gt; 路径配置 &gt; 全局配置</p>
+<h2 id="换行符的配置"><a href="#换行符的配置" class="headerlink" title="换行符的配置"></a>换行符的配置</h2><p>为了解决跨平台的文件换行符问题，git支持自定义配置换行符规则。</p>
+<p>（1）跨平台的文件换行符的相关背景</p>
+<p>在各操作系统下，文本文件所使用的换行符是不一样的。UNIX&#x2F;Linux 使用的是 0x0A（LF），早期的 Mac OS 使用的是 0x0D（CR），后来的 OS X 版本与 UNIX 保持一致了。但 DOS&#x2F;Windows 使用 0x0D0A（CRLF）作为换行符。也就是说，在不同平台上写代码，其代码文件和一些项目配置文件的换行不一样。</p>
+<p>（2）Git工具的autocrlf </p>
+<p>Git最开始只支持类Unix的LF换行符，为了支持Windows开发的CRLF换行，Git提供了autocrlf 配置字段autocrlf 。</p>
+<p>如果autocrlf enable, Windows 本地的CRLF文件在提交到git时，自动转换为LF换行；从git checkout文件到windows本地时，git将LF换行自动替换为 Windows 的换行符（CRLF）。Linux环境下checkout时文件换行也自动转换为Linux的LF格式。</p>
+<p>如果autocrlf disable, Windows 本地的CRLF文件在提交到git时仍然为CRLF换行，如果有其他Linux环境的开发者checkout文件，可能无法在Linux上识别相关的CRLF文件引起项目编译问题。</p>
+<p>如果没有跨平台的开发环境，即所有开发者都是Windows或都是Linux环境，则不需要autocrlf enable。</p>
+<p>注意：对于windows版本的git, 默认是enable autocrlf，.gitconfig内容如下：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">[core]</span><br><span class="line">	autocrlf = true</span><br></pre></td></tr></table></figure>
+
+<p>可以使用命令修改：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git config --global core.autocrlf false</span><br></pre></td></tr></table></figure>
+
+<p>（3）同一个项目内，要同时支持LF和CRLF如何设置？</p>
+<p>如果是临时的解决某些文件的换行问题，可以手动转换：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">dos2unix #转换dos换行符为unix换行</span><br><span class="line">unix2dos #转换unix换行符为dos换行</span><br></pre></td></tr></table></figure>
+
+<p>对git项目的配置，参考<a target="_blank" rel="noopener" href="https://git-scm.com/docs/gitattributes">.gitattributes</a>，可以指定某路径的某文件使用指定的换行：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">*           text=auto		#set autocrlf manually for all files</span><br><span class="line">*.vcproj	text eol=crlf 	#all .vcproj files have CRLF</span><br><span class="line">*.sh		text eol=lf 	#all .sh files have LF</span><br><span class="line">*.jpg		-text 			#prevent .jpg files from being normalized</span><br></pre></td></tr></table></figure>
+
+<p>eol attribute sets a specific line-ending style to be used in the working directory. This attribute has effect only if the <code>text</code> attribute is set or unspecified</p>
+<p>一个项目既有windows的bat脚本又有Linux的sh脚本，在全局的core.autocrlf 为true的基础上，配置如下attribute 使这些文件不自动转换：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">*.bat	text eol=crlf</span><br><span class="line">*.sh	text eol=lf</span><br><span class="line">*/*.cfg	text eol=crlf</span><br></pre></td></tr></table></figure>
+
+<h1 id="合并时有二进制文件冲突如何处理"><a href="#合并时有二进制文件冲突如何处理" class="headerlink" title="合并时有二进制文件冲突如何处理"></a>合并时有二进制文件冲突如何处理</h1><p>Git merge产生冲突：对于文本文件的冲突有强制处理要求，不解决完冲突无法提交；而对二进制文件的冲突只有提醒，没有强制处理要求。</p>
+<p>对于文本文件，提交者可以直接修改冲突的内容；而对于二进制文件，提交者不能直接修改二进制冲突的内容，很容易漏过对二进制文件冲突的处理。</p>
+<p>二进制文件冲突，git处理不了内容，应该使用覆盖的方式处理。手动覆盖可以解决此问题，但更合理的方法是用git命令自动解决。</p>
+<p>git命令方法：在冲突发生后，使用命令<code>git checkout --ours|--theirs &lt;Paths&gt;</code>来选择是使用“Ours，即当前分支”的二进制文件，还是“Theirs，即合并进来的分支”的二进制文件直接替换掉本地的冲突二进制文件，其中<code>&lt;Paths&gt;</code>是冲突二进制文件的路径。</p>
+<p>示例如下：</p>
+<p>本地版本为branch-A，要合并进来branch-B</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git merge branch-B --squash</span><br></pre></td></tr></table></figure>
+
+<p>项目中的exe文件产生的冲突：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">warning: Cannot merge binary files: fw_parameter_edit_tool/flash_header_parameter_update_tool.exe (HEAD vs. branch-B)</span><br><span class="line">Auto-merging fw_parameter_edit_tool/flash_header_parameter_update_tool.exe</span><br><span class="line">CONFLICT (content): Merge conflict in fw_parameter_edit_tool/flash_header_parameter_update_tool.exe</span><br></pre></td></tr></table></figure>
+
+<p>此时使用checkout –theirs将branch-B版本的二进制覆盖掉本地branch-A版本的二进制。即完成了此exe的合并（使用branch-B版本）</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">&gt; git checkout --theirs fw_parameter_edit_tool/flash_header_parameter_update_tool.exe</span><br><span class="line">Updated 1 path from the index</span><br></pre></td></tr></table></figure>
+
+<p>合并完以后用beyond compare确认一下两个版本的exe是完全一致的，也可以用git diff看一下合并前后二进制文件是否有差异。</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Git/" rel="tag"># Git</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/12/01/C-STL%E7%B1%BB%E4%BD%BF%E7%94%A8%E7%AC%94%E8%AE%B0/" rel="prev" title="C++ STL类使用笔记">
+      <i class="fa fa-chevron-left"></i> C++ STL类使用笔记
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2020/12/03/%E5%BC%80%E6%BA%90%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0%EF%BC%9ATinyhttpd/" rel="next" title="开源项目学习：Tinyhttpd">
+      开源项目学习：Tinyhttpd <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%9F%BA%E7%A1%80%E6%93%8D%E4%BD%9C"><span class="nav-number">1.</span> <span class="nav-text">基础操作</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8B%89%E5%8F%96%E5%92%8C%E5%90%8C%E6%AD%A5"><span class="nav-number">1.1.</span> <span class="nav-text">拉取和同步</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9F%A5%E7%9C%8B%E6%97%A5%E5%BF%97"><span class="nav-number">1.2.</span> <span class="nav-text">查看日志</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8E%A8%E9%80%81%E5%88%B0%E8%BF%9C%E7%A8%8B"><span class="nav-number">1.3.</span> <span class="nav-text">推送到远程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8A%A0tag-%E5%88%A0tag"><span class="nav-number">1.4.</span> <span class="nav-text">加tag&#x2F;删tag</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%88%9B%E5%BB%BA-%E5%88%A0%E9%99%A4-%E4%BF%AE%E6%94%B9%E5%88%86%E6%94%AF"><span class="nav-number">1.5.</span> <span class="nav-text">创建&#x2F;删除&#x2F;修改分支</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9B%B4%E6%8D%A2%E8%BF%9C%E7%A8%8B"><span class="nav-number">1.6.</span> <span class="nav-text">更换远程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%89%88%E6%9C%AC%E6%AF%94%E8%BE%83"><span class="nav-number">1.7.</span> <span class="nav-text">版本比较</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%89%88%E6%9C%AC%E5%9B%9E%E9%80%80"><span class="nav-number">1.8.</span> <span class="nav-text">版本回退</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%96%87%E4%BB%B6%E5%9B%9E%E9%80%80"><span class="nav-number">1.9.</span> <span class="nav-text">文件回退</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%9B%9E%E9%80%80%E6%9C%AA%E6%8F%90%E4%BA%A4%E7%9A%84%E6%94%B9%E5%8A%A8"><span class="nav-number">1.9.1.</span> <span class="nav-text">回退未提交的改动</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%9B%9E%E9%80%80%E6%8C%87%E5%AE%9A%E6%96%87%E4%BB%B6%E5%88%B0%E5%8E%86%E5%8F%B2commit"><span class="nav-number">1.9.2.</span> <span class="nav-text">回退指定文件到历史commit</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%90%88%E5%B9%B6%E5%88%86%E6%94%AF"><span class="nav-number">1.10.</span> <span class="nav-text">合并分支</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%90%88%E5%B9%B6%E6%8F%90%E4%BA%A4"><span class="nav-number">1.11.</span> <span class="nav-text">合并提交</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%90%88%E5%B9%B6%E5%BD%93%E5%89%8D%E6%8F%90%E4%BA%A4"><span class="nav-number">1.11.1.</span> <span class="nav-text">合并当前提交</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%90%88%E5%B9%B6%E5%8E%86%E5%8F%B2%E6%8F%90%E4%BA%A4"><span class="nav-number">1.11.2.</span> <span class="nav-text">合并历史提交</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#git-clone%E8%BF%9C%E7%A8%8B%E6%89%80%E6%9C%89%E5%88%86%E6%94%AF%E5%88%B0%E6%9C%AC%E5%9C%B0"><span class="nav-number">1.12.</span> <span class="nav-text">git clone远程所有分支到本地</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E8%B4%A6%E6%88%B7%E5%85%8D%E5%AF%86%E7%A0%81%E9%85%8D%E7%BD%AE"><span class="nav-number">2.</span> <span class="nav-text">账户免密码配置</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%A8%E5%B1%80%E5%85%8D%E5%AF%86%E7%A0%81%E9%85%8D%E7%BD%AE"><span class="nav-number">2.1.</span> <span class="nav-text">全局免密码配置</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#https-%E6%96%B9%E5%BC%8F%E7%9A%84%E5%85%8D%E5%AF%86%E7%A0%81%E9%85%8D%E7%BD%AE"><span class="nav-number">2.1.1.</span> <span class="nav-text">https 方式的免密码配置</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ssh-%E6%96%B9%E5%BC%8F%E7%9A%84%E5%85%8D%E5%AF%86%E7%A0%81%E9%85%8D%E7%BD%AE"><span class="nav-number">2.1.2.</span> <span class="nav-text">ssh 方式的免密码配置</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#gitignore%E8%AF%AD%E6%B3%95"><span class="nav-number">3.</span> <span class="nav-text">gitignore语法</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%A4%9A%E4%BA%BA%E6%8F%90%E4%BA%A4%E7%9A%84%E5%86%B2%E7%AA%81%E8%A7%A3%E5%86%B3%E5%8A%9E%E6%B3%95"><span class="nav-number">4.</span> <span class="nav-text">多人提交的冲突解决办法</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%89%8B%E5%8A%A8%E8%A7%A3%E5%86%B3conflict"><span class="nav-number">4.0.1.</span> <span class="nav-text">手动解决conflict</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BF%AE%E6%94%B9%E6%9F%90%E6%AC%A1%E6%8F%90%E4%BA%A4%E7%9A%84commit%E4%BF%A1%E6%81%AF"><span class="nav-number">4.0.2.</span> <span class="nav-text">修改某次提交的commit信息</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%BB%8E%E5%88%86%E6%94%AF%E6%8B%89%E5%8F%96%E6%8C%87%E5%AE%9A%E7%9A%84commit"><span class="nav-number">5.</span> <span class="nav-text">从分支拉取指定的commit</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%88%9B%E5%BB%BA%E8%87%AA%E5%B7%B1%E5%88%86%E6%94%AF%EF%BC%8C%E5%9B%9E%E9%80%80master"><span class="nav-number">5.1.</span> <span class="nav-text">创建自己分支，回退master</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#cherry-pick%E6%8B%89%E5%8F%96%E6%8C%87%E5%AE%9Acommit"><span class="nav-number">5.2.</span> <span class="nav-text">cherry-pick拉取指定commit</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#cherry-pick%E7%9A%84%E5%86%B2%E7%AA%81%E9%97%AE%E9%A2%98"><span class="nav-number">5.3.</span> <span class="nav-text">cherry-pick的冲突问题</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8D%95%E4%B8%AA%E6%8F%90%E4%BA%A4%E7%9A%84%E5%86%B2%E7%AA%81%E8%A7%A3%E5%86%B3"><span class="nav-number">5.3.1.</span> <span class="nav-text">单个提交的冲突解决</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%A4%9A%E4%B8%AA%E6%8F%90%E4%BA%A4%E7%9A%84%E5%86%B2%E7%AA%81%E8%A7%A3%E5%86%B3%EF%BC%9A"><span class="nav-number">5.3.2.</span> <span class="nav-text">多个提交的冲突解决：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%89%B9%E6%AE%8A%E7%9A%84%E5%86%B2%E7%AA%81%E6%83%85%E5%86%B5"><span class="nav-number">5.3.3.</span> <span class="nav-text">特殊的冲突情况</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E8%B7%A8%E4%BB%93%E5%BA%93%E5%90%88%E5%B9%B6%E4%BB%A3%E7%A0%81"><span class="nav-number">6.</span> <span class="nav-text">跨仓库合并代码</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%BC%BA%E5%88%B6%E8%A6%86%E7%9B%96%E6%9C%AC%E5%9C%B0%E4%BB%A3%E7%A0%81"><span class="nav-number">7.</span> <span class="nav-text">强制覆盖本地代码</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%87%8D%E6%96%B0%E5%85%8B%E9%9A%86"><span class="nav-number">7.1.</span> <span class="nav-text">重新克隆</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#fetch%E8%A6%86%E7%9B%96"><span class="nav-number">7.2.</span> <span class="nav-text">fetch覆盖</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%B0%86%E6%9C%AC%E5%9C%B0%E6%9C%AA%E5%88%9D%E5%A7%8B%E5%8C%96git%E7%9A%84%E9%A1%B9%E7%9B%AE%E4%B8%8A%E4%BC%A0%E5%88%B0%E8%BF%9C%E7%A8%8B%E5%B7%B2%E5%88%9D%E5%A7%8B%E5%8C%96%E7%9A%84git%E4%BB%93%E5%BA%93"><span class="nav-number">8.</span> <span class="nav-text">将本地未初始化git的项目上传到远程已初始化的git仓库</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E9%93%BE%E6%8E%A5%E5%A4%96%E9%83%A8repo%E4%BD%9C%E4%B8%BA%E5%AD%90%E6%A8%A1%E5%9D%97"><span class="nav-number">9.</span> <span class="nav-text">链接外部repo作为子模块</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Git%E7%9A%84%E5%B8%B8%E7%94%A8%E9%85%8D%E7%BD%AE"><span class="nav-number">10.</span> <span class="nav-text">Git的常用配置</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%85%8D%E7%BD%AE%E5%A4%9A%E7%BB%84%E7%94%A8%E6%88%B7%E4%BF%A1%E6%81%AF"><span class="nav-number">10.1.</span> <span class="nav-text">配置多组用户信息</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8D%A2%E8%A1%8C%E7%AC%A6%E7%9A%84%E9%85%8D%E7%BD%AE"><span class="nav-number">10.2.</span> <span class="nav-text">换行符的配置</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%90%88%E5%B9%B6%E6%97%B6%E6%9C%89%E4%BA%8C%E8%BF%9B%E5%88%B6%E6%96%87%E4%BB%B6%E5%86%B2%E7%AA%81%E5%A6%82%E4%BD%95%E5%A4%84%E7%90%86"><span class="nav-number">11.</span> <span class="nav-text">合并时有二进制文件冲突如何处理</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="cursorhu"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">cursorhu</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">113</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">41</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">55</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/cursorhu" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;cursorhu" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:2449055512@qq.com" title="E-Mail → mailto:2449055512@qq.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2025</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">cursorhu</span>
+</div>
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

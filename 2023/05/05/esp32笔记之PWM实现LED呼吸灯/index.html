@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 8.0.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Noto+Serif+SC|Roboto/css?family=Noto Serif SC:300,300italic,400,400italic,700,700italic|Roboto:300,300italic,400,400italic,700,700italic&display=swap&subset=latin,latin-ext">
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"cursorhu.github.io","root":"/","scheme":"Pisces","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="PWM简介先从应用上讲讲PWM： 有一盏日光灯，一般我们只能打开它或者关闭它，不存在中间状态； 有另一个LED灯，支持在一秒以内极快速的速度开关开关，其变化超过人眼识别的24帧率，LED灯看上去就像一直开着，但亮度比常开暗一些；如果控制灯快速开关过程中的打开时间和关闭时间的比例，就可以调节人眼看到的灯亮度。 以上就是PWM的大概应用原理：用高频率的开关信号，控制输出信号的平均强度，使输出信号能在0">
+<meta property="og:type" content="article">
+<meta property="og:title" content="esp32笔记之PWM实现LED呼吸灯">
+<meta property="og:url" content="https://cursorhu.github.io/2023/05/05/esp32%E7%AC%94%E8%AE%B0%E4%B9%8BPWM%E5%AE%9E%E7%8E%B0LED%E5%91%BC%E5%90%B8%E7%81%AF/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="PWM简介先从应用上讲讲PWM： 有一盏日光灯，一般我们只能打开它或者关闭它，不存在中间状态； 有另一个LED灯，支持在一秒以内极快速的速度开关开关，其变化超过人眼识别的24帧率，LED灯看上去就像一直开着，但亮度比常开暗一些；如果控制灯快速开关过程中的打开时间和关闭时间的比例，就可以调节人眼看到的灯亮度。 以上就是PWM的大概应用原理：用高频率的开关信号，控制输出信号的平均强度，使输出信号能在0">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://circuitdigest.com/sites/default/files/inlineimages/pulse-width-modulation-duty-cycle.gif">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202305051659127.jpg">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202305061100234.jpg">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202305051657299.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202305052003803.gif">
+<meta property="article:published_time" content="2023-05-05T08:50:16.000Z">
+<meta property="article:modified_time" content="2024-11-04T03:43:03.117Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="esp32">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://circuitdigest.com/sites/default/files/inlineimages/pulse-width-modulation-duty-cycle.gif">
+
+<link rel="canonical" href="https://cursorhu.github.io/2023/05/05/esp32%E7%AC%94%E8%AE%B0%E4%B9%8BPWM%E5%AE%9E%E7%8E%B0LED%E5%91%BC%E5%90%B8%E7%81%AF/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>esp32笔记之PWM实现LED呼吸灯 | ThinkNotes</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">ThinkNotes</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Simple is not easy</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于我</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2023/05/05/esp32%E7%AC%94%E8%AE%B0%E4%B9%8BPWM%E5%AE%9E%E7%8E%B0LED%E5%91%BC%E5%90%B8%E7%81%AF/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          esp32笔记之PWM实现LED呼吸灯
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2023-05-05 16:50:16" itemprop="dateCreated datePublished" datetime="2023-05-05T16:50:16+08:00">2023-05-05</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2024-11-04 11:43:03" itemprop="dateModified" datetime="2024-11-04T11:43:03+08:00">2024-11-04</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/esp32/" itemprop="url" rel="index"><span itemprop="name">esp32</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="PWM简介"><a href="#PWM简介" class="headerlink" title="PWM简介"></a>PWM简介</h2><p>先从应用上讲讲PWM：</p>
+<p>有一盏日光灯，一般我们只能打开它或者关闭它，不存在中间状态；</p>
+<p>有另一个LED灯，支持在一秒以内极快速的速度开关开关，其变化超过人眼识别的24帧率，LED灯看上去就像一直开着，但亮度比常开暗一些；如果控制灯快速开关过程中的打开时间和关闭时间的比例，就可以调节人眼看到的灯亮度。</p>
+<p>以上就是PWM的大概应用原理：用高频率的开关信号，控制输出信号的平均强度，使输出信号能在0%到100%强度间任意调节。</p>
+<p>用电路语句讲PWM原理：用数字信号的占空比来调制模拟信号的幅度(电压)。</p>
+<p>PWM详细介绍参考：<a target="_blank" rel="noopener" href="https://circuitdigest.com/tutorial/what-is-pwm-pulse-width-modulation">What is PWM: Pulse Width Modulation</a></p>
+<p>脉冲宽度(pulse width)是指单位时间的高电平的持续时间，脉冲宽度越大被调制的模拟信号电压越大。</p>
+<ul>
+<li>在一定的频率下，通过不同的(高电平)占空比即可得到不同脉冲宽度，进而调节输出的模拟电压信号</li>
+<li>在一定的占空比下，通过不同的频率实现不同的调节速度；频率要适配不同设备，不能任意设置，例如电机频率50HZ，MCU外设1000Hz。频率不决定被调制电压的幅度。</li>
+</ul>
+<p>PWM的调制信号如下：</p>
+<p><img src="https://circuitdigest.com/sites/default/files/inlineimages/pulse-width-modulation-duty-cycle.gif" alt="img"></p>
+<p>PWM调制电路通常用RC filter实现：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202305051659127.jpg" alt="Converting-PWM-signals-into-Analog"></p>
+<p>PWM一般对具体设备使用固定频率，再调整高电平的占空比决定模拟信号的幅度。</p>
+<p>如下图，占空比从0%调节到100%，对应输出电压为0V~5V</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202305061100234.jpg" alt="Pulse-Width-Modulation"></p>
+<p>从原理上讲就是开关控制，在一个周期内调制信号的高电平时间越长，RC电荷积分更多，输出电压越大：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202305051657299.png" alt="image-20230505165748199"></p>
+<h2 id="MicroPython控制PWM"><a href="#MicroPython控制PWM" class="headerlink" title="MicroPython控制PWM"></a>MicroPython控制PWM</h2><p>官方tutorial参考：</p>
+<p><a target="_blank" rel="noopener" href="https://docs.micropython.org/en/latest/esp32/quickref.html">Quick reference for the ESP32</a> PWM (pulse width modulation)</p>
+<p><a target="_blank" rel="noopener" href="https://docs.micropython.org/en/latest/esp32/tutorial/pwm.html#esp32-pwm">Pulse Width Modulation</a> 其中有调整频率和占空比的sample code:</p>
+<ul>
+<li><p>Example of a smooth frequency change:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">from utime import sleep</span><br><span class="line">from machine import Pin, PWM</span><br><span class="line"></span><br><span class="line">F_MIN = 500</span><br><span class="line">F_MAX = 1000</span><br><span class="line"></span><br><span class="line">f = F_MIN</span><br><span class="line">delta_f = 1</span><br><span class="line"></span><br><span class="line">p = PWM(Pin(5), f)</span><br><span class="line">print(p)</span><br><span class="line"></span><br><span class="line">while True:</span><br><span class="line">    p.freq(f)</span><br><span class="line"></span><br><span class="line">    sleep(10 / F_MIN)</span><br><span class="line"></span><br><span class="line">    f += delta_f</span><br><span class="line">    if f &gt;= F_MAX or f &lt;= F_MIN:</span><br><span class="line">        delta_f = -delta_f</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>Example of a smooth duty change:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">from utime import sleep</span><br><span class="line">from machine import Pin, PWM</span><br><span class="line"></span><br><span class="line">DUTY_MAX = 2**16 - 1</span><br><span class="line"></span><br><span class="line">duty_u16 = 0</span><br><span class="line">delta_d = 16</span><br><span class="line"></span><br><span class="line">p = PWM(Pin(5), 1000, duty_u16=duty_u16)</span><br><span class="line">print(p)</span><br><span class="line"></span><br><span class="line">while True:</span><br><span class="line">    p.duty_u16(duty_u16)</span><br><span class="line"></span><br><span class="line">    sleep(1 / 1000)</span><br><span class="line"></span><br><span class="line">    duty_u16 += delta_d</span><br><span class="line">    if duty_u16 &gt;= DUTY_MAX:</span><br><span class="line">        duty_u16 = DUTY_MAX</span><br><span class="line">        delta_d = -delta_d</span><br><span class="line">    elif duty_u16 &lt;= 0:</span><br><span class="line">        duty_u16 = 0</span><br><span class="line">        delta_d = -delta_d</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="呼吸灯示例"><a href="#呼吸灯示例" class="headerlink" title="呼吸灯示例"></a>呼吸灯示例</h2><p>参考：<a target="_blank" rel="noopener" href="https://doc.itprojects.cn/0006.zhishi.esp32/02.doc/index.html#/03.PWMhuxideng">itproject.cn&#x2F;Python+ESP32快速上手&#x2F;3.PWM呼吸灯</a></p>
+<p>esp32的micropython代码以script形式执行，主程序必须命名为main.py(参考 <a target="_blank" rel="noopener" href="https://docs.micropython.org/en/v1.9.3/pyboard/pyboard/tutorial/script.html">Running your first script</a>):</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">from machine import Pin, PWM</span><br><span class="line">import time</span><br><span class="line"></span><br><span class="line">led2 = PWM(Pin(2))</span><br><span class="line">led2.freq(1000)</span><br><span class="line"></span><br><span class="line">while True:</span><br><span class="line">    for i in range(0, 1024):</span><br><span class="line">        led2.duty(i)</span><br><span class="line">        time.sleep_ms(1)</span><br><span class="line">        </span><br><span class="line">    for i in range(1023, -1, -1):</span><br><span class="line">        led2.duty(i)</span><br><span class="line">        time.sleep_ms(1)</span><br></pre></td></tr></table></figure>
+
+<p>LED渐变呼吸闪烁：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202305052003803.gif" alt="mmexport1683287925729"></p>
+<p>如果将led duty调整为512，最大亮度会变小，验证了最大占空比决定最大电压</p>
+<p>如果将led freq调整为50，最大亮度不变，但led渐变过程中会闪烁，也就是说开关调节频率太低，导致人眼都可以观察到led的开关电，看上去就是led闪烁</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/esp32/" rel="tag"># esp32</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2023/05/04/esp32%E7%AC%94%E8%AE%B0%E4%B9%8B%E7%8E%AF%E5%A2%83%E6%90%AD%E5%BB%BA/" rel="prev" title="esp32笔记之环境搭建">
+      <i class="fa fa-chevron-left"></i> esp32笔记之环境搭建
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2023/05/06/xv6%E7%AC%94%E8%AE%B0%E4%B9%8B%E7%8E%AF%E5%A2%83%E6%90%AD%E5%BB%BA/" rel="next" title="xv6笔记之环境搭建">
+      xv6笔记之环境搭建 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#PWM%E7%AE%80%E4%BB%8B"><span class="nav-number">1.</span> <span class="nav-text">PWM简介</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#MicroPython%E6%8E%A7%E5%88%B6PWM"><span class="nav-number">2.</span> <span class="nav-text">MicroPython控制PWM</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%91%BC%E5%90%B8%E7%81%AF%E7%A4%BA%E4%BE%8B"><span class="nav-number">3.</span> <span class="nav-text">呼吸灯示例</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="cursorhu"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">cursorhu</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">113</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">41</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">55</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/cursorhu" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;cursorhu" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:2449055512@qq.com" title="E-Mail → mailto:2449055512@qq.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2025</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">cursorhu</span>
+</div>
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

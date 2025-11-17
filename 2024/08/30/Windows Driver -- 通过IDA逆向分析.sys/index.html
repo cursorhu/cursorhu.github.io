@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 8.0.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Noto+Serif+SC|Roboto/css?family=Noto Serif SC:300,300italic,400,400italic,700,700italic|Roboto:300,300italic,400,400italic,700,700italic&display=swap&subset=latin,latin-ext">
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"cursorhu.github.io","root":"/","scheme":"Pisces","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="Windows Driver – 通过IDA逆向分析.sys背景：因业务需要规划下一代PCIe SD host的Windows驱动，要支持Win11和以后的最新特性，因为现有的SD驱动是基于Storport-miniport架构，在Win11上有诸多限制严重影响业务，因此决定转型为WDF驱动。本文浅显分析Realtek的Win11 PCIe SD Card reader驱动是用什么架构，内部如何实">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Windows Driver -- 通过IDA逆向分析.sys">
+<meta property="og:url" content="https://cursorhu.github.io/2024/08/30/Windows%20Driver%20--%20%E9%80%9A%E8%BF%87IDA%E9%80%86%E5%90%91%E5%88%86%E6%9E%90.sys/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="Windows Driver – 通过IDA逆向分析.sys背景：因业务需要规划下一代PCIe SD host的Windows驱动，要支持Win11和以后的最新特性，因为现有的SD驱动是基于Storport-miniport架构，在Win11上有诸多限制严重影响业务，因此决定转型为WDF驱动。本文浅显分析Realtek的Win11 PCIe SD Card reader驱动是用什么架构，内部如何实">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202408161541633.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202408161542515.png">
+<meta property="article:published_time" content="2024-08-30T09:52:38.000Z">
+<meta property="article:modified_time" content="2025-11-04T09:29:05.918Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="windows驱动">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202408161541633.png">
+
+<link rel="canonical" href="https://cursorhu.github.io/2024/08/30/Windows%20Driver%20--%20%E9%80%9A%E8%BF%87IDA%E9%80%86%E5%90%91%E5%88%86%E6%9E%90.sys/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>Windows Driver -- 通过IDA逆向分析.sys | ThinkNotes</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">ThinkNotes</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Simple is not easy</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于我</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2024/08/30/Windows%20Driver%20--%20%E9%80%9A%E8%BF%87IDA%E9%80%86%E5%90%91%E5%88%86%E6%9E%90.sys/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Windows Driver -- 通过IDA逆向分析.sys
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2024-08-30 17:52:38" itemprop="dateCreated datePublished" datetime="2024-08-30T17:52:38+08:00">2024-08-30</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2025-11-04 17:29:05" itemprop="dateModified" datetime="2025-11-04T17:29:05+08:00">2025-11-04</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/windows%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91/" itemprop="url" rel="index"><span itemprop="name">windows驱动开发</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="Windows-Driver-–-通过IDA逆向分析-sys"><a href="#Windows-Driver-–-通过IDA逆向分析-sys" class="headerlink" title="Windows Driver – 通过IDA逆向分析.sys"></a>Windows Driver – 通过IDA逆向分析.sys</h1><p>背景：因业务需要规划下一代PCIe SD host的Windows驱动，要支持Win11和以后的最新特性，因为现有的SD驱动是基于Storport-miniport架构，在Win11上有诸多限制严重影响业务，因此决定转型为WDF驱动。本文浅显分析Realtek的Win11 PCIe SD Card reader驱动是用什么架构，内部如何实现。</p>
+<h2 id="IDA反汇编工具"><a href="#IDA反汇编工具" class="headerlink" title="IDA反汇编工具"></a>IDA反汇编工具</h2><p>IDA能将二进制文件反汇编(disassemble)成为汇编代码，还支持将汇编代码进一步显示成C代码(decompile)。</p>
+<p>下载IDA free版本就够用</p>
+<p><a target="_blank" rel="noopener" href="https://hex-rays.com/products/ida/support/%20download_freeware%20/">https://hex-rays.com/products/ida/support/%20download_freeware%20/</a></p>
+<h2 id="IDA分析驱动-sys文件"><a href="#IDA分析驱动-sys文件" class="headerlink" title="IDA分析驱动.sys文件"></a>IDA分析驱动.sys文件</h2><h3 id="IDA常用快捷键"><a href="#IDA常用快捷键" class="headerlink" title="IDA常用快捷键"></a>IDA常用快捷键</h3><p>F5：汇编代码转C代码显示（IDA称为伪代码，因为不是纯C）</p>
+<p>Shift + F12：显示所有符号的字符串。可以全览所有函数，弄清用的什么技术栈</p>
+<p>x：查看函数和变量的交叉引用，即被谁调用</p>
+<p>esc：返回上个页面位置</p>
+<h3 id="驱动分析示例"><a href="#驱动分析示例" class="headerlink" title="驱动分析示例"></a>驱动分析示例</h3><h4 id="RtsPer-sys下载"><a href="#RtsPer-sys下载" class="headerlink" title="RtsPer.sys下载"></a>RtsPer.sys下载</h4><p><a target="_blank" rel="noopener" href="https://www.driverscloud.com/en/services/GetInformationDriver/75616-0/realtek-cardreader-win10-win11-1002262121361zip">https://www.driverscloud.com/en/services/GetInformationDriver/75616-0/realtek-cardreader-win10-win11-1002262121361zip</a></p>
+<h4 id="INF分析"><a href="#INF分析" class="headerlink" title="INF分析"></a>INF分析</h4><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br></pre></td><td class="code"><pre><span class="line">[Version]</span><br><span class="line">Signature=&quot;$Windows NT$&quot;</span><br><span class="line">Class=MTD</span><br><span class="line">ClassGuid = &#123;4d36e970-e325-11ce-bfc1-08002be10318&#125;</span><br><span class="line">Provider=%RTS%</span><br><span class="line">CatalogFile = RtsPer64.cat</span><br><span class="line">DriverVer=11/14/2022,10.0.22621.21361</span><br><span class="line"></span><br><span class="line">... 以下以Rts5227CR为例</span><br><span class="line"></span><br><span class="line">[DestinationDirs]</span><br><span class="line">CopyFilesSYS = 12     ; should it be 10 to take care of 98 stuff</span><br><span class="line">CopyFilesDLL = 11     ; %SystemRoot%\system or system32 - 98 or Win2000</span><br><span class="line">CopyFilesDLL64 = 10,SysWOW64</span><br><span class="line"></span><br><span class="line">[Manufacturer]</span><br><span class="line">%VENDOR%=Vendor, NTamd64</span><br><span class="line"></span><br><span class="line">[Vendor.NTamd64]</span><br><span class="line">%Rts5227CR%=RTS5264.Inst, PCI\VEN_10EC&amp;DEV_5264&amp;CC_FF00</span><br><span class="line"></span><br><span class="line">[RTS5264.Inst.ntamd64]</span><br><span class="line">CopyFiles = CopyFilesSYS, CopyFilesDLL64</span><br><span class="line"></span><br><span class="line">[RTS5264.Inst.NTamd64.HW]</span><br><span class="line">AddReg=MsiEnable_addreg</span><br><span class="line"></span><br><span class="line">[RTS5264.Inst.ntamd64.Services]</span><br><span class="line">AddService = RTSPER, 0x00000002, RTS5264_Service_Inst</span><br><span class="line"></span><br><span class="line">[RTS5264_Service_Inst]</span><br><span class="line">DisplayName    = %Rts5227PER%</span><br><span class="line">ServiceType    = %SERVICE_KERNEL_DRIVER%</span><br><span class="line">StartType      = %SERVICE_DEMAND_START%</span><br><span class="line">ErrorControl   = %SERVICE_ERROR_IGNORE%</span><br><span class="line">ServiceBinary  = %12%\RtsPer.sys</span><br><span class="line">AddReg         = RTS5264.AddReg</span><br><span class="line"></span><br><span class="line">[RTS5264.AddReg]</span><br><span class="line">HKR,&quot;RTS5264&quot;,&quot;MSIEnable&quot;,0x10001,1</span><br><span class="line">HKR,&quot;RTS5264&quot;,&quot;FirstLoad&quot;,0x10001,1</span><br><span class="line">HKR,&quot;RTS5264&quot;,&quot;NonRemovable&quot;,0x10001,1</span><br><span class="line">HKR,&quot;RTS5264&quot;,&quot;SupportPoFx&quot;,0x10001,1</span><br><span class="line">HKR,&quot;Parameters&quot;,&quot;DmaRemappingCompatible&quot;,0x10001,1</span><br><span class="line"></span><br><span class="line">[Strings]</span><br><span class="line">;Localizable Strings needed for HBA naming in Windows UI</span><br><span class="line">;*******************************************</span><br><span class="line">;Non-Localizable strings</span><br><span class="line">RTS = &quot;Realtek Semiconductor Corp.&quot;</span><br><span class="line">VENDOR         = &quot;Realtek Semiconductor Corp.&quot;</span><br><span class="line">Rts5227CR      = &quot;Realtek PCIE CardReader&quot;</span><br><span class="line">Rts5227PER      = &quot;Realtek PCIE Card Reader - PER&quot;</span><br><span class="line">DiskDesc = &quot;Realtek PCIE Card Reader Source Disk&quot;</span><br><span class="line">DriverVersion = &quot;10.0.22621.21361&quot;</span><br><span class="line">SERVICE_ASSOCSERVICE = 0x00000002</span><br><span class="line">SERVICE_BOOT_START     = 0x0</span><br><span class="line">SERVICE_SYSTEM_START   = 0x1</span><br><span class="line">SERVICE_AUTO_START     = 0x2</span><br><span class="line">SERVICE_DEMAND_START   = 0x3</span><br><span class="line">SERVICE_DISABLED       = 0x4</span><br><span class="line">SERVICE_KERNEL_DRIVER  = 0x1</span><br><span class="line">SERVICE_ERROR_IGNORE   = 0x0</span><br><span class="line">SERVICE_ERROR_NORMAL   = 0x1</span><br><span class="line">SERVICE_ERROR_SEVERE   = 0x2</span><br><span class="line">SERVICE_ERROR_CRITICAL = 0x3</span><br><span class="line">REG_EXPAND_SZ          = 0x00020000</span><br><span class="line">REG_DWORD              = 0x00010001</span><br><span class="line">REG_MULTI_SZ           = 0x00010000</span><br><span class="line">REG_BINARY             = 0x00000001</span><br><span class="line">REG_SZ                 = 0x00000000</span><br></pre></td></tr></table></figure>
+
+<p>设备类型是MTD：<strong>Memory Technology Driver</strong></p>
+<p><a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/install/system-defined-device-setup-classes-available-to-vendors">https://learn.microsoft.com/en-us/windows-hardware/drivers/install/system-defined-device-setup-classes-available-to-vendors</a></p>
+<p>从INF可以推测：</p>
+<p>（1）这是SD host设备的驱动，直连PCIe接口（没通过USB），作用是SD card的控制器。</p>
+<p>（2）没有用WDF(KMDF)框架，因为KMDF的INF一般定义KmdfService字段，以上INF没有定义。</p>
+<p>（3）结合Windows Driver Sample，MTD类属于SD BUS&#x2F;Device的设备驱动，但微软的SD框架不支持SD BUS只支持SD Device，因此该驱动应该是用WDM写的SD BUS驱动，不是依赖于微软的SD BUS框架。</p>
+<p>INF详细WDK 文档：<a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/install/looking-at-an-inf-file">https://learn.microsoft.com/en-us/windows-hardware/drivers/install/looking-at-an-inf-file</a></p>
+<h4 id="sys分析"><a href="#sys分析" class="headerlink" title=".sys分析"></a>.sys分析</h4><ol>
+<li><p>IDA打开.sys (有pdb文件更好)，找到DriverEntry入口</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202408161541633.png" alt="image-20240816154137481"></p>
+</li>
+<li><p>F5显示成C伪代码，可以双击函数跳转</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202408161542515.png" alt="image-20240816154235494"></p>
+</li>
+<li><p>详细分析一下Driver Entry做了什么：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br></pre></td><td class="code"><pre><span class="line">__int64 __fastcall sub_1400DEE88(_QWORD *a1) //DriverEntry主功能在这里实现，所有叫sub_xxx函数都是没有符号表解析不出名字的函数，看函数体即可.</span><br><span class="line">&#123;</span><br><span class="line">  __int64 CurrentThreadId; // rax</span><br><span class="line">  __int64 v3; // rax</span><br><span class="line">  __int64 v4; // rcx</span><br><span class="line">  __int64 v5; // rax</span><br><span class="line">  __int64 v7; // [rsp+30h] [rbp-148h]</span><br><span class="line">  struct _OSVERSIONINFOW VersionInformation; // [rsp+40h] [rbp-138h] BYREF</span><br><span class="line"></span><br><span class="line">  CurrentThreadId = PsGetCurrentThreadId(); //获取当前线程ID</span><br><span class="line">  sub_1400DE608( //根据函数体，这里只是个打印函数，打印当前时间和线程ID.</span><br><span class="line">    2LL,</span><br><span class="line">    &quot;%I64d (%d) %s : -&gt; DriverEntry built on %s at %s \n&quot;,</span><br><span class="line">    (MEMORY[0xFFFFF78000000008] - qword_140140278) / 0x2710uLL,</span><br><span class="line">    CurrentThreadId,</span><br><span class="line">    &quot;DriverEntry&quot;,</span><br><span class="line">    &quot;Nov 14 2022&quot;,</span><br><span class="line">    &quot;15:12:36&quot;);</span><br><span class="line">  v3 = PsGetCurrentThreadId();</span><br><span class="line">  sub_1400DE608(</span><br><span class="line">    2LL,</span><br><span class="line">    &quot;%I64d (%d) %s : -&gt; DriverEntry Driver version : %s \n&quot;,</span><br><span class="line">    (MEMORY[0xFFFFF78000000008] - qword_140140278) / 0x2710uLL,</span><br><span class="line">    v3,</span><br><span class="line">    &quot;DriverEntry&quot;,</span><br><span class="line">    &quot;10.0.22621.21361&quot;);</span><br><span class="line">  VersionInformation.dwOSVersionInfoSize = 276;</span><br><span class="line">  if ( RtlGetVersion(&amp;VersionInformation) &gt;= 0 //获取操作系统版本</span><br><span class="line">    &amp;&amp; (VersionInformation.dwMajorVersion &gt; 6</span><br><span class="line">     || VersionInformation.dwMajorVersion == 6 &amp;&amp; VersionInformation.dwMinorVersion &gt;= 2) )</span><br><span class="line">  &#123;</span><br><span class="line">    dword_140140110 = 512;</span><br><span class="line">    dword_140140114 = 0x40000000;</span><br><span class="line">  &#125;</span><br><span class="line">  qword_140140278 = MEMORY[0xFFFFF78000000008];</span><br><span class="line">  sub_1400DEC80();</span><br><span class="line">  sub_1400109EC();</span><br><span class="line">  a1[28] = sub_140003340; //sub_xxx都是函数，所以这里是注册很多回调，根据WDM开发一般是PNP回调</span><br><span class="line">  a1[29] = sub_1400057A0;</span><br><span class="line">  a1[36] = sub_1400EFA30;</span><br><span class="line">  a1[13] = sub_1400E0670;</span><br><span class="line">  v4 = a1[6];</span><br><span class="line">  a1[41] = sub_1400E5480;</span><br><span class="line">  a1[14] = sub_140003000;</span><br><span class="line">  a1[16] = sub_140002DC0;</span><br><span class="line">  a1[32] = sub_140002910;</span><br><span class="line">  a1[30] = sub_140008B40;</span><br><span class="line">  a1[37] = sub_1401071C0;</span><br><span class="line">  a1[18] = sub_140006EA0;</span><br><span class="line">  a1[17] = sub_140006EA0;</span><br><span class="line">  *(_QWORD *)(v4 + 8) = sub_1400DF0F0;</span><br><span class="line">  sub_1400011E4();</span><br><span class="line">  sub_1400E0188();</span><br><span class="line">  v5 = PsGetCurrentThreadId();</span><br><span class="line">  LODWORD(v7) = 0;</span><br><span class="line">  sub_1400DE608(</span><br><span class="line">    0x2000LL,</span><br><span class="line">    &quot;%I64d (%d) %s : &lt;- %s, ret = 0x%x\n&quot;,</span><br><span class="line">    (MEMORY[0xFFFFF78000000008] - qword_140140278) / 0x2710uLL,</span><br><span class="line">    v5,</span><br><span class="line">    &quot;DriverEntry&quot;,</span><br><span class="line">    &quot;DriverEntry&quot;,</span><br><span class="line">    v7);</span><br><span class="line">  return 0LL;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>具体看一下注册的回调函数的内容：在函数上按x找到所有引用，再F5查看C伪代码</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line">__int64 __fastcall sub_1400057A0(__int64 a1, __int64 a2)</span><br><span class="line">&#123;</span><br><span class="line">  __int64 v2; // rdi</span><br><span class="line">  __int64 CurrentThreadId; // rax</span><br><span class="line">  unsigned int v5; // ebx</span><br><span class="line">  __int64 v6; // rax</span><br><span class="line">  int v8; // [rsp+30h] [rbp-18h]</span><br><span class="line"></span><br><span class="line">  v2 = *(_QWORD *)(a1 + 64);</span><br><span class="line">  if ( *(_BYTE *)v2 != 1 )</span><br><span class="line">    return sub_1400058A0();</span><br><span class="line">  CurrentThreadId = PsGetCurrentThreadId();</span><br><span class="line">  sub_1400DE608(</span><br><span class="line">    0x2000,</span><br><span class="line">    &quot;%I64d (%d) %s : -&gt; %s\n&quot;,</span><br><span class="line">    (MEMORY[0xFFFFF78000000008] - qword_140140278) / 0x2710uLL,</span><br><span class="line">    CurrentThreadId,</span><br><span class="line">    &quot;rts_internalctrl&quot;,</span><br><span class="line">    &quot;rts_internalctrl&quot;);</span><br><span class="line">  ++*(_BYTE *)(a2 + 67);</span><br><span class="line">  *(_QWORD *)(a2 + 184) += 72LL;</span><br><span class="line">  </span><br><span class="line">  //注意这个IofCallDriver，用于转发IRP给设备的driver function.</span><br><span class="line">  //可以推测DriverEntry注册的那些回调函数就是注册PNP请求列表对应的处理函数</span><br><span class="line">  //这里仅转发，真正的处理逻辑还在下层函数</span><br><span class="line">  v5 = IofCallDriver(*(_QWORD *)(v2 + 16), a2);</span><br><span class="line">  v6 = PsGetCurrentThreadId();</span><br><span class="line">  v8 = v5;</span><br><span class="line">  sub_1400DE608(</span><br><span class="line">    0x2000,</span><br><span class="line">    &quot;%I64d (%d) %s : &lt;- %s, ret = 0x%x\n&quot;,</span><br><span class="line">    (MEMORY[0xFFFFF78000000008] - qword_140140278) / 0x2710uLL,</span><br><span class="line">    v6,</span><br><span class="line">    &quot;rts_internalctrl&quot;,</span><br><span class="line">    &quot;rts_internalctrl&quot;,</span><br><span class="line">    v8);</span><br><span class="line">  return v5;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>PNP的回调函数参考：<a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/dispatchpnp-routines">https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/dispatchpnp-routines</a></p>
+</li>
+<li><p>全览.sys有哪些函数符号</p>
+<p>用shift + F12打开strings页面，ctrl+F 搜索关键词，选中结果后删除搜索框去浏览上下文。</p>
+<p>   以DriverEntry为例，符号字符上下文如下，符号的地址分布是连续的，不考虑跳转可视为调用顺序。</p>
+</li>
+</ol>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br><span class="line">162</span><br><span class="line">163</span><br><span class="line">164</span><br><span class="line">165</span><br><span class="line">166</span><br><span class="line">167</span><br><span class="line">168</span><br><span class="line">169</span><br><span class="line">170</span><br><span class="line">171</span><br><span class="line">172</span><br><span class="line">173</span><br><span class="line">174</span><br><span class="line">175</span><br><span class="line">176</span><br><span class="line">177</span><br><span class="line">178</span><br><span class="line">179</span><br><span class="line">180</span><br><span class="line">181</span><br><span class="line">182</span><br><span class="line">183</span><br><span class="line">184</span><br><span class="line">185</span><br><span class="line">186</span><br><span class="line">187</span><br><span class="line">188</span><br><span class="line">189</span><br><span class="line">190</span><br><span class="line">191</span><br><span class="line">192</span><br><span class="line">193</span><br><span class="line">194</span><br><span class="line">195</span><br><span class="line">196</span><br><span class="line">197</span><br><span class="line">198</span><br><span class="line">199</span><br><span class="line">200</span><br><span class="line">201</span><br><span class="line">202</span><br><span class="line">203</span><br><span class="line">204</span><br><span class="line">205</span><br><span class="line">206</span><br><span class="line">207</span><br><span class="line">208</span><br><span class="line">209</span><br><span class="line">210</span><br><span class="line">211</span><br><span class="line">212</span><br><span class="line">213</span><br><span class="line">214</span><br><span class="line">215</span><br><span class="line">216</span><br><span class="line">217</span><br><span class="line">218</span><br><span class="line">219</span><br><span class="line">220</span><br><span class="line">221</span><br><span class="line">222</span><br><span class="line">223</span><br><span class="line">224</span><br><span class="line">225</span><br><span class="line">226</span><br><span class="line">227</span><br><span class="line">228</span><br><span class="line">229</span><br><span class="line">230</span><br><span class="line">231</span><br><span class="line">232</span><br><span class="line">233</span><br><span class="line">234</span><br><span class="line">235</span><br><span class="line">236</span><br><span class="line">237</span><br><span class="line">238</span><br><span class="line">239</span><br><span class="line">240</span><br><span class="line">241</span><br><span class="line">242</span><br><span class="line">243</span><br><span class="line">244</span><br><span class="line">245</span><br><span class="line">246</span><br><span class="line">247</span><br><span class="line">248</span><br><span class="line">249</span><br><span class="line">250</span><br><span class="line">251</span><br><span class="line">252</span><br><span class="line">253</span><br><span class="line">254</span><br><span class="line">255</span><br><span class="line">256</span><br><span class="line">257</span><br><span class="line">258</span><br><span class="line">259</span><br></pre></td><td class="code"><pre><span class="line">.text:000000014012A550	0000000C	C	DriverEntry //入口</span><br><span class="line">.text:000000014012A560	00000033	C	%I64d (%d) %s : -&gt; DriverEntry built on %s at %s \n</span><br><span class="line">.text:000000014012A5A0	00000035	C	%I64d (%d) %s : -&gt; DriverEntry Driver version : %s \n</span><br><span class="line">.text:000000014012A5E0	0000000B	C	rts_unload</span><br><span class="line">.text:000000014012A5F0	00000031	C	%I64d (%d) %s : -&gt; Driver Unload, version : %s \n</span><br><span class="line">.text:000000014012A630	00000031	C	%I64d (%d) %s : &lt;- Driver Unload, version : %s \n</span><br><span class="line">.text:000000014012A670	0000000E	C	rts_adddevice</span><br><span class="line">.text:000000014012A6C0	00000031	C	%I64d (%d) %s : Failed to create device object \n</span><br><span class="line">.text:000000014012A700	00000031	C	%I64d (%d) %s : fdx is 0x%p, PAGE_SIZE is 0x%x \n</span><br><span class="line">.text:000000014012A740	00000035	C	%I64d (%d) %s : IoAttachDeviceToDeviceStack failed \n</span><br><span class="line"></span><br><span class="line">//操作系统判断，为了后面差异化配置</span><br><span class="line"></span><br><span class="line">.text:000000014012A780	0000001E	C	%I64d (%d) %s : OS is Win10 \n</span><br><span class="line">.text:000000014012A7A0	00000020	C	%I64d (%d) %s : OS is WinBlue \n</span><br><span class="line">.text:000000014012A7C0	0000001D	C	%I64d (%d) %s : OS is Win8 \n</span><br><span class="line">.text:000000014012A7E0	0000001D	C	%I64d (%d) %s : OS is Win7 \n</span><br><span class="line">.text:000000014012A800	00000024	C	%I64d (%d) %s : OS is Server 2008 \n</span><br><span class="line">.text:000000014012A830	0000001E	C	%I64d (%d) %s : OS is VISTA \n</span><br><span class="line">.text:000000014012A850	00000024	C	%I64d (%d) %s : OS is Server 2003 \n</span><br><span class="line">.text:000000014012A880	0000001E	C	%I64d (%d) %s : OS is WinXp \n</span><br><span class="line">.text:000000014012A8A0	0000001E	C	%I64d (%d) %s : OS is Win2k \n</span><br><span class="line">.text:000000014012A8C0	00000023	C	%I64d (%d) %s : OS is NotDefined \n</span><br><span class="line">.text:000000014012A8F0	0000001E	C	%I64d (%d) %s : OS is 64bit \n</span><br><span class="line">.text:000000014012A910	0000003A	C	%I64d (%d) %s : rts_pcie_init_bus_interface failed (%x) \n</span><br><span class="line">.text:000000014012A950	00000035	C	%I64d (%d) %s : rts_pcie_get_dev_info failed: 0x%x \n</span><br><span class="line">.text:000000014012A990	0000003B	C	%I64d (%d) %s : IoRegisterDeviceInterface failed with %x \n</span><br><span class="line">.text:000000014012A9D0	00000032	C	%I64d (%d) %s : GetMcfgEntryFromAuxKlib success \n</span><br><span class="line">.text:000000014012AA10	00000031	C	%I64d (%d) %s : GetMcfgEntryFromAuxKlib failed \n</span><br><span class="line">.text:000000014012AA50	0000002E	C	%I64d (%d) %s : GetMcfgEntryFromReg success \n</span><br><span class="line">.text:000000014012AA80	0000002D	C	%I64d (%d) %s : GetMcfgEntryFromReg failed \n</span><br><span class="line">.text:000000014012AAB0	00000027	C	%I64d (%d) %s : host_cfg_disable: %d \n</span><br><span class="line">.text:000000014012AAE0	00000034	C	%I64d (%d) %s : bMcfgEntry %d, BaseAddr is 0x%llx \n</span><br><span class="line"></span><br><span class="line">//初始化DPC，PDO; Rts自定义的PNP/POFX回调函数也初始化（估计是绑定到函数指针数组）</span><br><span class="line"></span><br><span class="line">.text:000000014012AB20	00000041	C	%I64d (%d) %s : initialize the DPC NoSSDpcWorkItemPendingEvent \n</span><br><span class="line">.text:000000014012AB70	00000039	C	%I64d (%d) %s : IoRegisterShutdownNotification success \n</span><br><span class="line">.text:000000014012ABB0	0000003B	C	%I64d (%d) %s : IoRegisterShutdownNotification fail 0x%x \n</span><br><span class="line">.text:000000014012ABF0	00000015	C	rts_create_child_pdo</span><br><span class="line">.text:000000014012AC10	0000005A	C	%I64d (%d) %s : Create Pdo %i successfully, status is 0x%x, Child-&gt;ReferenceCount is %i \n</span><br><span class="line">.text:000000014012AC70	00000035	C	%I64d (%d) %s : Create Pdo %i fail with status 0x%x\n</span><br><span class="line">.text:000000014012ACE0	00000017	C	rts_init_pofx_routines</span><br><span class="line">.text:000000014012AD00	0000002D	C	%I64d (%d) %s : pPoFxActivateComponent=0x%p\n</span><br><span class="line">.text:000000014012AD60	00000029	C	%I64d (%d) %s : pPoFxIdleComponent=0x%p\n</span><br><span class="line">.text:000000014012ADC0	0000002C	C	%I64d (%d) %s : pPoFxSetComponentWake=0x%p\n</span><br><span class="line">.text:000000014012AE20	0000002D	C	%I64d (%d) %s : pPoFxCompleteIdleState=0x%p\n</span><br><span class="line">.text:000000014012AE90	00000031	C	%I64d (%d) %s : pPoFxCompleteIdleCondition=0x%p\n</span><br><span class="line">.text:000000014012AF10	00000031	C	%I64d (%d) %s : pPoFxReportDevicePoweredOn=0x%p\n</span><br><span class="line">.text:000000014012AFA0	0000003A	C	%I64d (%d) %s : pPoFxCompleteDevicePowerNotRequired=0x%p\n</span><br><span class="line">.text:000000014012B010	0000002A	C	%I64d (%d) %s : pPoFxRegisterDevice=0x%p\n</span><br><span class="line">.text:000000014012B070	0000002C	C	%I64d (%d) %s : pPoFxUnregisterDevice=0x%p\n</span><br><span class="line">.text:000000014012B0E0	00000036	C	%I64d (%d) %s : pPoFxStartDevicePowerManagement=0x%p\n</span><br><span class="line">.text:000000014012B160	00000035	C	%I64d (%d) %s : pPoFxCompleteDirectedPowerDown=0x%p\n</span><br><span class="line"></span><br><span class="line">//从注册表拿到用户自定义的功能配置信息</span><br><span class="line"></span><br><span class="line">.text:000000014012B1B0	00000014	C	GetMcfgEntryFromReg</span><br><span class="line">.text:000000014012B220	00000028	C	%s : Get SubKey %ws, Update Key to %ws\n</span><br><span class="line">.text:000000014012B250	0000003F	C	%I64d (%d) %s : EnumOneSubValue return %d, pMcfgSdtTabke 0x%x\n</span><br><span class="line">.text:000000014012B290	00000023	C	%I64d (%d) %s : NULL == pMcfgAddr\n</span><br><span class="line">.text:000000014012B2C0	00000018	C	GetMcfgEntryFromAuxKlib</span><br><span class="line">.text:000000014012B2E0	00000030	C	%I64d (%d) %s : Enum firmware table return %#x\n</span><br><span class="line">.text:000000014012B310	00000041	C	%I64d (%d) %s : AuxKlibEnumerateSystemFirmwareTables return %#x\n</span><br><span class="line">.text:000000014012B360	00000023	C	%I64d (%d) %s : cannot find MCFG \n</span><br><span class="line">.text:000000014012B390	0000002C	C	%I64d (%d) %s : Get MCFG Table as follow: \n</span><br><span class="line">.text:000000014012B3C0	00000031	C	%I64d (%d) %s : Allocate for MCFG table failed \n</span><br><span class="line">.text:000000014012B400	0000000E	C	EnumOneSubKey</span><br><span class="line">.text:000000014012B410	00000029	C	%s : Open register key %ws failed, 0x%x\n</span><br><span class="line">.text:000000014012B440	00000010	C	EnumOneSubValue</span><br><span class="line">.text:000000014012B450	00000026	C	%I64d (%d) %s : Allocate pfi failed \n</span><br><span class="line">.text:000000014012B480	00000027	C	%I64d (%d) %s : Allocate pvfi failed \n</span><br><span class="line">.text:000000014012B4B0	00000024	C	%I64d (%d) %s : DataLength is 0x%x\n</span><br><span class="line">.text:000000014012B4E0	0000000E	C	ParseSdtTable</span><br><span class="line">.text:000000014012B4F0	0000002F	C	%I64d (%d) %s : Check physical address %#llx \n</span><br><span class="line">.text:000000014012B520	0000002D	C	%I64d (%d) %s : Check physical address %#x \n</span><br><span class="line"></span><br><span class="line">//从PCIe bridge拿到SD host设备信息，包括能力寄存器，电源ASPM等</span><br><span class="line"></span><br><span class="line">.text:000000014012B550	00000018	C	rts_get_pci_bridge_info</span><br><span class="line">.text:000000014012B570	00000048	C	%I64d (%d) %s : Single Function Device: bus = %#x, dev = %#x, func=%#x\n</span><br><span class="line">.text:000000014012B5C0	0000003C	C	%I64d (%d) %s : Find Device(%X:%X)  bus=%d dev=%d, func=%d\n</span><br><span class="line">.text:000000014012B600	00000031	C	%I64d (%d) %s : Save host configure space 0x%p \n</span><br><span class="line">.text:000000014012B640	00000033	C	%I64d (%d) %s : Cannot Find PciBridge for Device \n</span><br><span class="line">.text:000000014012B680	0000001B	C	rts_get_dev_link_ctl_field</span><br><span class="line">.text:000000014012B6A0	00000039	C	%I64d (%d) %s : Get PCI_COMMON_CONFIG fail, ulResult=%d\n</span><br><span class="line">.text:000000014012B6E0	00000033	C	%I64d (%d) %s : Get linkCtrlReg fail, ulResult=%d\n</span><br><span class="line">.text:000000014012B720	00000022	C	%I64d (%d) %s : linkCtrlReg 0x%x\n</span><br><span class="line">.text:000000014012B750	00000022	C	rts_get_bridge_link_control_field</span><br><span class="line">.text:000000014012B780	0000002E	C	%I64d (%d) %s : fail to find PCIe Capability\n</span><br><span class="line">.text:000000014012B7B0	0000003B	C	%I64d (%d) %s : CapabilityOffset - Config from MMCFG 0x%x\n</span><br><span class="line">.text:000000014012B7F0	00000038	C	%I64d (%d) %s : CapabilityOffset - Config from IO 0x%x\n</span><br><span class="line">.text:000000014012B830	00000038	C	%I64d (%d) %s : CapabilityHdr - Config from MMCFG 0x%x\n</span><br><span class="line">.text:000000014012B870	00000035	C	%I64d (%d) %s : CapabilityHdr - Config from IO 0x%x\n</span><br><span class="line">.text:000000014012B8B0	00000036	C	%I64d (%d) %s : LinkCtrlReg - Config from MMCFG 0x%x\n</span><br><span class="line">.text:000000014012B8F0	00000033	C	%I64d (%d) %s : LinkCtrlReg - Config from IO 0x%x\n</span><br><span class="line">.text:000000014012B930	00000048	C	%I64d (%d) %s : pciBridgePCIeHdrOffset 0x%x, pciBridgeLinkCtrlReg 0x%x\n</span><br><span class="line">.text:000000014012B980	0000002D	C	%I64d (%d) %s : Cannot Find PCIe Capability\n</span><br><span class="line">.text:000000014012B9B0	00000038	C	%I64d (%d) %s : cannot find the Bus of PCI,do nothing \n</span><br><span class="line">.text:000000014012B9F0	00000023	C	%I64d (%d) %s : MapPhyMem failed \n</span><br><span class="line">.text:000000014012BA20	0000005F	C	%I64d (%d) %s : PciBridge BusNumber[%x], DevNumbe[%x], FuncNumber[%x], Write reg[0x%x] = 0x%x\n</span><br><span class="line">.text:000000014012BA80	00000016	C	rts_disable_host_aspm</span><br><span class="line">.text:000000014012BAA0	0000004A	C	%I64d (%d) %s : recognize the Bus of PCI(Bridge) as UNKNOWN, do nothing \n</span><br><span class="line">.text:000000014012BAF0	0000001F	C	%I64d (%d) %s : PhyAddr 0x%x \n</span><br><span class="line">.text:000000014012BB10	0000002A	C	%I64d (%d) %s : Offset 0x%x, Value 0x%x \n</span><br><span class="line">.text:000000014012BB40	00000012	C	rts_set_host_aspm</span><br><span class="line">.text:000000014012BB60	0000002A	C	%I64d (%d) %s : Offset 0x%x, value 0x%x \n</span><br><span class="line">.text:000000014012BB90	00000012	C	rts_get_host_aspm</span><br><span class="line">.text:000000014012BBB0	0000001D	C	rts_pci_find_host_capability</span><br><span class="line">.text:000000014012BBD0	00000019	C	cr_read_host_config_byte</span><br><span class="line">.text:000000014012BBF0	0000001A	C	cr_write_host_config_byte</span><br><span class="line">.text:000000014012BC10	0000002F	C	%I64d (%d) %s : Write configure through MMIO \n</span><br><span class="line">.text:000000014012BC40	00000007	C	UNKNOW</span><br><span class="line"></span><br><span class="line">//以下是PNP的回调函数的注册（函数指针绑定），具体函数体实现在rts_pnp_fdo</span><br><span class="line"></span><br><span class="line">.text:000000014012BC70	00000011	C	DispatchPnP_Fdo </span><br><span class="line">.text:000000014012BC90	0000000C	C	rts_pnp_fdo</span><br><span class="line">.text:000000014012BCA0	0000001E	C	%I64d (%d) %s : -&gt; %s %s %s \n</span><br><span class="line">.text:000000014012BCC0	00000032	C	%I64d (%d) %s : rts_pnp_fdo: fdx DeviceState %i \n</span><br><span class="line">.text:000000014012BD00	00000052	C	%I64d (%d) %s : IRP_MN_REMOVE_DEVICE, NotStarted == fdx-&gt;DeviceState, do nothing\n</span><br><span class="line">.text:000000014012BD60	0000002D	C	%I64d (%d) %s : Removed == fdx-&gt;DeviceState\n</span><br><span class="line">.text:000000014012BD90	00000028	C	%I64d (%d) %s : call rts_ss_cancel_ss \n</span><br><span class="line">.text:000000014012BDD0	0000004F	C	%I64d (%d) %s : MSI not enable,IRP_MN_FILTER_RESOURCE_REQUIREMENTS to default\n</span><br><span class="line">.text:000000014012BE20	00000035	C	%I64d (%d) %s : Unprocessed pnp,to default process \n</span><br><span class="line">.text:000000014012BE60	00000011	C	DispatchPnP_Pdo </span><br><span class="line">.text:000000014012BE80	0000000C	C	rts_pnp_pdo</span><br><span class="line">.text:000000014012BE90	00000061	C	%I64d (%d) %s : NULL == Fdo, not IRP_MN_REMOVE_DEVICE,so return fail with STATUS_DELETE_PENDING\n</span><br><span class="line">.text:000000014012BF00	00000037	C	%I64d (%d) %s : Removed == fdx-&gt;DeviceState, so quit \n</span><br><span class="line">.text:000000014012BF40	00000027	C	%I64d (%d) %s : NULL == fdx, so quit \n</span><br><span class="line">.text:000000014012BF70	0000001F	C	%I64d (%d) %s : BusRelations \n</span><br><span class="line">.text:000000014012BF90	00000024	C	%I64d (%d) %s : EjectionRelations \n</span><br><span class="line">.text:000000014012BFC0	00000021	C	%I64d (%d) %s : PowerRelations \n</span><br><span class="line">.text:000000014012BFF0	00000023	C	%I64d (%d) %s : RemovalRelations \n</span><br><span class="line">.text:000000014012C020	00000027	C	%I64d (%d) %s : TargetDeviceRelation \n</span><br><span class="line">.text:000000014012C050	00000097	C	%I64d (%d) %s : deviceCapabilities-&gt;Removable is %i,deviceCapabilities-&gt;SurpriseRemovalOK is %i,deviceCapabilities-&gt;UniqueID is %i, ntStatus is 0x%x \n</span><br><span class="line">.text:000000014012C0F0	00000017	C	rts_tr_pcie_option_set</span><br><span class="line">.text:000000014012C110	00000024	C	%I64d (%d) %s : sd_capability=%#x \n</span><br><span class="line">.text:000000014012C140	00000023	C	%I64d (%d) %s : card_spt_map=%#x \n</span><br><span class="line">.text:000000014012C170	0000002D	C	%I64d (%d) %s : cr-&gt;option.dev_flags = %#x \n</span><br><span class="line">.text:000000014012C1A0	0000002F	C	%I64d (%d) %s : cr-&gt;option.patch_flags = %#x \n</span><br><span class="line"></span><br><span class="line">//以下是设备资源分配（xxx_alloc）和硬件寄存器值初始化（bios_setting/init_hw），由于是PCIe的SD host设备，主要分配SD host设备空间到PCIe bar地址</span><br><span class="line"></span><br><span class="line">.text:000000014012C1D0	00000045	C	%I64d (%d) %s : DriverFirstLoad, set delink_delay_max_cnt to %d ms \n</span><br><span class="line">.text:000000014012C220	00000026	C	%I64d (%d) %s : Clar firstload flag \n</span><br><span class="line">.text:000000014012C250	00000036	C	%I64d (%d) %s : fdx-&gt;cr-&gt;option.remote_wakeup_en=%#x\n</span><br><span class="line">.text:000000014012C290	00000038	C	%I64d (%d) %s : fdx-&gt;CurrentPara-&gt;remote_wakeup_en=%#x\n</span><br><span class="line">.text:000000014012C2D0	00000036	C	%I64d (%d) %s : fdx-&gt;cr-&gt;option.host_cfg_disable=%#x\n</span><br><span class="line">.text:000000014012C310	00000020	C	rts_tr_pcie_backup_bios_setting</span><br><span class="line">.text:000000014012C330	00000015	C	rts_cr_bind_together</span><br><span class="line">.text:000000014012C350	0000002F	C	%I64d (%d) %s : cr=%p, cm =%p, tr=%p, scsi=%p\n</span><br><span class="line">.text:000000014012C380	00000033	C	%I64d (%d) %s : cr-&gt;cm=%p, cr-&gt;tr=%p, cr-&gt;scsi=%p\n</span><br><span class="line">.text:000000014012C3C0	00000033	C	%I64d (%d) %s : cm-&gt;cr=%p, cm-&gt;tr=%p, scsi-&gt;cr=%p\n</span><br><span class="line">.text:000000014012C400	0000000B	C	scsi_alloc</span><br><span class="line">.text:000000014012C410	0000002E	C	%I64d (%d) %s : Unable to allocate the scsi \n</span><br><span class="line">.text:000000014012C440	0000000D	C	scsi_release</span><br><span class="line">.text:000000014012C450	0000001B	C	rts_option_set_bef_init_hw</span><br><span class="line">.text:000000014012C470	00000059	C	%I64d (%d) %s : read config addr 0x0E to judge multi function fail, bytesread(%i) != 1 \n</span><br><span class="line">.text:000000014012C4D0	00000036	C	%I64d (%d) %s : read config addr 0x0E success(0x%x) \n</span><br><span class="line">.text:000000014012C510	00000006	C	multi</span><br><span class="line">.text:000000014012C520	00000007	C	single</span><br><span class="line">.text:000000014012C530	00000029	C	%I64d (%d) %s : Device is %s-functioned\n</span><br><span class="line">.text:000000014012C560	0000002F	C	%I64d (%d) %s : fdx-&gt;cr-&gt;option.adma_mode %d \n</span><br><span class="line">.text:000000014012C590	0000001D	C	rts_option_set_after_init_hw</span><br><span class="line">.text:000000014012C5B0	0000002C	C	%I64d (%d) %s : option.cq_rand_enable = %d\n</span><br><span class="line">.text:000000014012C5E0	0000002B	C	%I64d (%d) %s : option.cq_seq_enable = %d\n</span><br><span class="line">.text:000000014012C610	00000030	C	%I64d (%d) %s : option.cq_ban_card_enable = %d\n</span><br><span class="line">.text:000000014012C640	00000020	C	Realtek PCIE Card Reader Driver</span><br><span class="line">.text:000000014012C660	00000011	C	rts_cr_init_comm</span><br><span class="line">.text:000000014012C680	0000001E	C	%I64d (%d) %s : %s detected \n</span><br><span class="line">.text:000000014012C6A0	00000023	C	%I64d (%d) %s : option-&gt;ss_en %d \n</span><br><span class="line">.text:000000014012C6D0	00000013	C	rts_cr_uninit_comm</span><br><span class="line"></span><br><span class="line">//以下是电源管理POFX的回调函数的注册（函数指针绑定），具体实现在rts_pofx/dfx</span><br><span class="line"></span><br><span class="line">.text:000000014012C6F0	00000018	C	ActiveConditionCallback</span><br><span class="line">.text:000000014012C710	0000003A	C	%I64d (%d) %s : ===&gt;&lt;=== -&gt; PoFx ActiveConditionCallback\n</span><br><span class="line">.text:000000014012C750	0000003A	C	%I64d (%d) %s : ===&gt;&lt;=== &lt;- PoFx ActiveConditionCallback\n</span><br><span class="line"></span><br><span class="line">.text:000000014012C790	00000016	C	IdleConditionCallback</span><br><span class="line">.text:000000014012C7B0	00000038	C	%I64d (%d) %s : ===&gt;&lt;=== -&gt; PoFx IdleConditionCallback\n</span><br><span class="line">.text:000000014012C7F0	00000038	C	%I64d (%d) %s : ===&gt;&lt;=== &lt;- PoFx IdleConditionCallback\n</span><br><span class="line">.text:000000014012C830	00000012	C	IdleStateCallback</span><br><span class="line">.text:000000014012C850	0000003E	C	%I64d (%d) %s : ===&gt;&lt;=== -&gt; PoFx IdleStateCallback, State=%d\n</span><br><span class="line">.text:000000014012C890	00000034	C	%I64d (%d) %s : ===&gt;&lt;=== &lt;- PoFx IdleStateCallback\n</span><br><span class="line"></span><br><span class="line">.text:000000014012C8D0	0000001C	C	DevicePowerRequiredCallback</span><br><span class="line">.text:000000014012C8F0	00000037	C	%I64d (%d) %s : ===&gt; PoFx DevicePowerRequiredCallback\n</span><br><span class="line">.text:000000014012C930	00000041	C	%I64d (%d) %s : PoFx DeviePowerRequiredCallback:queue work item\n</span><br><span class="line">.text:000000014012C980	00000053	C	%I64d (%d) %s : PoFx DeviePowerRequiredCallback:Cannot alloc memory for work item\n</span><br><span class="line">.text:000000014012C9E0	0000002A	C	%I64d (%d) %s :  fdx-&gt;PoFxActive = TRUE \n</span><br><span class="line">.text:000000014012CA10	0000003E	C	%I64d (%d) %s : ===&gt;&lt;=== &lt;- PoFx DevicePowerRequiredCallback\n</span><br><span class="line"></span><br><span class="line">.text:000000014012CA50	0000001F	C	DevicePowerNotRequiredCallback</span><br><span class="line">.text:000000014012CA70	0000003A	C	%I64d (%d) %s : ===&gt; PoFx DevicePowerNotRequiredCallback\n</span><br><span class="line">.text:000000014012CAB0	00000043	C	%I64d (%d) %s : ===&gt;&lt;=== PoFx pPoFxCompleteDevicePowerNotRequired\n</span><br><span class="line">.text:000000014012CB00	0000002B	C	%I64d (%d) %s :  fdx-&gt;PoFxActive = FALSE \n</span><br><span class="line">.text:000000014012CB30	0000003A	C	%I64d (%d) %s : &lt;=== PoFx DevicePowerNotRequiredCallback\n</span><br><span class="line"></span><br><span class="line">//以下是电源管理POFX的回调函数体实现，rts_xxx_pofx</span><br><span class="line"></span><br><span class="line">.text:000000014012CB70	00000025	C	rts_dev_pwr_completion_for_DFx_child</span><br><span class="line">.text:000000014012CBA0	0000004A	C	%I64d (%d) %s : powerContext-&gt;DeviceObject is 0x%p, DeviceObject is 0x%p\n</span><br><span class="line">.text:000000014012CBF0	00000027	C	%I64d (%d) %s : IoStatus-&gt;Status=%#x \n</span><br><span class="line"></span><br><span class="line">.text:000000014012CC20	0000001F	C	rts_dev_pwr_completion_for_DFx</span><br><span class="line">.text:000000014012CC40	00000079	C	%I64d (%d) %s : powerContext-&gt;DeviceObject is 0x%p, DeviceObject is 0x%p,deviceExtension-&gt;PhysicalDeviceObject is 0x%p \n</span><br><span class="line">.text:000000014012CCC0	00000030	C	%I64d (%d) %s : For power up, queue work item \n</span><br><span class="line">.text:000000014012CCF0	00000041	C	%I64d (%d) %s : For power up, cannot alloc memory for work item\n</span><br><span class="line">.text:000000014012CD40	00000038	C	%I64d (%d) %s : ===&gt;&lt;=== PoFxCompleteDirectedPowerDown\n</span><br><span class="line">.text:000000014012CD80	0000002D	C	%I64d (%d) %s : Set Power Failed, resume IO\n</span><br><span class="line"></span><br><span class="line">.text:000000014012CDB0	00000018	C	DirectedPowerUpCallback</span><br><span class="line">.text:000000014012CDD0	0000003A	C	%I64d (%d) %s : ===&gt;&lt;=== -&gt; PoFx DirectedPowerUpCallback\n</span><br><span class="line">.text:000000014012CE10	0000003A	C	%I64d (%d) %s : Failed to alloc memory for powerContext \n</span><br><span class="line">.text:000000014012CE50	0000003E	C	%I64d (%d) %s : DirectedPowerUpCallback SetPower to D0 fail \n</span><br><span class="line"></span><br><span class="line">.text:000000014012CE90	0000001A	C	DirectedPowerDownCallback</span><br><span class="line">.text:000000014012CEB0	0000003C	C	%I64d (%d) %s : ===&gt;&lt;=== -&gt; PoFx DirectedPowerDownCallback\n</span><br><span class="line">.text:000000014012CEF0	0000002E	C	%I64d (%d) %s : Set enter_rtd3 to 1 for DFx \n</span><br><span class="line">.text:000000014012CF20	00000040	C	%I64d (%d) %s : DirectedPowerDownCallback SetPower to D3 fail \n</span><br><span class="line"></span><br><span class="line">.text:000000014012CF60	00000012	C	rts_register_pofx</span><br><span class="line">.text:000000014012CF80	00000035	C	%I64d (%d) %s : supportPoFx=0, do not register PoFx\n</span><br><span class="line">.text:000000014012CFC0	00000033	C	%I64d (%d) %s : ===&gt;&lt;=== PoFx already registered!\n</span><br><span class="line">.text:000000014012D000	00000042	C	%I64d (%d) %s : ===&gt;&lt;=== Invalid PoFx routines, pls check again!\n</span><br><span class="line">.text:000000014012D050	00000037	C	%I64d (%d) %s : ===&gt;&lt;=== OS Ver: size %d, %d.%d.%d.%d\n</span><br><span class="line">.text:000000014012D090	00000033	C	%I64d (%d) %s : ===&gt;&lt;=== Register PO_FX_DEVICE_V3\n</span><br><span class="line">.text:000000014012D0D0	00000033	C	%I64d (%d) %s : ===&gt;&lt;=== Register PO_FX_DEVICE_V2\n</span><br><span class="line">.text:000000014012D110	00000038	C	%I64d (%d) %s : ===&gt;&lt;=== PoFxRegisterDevice return %#x\n</span><br><span class="line"></span><br><span class="line">.text:000000014012D150	00000014	C	rts_unregister_pofx</span><br><span class="line">.text:000000014012D170	0000002F	C	%I64d (%d) %s : ===&gt;&lt;=== PoFxUnregisterDevice\n</span><br><span class="line">.text:000000014012D1A0	00000020	C	rts_pnp_fdo_start_dev_delaywork</span><br><span class="line">.text:000000014012D1C0	0000002E	C	%I64d (%d) %s : rts_create_childen_pdos fail\n</span><br><span class="line">.text:000000014012D1F0	00000039	C	%I64d (%d) %s : Start after stop,so no need create pdos\n</span><br><span class="line">.text:000000014012D230	00000039	C	%I64d (%d) %s : IoSetDeviceInterfaceState:enable:failed\n</span><br><span class="line">.text:000000014012D270	00000039	C	%I64d (%d) %s : ===&gt;&lt;=== PoFxStartDevicePowerManagement\n</span><br><span class="line"></span><br><span class="line">//以下是PNP回调的函数体实现，rts_pnp_fdo_xxx</span><br><span class="line"></span><br><span class="line">//对应PNP: IRP_MN_START_DEVICE</span><br><span class="line">.text:000000014012D3E0	00000016	C	rts_pnp_fdo_start_dev</span><br><span class="line">.text:000000014012D400	0000001C	C	rts_pnp_fdo_cancel_stop_dev</span><br><span class="line">.text:000000014012D420	0000002F	C	%I64d (%d) %s : Cancel stop after query stop \n</span><br><span class="line">.text:000000014012D450	00000073	C	%I64d (%d) %s : spurious cancel-stop without query stop first,we still pass it down,Irp-&gt;IoStatus.Status is 0x%x \n</span><br><span class="line"></span><br><span class="line">//对应PNP: IRP_MN_WAIT_WAKE?</span><br><span class="line">.text:000000014012D4D0	00000019	C	rts_pnp_wait_d0_complete</span><br><span class="line">.text:000000014012D4F0	0000003F	C	%I64d (%d) %s : 0 == fdx-&gt;CancelSSIsCalling, return directly \n</span><br><span class="line">.text:000000014012D530	00000037	C	%I64d (%d) %s : Wait cancel ss finished for the %ith \n</span><br><span class="line"></span><br><span class="line">//对应PNP: IRP_MN_STOP_DEVICE</span><br><span class="line">.text:000000014012D570	00000015	C	rts_pnp_fdo_stop_dev</span><br><span class="line">.text:000000014012D590	00000044	C	%I64d (%d) %s : KeWaitForSingleObject NoSSDpcWorkItemPendingEvent \n</span><br><span class="line">.text:000000014012D5E0	0000003B	C	%I64d (%d) %s : IoSetDeviceInterfaceState::disable:failed\n</span><br><span class="line"></span><br><span class="line">.... //略</span><br></pre></td></tr></table></figure>
+
+<p>Import页面查看导入的符号，都是WDM （NTOS kernel）的符号链接：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br></pre></td><td class="code"><pre><span class="line">Address	Ordinal	Name	Library</span><br><span class="line">			</span><br><span class="line">cng			</span><br><span class="line">0000000140138010		BCryptSetProperty	cng</span><br><span class="line">0000000140138018		BCryptCloseAlgorithmProvider	cng</span><br><span class="line">0000000140138020		BCryptGenerateSymmetricKey	cng</span><br><span class="line">0000000140138028		BCryptGenerateKeyPair	cng</span><br><span class="line">0000000140138030		BCryptEncrypt	cng</span><br><span class="line">0000000140138038		BCryptExportKey	cng</span><br><span class="line">0000000140138040		BCryptGetProperty	cng</span><br><span class="line">0000000140138048		BCryptFinalizeKeyPair	cng</span><br><span class="line">0000000140138050		BCryptDestroyKey	cng</span><br><span class="line">0000000140138058		BCryptDestroySecret	cng</span><br><span class="line">0000000140138060		BCryptSecretAgreement	cng</span><br><span class="line">0000000140138068		BCryptDeriveKey	cng</span><br><span class="line">0000000140138070		BCryptGenRandom	cng</span><br><span class="line">0000000140138078		BCryptImportKeyPair	cng</span><br><span class="line">0000000140138080		BCryptOpenAlgorithmProvider	cng</span><br><span class="line"></span><br><span class="line">ntoskrnl			</span><br><span class="line">0000000140138090		KeReadStateEvent	ntoskrnl</span><br><span class="line">0000000140138098		KeReleaseSemaphore	ntoskrnl</span><br><span class="line">00000001401380A0		KeWaitForMultipleObjects	ntoskrnl</span><br><span class="line">00000001401380A8		KeWaitForSingleObject	ntoskrnl</span><br><span class="line">00000001401380B0		ExAllocatePoolWithTag	ntoskrnl</span><br><span class="line">00000001401380B8		ExRaiseStatus	ntoskrnl</span><br><span class="line">00000001401380C0		ProbeForWrite	ntoskrnl</span><br><span class="line">00000001401380C8		MmProbeAndLockPages	ntoskrnl</span><br><span class="line">00000001401380D0		MmMapLockedPagesSpecifyCache	ntoskrnl</span><br><span class="line">00000001401380D8		IoAllocateMdl	ntoskrnl</span><br><span class="line">00000001401380E0		IofCallDriver	ntoskrnl</span><br><span class="line">00000001401380E8		IofCompleteRequest	ntoskrnl</span><br><span class="line">00000001401380F0		IoFreeMdl	ntoskrnl</span><br><span class="line">00000001401380F8		IoIs32bitProcess	ntoskrnl</span><br><span class="line">0000000140138100		IoCsqInsertIrp	ntoskrnl</span><br><span class="line">0000000140138108		IoCsqRemoveNextIrp	ntoskrnl</span><br><span class="line">0000000140138110		__C_specific_handler	ntoskrnl</span><br><span class="line">0000000140138118		wcscat_s	ntoskrnl</span><br><span class="line">0000000140138120		wcscpy_s	ntoskrnl</span><br><span class="line">0000000140138128		wcsncpy_s	ntoskrnl</span><br><span class="line">0000000140138130		RtlInitAnsiString	ntoskrnl</span><br><span class="line">0000000140138138		RtlInitUnicodeString	ntoskrnl</span><br><span class="line">0000000140138140		RtlQueryRegistryValues	ntoskrnl</span><br><span class="line">0000000140138148		MmGetSystemRoutineAddress	ntoskrnl</span><br><span class="line">0000000140138150		RtlAnsiStringToUnicodeString	ntoskrnl</span><br><span class="line">0000000140138158		RtlFreeUnicodeString	ntoskrnl</span><br><span class="line">0000000140138160		RtlCompareMemory	ntoskrnl</span><br><span class="line">0000000140138168		KeInsertQueueDpc	ntoskrnl</span><br><span class="line">0000000140138170		KeSetEvent	ntoskrnl</span><br><span class="line">0000000140138178		KeDelayExecutionThread	ntoskrnl</span><br><span class="line">0000000140138180		KeAcquireSpinLockRaiseToDpc	ntoskrnl</span><br><span class="line">0000000140138188		KeReleaseSpinLock	ntoskrnl</span><br><span class="line">0000000140138190		ExFreePoolWithTag	ntoskrnl</span><br><span class="line">0000000140138198		MmBuildMdlForNonPagedPool	ntoskrnl</span><br><span class="line">00000001401381A0		IoDeleteDevice	ntoskrnl</span><br><span class="line">00000001401381A8		IoAllocateWorkItem	ntoskrnl</span><br><span class="line">00000001401381B0		IoFreeWorkItem	ntoskrnl</span><br><span class="line">00000001401381B8		IoQueueWorkItem	ntoskrnl</span><br><span class="line">00000001401381C0		IoInvalidateDeviceRelations	ntoskrnl</span><br><span class="line">00000001401381C8		IoOpenDeviceRegistryKey	ntoskrnl</span><br><span class="line">00000001401381D0		ObReferenceObjectByHandle	ntoskrnl</span><br><span class="line">00000001401381D8		ObfDereferenceObject	ntoskrnl</span><br><span class="line">00000001401381E0		ZwCreateFile	ntoskrnl</span><br><span class="line">00000001401381E8		ZwClose	ntoskrnl</span><br><span class="line">00000001401381F0		ZwCreateKey	ntoskrnl</span><br><span class="line">00000001401381F8		ZwOpenKey	ntoskrnl</span><br><span class="line">0000000140138200		ZwDeleteKey	ntoskrnl</span><br><span class="line">0000000140138208		ZwEnumerateKey	ntoskrnl</span><br><span class="line">0000000140138210		ZwFlushKey	ntoskrnl</span><br><span class="line">0000000140138218		ZwQueryKey	ntoskrnl</span><br><span class="line">0000000140138220		ZwQueryValueKey	ntoskrnl</span><br><span class="line">0000000140138228		ZwSetValueKey	ntoskrnl</span><br><span class="line">0000000140138230		ZwPowerInformation	ntoskrnl</span><br><span class="line">0000000140138238		ObQueryNameString	ntoskrnl</span><br><span class="line">0000000140138240		swprintf_s	ntoskrnl</span><br><span class="line">0000000140138248		strncpy_s	ntoskrnl</span><br><span class="line">0000000140138250		DbgPrint	ntoskrnl</span><br><span class="line">0000000140138258		PsGetCurrentThreadId	ntoskrnl</span><br><span class="line">0000000140138260		KfRaiseIrql	ntoskrnl</span><br><span class="line">0000000140138268		IoBuildPartialMdl	ntoskrnl</span><br><span class="line">0000000140138270		RtlGetVersion	ntoskrnl</span><br><span class="line">0000000140138278		RtlIsNtDdiVersionAvailable	ntoskrnl</span><br><span class="line">0000000140138280		KeInitializeDpc	ntoskrnl</span><br><span class="line">0000000140138288		KeInitializeEvent	ntoskrnl</span><br><span class="line">0000000140138290		KeInitializeSemaphore	ntoskrnl</span><br><span class="line">0000000140138298		KeInitializeTimerEx	ntoskrnl</span><br><span class="line">00000001401382A0		IoAttachDeviceToDeviceStack	ntoskrnl</span><br><span class="line">00000001401382A8		IoDetachDevice	ntoskrnl</span><br><span class="line">00000001401382B0		IoRegisterShutdownNotification	ntoskrnl</span><br><span class="line">00000001401382B8		IoCsqInitialize	ntoskrnl</span><br><span class="line">00000001401382C0		IoRegisterDeviceInterface	ntoskrnl</span><br><span class="line">00000001401382C8		ExFreePool	ntoskrnl</span><br><span class="line">00000001401382D0		MmMapIoSpace	ntoskrnl</span><br><span class="line">00000001401382D8		MmUnmapIoSpace	ntoskrnl</span><br><span class="line">00000001401382E0		ZwEnumerateValueKey	ntoskrnl</span><br><span class="line">00000001401382E8		KeCancelTimer	ntoskrnl</span><br><span class="line">00000001401382F0		IoBuildDeviceIoControlRequest	ntoskrnl</span><br><span class="line">00000001401382F8		IoDisconnectInterrupt	ntoskrnl</span><br><span class="line">0000000140138300		IoGetAttachedDeviceReference	ntoskrnl</span><br><span class="line">0000000140138308		IoUnregisterShutdownNotification	ntoskrnl</span><br><span class="line">0000000140138310		IoSetDeviceInterfaceState	ntoskrnl</span><br><span class="line">0000000140138318		PoRequestPowerIrp	ntoskrnl</span><br><span class="line">0000000140138320		PoSetPowerState	ntoskrnl</span><br><span class="line">0000000140138328		ObfReferenceObject	ntoskrnl</span><br><span class="line">0000000140138330		ExUuidCreate	ntoskrnl</span><br><span class="line">0000000140138338		KeSetTimerEx	ntoskrnl</span><br><span class="line">0000000140138340		IoCancelIrp	ntoskrnl</span><br><span class="line">0000000140138348		PoCallDriver	ntoskrnl</span><br><span class="line">0000000140138350		PoStartNextPowerIrp	ntoskrnl</span><br><span class="line">0000000140138358		PsCreateSystemThread	ntoskrnl</span><br><span class="line">0000000140138360		PsTerminateSystemThread	ntoskrnl</span><br><span class="line">0000000140138368		KeAcquireSpinLockAtDpcLevel	ntoskrnl</span><br><span class="line">0000000140138370		KeReleaseSpinLockFromDpcLevel	ntoskrnl</span><br><span class="line">0000000140138378		MmUnlockPages	ntoskrnl</span><br><span class="line">0000000140138380		MmAllocateContiguousMemory	ntoskrnl</span><br><span class="line">0000000140138388		MmFreeContiguousMemory	ntoskrnl</span><br><span class="line">0000000140138390		IoAllocateIrp	ntoskrnl</span><br><span class="line">0000000140138398		IoBuildSynchronousFsdRequest	ntoskrnl</span><br><span class="line">00000001401383A0		IoConnectInterrupt	ntoskrnl</span><br><span class="line">00000001401383A8		IoFreeIrp	ntoskrnl</span><br><span class="line">00000001401383B0		IoGetDmaAdapter	ntoskrnl</span><br><span class="line">00000001401383B8		IoGetDeviceProperty	ntoskrnl</span><br><span class="line">00000001401383C0		MmGetPhysicalAddress	ntoskrnl</span><br><span class="line">00000001401383C8		RtlUnicodeToMultiByteN	ntoskrnl</span><br><span class="line">00000001401383D0		KeClearEvent	ntoskrnl</span><br><span class="line">00000001401383D8		KeQueryActiveProcessors	ntoskrnl</span><br><span class="line">00000001401383E0		KeBugCheckEx	ntoskrnl</span><br><span class="line">00000001401383E8		ZwSetSecurityObject	ntoskrnl</span><br><span class="line">00000001401383F0		IoDeviceObjectType	ntoskrnl</span><br><span class="line">00000001401383F8		IoCreateDevice	ntoskrnl</span><br><span class="line">0000000140138400		ObOpenObjectByPointer	ntoskrnl</span><br><span class="line">0000000140138408		RtlGetDaclSecurityDescriptor	ntoskrnl</span><br><span class="line">0000000140138410		RtlGetGroupSecurityDescriptor	ntoskrnl</span><br><span class="line">0000000140138418		RtlGetOwnerSecurityDescriptor	ntoskrnl</span><br><span class="line">0000000140138420		RtlGetSaclSecurityDescriptor	ntoskrnl</span><br><span class="line">0000000140138428		SeCaptureSecurityDescriptor	ntoskrnl</span><br><span class="line">0000000140138430		_snwprintf	ntoskrnl</span><br><span class="line">0000000140138438		RtlLengthSecurityDescriptor	ntoskrnl</span><br><span class="line">0000000140138440		SeExports	ntoskrnl</span><br><span class="line">0000000140138448		RtlCreateSecurityDescriptor	ntoskrnl</span><br><span class="line">0000000140138450		_wcsnicmp	ntoskrnl</span><br><span class="line">0000000140138458		wcschr	ntoskrnl</span><br><span class="line">0000000140138460		RtlAbsoluteToSelfRelativeSD	ntoskrnl</span><br><span class="line">0000000140138468		RtlAddAccessAllowedAce	ntoskrnl</span><br><span class="line">0000000140138470		RtlLengthSid	ntoskrnl</span><br><span class="line">0000000140138478		IoIsWdmVersionAvailable	ntoskrnl</span><br><span class="line">0000000140138480		RtlSetDaclSecurityDescriptor	ntoskrnl</span><br><span class="line">0000000140138488		ExAllocatePoolWithQuotaTag	ntoskrnl</span><br><span class="line">0000000140138490		PsGetVersion	ntoskrnl</span><br><span class="line">0000000140138498		ZwQuerySystemInformation	ntoskrnl</span><br><span class="line">00000001401384A0		KeLowerIrql	ntoskrnl</span><br><span class="line"></span><br><span class="line">HAL			</span><br><span class="line">0000000140138000		KeStallExecutionProcessor	HAL</span><br></pre></td></tr></table></figure>
+
+<p>结论：根据.sys的分析，此驱动是纯WDM实现的。因为内核接口全部调用WDM&#x2F;NT kernel接口， 完全没有调用微软的miniport框架例如Storport, SDHC，SDBUS框架封装后的接口。</p>
+<p>但微软已不推荐WDM驱动开发，参考：<a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/introduction-to-wdm">Introduction to WDM</a> 。新驱动优先使用KMDF框架。</p>
+<h2 id="参考文章"><a href="#参考文章" class="headerlink" title="参考文章"></a>参考文章</h2><p><a target="_blank" rel="noopener" href="https://voidsec.com/windows-drivers-reverse-engineering-methodology/#remote-kernel-debugging">https://voidsec.com/windows-drivers-reverse-engineering-methodology/#remote-kernel-debugging</a></p>
+<p><a target="_blank" rel="noopener" href="https://blog.csdn.net/qq_24481913/article/details/131643283">https://blog.csdn.net/qq_24481913/article/details/131643283</a></p>
+<p><a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/">https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/</a></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/windows%E9%A9%B1%E5%8A%A8/" rel="tag"># windows驱动</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2024/08/30/Windows%20Hardware%20driver%20submission/" rel="prev" title="Windows Hardware driver submission">
+      <i class="fa fa-chevron-left"></i> Windows Hardware driver submission
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2024/08/30/Windows%20Driver%20--%20Windbg%E8%81%94%E8%B0%83%E7%8E%AF%E5%A2%83%E9%85%8D%E7%BD%AE/" rel="next" title="Windows Driver -- Windbg联调环境配置">
+      Windows Driver -- Windbg联调环境配置 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Windows-Driver-%E2%80%93-%E9%80%9A%E8%BF%87IDA%E9%80%86%E5%90%91%E5%88%86%E6%9E%90-sys"><span class="nav-number">1.</span> <span class="nav-text">Windows Driver – 通过IDA逆向分析.sys</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#IDA%E5%8F%8D%E6%B1%87%E7%BC%96%E5%B7%A5%E5%85%B7"><span class="nav-number">1.1.</span> <span class="nav-text">IDA反汇编工具</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#IDA%E5%88%86%E6%9E%90%E9%A9%B1%E5%8A%A8-sys%E6%96%87%E4%BB%B6"><span class="nav-number">1.2.</span> <span class="nav-text">IDA分析驱动.sys文件</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#IDA%E5%B8%B8%E7%94%A8%E5%BF%AB%E6%8D%B7%E9%94%AE"><span class="nav-number">1.2.1.</span> <span class="nav-text">IDA常用快捷键</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%A9%B1%E5%8A%A8%E5%88%86%E6%9E%90%E7%A4%BA%E4%BE%8B"><span class="nav-number">1.2.2.</span> <span class="nav-text">驱动分析示例</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#RtsPer-sys%E4%B8%8B%E8%BD%BD"><span class="nav-number">1.2.2.1.</span> <span class="nav-text">RtsPer.sys下载</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#INF%E5%88%86%E6%9E%90"><span class="nav-number">1.2.2.2.</span> <span class="nav-text">INF分析</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#sys%E5%88%86%E6%9E%90"><span class="nav-number">1.2.2.3.</span> <span class="nav-text">.sys分析</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%82%E8%80%83%E6%96%87%E7%AB%A0"><span class="nav-number">1.3.</span> <span class="nav-text">参考文章</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="cursorhu"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">cursorhu</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">113</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">41</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">55</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/cursorhu" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;cursorhu" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:2449055512@qq.com" title="E-Mail → mailto:2449055512@qq.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2025</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">cursorhu</span>
+</div>
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 8.0.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Noto+Serif+SC|Roboto/css?family=Noto Serif SC:300,300italic,400,400italic,700,700italic|Roboto:300,300italic,400,400italic,700,700italic&display=swap&subset=latin,latin-ext">
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"cursorhu.github.io","root":"/","scheme":"Pisces","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="1.GDB简介官网文档：GDB: The GNU Project Debugger 关于GDB的原理：GDB实现原理和使用范例GDB工作原理和内核实现GDB的基本工作原理 其他教程：GDB调试教程 几个重点：  多种运行方式：gdb启动程序再调试(独立功能程序)，gdb attach进程再调试(服务端程序)，gdb加载core dump调试(离线调试) GDB的本质是“截获”被调试程序，attac">
+<meta property="og:type" content="article">
+<meta property="og:title" content="多线程笔记：使用GDB调试多线程">
+<meta property="og:url" content="https://cursorhu.github.io/2021/07/15/%E5%A4%9A%E7%BA%BF%E7%A8%8B%E7%AC%94%E8%AE%B0%EF%BC%9A%E4%BD%BF%E7%94%A8GDB%E8%B0%83%E8%AF%95%E5%A4%9A%E7%BA%BF%E7%A8%8B/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="1.GDB简介官网文档：GDB: The GNU Project Debugger 关于GDB的原理：GDB实现原理和使用范例GDB工作原理和内核实现GDB的基本工作原理 其他教程：GDB调试教程 几个重点：  多种运行方式：gdb启动程序再调试(独立功能程序)，gdb attach进程再调试(服务端程序)，gdb加载core dump调试(离线调试) GDB的本质是“截获”被调试程序，attac">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051534342.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051544779.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051534546.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051535566.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051535346.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051535751.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051535502.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051535139.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051535180.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051536672.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051536065.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051536275.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051536108.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051537112.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051538738.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051538644.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051538876.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051538835.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051538139.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051538557.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051538027.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051539217.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051542767.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051542989.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051546645.png">
+<meta property="article:published_time" content="2021-07-15T07:29:31.000Z">
+<meta property="article:modified_time" content="2025-11-17T06:31:57.916Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="gdb">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051534342.png">
+
+<link rel="canonical" href="https://cursorhu.github.io/2021/07/15/%E5%A4%9A%E7%BA%BF%E7%A8%8B%E7%AC%94%E8%AE%B0%EF%BC%9A%E4%BD%BF%E7%94%A8GDB%E8%B0%83%E8%AF%95%E5%A4%9A%E7%BA%BF%E7%A8%8B/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>多线程笔记：使用GDB调试多线程 | ThinkNotes</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">ThinkNotes</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Simple is not easy</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于我</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2021/07/15/%E5%A4%9A%E7%BA%BF%E7%A8%8B%E7%AC%94%E8%AE%B0%EF%BC%9A%E4%BD%BF%E7%94%A8GDB%E8%B0%83%E8%AF%95%E5%A4%9A%E7%BA%BF%E7%A8%8B/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          多线程笔记：使用GDB调试多线程
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2021-07-15 15:29:31" itemprop="dateCreated datePublished" datetime="2021-07-15T15:29:31+08:00">2021-07-15</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2025-11-17 14:31:57" itemprop="dateModified" datetime="2025-11-17T14:31:57+08:00">2025-11-17</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/linux/" itemprop="url" rel="index"><span itemprop="name">linux</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="1-GDB简介"><a href="#1-GDB简介" class="headerlink" title="1.GDB简介"></a>1.GDB简介</h1><p>官网文档：<br><a target="_blank" rel="noopener" href="https://www.gnu.org/software/gdb/documentation/">GDB: The GNU Project Debugger</a></p>
+<p>关于GDB的原理：<br><a target="_blank" rel="noopener" href="https://cloud.tencent.com/developer/article/1365186">GDB实现原理和使用范例</a><br><a target="_blank" rel="noopener" href="http://oenhan.com/gdb-principle">GDB工作原理和内核实现</a><br><a target="_blank" rel="noopener" href="http://www.docin.com/p-18618736.html">GDB的基本工作原理</a></p>
+<p>其他教程：<a target="_blank" rel="noopener" href="http://c.biancheng.net/gdb/">GDB调试教程</a></p>
+<p>几个重点：</p>
+<ul>
+<li>多种运行方式：gdb启动程序再调试(独立功能程序)，gdb attach进程再调试(服务端程序)，gdb加载core dump调试(离线调试)</li>
+<li>GDB的本质是“截获”被调试程序，attach用ptrace截获了OS和应用程序之间的通信, 端点本质是trap中断，截获了CPU正常取指执行流程</li>
+</ul>
+<p>本文源码：<a target="_blank" rel="noopener" href="https://github.com/cursorhu/SimpleMultiThread/tree/master/4.gdb_thread">cursorhu&#x2F;SimpleMultiThread&#x2F;4.gdb_thread&#x2F;</a></p>
+<h1 id="2-多线程程序的GDB调试"><a href="#2-多线程程序的GDB调试" class="headerlink" title="2.多线程程序的GDB调试"></a>2.多线程程序的GDB调试</h1><p>待调试代码：</p>
+<pre><code>#include &lt;thread&gt;
+#include &lt;chrono&gt;
+#include &lt;mutex&gt;
+#include &lt;iostream&gt;
+
+int g_mydata = 0;
+std::mutex g_mutex;
+
+void thread_func1()
+{
+	while (true)
+	{
+		g_mutex.lock();
+		++g_mydata;
+		if(g_mydata == 1024)
+			g_mydata = 0;
+		g_mutex.unlock();
+		std::this_thread::sleep_for(std::chrono::seconds(1));
+	}
+}
+
+void thread_func2()
+{
+	while (true)
+	{
+		g_mutex.lock();
+		std::cout &lt;&lt; &quot;g_mydata = &quot; &lt;&lt; g_mydata &lt;&lt; &quot;, ThreadID = &quot; &lt;&lt; std::this_thread::get_id() &lt;&lt; std::endl;
+		g_mutex.unlock();
+		std::this_thread::sleep_for(std::chrono::seconds(1));
+	}
+}
+
+int main()
+{
+	std::thread t1(thread_func1);
+	std::thread t2(thread_func2);
+	t1.join();
+	t2.join();
+	return 0;
+}
+</code></pre>
+<p>编译：</p>
+<pre><code>g++ -g -std=c++11 cppthread.cpp -o cppthread -lpthread
+</code></pre>
+<p>-g: 带debug信息，gdb要用<br>-lpthread：链接pthread库。当应用直接调用POSIX&#x2F;pthread接口，或Linux环境中运行多线程都需要</p>
+<h2 id="attach方式调试"><a href="#attach方式调试" class="headerlink" title="attach方式调试"></a>attach方式调试</h2><p>(1)后台运行并获取PID</p>
+<ul>
+<li>GDB调试已运行的程序，cppthread线程写成死循环，后台运行。</li>
+<li>ps -ef | grep NAME 获取PID</li>
+<li>pstree可以查看线程关系</li>
+<li>LWP:轻量级进程，是用户线程和内核的中间接口。用户级线程连接LWP上便具有内核线程的所有属性。因此可以认为LWP ID对应线程ID</li>
+</ul>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051534342.png" alt="1"></p>
+<p>(2)gdb attach，管控进程<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051544779.png" alt="2"></p>
+<p>(3)查看所有线程信息<br>*表示当前在1号线程，注意这个ID是GDB attach后分配的，真实线程ID参考LWP<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051534546.png" alt="3"></p>
+<p>(4)查看线程backtrace<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051535566.png" alt="4"></p>
+<p>(5)切换线程<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051535346.png" alt="5"></p>
+<p>(6)单步调试线程</p>
+<ul>
+<li>注意，GDB调试时是支持线程切换的，等同正常执行多线程，也可以禁用切换：<code>set scheduler-locking on</code>。本示例有mutex锁,未见到切换</li>
+<li><code>next</code>: 单步（一步），<code>next n</code>: 单步n步</li>
+<li><code>watch 变量</code>，可见<code>next 6</code>后g_mydata + 1</li>
+<li><code>watch</code>会自动隐式的加断点，后文会看到断点信息</li>
+</ul>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051535751.png" alt="6"></p>
+<p>(7)断点</p>
+<ul>
+<li><code>break i</code>: 在代码i行加断点， <code>break func</code>:在函数加断点</li>
+<li><code>clear i</code>: 清除i行的断点， <code>delete id</code>: 清除指定id的断点</li>
+<li>注意看watch引入了一个断点11</li>
+<li><code>continue</code>：继续执行，通常配合断点使用</li>
+</ul>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051535502.png" alt="7"></p>
+<p>(8)线程外调试+多断点<br>两个工作线程都加断点<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051535139.png" alt="8"><br>一次运行<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051535180.png" alt="9"><br>继续运行<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051536672.png" alt="10"></p>
+<ul>
+<li>Thread2和Thread3即工作线程，Thread1为主线程</li>
+<li>Thread1会切到工作线程，LWP&#x3D;6080或6081</li>
+<li>两次运行,Thread1切到的LWP不一样</li>
+</ul>
+<p>GDB显示主线程切到哪个工作线程，实际是CPU当前在执行哪个工作线程，因此两次运行到断点时，当前执行线程分别是Thread2和Thread3，主线程实际是阻塞的。</p>
+<h2 id="GDB直接运行程序"><a href="#GDB直接运行程序" class="headerlink" title="GDB直接运行程序"></a>GDB直接运行程序</h2><p>用GDB运行程序的调试方式：</p>
+<pre><code> gdb &lt; prog_name &gt;
+</code></pre>
+<p>(1)运行<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051536065.png" alt="11"></p>
+<p>(2)加断点和执行<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051536275.png" alt="12"></p>
+<p>(3)查看变量值<br><code>p 变量</code>：打印变量，和<code>watch</code>相比不会加隐含的断点<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051536108.png" alt="13"></p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051537112.png" alt="14"></p>
+<h2 id="core-dump文件方式调试"><a href="#core-dump文件方式调试" class="headerlink" title="core dump文件方式调试"></a>core dump文件方式调试</h2><p>有关core dump<br><a target="_blank" rel="noopener" href="https://www.cnblogs.com/computer1-2-3/p/11114981.html">Linux 下如何产生core文件（core dump设置）</a><br><a target="_blank" rel="noopener" href="https://linux-audit.com/understand-and-configure-core-dumps-work-on-linux/">Understand and configure core dumps on Linux</a><br><a target="_blank" rel="noopener" href="https://www.cnblogs.com/uhziel/p/cpp_segmentation_fault.html">C++中段错误的常见情况</a><br><a target="_blank" rel="noopener" href="https://blog.csdn.net/xuzhina/category_1322964.html">coredump问题原理探究(Linux版)
+</a></p>
+<p>下面修改前面的程序，制造core dump<br>(1)数组越界<br>cppthread_dump_array.cpp：</p>
+<pre><code>#include &lt;thread&gt;
+#include &lt;chrono&gt;
+#include &lt;mutex&gt;
+#include &lt;iostream&gt;
+#include &lt;cstring&gt;
+
+int g_mydata = 0;
+std::mutex g_mutex;
+
+char test_dump_buf[10] = {0};
+
+void thread_func1()
+{
+	while (true)
+	{
+		g_mutex.lock();
+		++g_mydata;
+		char c;
+		sprintf(&amp;c, &quot;%d&quot;, g_mydata);
+		std::strcat(test_dump_buf, &amp;c); //持续追加g_mydata字符串
+		if(g_mydata == 1024)
+			g_mydata = 0;
+		g_mutex.unlock();
+		std::this_thread::sleep_for(std::chrono::seconds(1));
+	}
+}
+
+void thread_func2()
+{
+	while (true)
+	{
+		g_mutex.lock();
+		std::cout &lt;&lt; &quot;g_mydata = &quot; &lt;&lt; g_mydata &lt;&lt; &quot;, ThreadID = &quot; &lt;&lt; std::this_thread::get_id() &lt;&lt; std::endl;
+		std::cout &lt;&lt; &quot;test_dump_buf: &quot; &lt;&lt; test_dump_buf &lt;&lt; std::endl;
+		g_mutex.unlock();
+		std::this_thread::sleep_for(std::chrono::seconds(1));
+	}
+}
+
+int main()
+{
+	std::thread t1(thread_func1);
+	std::thread t2(thread_func2);
+
+	t1.join();
+	t2.join();
+
+	return 0;
+}
+</code></pre>
+<p>运行结果：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051538738.png" alt="15"><br>并未发生段错误，更不谈core dump。因为CPP对数组没有越界限制，这是个“合法”行为</p>
+<p>(2)使用空指针<br>cppthread_dump_nullptr.cpp：</p>
+<pre><code>#include &lt;thread&gt;
+#include &lt;chrono&gt;
+#include &lt;mutex&gt;
+#include &lt;iostream&gt;
+#include &lt;unistd.h&gt; //for linux sleep()
+
+std::mutex g_mutex;
+
+class Foo 
+{
+	public:
+		Foo(int m)
+		{
+			m_data = m;
+		}
+		~Foo(){}
+		void printval() 
+		{
+			std::cout &lt;&lt; &quot;m_data = &quot; &lt;&lt; m_data &lt;&lt; std::endl;
+		}
+		void increase()
+		{
+			++m_data;
+		}
+		int getval()
+		{
+			return m_data;
+		}
+		void resetval()
+		{
+			m_data = 0;
+		}
+		
+	private:
+		int m_data;
+};
+
+void thread_func1(Foo&amp; p)
+{
+	while (true)
+	{
+		g_mutex.lock();
+		p.increase();
+		if(p.getval() == 1024)
+			p.resetval();
+		g_mutex.unlock();
+		std::this_thread::sleep_for(std::chrono::seconds(1));
+	}
+}
+
+void thread_func2(Foo&amp; p)
+{
+	while (true)
+	{
+		g_mutex.lock();
+		p.printval();
+		g_mutex.unlock();
+		std::this_thread::sleep_for(std::chrono::seconds(1));
+	}
+}
+
+int main()
+{	
+	Foo *pFoo = new Foo(0);
+
+	std::thread t1(thread_func1, std::ref(*pFoo)); //std::ref用于std::thread传入参数，以引用的形式
+	std::thread t2(thread_func2, std::ref(*pFoo));
+
+	//t1.join();  //这里故意不join
+	//t2.join();
+	sleep(10);  //sleep等一下thread1,2
+	
+	delete pFoo; 
+	pFoo = NULL;  //这时thread1,2还没执行完，形成了使用空指针的条件
+			
+	return 0;
+}
+</code></pre>
+<p>运行结果：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051538644.png" alt="16"></p>
+<p>下面gdb调试这个core dump</p>
+<ul>
+<li><p>设置core dump文件大小限制为不受限<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051538876.png" alt="17"><br>最好写入配置文件<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051538835.png" alt="18"></p>
+</li>
+<li><p>gdb加载程序和core dump文件<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051538139.png" alt="19"><br>可见siganl 6发生，使进程终止</p>
+</li>
+<li><p>看dump位置，bt或where都可以<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051538557.png" alt="20"></p>
+</li>
+<li><p>看所有线程的栈<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051538027.png" alt="21"></p>
+</li>
+<li><p>直接看dump附近的代码<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051539217.png"></p>
+</li>
+</ul>
+<p>结论：根据bt&#x2F;where, dump发生时，主进程在在执行67行：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051542767.png" alt="image-20221205154207720"></p>
+<p>根据源码，具体是工作线程调用对象的方法时发生<br>再看dump打印，正好要打印<code>m_data = 10</code>的时候dump，结合main中sleep(10)和工作线程sleep(1)，dump原因是main把对象指针置空了，而两个工作线程还在调用对象的方法，位置是thread_func2的p.printval()处</p>
+<h2 id="一个示例：调试死锁"><a href="#一个示例：调试死锁" class="headerlink" title="一个示例：调试死锁"></a>一个示例：调试死锁</h2><p>最常见的死锁是双重加锁，和双重delete的道理一样，代码复杂了，层层调用的情况下容易出现<br>示例代码cppthread_deadlock.cpp：<br>线程函数和其调用的类方法都加锁了，形成死锁</p>
+<pre><code>#include &lt;thread&gt;
+#include &lt;chrono&gt;
+#include &lt;mutex&gt;
+#include &lt;iostream&gt;
+#include &lt;unistd.h&gt; //for linux sleep()
+
+std::mutex g_mutex;
+
+class Foo 
+{
+	public:
+		Foo(int m)
+		{
+			m_data = m;
+		}
+		~Foo(){}
+		void printval() 
+		{
+			std::cout &lt;&lt; &quot;m_data = &quot; &lt;&lt; m_data &lt;&lt; std::endl;
+		}
+		void increase()
+		{
+			g_mutex.lock(); //故意制造双重加锁
+			++m_data;
+			g_mutex.unlock();
+		}
+		int getval()
+		{
+			return m_data;
+		}
+		void resetval()
+		{
+			m_data = 0;	
+		}
+		
+	private:
+		int m_data;
+};
+
+void thread_func1(Foo&amp; p)
+{
+	while (true)
+	{
+		g_mutex.lock();
+		p.increase();
+		if(p.getval() == 1024)
+			p.resetval();
+		g_mutex.unlock();
+		std::this_thread::sleep_for(std::chrono::seconds(1));
+	}
+}
+
+void thread_func2(Foo&amp; p)
+{
+	while (true)
+	{
+		g_mutex.lock();
+		p.printval();
+		g_mutex.unlock();
+		std::this_thread::sleep_for(std::chrono::seconds(1));
+	}
+}
+
+int main()
+{	
+	Foo *pFoo = new Foo(0);
+
+	std::thread t1(thread_func1, std::ref(*pFoo)); //std::ref用于std::thread传入参数，以引用的形式
+	std::thread t2(thread_func2, std::ref(*pFoo));
+
+	t1.join();
+	t2.join();
+	
+	delete pFoo;
+	pFoo = NULL;
+			
+	return 0;
+}
+</code></pre>
+<p>调试：</p>
+<ul>
+<li>直接运行方式，要run起来才有线程</li>
+</ul>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051542989.png" alt="23"></p>
+<ul>
+<li>backtrace可见两个线程都停止于lock_wait()，其中thread2回溯看到死锁代码在45行</li>
+</ul>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051546645.png" alt="24"></p>
+<p>对于互斥锁推荐用RAII机制的<code>std::lock_guard&lt;mutex&gt; lockGuard(m)</code>，能避免忘记unlock情况。但在此示例中，lock_guard也会双重加锁。</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/gdb/" rel="tag"># gdb</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2021/07/12/%E5%A4%9A%E7%BA%BF%E7%A8%8B%E7%AC%94%E8%AE%B0%EF%BC%9A%E7%BA%BF%E7%A8%8B%E6%B1%A0/" rel="prev" title="多线程笔记：线程池">
+      <i class="fa fa-chevron-left"></i> 多线程笔记：线程池
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2021/08/23/%E6%A0%91%E8%8E%93%E6%B4%BE%E7%AC%94%E8%AE%B0%EF%BC%9A%E4%BD%BF%E7%94%A8mjpg-streamer-Apache+SSH%E8%87%AA%E5%88%B6%E7%BD%91%E7%BB%9C%E6%91%84%E5%83%8F%E5%A4%B4/" rel="next" title="树莓派笔记：使用mjpg-streamer+Apache+SSH自制网络摄像头">
+      树莓派笔记：使用mjpg-streamer+Apache+SSH自制网络摄像头 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#1-GDB%E7%AE%80%E4%BB%8B"><span class="nav-number">1.</span> <span class="nav-text">1.GDB简介</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#2-%E5%A4%9A%E7%BA%BF%E7%A8%8B%E7%A8%8B%E5%BA%8F%E7%9A%84GDB%E8%B0%83%E8%AF%95"><span class="nav-number">2.</span> <span class="nav-text">2.多线程程序的GDB调试</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#attach%E6%96%B9%E5%BC%8F%E8%B0%83%E8%AF%95"><span class="nav-number">2.1.</span> <span class="nav-text">attach方式调试</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#GDB%E7%9B%B4%E6%8E%A5%E8%BF%90%E8%A1%8C%E7%A8%8B%E5%BA%8F"><span class="nav-number">2.2.</span> <span class="nav-text">GDB直接运行程序</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#core-dump%E6%96%87%E4%BB%B6%E6%96%B9%E5%BC%8F%E8%B0%83%E8%AF%95"><span class="nav-number">2.3.</span> <span class="nav-text">core dump文件方式调试</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E4%B8%AA%E7%A4%BA%E4%BE%8B%EF%BC%9A%E8%B0%83%E8%AF%95%E6%AD%BB%E9%94%81"><span class="nav-number">2.4.</span> <span class="nav-text">一个示例：调试死锁</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="cursorhu"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">cursorhu</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">113</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">41</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">55</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/cursorhu" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;cursorhu" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:2449055512@qq.com" title="E-Mail → mailto:2449055512@qq.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2025</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">cursorhu</span>
+</div>
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

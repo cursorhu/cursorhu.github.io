@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 8.0.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Noto+Serif+SC|Roboto/css?family=Noto Serif SC:300,300italic,400,400italic,700,700italic|Roboto:300,300italic,400,400italic,700,700italic&display=swap&subset=latin,latin-ext">
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"cursorhu.github.io","root":"/","scheme":"Pisces","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="电量计 – 电池基础知识和电量计算法简介算法背景简介电池建模电量计芯片算法首先是建立在电池 &#x2F; 电芯建模的基础上。 由于电芯的SOC受到电池的电压，电池充放电电流以及温度的影响。 根据客户应用场景的需求， 将电芯按照不同的温度和电流进行充电和放电，得到不同场景的充放电数据。 通过大瞬科技自己研发的数据处理软件， 作为该种电池的基础模型数据保存下来， 储存在芯片 flash 或主机端中作为">
+<meta property="og:type" content="article">
+<meta property="og:title" content="电量计 -- 电池基础知识和电量计算法简介">
+<meta property="og:url" content="https://cursorhu.github.io/2025/05/18/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E7%94%B5%E6%B1%A0%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86%E5%92%8C%E7%94%B5%E9%87%8F%E8%AE%A1%E7%AE%97%E6%B3%95%E7%AE%80%E4%BB%8B/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="电量计 – 电池基础知识和电量计算法简介算法背景简介电池建模电量计芯片算法首先是建立在电池 &#x2F; 电芯建模的基础上。 由于电芯的SOC受到电池的电压，电池充放电电流以及温度的影响。 根据客户应用场景的需求， 将电芯按照不同的温度和电流进行充电和放电，得到不同场景的充放电数据。 通过大瞬科技自己研发的数据处理软件， 作为该种电池的基础模型数据保存下来， 储存在芯片 flash 或主机端中作为">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503211602675.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503211602332.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503211602487.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503211603864.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503211603115.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503211604683.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503211607520.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503211607989.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503211607159.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503211608835.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503211608143.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503211610665.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503211610250.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503211611917.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503211611646.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503211611128.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503211612406.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503211612126.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503211612654.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503211613724.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503211620706.png">
+<meta property="article:published_time" content="2025-05-18T07:50:54.000Z">
+<meta property="article:modified_time" content="2025-11-04T09:04:52.296Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="电量计">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503211602675.png">
+
+<link rel="canonical" href="https://cursorhu.github.io/2025/05/18/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E7%94%B5%E6%B1%A0%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86%E5%92%8C%E7%94%B5%E9%87%8F%E8%AE%A1%E7%AE%97%E6%B3%95%E7%AE%80%E4%BB%8B/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>电量计 -- 电池基础知识和电量计算法简介 | ThinkNotes</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">ThinkNotes</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Simple is not easy</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于我</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2025/05/18/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E7%94%B5%E6%B1%A0%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86%E5%92%8C%E7%94%B5%E9%87%8F%E8%AE%A1%E7%AE%97%E6%B3%95%E7%AE%80%E4%BB%8B/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          电量计 -- 电池基础知识和电量计算法简介
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2025-05-18 15:50:54" itemprop="dateCreated datePublished" datetime="2025-05-18T15:50:54+08:00">2025-05-18</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2025-11-04 17:04:52" itemprop="dateModified" datetime="2025-11-04T17:04:52+08:00">2025-11-04</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/BMS/" itemprop="url" rel="index"><span itemprop="name">BMS</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="电量计-–-电池基础知识和电量计算法简介"><a href="#电量计-–-电池基础知识和电量计算法简介" class="headerlink" title="电量计 – 电池基础知识和电量计算法简介"></a>电量计 – 电池基础知识和电量计算法简介</h1><h2 id="算法背景简介"><a href="#算法背景简介" class="headerlink" title="算法背景简介"></a>算法背景简介</h2><h3 id="电池建模"><a href="#电池建模" class="headerlink" title="电池建模"></a>电池建模</h3><p>电量计芯片算法首先是建立在电池 &#x2F; 电芯建模的基础上。 由于电芯的SOC受到电池的电压，电池充放电电流以及温度的影响。</p>
+<p>根据客户应用场景的需求， 将电芯按照不同的温度和电流进行充电和放电，得到不同场景的充放电数据。 通过大瞬科技自己研发的数据处理软件， 作为该种电池的基础模型数据保存下来， 储存在芯片 flash 或主机端中作为算法的内部数据使用。 当电池进行充放电时， 芯片固件会参考该数据， 对芯片的充放电 SOC 状态进行误差评估， 然后结合当前的电压， 电流和温度， 进行动态的修正。 抑制各种动态环境带来的偏差。</p>
+<p>电量计建模会生成两种数据内容：</p>
+<p>电池的OCV（Open Circuit Voltage）表，由于库伦积分法无法得到电池的初始SOC，所以在电池上电的初始阶段会应用此表查到的SOC来作为电池初始化的SOC.</p>
+<p>电池在不同电压，不同电流以及不同温度下的SOC表格，此表用来作为安时积分法的SOC计算参考表格。<br>温度一般选取-10度，0度，25度和45度4个点。<br>电流根据客户的充放电应用选取3-4个点。<br>同时记录电池在不同温度和不同电流下不同SOC对应的电压点。<br>在实际应用中，对于温度或电流不在建模表范围内的点，采用专用算法进行插值处理。</p>
+<h3 id="算法介绍"><a href="#算法介绍" class="headerlink" title="算法介绍"></a>算法介绍</h3><p>电芯按照充放电状态，可以分为充充电状态，空闲状态和放电状态，三种状态会分别执行不同的逻辑。</p>
+<p>对于充电状态：<br>在充电初始状态，使用当前电压，电流，温度和 SOH 值来对整体满充电芯容量进行预估。<br>在充电进行中，使用库仑计进行库伦积分，当温度和电流变化时，芯片会计算不同电流和温度下的库伦效率值，整合滤波算法来更新 SOC。<br>根据当前的电压和电流值，以及设定的截至电压和截至电流来判定 CC 和 CV 充电状态。<br>根据设定的截至电压和截至电流以及库伦积分值来判定是否达到满充。其中截至电压和截至电流作为主要判定条件。</p>
+<p>对于放电状态：</p>
+<p>在放电初始状态，使用当前电压，电流，温度和 SOH 值来对整体电芯的可用容量进行预估。<br>在放电进行中，使用库仑计进行库伦积分，结合 放电模型更新当前可用的有效容量和 SOC，当温度，电流和电压变化时，放电模型会自动更新电芯的有效容量，同时结合自适应 算法 来更新 SOC，保证 SOC 的精度。<br>在放电末端，SOC 小于 10%之后，根据放电的截止电压，对 SOC 值进行额外的滤波处理使其在尾端尽可能逼近截止电压，同时不会因为特定的应用情况而出现跳变。</p>
+<p>对于空闲状态：</p>
+<p>对于电流死区（10mA，可配置）以上的电流，库伦会记录电流积分数据并更新到SOC 上。<br>对于长时间处于空闲状态的电池，每隔一定时间（12h，可配置），使用电压查询OCV，得到 SOC，对当前的 SOC 进行滤波修正。<br>在无负载状态时，当温度发生变化，电芯电压可能会发生变化。为了避免终端用户在无负载情况下，直接观察到 SOC 下降或者上升，认为设备异常。在这种情况下，电量计 SOC 输出会维持不变。当电芯转入充电或者放电状态时，再根据实际电流，电压和温度情况调整电芯容量预估值，使 SOC 平滑过渡，准确达到充电截止或者放电截止。</p>
+<h3 id="调参"><a href="#调参" class="headerlink" title="调参"></a>调参</h3><p>由于不同客户电池的放电容量不同，EOD（End of Discharge）电压不同，电池内阻不同，温度等其他参数对电量的影响也不同，所以在基于大瞬电量计的基础算法上，需根据电量计精度的测试结果来进行调参。<br>对于电池包端电量计，大瞬科技开发有专用的调参仿真软件进行调参。<br>对于主板端电量计，目前仍需实测方式进行调参。</p>
+<p>充电精度测量：<br>在实际测试中，充电阶段以芯片报 0%开始，芯片达到 100%结束。通过统计该阶段的库仑计值，就可以计算出该充电阶段的标准 SOC 值。使用该值减去芯片输出的 RSOC 值就可以得到充电阶段 SOC 的误差值。同时充电也需要评估芯片充电截止时的截止电流与客户配置的截止电流之间的实际差异。<br>放电精度测量：<br>对于放电阶段同理，以满充状态为 100%，以芯片报 0%为放电完成。统计该阶段的库仑计值，计算出该放电阶段的标准 SOC 值。使用该值减去芯片输出的 RSOC 值就可以得到放电阶段 SOC 的误差值。放电阶段需要额外评估放电阶段的实际截止电压与客户配置的截止电压之间的差异。</p>
+<h2 id="锂电池基础知识"><a href="#锂电池基础知识" class="headerlink" title="锂电池基础知识"></a>锂电池基础知识</h2><h3 id="常用电池参数"><a href="#常用电池参数" class="headerlink" title="常用电池参数"></a>常用电池参数</h3><p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503211602675.png" alt="image-20250321160203631"></p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503211602332.png" alt="image-20250321160221281"></p>
+<h3 id="电池充电曲线"><a href="#电池充电曲线" class="headerlink" title="电池充电曲线"></a>电池充电曲线</h3><p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503211602487.png" alt="image-20250321160244457"></p>
+<h3 id="电池放电特性"><a href="#电池放电特性" class="headerlink" title="电池放电特性"></a>电池放电特性</h3><p>放电电流影响内阻压降</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503211603864.png" alt="image-20250321160323833"></p>
+<p>负载移除有瞬态效应</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503211603115.png" alt="image-20250321160343073"></p>
+<p>环境温度影响放电曲线</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503211604683.png" alt="image-20250321160416649"></p>
+<h3 id="循环次数"><a href="#循环次数" class="headerlink" title="循环次数"></a>循环次数</h3><p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503211607520.png" alt="image-20250321160709488"></p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503211607989.png" alt="image-20250321160721945"></p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503211607159.png" alt="image-20250321160743128"></p>
+<h2 id="电量计简介"><a href="#电量计简介" class="headerlink" title="电量计简介"></a>电量计简介</h2><h3 id="电量计功能"><a href="#电量计功能" class="headerlink" title="电量计功能"></a>电量计功能</h3><p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503211608835.png" alt="image-20250321160835792"></p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503211608143.png" alt="image-20250321160848105"></p>
+<h3 id="系统结构"><a href="#系统结构" class="headerlink" title="系统结构"></a>系统结构</h3><p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503211610665.png" alt="image-20250321161013632"></p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503211610250.png" alt="image-20250321161026216"></p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503211611917.png" alt="image-20250321161050760"></p>
+<h3 id="电量检测算法简介"><a href="#电量检测算法简介" class="headerlink" title="电量检测算法简介"></a>电量检测算法简介</h3><p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503211611646.png" alt="image-20250321161131608"></p>
+<h4 id="OCV查询"><a href="#OCV查询" class="headerlink" title="OCV查询"></a>OCV查询</h4><p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503211611128.png" alt="image-20250321161159088"></p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503211612406.png" alt="image-20250321161210368"></p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503211612126.png" alt="image-20250321161223080"></p>
+<h4 id="库伦监测"><a href="#库伦监测" class="headerlink" title="库伦监测"></a>库伦监测</h4><p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503211612654.png" alt="image-20250321161249617"></p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503211613724.png" alt="image-20250321161306688"></p>
+<h3 id="通用算法流程"><a href="#通用算法流程" class="headerlink" title="通用算法流程"></a>通用算法流程</h3><p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202503211620706.png" alt="image-20250321162020664"></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E7%94%B5%E9%87%8F%E8%AE%A1/" rel="tag"># 电量计</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2025/05/18/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E9%98%BB%E6%8A%97%E8%BF%BD%E8%B8%AA%E7%AE%97%E6%B3%95%E7%A7%BB%E6%A4%8D%E5%92%8C%E8%B0%83%E8%AF%95/" rel="prev" title="电量计 -- 阻抗追踪算法移植和调试">
+      <i class="fa fa-chevron-left"></i> 电量计 -- 阻抗追踪算法移植和调试
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2025/05/18/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20HDQ%E8%B0%83%E8%AF%95%E8%BF%87%E7%A8%8B/" rel="next" title="电量计 -- HDQ调试过程">
+      电量计 -- HDQ调试过程 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%94%B5%E9%87%8F%E8%AE%A1-%E2%80%93-%E7%94%B5%E6%B1%A0%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86%E5%92%8C%E7%94%B5%E9%87%8F%E8%AE%A1%E7%AE%97%E6%B3%95%E7%AE%80%E4%BB%8B"><span class="nav-number">1.</span> <span class="nav-text">电量计 – 电池基础知识和电量计算法简介</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%AE%97%E6%B3%95%E8%83%8C%E6%99%AF%E7%AE%80%E4%BB%8B"><span class="nav-number">1.1.</span> <span class="nav-text">算法背景简介</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%94%B5%E6%B1%A0%E5%BB%BA%E6%A8%A1"><span class="nav-number">1.1.1.</span> <span class="nav-text">电池建模</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%AE%97%E6%B3%95%E4%BB%8B%E7%BB%8D"><span class="nav-number">1.1.2.</span> <span class="nav-text">算法介绍</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%B0%83%E5%8F%82"><span class="nav-number">1.1.3.</span> <span class="nav-text">调参</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%94%82%E7%94%B5%E6%B1%A0%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86"><span class="nav-number">1.2.</span> <span class="nav-text">锂电池基础知识</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%B8%B8%E7%94%A8%E7%94%B5%E6%B1%A0%E5%8F%82%E6%95%B0"><span class="nav-number">1.2.1.</span> <span class="nav-text">常用电池参数</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%94%B5%E6%B1%A0%E5%85%85%E7%94%B5%E6%9B%B2%E7%BA%BF"><span class="nav-number">1.2.2.</span> <span class="nav-text">电池充电曲线</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%94%B5%E6%B1%A0%E6%94%BE%E7%94%B5%E7%89%B9%E6%80%A7"><span class="nav-number">1.2.3.</span> <span class="nav-text">电池放电特性</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%BE%AA%E7%8E%AF%E6%AC%A1%E6%95%B0"><span class="nav-number">1.2.4.</span> <span class="nav-text">循环次数</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%94%B5%E9%87%8F%E8%AE%A1%E7%AE%80%E4%BB%8B"><span class="nav-number">1.3.</span> <span class="nav-text">电量计简介</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%94%B5%E9%87%8F%E8%AE%A1%E5%8A%9F%E8%83%BD"><span class="nav-number">1.3.1.</span> <span class="nav-text">电量计功能</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%B3%BB%E7%BB%9F%E7%BB%93%E6%9E%84"><span class="nav-number">1.3.2.</span> <span class="nav-text">系统结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%94%B5%E9%87%8F%E6%A3%80%E6%B5%8B%E7%AE%97%E6%B3%95%E7%AE%80%E4%BB%8B"><span class="nav-number">1.3.3.</span> <span class="nav-text">电量检测算法简介</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#OCV%E6%9F%A5%E8%AF%A2"><span class="nav-number">1.3.3.1.</span> <span class="nav-text">OCV查询</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%BA%93%E4%BC%A6%E7%9B%91%E6%B5%8B"><span class="nav-number">1.3.3.2.</span> <span class="nav-text">库伦监测</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%80%9A%E7%94%A8%E7%AE%97%E6%B3%95%E6%B5%81%E7%A8%8B"><span class="nav-number">1.3.4.</span> <span class="nav-text">通用算法流程</span></a></li></ol></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="cursorhu"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">cursorhu</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">113</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">41</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">55</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/cursorhu" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;cursorhu" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:2449055512@qq.com" title="E-Mail → mailto:2449055512@qq.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2025</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">cursorhu</span>
+</div>
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

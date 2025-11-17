@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 8.0.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Noto+Serif+SC|Roboto/css?family=Noto Serif SC:300,300italic,400,400italic,700,700italic|Roboto:300,300italic,400,400italic,700,700italic&display=swap&subset=latin,latin-ext">
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"cursorhu.github.io","root":"/","scheme":"Pisces","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="飞腾派Linux调试环境：串口调试，交叉编译，uboot配置串口调试环境串口硬件连接串口线的颜色和功能是对应的，4根线如下： 12345功能    	   线的颜色TX           绿色RX           白色GND          黑色VCC          红色  串口的接口类型取决于开发板接口，飞腾Pi是使用USB转TTL接口，有的开发板是板载串口转USB芯片，外部是USB">
+<meta property="og:type" content="article">
+<meta property="og:title" content="飞腾派Linux调试环境-串口调试交叉编译uboot配置">
+<meta property="og:url" content="https://cursorhu.github.io/2024/05/18/%E9%A3%9E%E8%85%BE%E6%B4%BELinux%E8%B0%83%E8%AF%95%E7%8E%AF%E5%A2%83%EF%BC%9A%E4%B8%B2%E5%8F%A3%E8%B0%83%E8%AF%95%E4%BA%A4%E5%8F%89%E7%BC%96%E8%AF%91uboot%E9%85%8D%E7%BD%AE/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="飞腾派Linux调试环境：串口调试，交叉编译，uboot配置串口调试环境串口硬件连接串口线的颜色和功能是对应的，4根线如下： 12345功能    	   线的颜色TX           绿色RX           白色GND          黑色VCC          红色  串口的接口类型取决于开发板接口，飞腾Pi是使用USB转TTL接口，有的开发板是板载串口转USB芯片，外部是USB">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202404241426062.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202404241428560.png">
+<meta property="article:published_time" content="2024-05-18T07:50:54.000Z">
+<meta property="article:modified_time" content="2025-11-04T09:57:13.263Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="phytium">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202404241426062.png">
+
+<link rel="canonical" href="https://cursorhu.github.io/2024/05/18/%E9%A3%9E%E8%85%BE%E6%B4%BELinux%E8%B0%83%E8%AF%95%E7%8E%AF%E5%A2%83%EF%BC%9A%E4%B8%B2%E5%8F%A3%E8%B0%83%E8%AF%95%E4%BA%A4%E5%8F%89%E7%BC%96%E8%AF%91uboot%E9%85%8D%E7%BD%AE/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>飞腾派Linux调试环境-串口调试交叉编译uboot配置 | ThinkNotes</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">ThinkNotes</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Simple is not easy</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于我</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2024/05/18/%E9%A3%9E%E8%85%BE%E6%B4%BELinux%E8%B0%83%E8%AF%95%E7%8E%AF%E5%A2%83%EF%BC%9A%E4%B8%B2%E5%8F%A3%E8%B0%83%E8%AF%95%E4%BA%A4%E5%8F%89%E7%BC%96%E8%AF%91uboot%E9%85%8D%E7%BD%AE/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          飞腾派Linux调试环境-串口调试交叉编译uboot配置
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2024-05-18 15:50:54" itemprop="dateCreated datePublished" datetime="2024-05-18T15:50:54+08:00">2024-05-18</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2025-11-04 17:57:13" itemprop="dateModified" datetime="2025-11-04T17:57:13+08:00">2025-11-04</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/linux/" itemprop="url" rel="index"><span itemprop="name">linux</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="飞腾派Linux调试环境：串口调试，交叉编译，uboot配置"><a href="#飞腾派Linux调试环境：串口调试，交叉编译，uboot配置" class="headerlink" title="飞腾派Linux调试环境：串口调试，交叉编译，uboot配置"></a>飞腾派Linux调试环境：串口调试，交叉编译，uboot配置</h1><h1 id="串口调试环境"><a href="#串口调试环境" class="headerlink" title="串口调试环境"></a>串口调试环境</h1><h2 id="串口硬件连接"><a href="#串口硬件连接" class="headerlink" title="串口硬件连接"></a>串口硬件连接</h2><p>串口线的颜色和功能是对应的，4根线如下：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">功能    	   线的颜色</span><br><span class="line">TX           绿色</span><br><span class="line">RX           白色</span><br><span class="line">GND          黑色</span><br><span class="line">VCC          红色</span><br></pre></td></tr></table></figure>
+
+<p>串口的接口类型取决于开发板接口，飞腾Pi是使用USB转TTL接口，有的开发板是板载串口转USB芯片，外部是USB直连PC，还有的是RS232接口。不管接口类型如何，串口转接芯片一般是CH340&#x2F;FT232。</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202404241426062.png" alt="image-20240424142615021"></p>
+<p>飞腾派接线只用了3根线，没用VCC。注意RX是接到TX， TX是接到RX。</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202404241428560.png" alt="image-20240424142831480"></p>
+<p>验证串口连接正常：查找到ttyUSB设备即USB转串口设备连接正常。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ls /dev/ttyUSB0</span><br></pre></td></tr></table></figure>
+
+<p>注：Ubuntu有时串口线找不到ttyUSB0设备，可能跟线的质量或者芯片驱动相关。在Ubuntu下FT232不需要安装驱动能稳定连接。Windows下串口转接芯片一定需要装对应的CH340或FT232驱动才能在设备管理器COM口看到USB设备。</p>
+<h2 id="Putty-配置串口调试环境"><a href="#Putty-配置串口调试环境" class="headerlink" title="Putty 配置串口调试环境"></a>Putty 配置串口调试环境</h2><p>Putty连接串口需要以root用户启动。非root用户启动putty无法设置端口号，波特率等参数。</p>
+<p>以root启动putty有两种方式：</p>
+<ul>
+<li>以root启动putty GUI，在GUI中配置端口号，波特率等参数。</li>
+<li>以命令行sudo启动putty，在启动参数中配置端口号，波特率等参数。</li>
+</ul>
+<p>以root启动putty GUI：对于Ubuntu 22.04 Wayland桌面，使用<code>sudo -E putty</code>启动putty GUI。</p>
+<p>参考：<a target="_blank" rel="noopener" href="https://wiki.archlinux.org/title/Running_GUI_applications_as_root">https://wiki.archlinux.org/title/Running_GUI_applications_as_root</a></p>
+<p>以命令行sudo启动putty：</p>
+<p>参考：<a target="_blank" rel="noopener" href="https://readypinaple.com/using-putty-serial-terminal">https://readypinaple.com/using-putty-serial-terminal</a></p>
+<p>对于我的调试环境（飞腾派），参数如下：</p>
+<p><code>sudo putty -serial /dev/ttyUSB0 -sercfg 115200,8,n,1,N</code></p>
+<h2 id="Putty串口环境的复制和粘贴"><a href="#Putty串口环境的复制和粘贴" class="headerlink" title="Putty串口环境的复制和粘贴"></a>Putty串口环境的复制和粘贴</h2><p>Ubuntu22.04环境上有两种方法：</p>
+<p>1.使用鼠标中键在terminal和putty之间复制和粘贴；此方法不能在选中之后再选中，否则内容被覆盖；</p>
+<p>2.启动putty GUI后在selection设置ctrl+shift +C&#x2F;V 复制粘贴。记得保存设置到session的default配置。terminal默认支持ctrl+shift+C&#x2F;V操作。这种方式更稳定。</p>
+<p>以上的ctrl+shift+C&#x2F;V和中键操作属于两套剪贴板buffer，不会相互覆盖。即ctrl+shift+C复制的数据必须用ctrl+shift+V粘贴，中键选中的数据必须用中键粘贴。</p>
+<h2 id="Putty记录和查看log"><a href="#Putty记录和查看log" class="headerlink" title="Putty记录和查看log"></a>Putty记录和查看log</h2><h3 id="记录log"><a href="#记录log" class="headerlink" title="记录log"></a>记录log</h3><p>在启动GUI后在session-&gt;logging设置记录all output，记得保存设置到session的default配置。</p>
+<h3 id="查看log"><a href="#查看log" class="headerlink" title="查看log"></a>查看log</h3><p>查看log可以使用less显示 + grep过滤；</p>
+<p><strong>关于less：</strong> 类似vim快捷键.</p>
+<p>匹配查找：在less中查找可以使用 &#x2F;或者？查找，参考以下less的help：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">/pattern          *  Search forward for (N-th) matching line.</span><br><span class="line">?pattern          *  Search backward for (N-th) matching line.</span><br><span class="line">n                 *  Repeat previous search (for N-th occurrence).</span><br><span class="line">N                 *  Repeat previous search in reverse direction.</span><br><span class="line"></span><br><span class="line">#对于有空格的匹配查找，用反斜杠转义空格，例如：</span><br><span class="line">/this\ is\ pattern</span><br></pre></td></tr></table></figure>
+
+<p>跳转到头尾：大G（跳到末尾）和 gg（重来到开头）.</p>
+<p><strong>关于grep</strong>，有几点很常用：</p>
+<p>a.有时log中有乱码导致被grep设别为binary导致grep无法显示，需要<code>grep --text</code>参数指定以文本打开：</p>
+<p>例如要查看putty.log中mmc0模块的打印：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">cursorhu@ubuntu-PC:~/phytium/phytium-linux-kernel-v1.0.1$ less ~/putty.log | grep mmc0 --text</span><br><span class="line"></span><br><span class="line">[    2.208568] mmc0: mmc_sd_setup_card:</span><br><span class="line">[    2.208571] mmc0: phytium_mci_ops_request: cmd:55 arg:0x400000</span><br><span class="line">[    2.209331] mmc0: phytium_mci_irq: events:100,mask:0x1547,dmac_events:0,dmac_mask:0x0,cmd:55</span><br><span class="line">[    2.209335] mmc0: phytium_mci_err_irq:</span><br><span class="line">[    2.209348] mmc0: error -110 whilst initialising SD card</span><br></pre></td></tr></table></figure>
+
+<p>b.有时需要grep多个关键字，使用<code>grep -E “A|B”</code>，注意一定要用引号扩起来</p>
+<p>例如要同时查看mmc0和BHT的打印：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">less ~/putty.log | grep -E &quot;mmc0|BHT&quot; --text</span><br><span class="line"></span><br><span class="line">[    6.816021] BHT MSG:sdr50_notuning_sela_rx_inject:463</span><br><span class="line">[    6.821067] BHT MSG:exit:_ggc_output_tuning  0</span><br><span class="line">[    6.825505] BHT MSG: finit is 400000Hz</span><br><span class="line">[    6.829248] mmc0: tuning execution failed: 1</span><br><span class="line">[    6.833513] mmc0: phytium_mci_ops_set_ios:</span><br><span class="line">[    6.841521] mmc0: phytium_mci_set_buswidth: width = 0, set value:0x0</span><br></pre></td></tr></table></figure>
+
+<p>c.有时需要排除某关键字，例如飞腾的SD host有mmc0, mmc1两个，我只关注mmc0, 使用 grep -v KEYWORD去排除， v：invert match</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">less ~/putty.log | grep --text -v mmc1</span><br></pre></td></tr></table></figure>
+
+<p><strong>less+grep+less：</strong></p>
+<p>用less+grep过滤出log另存为新log， 再用less查看</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">less ~/putty.log | grep --text -E &quot;mmc0|BHT&quot; &gt; putty-bh201-tuning-error.log </span><br><span class="line">less putty-bh201-tuning-error2.log</span><br></pre></td></tr></table></figure>
+
+<h1 id="交叉编译"><a href="#交叉编译" class="headerlink" title="交叉编译"></a>交叉编译</h1><h2 id="交叉编译方法"><a href="#交叉编译方法" class="headerlink" title="交叉编译方法"></a>交叉编译方法</h2><p>设置工具链环境变量+交叉编译命令如下：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">set_env.sh: 注意要用source执行才是export配置到当前环境变量，用sh或者./sh都是配置到子shell进程环境</span><br><span class="line"></span><br><span class="line">export PATH=$PATH:&quot;/opt/toolchains/gcc-linaro-7.5.0-2019.12-x86_64_aarch64-linux-gnu/bin&quot;</span><br><span class="line">export CROSS_COMPILE=aarch64-linux-gnu-</span><br><span class="line">export ARCH=arm64</span><br><span class="line"></span><br><span class="line">build_kernel.sh:</span><br><span class="line"></span><br><span class="line">make ARCH=arm64 e2000_defconfig all -j4 INSTALL_MOD_PATH=modules modules_install</span><br></pre></td></tr></table></figure>
+
+<p>安装编译的系统镜像和设备树：把编译机的输出image和dtb拷贝到SD卡系统盘的rootfs&#x2F;boot&#x2F;里，</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">cp_image.sh：</span><br><span class="line"></span><br><span class="line">sudo cp arch/arm64/boot/Image /media/cursorhu/rootfs/boot/</span><br><span class="line">sudo cp arch/arm64/boot/dts/phytium/phytium-pi-board.dtb /media/cursorhu/rootfs/boot/</span><br></pre></td></tr></table></figure>
+
+<p>SD卡放回开发板启动，putty串口回车进入uboot，指定从SD卡系统盘的rootfs&#x2F;boot&#x2F;启动内核</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">uboot.sh：（并不能直接在uboot运行）</span><br><span class="line"></span><br><span class="line">setenv bootargs console=ttyAMA1,115200 earlycon=pl011,0x2800d000 root=/dev/mmcblk0p1 rootwait rw;</span><br><span class="line">ext4load mmc 0:1 0x90100000 boot/Image;</span><br><span class="line">ext4load mmc 0:1 0x90000000 boot/phytium-pi-board.dtb;</span><br><span class="line">booti 0x90100000 – 0x90000000;</span><br></pre></td></tr></table></figure>
+
+<h1 id="uboot配置"><a href="#uboot配置" class="headerlink" title="uboot配置"></a>uboot配置</h1><h2 id="uboot自动选择指定kernel启动"><a href="#uboot自动选择指定kernel启动" class="headerlink" title="uboot自动选择指定kernel启动"></a>uboot自动选择指定kernel启动</h2><p>背景：如下图，飞腾派启动指定内核需要设置uboot参数，由于飞腾派的uboot源码没有开放，不能用脚本（boot.scr）。调试新编译的内核，每次飞腾派启动都需要在putty粘贴uboot命令。开发效率低。</p>
+<p>![Screenshot from 2024-04-08 15-40-55](&#x2F;home&#x2F;cursorhu&#x2F;Pictures&#x2F;Screenshot from 2024-04-08 15-40-55.png)</p>
+<p>解决方案：将uboot命令配置到uboot环境变量，并保存到系统盘中使断电重启后uboot环境变量也生效。</p>
+<p>参考mastering embeded linux programming， 使用bootcmd参数可以配置uboot script去执行一连串命令，实现类似shell script功能并保存，每次启动uboot不用复制粘贴一条条命令去启动。 </p>
+<p>以飞腾派为例，每次编译kernel后要从新编译的kernel启动，需要每次手动设置以下uboot命令&#x2F;环境：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">#启动参数环境变量</span><br><span class="line">setenv bootargs console=ttyAMA1,115200 earlycon=pl011,0x2800d000 root=/dev/mmcblk0p1 rootwait rw;</span><br><span class="line">#命令语句（非环境变量）</span><br><span class="line">ext4load mmc 0:1 0x90100000 boot/Image;</span><br><span class="line">ext4load mmc 0:1 0x90000000 boot/phytium-pi-board.dtb;</span><br><span class="line">booti 0x90100000 – 0x90000000;</span><br></pre></td></tr></table></figure>
+
+<p>目标：使uboot自动从以上命令语句指定的kernel启动：</p>
+<p>对于环境变量bootargs不需要改动，我们只需要将命令语句设置到bootcmd环境变量。最后再一起saveenv使两个环境变量都保存到硬盘，重启后能自动生效即可。</p>
+<ol>
+<li>如何设置bootcmd到uboot环境变量：</li>
+</ol>
+<p>将以上uboot命令语句合成为一条语句设置到bootcmd：uboot命令的结束标志是分号，设置bootcmd时在内容语句的每个分号前需要加转移字符 , 这样setenv才会判断这个分号是要输入到bootcmd的字符，而不散表明setenv命令本身的结束。 </p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">setenv bootcmd ext4load mmc 0:1 0x90100000 boot/Image\;ext4load mmc 0:1 0x90000000 boot/phytium-pi-board.dtb\;booti 0x90100000 – 0x90000000\;</span><br></pre></td></tr></table></figure>
+
+<p>注意：上面指令拷贝到putty串口时时符号 <code>-</code>会消失，需要手动添加</p>
+<ol start="2">
+<li>如何使bootargs和bootcmd环境变量重启后也自动生效：保存（所有）环境变量</li>
+</ol>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">saveenv</span><br></pre></td></tr></table></figure>
+
+<ol start="3">
+<li>重启后可以printenv查看配置生效，根据kernel打印可确认确实从指定kernel启动。</li>
+</ol>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">Phytium-Pi#printenv</span><br><span class="line">arch=arm</span><br><span class="line">baudrate=115200</span><br><span class="line">board=e2000</span><br><span class="line">board_name=e2000</span><br><span class="line">boot_os=bootm $kernel_addr -:- $ft_fdt_addr</span><br><span class="line">bootargs=console=ttyAMA1,115200 earlycon=pl011,0x2800d000 root=/dev/mmcblk0p1 rootwait rw;</span><br><span class="line">bootcmd=ext4load mmc 0:1 0x90100000 boot/Image;ext4load mmc 0:1 0x90000000 boot/phytium-pi-board.dtb;booti 0x90100000 - 0x90000000;</span><br><span class="line">bootdelay=2</span><br><span class="line">cpu=armv8</span><br></pre></td></tr></table></figure>
+
+<p>5.如何删除env：变量设置为空即为删除：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">setenv bootargs</span><br><span class="line">setenv bootcmd</span><br><span class="line">saveenv</span><br></pre></td></tr></table></figure>
+
+<h1 id="附录：问题记录"><a href="#附录：问题记录" class="headerlink" title="附录：问题记录"></a>附录：问题记录</h1><h2 id="ARM工具链报错问题"><a href="#ARM工具链报错问题" class="headerlink" title="ARM工具链报错问题"></a>ARM工具链报错问题</h2><p>编译飞腾kernel有时会报错：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">cursorhu@ubuntu-PC:~/phytium/phytium-linux-kernel-v1.0.1$ ./build_kernel.sh </span><br><span class="line">#</span><br><span class="line"># configuration written to .config</span><br><span class="line">#</span><br><span class="line">arch/arm64/Makefile:27: ld does not support --fix-cortex-a53-843419; kernel may be susceptible to erratum</span><br><span class="line">arch/arm64/Makefile:40: LSE atomics not supported by binutils</span><br><span class="line">arch/arm64/Makefile:48: Detected assembler with broken .inst; disassembly will be unreliable</span><br><span class="line">scripts/kconfig/conf  --syncconfig Kconfig</span><br><span class="line">arch/arm64/Makefile:27: ld does not support --fix-cortex-a53-843419; kernel may be susceptible to erratum</span><br><span class="line">arch/arm64/Makefile:40: LSE atomics not supported by binutils</span><br><span class="line">arch/arm64/Makefile:48: Detected assembler with broken .inst; disassembly will be unreliable</span><br><span class="line">  CC      scripts/mod/empty.o</span><br><span class="line">gcc: error: unrecognized command-line option ‘-mlittle-endian’</span><br><span class="line">make[3]: *** [scripts/Makefile.build:304: scripts/mod/empty.o] Error 1</span><br><span class="line">make[2]: *** [scripts/Makefile.build:544: scripts/mod] Error 2</span><br><span class="line">make[1]: *** [Makefile:1085: scripts] Error 2</span><br><span class="line">make[1]: *** Waiting for unfinished jobs....</span><br><span class="line">make: *** [Makefile:286: __build_one_by_one] Error 2</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>报错内容指向以下patch：</p>
+<p><a target="_blank" rel="noopener" href="https://patchwork.kernel.org/project/linux-arm-kernel/patch/1471873737-7614-1-git-send-email-will.deacon@arm.com/">https://patchwork.kernel.org/project/linux-arm-kernel/patch/1471873737-7614-1-git-send-email-will.deacon@arm.com/</a></p>
+<p>可能原因：没有运行set_env.sh就直接build，生成的.confg有问题, ARCH&#x3D;arm CROSS_COMPILE&#x3D;XXX XXX_defconfig都没被写入到.confg文件</p>
+<p>解决方法：删除kernel源码目录的.config文件：rm .config和.config.old，需要重启机器，再source set_env.sh重新设置环境变量, source build_kernel.sh, 编译就OK了</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/phytium/" rel="tag"># phytium</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2024/03/12/%E5%A6%82%E4%BD%95%E4%BD%BF%E7%94%A8CubeMX%E7%94%9F%E6%88%90STM32%E4%BB%A3%E7%A0%81/" rel="prev" title="如何使用CubeMX生成STM32代码">
+      <i class="fa fa-chevron-left"></i> 如何使用CubeMX生成STM32代码
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2024/05/18/%E9%A3%9E%E8%85%BE%E6%B4%BELinux%20SD%E9%A9%B1%E5%8A%A8%E5%88%86%E6%9E%90%E5%92%8C%E8%B0%83%E8%AF%95/" rel="next" title="飞腾派Linux SD驱动分析和调试">
+      飞腾派Linux SD驱动分析和调试 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E9%A3%9E%E8%85%BE%E6%B4%BELinux%E8%B0%83%E8%AF%95%E7%8E%AF%E5%A2%83%EF%BC%9A%E4%B8%B2%E5%8F%A3%E8%B0%83%E8%AF%95%EF%BC%8C%E4%BA%A4%E5%8F%89%E7%BC%96%E8%AF%91%EF%BC%8Cuboot%E9%85%8D%E7%BD%AE"><span class="nav-number">1.</span> <span class="nav-text">飞腾派Linux调试环境：串口调试，交叉编译，uboot配置</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%B8%B2%E5%8F%A3%E8%B0%83%E8%AF%95%E7%8E%AF%E5%A2%83"><span class="nav-number">2.</span> <span class="nav-text">串口调试环境</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%B2%E5%8F%A3%E7%A1%AC%E4%BB%B6%E8%BF%9E%E6%8E%A5"><span class="nav-number">2.1.</span> <span class="nav-text">串口硬件连接</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Putty-%E9%85%8D%E7%BD%AE%E4%B8%B2%E5%8F%A3%E8%B0%83%E8%AF%95%E7%8E%AF%E5%A2%83"><span class="nav-number">2.2.</span> <span class="nav-text">Putty 配置串口调试环境</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Putty%E4%B8%B2%E5%8F%A3%E7%8E%AF%E5%A2%83%E7%9A%84%E5%A4%8D%E5%88%B6%E5%92%8C%E7%B2%98%E8%B4%B4"><span class="nav-number">2.3.</span> <span class="nav-text">Putty串口环境的复制和粘贴</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Putty%E8%AE%B0%E5%BD%95%E5%92%8C%E6%9F%A5%E7%9C%8Blog"><span class="nav-number">2.4.</span> <span class="nav-text">Putty记录和查看log</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%AE%B0%E5%BD%95log"><span class="nav-number">2.4.1.</span> <span class="nav-text">记录log</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%9F%A5%E7%9C%8Blog"><span class="nav-number">2.4.2.</span> <span class="nav-text">查看log</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%BA%A4%E5%8F%89%E7%BC%96%E8%AF%91"><span class="nav-number">3.</span> <span class="nav-text">交叉编译</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%A4%E5%8F%89%E7%BC%96%E8%AF%91%E6%96%B9%E6%B3%95"><span class="nav-number">3.1.</span> <span class="nav-text">交叉编译方法</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#uboot%E9%85%8D%E7%BD%AE"><span class="nav-number">4.</span> <span class="nav-text">uboot配置</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#uboot%E8%87%AA%E5%8A%A8%E9%80%89%E6%8B%A9%E6%8C%87%E5%AE%9Akernel%E5%90%AF%E5%8A%A8"><span class="nav-number">4.1.</span> <span class="nav-text">uboot自动选择指定kernel启动</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E9%99%84%E5%BD%95%EF%BC%9A%E9%97%AE%E9%A2%98%E8%AE%B0%E5%BD%95"><span class="nav-number">5.</span> <span class="nav-text">附录：问题记录</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#ARM%E5%B7%A5%E5%85%B7%E9%93%BE%E6%8A%A5%E9%94%99%E9%97%AE%E9%A2%98"><span class="nav-number">5.1.</span> <span class="nav-text">ARM工具链报错问题</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="cursorhu"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">cursorhu</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">113</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">41</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">55</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/cursorhu" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;cursorhu" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:2449055512@qq.com" title="E-Mail → mailto:2449055512@qq.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2025</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">cursorhu</span>
+</div>
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

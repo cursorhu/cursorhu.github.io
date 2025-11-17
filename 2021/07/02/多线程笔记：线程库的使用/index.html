@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 8.0.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Noto+Serif+SC|Roboto/css?family=Noto Serif SC:300,300italic,400,400italic,700,700italic|Roboto:300,300italic,400,400italic,700,700italic&display=swap&subset=latin,latin-ext">
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"cursorhu.github.io","root":"/","scheme":"Pisces","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="背景多线程概述：应用层的多线程的目的就是让每一个任务（例如一系列函数调用）都认为自己独占CPU资源，即宏观上，多个任务可以同时执行（实际可能是轮转的串行执行）。代码实现：线程库可以由编程语言的标准库或者操作系统的库实现，具体包含的头文件如下：  C&#x2F;C++ : &lt; thread &gt; POSIX(Portable Operating System Interface of UN">
+<meta property="og:type" content="article">
+<meta property="og:title" content="多线程笔记：线程库的使用">
+<meta property="og:url" content="https://cursorhu.github.io/2021/07/02/%E5%A4%9A%E7%BA%BF%E7%A8%8B%E7%AC%94%E8%AE%B0%EF%BC%9A%E7%BA%BF%E7%A8%8B%E5%BA%93%E7%9A%84%E4%BD%BF%E7%94%A8/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="背景多线程概述：应用层的多线程的目的就是让每一个任务（例如一系列函数调用）都认为自己独占CPU资源，即宏观上，多个任务可以同时执行（实际可能是轮转的串行执行）。代码实现：线程库可以由编程语言的标准库或者操作系统的库实现，具体包含的头文件如下：  C&#x2F;C++ : &lt; thread &gt; POSIX(Portable Operating System Interface of UN">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051526515.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051526515.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051526645.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051526485.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051527091.png">
+<meta property="article:published_time" content="2021-07-02T07:21:19.000Z">
+<meta property="article:modified_time" content="2024-11-04T03:43:03.152Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="thread">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051526515.png">
+
+<link rel="canonical" href="https://cursorhu.github.io/2021/07/02/%E5%A4%9A%E7%BA%BF%E7%A8%8B%E7%AC%94%E8%AE%B0%EF%BC%9A%E7%BA%BF%E7%A8%8B%E5%BA%93%E7%9A%84%E4%BD%BF%E7%94%A8/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>多线程笔记：线程库的使用 | ThinkNotes</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">ThinkNotes</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Simple is not easy</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于我</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2021/07/02/%E5%A4%9A%E7%BA%BF%E7%A8%8B%E7%AC%94%E8%AE%B0%EF%BC%9A%E7%BA%BF%E7%A8%8B%E5%BA%93%E7%9A%84%E4%BD%BF%E7%94%A8/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          多线程笔记：线程库的使用
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2021-07-02 15:21:19" itemprop="dateCreated datePublished" datetime="2021-07-02T15:21:19+08:00">2021-07-02</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2024-11-04 11:43:03" itemprop="dateModified" datetime="2024-11-04T11:43:03+08:00">2024-11-04</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/linux/" itemprop="url" rel="index"><span itemprop="name">linux</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h1><p>多线程概述：应用层的多线程的目的就是让每一个任务（例如一系列函数调用）都认为自己独占CPU资源，即宏观上，多个任务可以同时执行（实际可能是轮转的串行执行）。<br>代码实现：线程库可以由编程语言的标准库或者操作系统的库实现，具体包含的头文件如下：</p>
+<ul>
+<li>C&#x2F;C++ : &lt; thread &gt;</li>
+<li>POSIX(Portable Operating System Interface of UNIX, Linux环境使用较多) ：&lt; pthread.h &gt;</li>
+<li>Windows OS : &lt; windows.h &gt;</li>
+</ul>
+<p>具体环境使用哪个库，有不同的观点，参考<br><a target="_blank" rel="noopener" href="https://www.zhihu.com/question/36236334/answer/98422670">c++多线程编程主要用pthread还是c++11中的thread类？</a><br>即使是同一环境，也有不同封装层次的API<br><a target="_blank" rel="noopener" href="https://blog.csdn.net/qq_22642239/article/details/90445414">CreateThread()与_beginthread()的区别详细解析</a></p>
+<p>主线程与工作线程：<br>一般应用程序都有主要的执行流程，例如C&#x2F;C++的main入口函数，主要执行流程是在进程中执行的，也可以认为main是线程，独占了进程的全部资源，称为主线程。如果在该进程执行时，创建多个线程，用于并行处理其他任务，称为工作线程。</p>
+<p>本文讲不同风格的线程创建\销毁，和访问共享数据的锁操作<br>本系列源码：<a target="_blank" rel="noopener" href="https://github.com/cursorhu/SimpleMultiThread">cursorhu&#x2F;SimpleMultiThread</a></p>
+<h1 id="Windows风格多线程"><a href="#Windows风格多线程" class="headerlink" title="Windows风格多线程"></a>Windows风格多线程</h1><p>(1)双线程打印</p>
+<pre><code>#include &lt;iostream&gt;   
+#include &lt;windows.h&gt;   
+using namespace std;
+ 
+DWORD WINAPI Print(LPVOID lpParamter)
+{
+    std::string s = (char*)lpParamter;
+    for (int i = 0; i &lt; 10; i++)
+        cout &lt;&lt; s &lt;&lt; endl;
+    return 0;
+}
+ 
+int main()
+{
+    std::string s1 = &quot;Work thread&quot;;
+    std::string s2 = &quot;Main thread&quot;;
+    HANDLE hThread = CreateThread(NULL, 0, Print, (LPVOID)s1.c_str(), 0, NULL);
+    Print((LPVOID)s2.c_str());
+	CloseHandle(hThread);
+	
+    return 0;
+}
+</code></pre>
+<p>主线程和工作线程都运行Print()，各线程的栈空间保存自己的局部数据。<br>windows API使用CreateThread和CloseHandle创建线程、释放线程句柄，说明如下</p>
+<pre><code>HANDLE CreateThread(
+    LPSECURITY_ATTRIBUTES lpThreadAttributes,//SD：线程安全相关的属性，常置为NULL
+    SIZE_T dwStackSize,//initialstacksize：新线程的初始化栈的大小，可设置为0
+    LPTHREAD_START_ROUTINE lpStartAddress,//threadfunction：被线程执行的回调函数，也称为线程函数
+    LPVOID lpParameter,//threadargument：传入线程函数的参数，不需传递参数时为NULL
+    DWORD dwCreationFlags,//creationoption：控制线程创建的标志
+    LPDWORD lpThreadId//threadidentifier：传出参数，用于获得线程ID，如果为NULL则不返回线程ID
+    )
+ 
+/*
+lpThreadAttributes：指向SECURITY_ATTRIBUTES结构的指针，决定返回的句柄是否可被子进程继承，如果为NULL则表示返回的句柄不能被子进程继承。
+dwStackSize：设置初始栈的大小，以字节为单位，如果为0，那么默认将使用与调用该函数的线程相同的栈空间大小。
+任何情况下，Windows根据需要动态延长堆栈的大小。
+lpStartAddress：指向线程函数的指针，函数名称没有限制，但是必须以下列形式声明：
+DWORD WINAPI 函数名 (LPVOID lpParam) ，格式不正确将无法调用成功。
+lpParameter：向线程函数传递的参数，是一个指向结构的指针，不需传递参数时，为NULL。
+dwCreationFlags：控制线程创建的标志，可取值如下：
+（1）CREATE_SUSPENDED(0x00000004)：创建一个挂起的线程（就绪状态），直到线程被唤醒时才调用
+（2）0：表示创建后立即激活。
+（3）STACK_SIZE_PARAM_IS_A_RESERVATION(0x00010000)：dwStackSize参数指定初始的保留堆栈的大小，
+如果STACK_SIZE_PARAM_IS_A_RESERVATION标志未指定，dwStackSize将会设为系统预留的值
+lpThreadId:保存新线程的id
+返回值：函数成功，返回线程句柄，否则返回NULL。如果线程创建失败，可通过GetLastError函数获得错误信息。
+*/
+ 
+BOOL WINAPI CloseHandle(HANDLE hObject);        //关闭一个被打开的对象句柄
+/*可用这个函数关闭创建的线程句柄，如果函数执行成功则返回true(非0),如果失败则返回false(0)，
+如果执行失败可调用GetLastError.函数获得错误信息。
+*/
+</code></pre>
+<p>LPVOID 与 std::string类型的转换，需要用char*类型作中介，LPVOID接受buffer数组类型的转换<br>注意CloseHandle只是释放句柄资源，线程的资源释放是其函数执行完毕自动销毁的。</p>
+<p>2次的运行结果</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051526515.png" alt="image-20221205152628474"></p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051526515.png"></p>
+<p>可见，两个线程是随机切换的，导致如下现象：</p>
+<ul>
+<li>Print()内的<code>cout &lt;&lt; s</code>和<code>&lt;&lt;endl</code>之间线程被切换，导致没有换行+双重换行。</li>
+<li>存在工作线程没执行完，主线程就执行完导致main return，整个进程销毁的情况。</li>
+</ul>
+<p>改进如下：</p>
+<pre><code>#include &lt;iostream&gt;   
+#include &lt;windows.h&gt;   
+using namespace std;
+ 
+DWORD WINAPI Print(LPVOID lpParamter)
+{
+    std::string s = (char*)lpParamter;
+    for (int i = 0; i &lt; 10; i++)
+        cout &lt;&lt; s;
+    return 0;
+}
+ 
+int main()
+{
+    std::string s1 = &quot;Work thread\n&quot;;
+    std::string s2 = &quot;Main thread\n&quot;;
+    HANDLE hThread = CreateThread(NULL, 0, Print, (LPVOID)s1.c_str(), 0, NULL);
+    Print((LPVOID)s2.c_str());
+	CloseHandle(hThread);
+    Sleep(100);
+    return 0;
+}
+</code></pre>
+<p>使用以下方法解决上述问题</p>
+<ul>
+<li><p>主线程完成Print后，休眠100s，这个时间足够工作线程完成，Sleep结束后，main进程执行完毕</p>
+</li>
+<li><p>把换行放到字符串中，使该字符串的完整打印成为不可被中途切换的操作，即原子操作</p>
+</li>
+</ul>
+<p>输出如下：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051526645.png" alt="image-20221205152645608"></p>
+<p>如果Print有很多句打印，又不希望中途切换线程，如何做？</p>
+<ul>
+<li>互斥锁可以实现“大块代码的原子操作”</li>
+<li>锁是全局变量，因为主线程main和工作线程Print都能看到全局变量，而看不到对方的局部变量</li>
+</ul>
+<p>代码如下:</p>
+<pre><code>#include &lt;iostream&gt;   
+#include &lt;windows.h&gt;   
+using namespace std;
+ 
+HANDLE hMutex = NULL;//互斥锁的句柄
+
+DWORD WINAPI Print(LPVOID lpParamter)
+{
+    std::string s = (char*)lpParamter;
+
+    for (int i = 0; i &lt; 10; i++)
+    {
+        WaitForSingleObject(hMutex, INFINITE);//请求锁
+        cout &lt;&lt; s &lt;&lt; endl;
+        ReleaseMutex(hMutex);//释放锁
+    }
+
+    return 0;
+}
+ 
+int main()
+{
+    std::string s1 = &quot;Work thread&quot;;
+    std::string s2 = &quot;Main thread&quot;;
+
+    hMutex = CreateMutex(NULL, FALSE, NULL); //创建互斥锁
+    HANDLE hThread = CreateThread(NULL, 0, Print, (LPVOID)s1.c_str(), 0, NULL);
+    Print((LPVOID)s2.c_str());
+	
+    CloseHandle(hThread);
+    CloseHandle(hMutex);//销毁互斥锁
+    
+    return 0;
+}
+</code></pre>
+<p>运行结果：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051526485.png" alt="image-20221205152654439"><br>关于windows的互斥锁：</p>
+<pre><code>互斥量：
+        采用互斥对象机制。互斥锁，像一个物件，这个物件只能同时被一个线程持有。 只有拥有互斥对象的线程才有访问公共资源的权限，因为互斥对象只有一个，所以能保证公共资源不会同时被多个线程访问。互斥不仅能实现同一应用程序的公共资源安全共享，还能实现不同应用程序的公共资源安全共享。
+        一、创建 创建互斥锁的方法是调用函数CreateMutex： CreateMutex(&amp;sa, bInitialOwner, szName);第一个参数是一个指向SECURITY_ATTRIBUTES结构体的指针，一般的情况下，可以是nullptr。 第二个参数类型为BOOL，表示互斥锁创建出来后是否被当前线程持有。 第三个参数类型为字符串（const TCHAR*），是这个互斥锁的名字，如果是nullptr，则互斥锁是匿名的。 例： HANDLE hMutex = CreateMutex(nullptr, FALSE, nullptr);上面的代码创建了一个匿名的互斥锁，创建出来后，当前线程不持有这个互斥锁。
+
+         二、持有 WaitForSingleObject函数可以让一个线程持有互斥锁。用法： WaitForSingleObject(hMutex, dwTimeout);这个函数的作用比较多。这里只介绍第一个参数为互斥锁句柄时的作用。 它的作用是等待，直到一定时间之后，或者，其他线程均不持有hMutex。第二个参数是等待的时间（单位：毫秒），如果该参数为INFINITE，则该函数会一直等待下去。
+
+        三、释放 用ReleaseMutex函数可以让当前线程“放开”一个互斥锁（不持有它了），以便让其他线程可以持有它。用法 ReleaseMutex(hMutex)
+
+         四、销毁 当程序不再需要互斥锁时，要销毁它。 CloseHandle(hMutex)
+
+         五、命名互斥锁 如果CreateMutex函数的第三个参数传入一个字符串，那么所创建的锁就是命名的。当一个命名的锁被创建出来以后，当前进程和其他进程如果试图创建相同名字的锁，CreateMutex会返回原来那把锁的句柄，并且GetLastError函数会返回ERROR_ALREADY_EXISTS。这个特点可以使一个程序在同一时刻最多运行一个实例
+</code></pre>
+<h1 id="C-风格多线程"><a href="#C-风格多线程" class="headerlink" title="C++风格多线程"></a>C++风格多线程</h1><p>双线程分别实现计算和打印</p>
+<pre><code>#include &lt;thread&gt;
+#include &lt;chrono&gt;
+#include &lt;mutex&gt;
+#include &lt;iostream&gt;
+
+int g_mydata = 1;
+std::mutex g_mutex;
+
+void thread_func1()
+{
+	while (g_mydata &lt; INT_MAX)
+	{
+		g_mutex.lock();
+		++g_mydata;
+		g_mutex.unlock();
+		std::this_thread::sleep_for(std::chrono::seconds(1));
+	}
+}
+
+void thread_func2()
+{
+	while (g_mydata &lt; INT_MAX)
+	{
+		g_mutex.lock();
+		std::cout &lt;&lt; &quot;g_mydata = &quot; &lt;&lt; g_mydata &lt;&lt; &quot;, ThreadID = &quot; &lt;&lt; std::this_thread::get_id() &lt;&lt; std::endl;
+		g_mutex.unlock();
+		std::this_thread::sleep_for(std::chrono::seconds(1));
+	}
+}
+
+int main()
+{
+	std::thread t1(thread_func1);
+	std::thread t2(thread_func2);
+
+	t1.join();
+	t2.join();
+
+	return 0;
+}
+</code></pre>
+<p>几点说明：</p>
+<ul>
+<li>C++使用&lt; thread &gt;调用线程库</li>
+<li>std::thread t(thread_func)创建一个thread对象，传入参数为thread_fun，即线程内执行的函数</li>
+<li>t.join()的含义是，线程t执行完毕后，join函数才能返回，主线程才能继续向后执行，宏观上就是，主线程被t线程阻塞在join函数处，这也许就是join的含义，t线程“加入”主线程的队伍，主线程必须原地等待t准备好了（执行完了）才能继续向后走。</li>
+<li>由于全局数据g_mydata和打印语句都不是原子操作，要保证完整操作，需要加锁，库定义在&lt; mutex &gt;</li>
+<li>为什么要sleep? 注意两个工作线程都while循环操作，sleep是手动使当前线程休眠，操作系统会轮换到其他active状态的线程执行，如果不sleep, 一个线程一直执行再被OS切换，间隔可能很久。&lt; chrono &gt;库用于时间</li>
+<li>INT_MAX是C++定义的int类最大值，2^31-1</li>
+</ul>
+<p>运行结果:<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051527091.png" alt="image-20221205152705047"></p>
+<h1 id="POSIX-Linux风格"><a href="#POSIX-Linux风格" class="headerlink" title="POSIX&#x2F;Linux风格"></a>POSIX&#x2F;Linux风格</h1><p>逻辑同上节，代码如下</p>
+<pre><code>#include &lt;pthread.h&gt;
+#include &lt;iostream&gt;
+#include &lt;unistd.h&gt;
+#include &lt;limits.h&gt; //for INT_MAX
+
+int g_mydata = 1;
+pthread_mutex_t m;
+
+void* thread_function1(void* args)
+{
+	while (g_mydata &lt; INT_MAX)
+	{
+		pthread_mutex_lock(&amp;m);
+		++g_mydata;
+		pthread_mutex_unlock(&amp;m);
+		sleep(1);
+	}
+	
+	return NULL;
+} 
+
+void* thread_function2(void* args)
+{
+	while (g_mydata &lt; INT_MAX)
+	{	
+		pthread_mutex_lock(&amp;m);
+		std::cout &lt;&lt; &quot;g_mydata = &quot; &lt;&lt; g_mydata &lt;&lt; &quot;, ThreadID: &quot; &lt;&lt; pthread_self() &lt;&lt; std::endl;
+		pthread_mutex_unlock(&amp;m);
+		sleep(1);
+	}
+	
+	return NULL;
+} 
+
+int main()
+{
+	pthread_mutex_init(&amp;m, NULL);
+	
+	pthread_t threadIDs[2];	
+	pthread_create(&amp;threadIDs[0], NULL, thread_function1, NULL);
+	pthread_create(&amp;threadIDs[1], NULL, thread_function2, NULL);
+	
+	for(int i = 0; i &lt; 2; ++i)
+	{
+		pthread_join(threadIDs[i], NULL);
+	}
+	
+	pthread_mutex_destroy(&amp;m);
+
+	return 0;
+}
+</code></pre>
+<p>win32应用程序使用pthread，需要配置pthread dll库，下载地址和配置方法：<br><a target="_blank" rel="noopener" href="http://sourceware.org/pthreads-win32/">pthreads-win32</a><br><a target="_blank" rel="noopener" href="https://www.cnblogs.com/lizhigang/p/7326022.html">VS2013 配置pthread</a></p>
+<p>pthread的几个锁，参考：<br><a target="_blank" rel="noopener" href="https://blog.csdn.net/guotianqing/article/details/80559865">linux线程互斥量pthread_mutex_t使用简介</a></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/thread/" rel="tag"># thread</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2021/04/17/Vim%E4%BD%BF%E7%94%A8%E7%AC%94%E8%AE%B0/" rel="prev" title="Vim使用笔记.">
+      <i class="fa fa-chevron-left"></i> Vim使用笔记.
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2021/07/05/%E5%A4%9A%E7%BA%BF%E7%A8%8B%E7%AC%94%E8%AE%B0%EF%BC%9A%E5%A4%9A%E7%BA%BF%E7%A8%8B%E7%9A%84%E5%90%8C%E6%AD%A5%E6%9C%BA%E5%88%B6/" rel="next" title="多线程笔记：多线程的同步机制">
+      多线程笔记：多线程的同步机制 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E8%83%8C%E6%99%AF"><span class="nav-number">1.</span> <span class="nav-text">背景</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Windows%E9%A3%8E%E6%A0%BC%E5%A4%9A%E7%BA%BF%E7%A8%8B"><span class="nav-number">2.</span> <span class="nav-text">Windows风格多线程</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#C-%E9%A3%8E%E6%A0%BC%E5%A4%9A%E7%BA%BF%E7%A8%8B"><span class="nav-number">3.</span> <span class="nav-text">C++风格多线程</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#POSIX-Linux%E9%A3%8E%E6%A0%BC"><span class="nav-number">4.</span> <span class="nav-text">POSIX&#x2F;Linux风格</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="cursorhu"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">cursorhu</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">113</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">41</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">55</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/cursorhu" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;cursorhu" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:2449055512@qq.com" title="E-Mail → mailto:2449055512@qq.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2025</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">cursorhu</span>
+</div>
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

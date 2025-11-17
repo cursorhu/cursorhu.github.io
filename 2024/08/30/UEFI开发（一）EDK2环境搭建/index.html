@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 8.0.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Noto+Serif+SC|Roboto/css?family=Noto Serif SC:300,300italic,400,400italic,700,700italic|Roboto:300,300italic,400,400italic,700,700italic&display=swap&subset=latin,latin-ext">
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"cursorhu.github.io","root":"/","scheme":"Pisces","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="UEFI开发（一）EDK2环境搭建官方文档： https:&#x2F;&#x2F;github.com&#x2F;tianocore&#x2F;tianocore.github.io&#x2F;wiki&#x2F;Getting-Started-with-EDK-II https:&#x2F;&#x2F;github.com&#x2F;tianocore&#x2F;tianocore.github.io&#x2F;wiki&#x2F;EDK-II-User-Documentation 下载代码参考：edk2&amp;#x2">
+<meta property="og:type" content="article">
+<meta property="og:title" content="UEFI开发（一）EDK2环境搭建">
+<meta property="og:url" content="https://cursorhu.github.io/2024/08/30/UEFI%E5%BC%80%E5%8F%91%EF%BC%88%E4%B8%80%EF%BC%89EDK2%E7%8E%AF%E5%A2%83%E6%90%AD%E5%BB%BA/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="UEFI开发（一）EDK2环境搭建官方文档： https:&#x2F;&#x2F;github.com&#x2F;tianocore&#x2F;tianocore.github.io&#x2F;wiki&#x2F;Getting-Started-with-EDK-II https:&#x2F;&#x2F;github.com&#x2F;tianocore&#x2F;tianocore.github.io&#x2F;wiki&#x2F;EDK-II-User-Documentation 下载代码参考：edk2&amp;#x2">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202504141429251.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202504161706334.png">
+<meta property="article:published_time" content="2024-08-30T09:52:38.000Z">
+<meta property="article:modified_time" content="2025-11-04T09:27:38.549Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="UEFI">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202504141429251.png">
+
+<link rel="canonical" href="https://cursorhu.github.io/2024/08/30/UEFI%E5%BC%80%E5%8F%91%EF%BC%88%E4%B8%80%EF%BC%89EDK2%E7%8E%AF%E5%A2%83%E6%90%AD%E5%BB%BA/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>UEFI开发（一）EDK2环境搭建 | ThinkNotes</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">ThinkNotes</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Simple is not easy</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于我</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2024/08/30/UEFI%E5%BC%80%E5%8F%91%EF%BC%88%E4%B8%80%EF%BC%89EDK2%E7%8E%AF%E5%A2%83%E6%90%AD%E5%BB%BA/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          UEFI开发（一）EDK2环境搭建
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2024-08-30 17:52:38" itemprop="dateCreated datePublished" datetime="2024-08-30T17:52:38+08:00">2024-08-30</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2025-11-04 17:27:38" itemprop="dateModified" datetime="2025-11-04T17:27:38+08:00">2025-11-04</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/UEFI%E5%BC%80%E5%8F%91/" itemprop="url" rel="index"><span itemprop="name">UEFI开发</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="UEFI开发（一）EDK2环境搭建"><a href="#UEFI开发（一）EDK2环境搭建" class="headerlink" title="UEFI开发（一）EDK2环境搭建"></a>UEFI开发（一）EDK2环境搭建</h1><p>官方文档：</p>
+<p><a target="_blank" rel="noopener" href="https://github.com/tianocore/tianocore.github.io/wiki/Getting-Started-with-EDK-II">https://github.com/tianocore/tianocore.github.io/wiki/Getting-Started-with-EDK-II</a></p>
+<p><a target="_blank" rel="noopener" href="https://github.com/tianocore/tianocore.github.io/wiki/EDK-II-User-Documentation">https://github.com/tianocore/tianocore.github.io/wiki/EDK-II-User-Documentation</a></p>
+<h2 id="下载代码"><a href="#下载代码" class="headerlink" title="下载代码"></a>下载代码</h2><p>参考：<a target="_blank" rel="noopener" href="https://github.com/tianocore/edk2?tab=readme-ov-file#submodules">edk2&#x2F;Submodules</a></p>
+<p>在C盘根目录用git命令下载edk2并下载submodule：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">git clone https://github.com/tianocore/edk2.git</span><br><span class="line">cd edk2</span><br><span class="line">git submodule update --init</span><br></pre></td></tr></table></figure>
+
+<p>如果要切换到stable tag版本：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">git tag -l #列出tag， -l: list</span><br><span class="line">git checkout edk2-stable202X0X #切table tag</span><br><span class="line">git submodule update #更新submodule（对应stable tag）</span><br></pre></td></tr></table></figure>
+
+<p>我的环境是VS2022，当前edk2 master主线支持VS2022，而最新的stable tag不支持，所以用master版本，没必要checkout到stable tag。</p>
+<h2 id="编译EDK2"><a href="#编译EDK2" class="headerlink" title="编译EDK2"></a>编译EDK2</h2><h3 id="编译环境准备"><a href="#编译环境准备" class="headerlink" title="编译环境准备"></a>编译环境准备</h3><p>参考：<a target="_blank" rel="noopener" href="https://github.com/tianocore/tianocore.github.io/wiki/Windows-systems">https://github.com/tianocore/tianocore.github.io/wiki/Windows-systems</a></p>
+<ol>
+<li><p>按 <a href="edk2%5CBaseTools%5CBin"><strong>Build</strong></a> 下载NASM和ASL二进制包，放到C盘跟&#x3D;根目录（和edk2同路径）</p>
+</li>
+<li><p>运行edksetup.bat，编译edk2&#x2F;BaseTool</p>
+</li>
+</ol>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line">C:\edk2&gt;edksetup.bat</span><br><span class="line"></span><br><span class="line">**********************************************************************</span><br><span class="line"></span><br><span class="line">** Visual Studio 2022 Developer Command Prompt v17.13.6</span><br><span class="line">** Copyright (c) 2022 Microsoft Corporation</span><br><span class="line"></span><br><span class="line">**********************************************************************</span><br><span class="line"></span><br><span class="line">[vcvarsall.bat] Environment initialized for: &#x27;x86&#x27;</span><br><span class="line">Using EDK2 in-source Basetools</span><br><span class="line">          PATH      = C:\edk2\BaseTools\BinWrappers\WindowsLike;D:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.43.34808\bin\HostX86\x86;D:\Program Files\Microsoft Visual .... Studio\2022\Community\Common7\IDE\VC\Linux\bin\ConnectionManagerExe;D:\Program Files\Microsoft Visual Studio\2022\Community\VC\vcpkg</span><br><span class="line"></span><br><span class="line">     WORKSPACE      = C:\edk2</span><br><span class="line"></span><br><span class="line">EDK_TOOLS_PATH      = C:\edk2\BaseTools</span><br><span class="line">BASE_TOOLS_PATH     = C:\edk2\BaseTools</span><br><span class="line"> EDK_TOOLS_BIN      = C:\edk2\BaseTools\Bin\Win32</span><br><span class="line">     CONF_PATH      = C:\edk2\Conf</span><br><span class="line">     PYTHON_COMMAND = py -3</span><br><span class="line">         PYTHONPATH = C:\edk2\BaseTools\Source\Python;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">!!! WARNING !!! NASM_PREFIX environment variable is not set</span><br><span class="line">  Found nasm.exe, setting the environment variable to C:\nasm\</span><br><span class="line"></span><br><span class="line">!!! WARNING !!! CLANG_BIN environment variable is not set</span><br></pre></td></tr></table></figure>
+
+<p>log中的一些信息含义：</p>
+<p>（1）新版本edk2已经包含python包，无需自己再去下载和指定python路径</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">PYTHONPATH = C:\edk2\BaseTools\Source\Python;</span><br></pre></td></tr></table></figure>
+
+<p>（2）已自动设置nasm路径</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Found nasm.exe, setting the environment variable to C:\nasm\</span><br></pre></td></tr></table></figure>
+
+<p>（3）用VS2022编译，CLANG_BIN不用设置</p>
+<p>编译输出二进制在edk2\BaseTools\Bin</p>
+<h3 id="编译目标模块"><a href="#编译目标模块" class="headerlink" title="编译目标模块"></a>编译目标模块</h3><p>运行edksetup后，再执行编译：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">build</span><br></pre></td></tr></table></figure>
+
+<p>编译目标由edk2&#x2F;Conf&#x2F;target.txt的ACTIVE_PLATFORM和TARGET_ARCH指定</p>
+<h3 id="终端乱码问题"><a href="#终端乱码问题" class="headerlink" title="终端乱码问题"></a>终端乱码问题</h3><p>在编译前可用以下命令将命令行的输出转成UTF8格式，防止输出乱码：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">chcp 65001</span><br></pre></td></tr></table></figure>
+
+<p>下图说明从Conf&#x2F;target的产生到编译完成的全流程</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202504141429251.png" alt="image-20250414142907112"></p>
+<h2 id="搭建UEFI-shell启动盘"><a href="#搭建UEFI-shell启动盘" class="headerlink" title="搭建UEFI shell启动盘"></a>搭建UEFI shell启动盘</h2><h3 id="创建UEFI-shell盘"><a href="#创建UEFI-shell盘" class="headerlink" title="创建UEFI shell盘"></a>创建UEFI shell盘</h3><ol>
+<li>找一个U盘，格式化成FAT32，然后在U盘根目录下建立&#x2F;efi&#x2F;boot目录。</li>
+<li>自己编译UEFI shell.efi或者下载Shell.efi</li>
+<li>把Shell.efi改名成BOOTX64.efi，然后把BOOTX64.efi拷贝到U盘&#x2F;efi&#x2F;boot&#x2F;目录下。</li>
+<li>自己编译的其他UEFI程序，如MdeModulePkg Application efi或者DXE efi驱动，都可放到U盘根目录</li>
+<li>U盘插入电脑，开机后按F12(不同厂商电脑可能有所不同)进入UEFI menu选择页面，选择从U盘启动</li>
+</ol>
+<p>(1) 如何自己编译UEFI shell.efi：</p>
+<p>前面edk2编译环境ok后，改Conf&#x2F;target.txt为编译ShellPkg：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">ACTIVE_PLATFORM       = ShellPkg/ShellPkg.dsc</span><br><span class="line">TARGET_ARCH           = X64</span><br><span class="line">TOOL_CHAIN_TAG        = VS2019</span><br></pre></td></tr></table></figure>
+
+<p>编译完成后输出Shell.efi在Build&#x2F;Shell&#x2F;<TOOL_CHAIN_TAG>&#x2F;<TARGET_ARCH>&#x2F;ShellPkg&#x2F;Application&#x2F;Shell&#x2F;Shell&#x2F;OUTPUT&#x2F;目录下</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">Finished generating code</span><br><span class="line">        &quot;GenFw&quot; -e UEFI_APPLICATION -o C:\edk2\Build\Shell\DEBUG_VS2019\X64\ShellPkg\Application\Shell\Shell\OUTPUT\Shell.efi C:\edk2\Build\Shell\DEBUG_VS2019\X64\ShellPkg\Application\Shell\Shell\DEBUG\Shell.dll</span><br><span class="line">        copy /y C:\edk2\Build\Shell\DEBUG_VS2019\X64\ShellPkg\Application\Shell\Shell\OUTPUT\Shell.efi </span><br><span class="line"></span><br><span class="line">- Done -</span><br></pre></td></tr></table></figure>
+
+<p>(2)下载编译好的Shell.efi</p>
+<p><a target="_blank" rel="noopener" href="https://github.com/pbatard/UEFI-Shell/releases">https://github.com/pbatard/UEFI-Shell/releases</a></p>
+<p>包含各平台的shell.efi</p>
+<h3 id="startup-nsh脚本"><a href="#startup-nsh脚本" class="headerlink" title="startup.nsh脚本"></a>startup.nsh脚本</h3><p>UEFI Shell.efi启动时会查找根目录下有没有startup.nsh脚本，如果有的话会自动执行startup.nsh脚本</p>
+<p>比如U盘在UEFI shell下的盘符为 FS0: ，想要启动自动执行根目录的myUefiApp.efi程序，startup.nsh脚本如下</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">#切换到FS0盘符的根目录</span><br><span class="line">FS0:</span><br><span class="line">#执行程序（预先放在根目录）</span><br><span class="line">MyUefiApp.efi</span><br></pre></td></tr></table></figure>
+
+<p>也可以用绝对路径执行MyUefiApp.efi，即 </p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">FS0:\MyUefiApp.efi</span><br></pre></td></tr></table></figure>
+
+<h3 id="进入UEFI-shell"><a href="#进入UEFI-shell" class="headerlink" title="进入UEFI shell"></a>进入UEFI shell</h3><p>如图是F12进入U盘UEFI shell环境，其中：</p>
+<p>UEFI shell版本v2.7，可见来源信息</p>
+<p>map -r显示可识别设备信息：</p>
+<ol>
+<li><p>FS是filesystem文件系统设备。FS0是USB设备，位于PCi bridge 0x14上；FS1是Sata硬盘，位于PCi bridge 0x17上</p>
+</li>
+<li><p>BLK是文件分区。BLK0是USB的分区，BLK2和4都是Sata硬盘的文件分区</p>
+</li>
+</ol>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202504161706334.png" alt="image-20250416170607057"></p>
+<h3 id="copy-startup加快测试"><a href="#copy-startup加快测试" class="headerlink" title="copy+startup加快测试"></a>copy+startup加快测试</h3><p><a target="_blank" rel="noopener" href="https://ss64.com/nt/xcopy.html">https://ss64.com/nt/xcopy.html</a></p>
+<p>调试efi经常要重新编译和拷贝efi到u盘，用copy命令自动化</p>
+<p>build编译模块时，输出的efi已经拷贝过一次。这里再创建一个.bat拷到u盘（E盘根目录）</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">copy /y C:\edk2\Build\MdeModule\DEBUG_VS2019\X64\MdeModulePkg\Bus\Pci\SdMmcPciHcDxe\SdMmcPciHcDxe\OUTPUT\SdMmcPciHcDxe.efi C:\edk2\Build\MdeModule\DEBUG_VS2019\X64\SdMmcPciHcDxe.efi</span><br><span class="line"></span><br><span class="line">copy /y C:\edk2\Build\MdeModule\DEBUG_VS2019\X64\SdMmcPciHcDxe.efi E:\</span><br></pre></td></tr></table></figure>
+
+<p>这样编译后自动拷贝到U盘，在UEFI测试机上创建startup.sh自动运行efi驱动加载：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">fs0:</span><br><span class="line">load SdMmcPciHcDxe.efi</span><br></pre></td></tr></table></figure>
+
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/UEFI/" rel="tag"># UEFI</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2024/08/30/UEFI%E5%BC%80%E5%8F%91%EF%BC%88%E4%B8%89%EF%BC%89%E7%9F%A5%E8%AF%86%E5%92%8C%E9%97%AE%E9%A2%98%E8%AE%B0%E5%BD%95/" rel="prev" title="UEFI开发（二）">
+      <i class="fa fa-chevron-left"></i> UEFI开发（二）
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2024/10/30/STM32--Firmware%20Architecture%20part1%EF%BC%9A%E5%BC%80%E5%8F%91%E7%8E%AF%E5%A2%83%E5%92%8CHAL%20API%E5%BA%94%E7%94%A8/" rel="next" title="STM32--Firmware Architecture part1：开发环境和HAL API应用">
+      STM32--Firmware Architecture part1：开发环境和HAL API应用 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#UEFI%E5%BC%80%E5%8F%91%EF%BC%88%E4%B8%80%EF%BC%89EDK2%E7%8E%AF%E5%A2%83%E6%90%AD%E5%BB%BA"><span class="nav-number">1.</span> <span class="nav-text">UEFI开发（一）EDK2环境搭建</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%8B%E8%BD%BD%E4%BB%A3%E7%A0%81"><span class="nav-number">1.1.</span> <span class="nav-text">下载代码</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BC%96%E8%AF%91EDK2"><span class="nav-number">1.2.</span> <span class="nav-text">编译EDK2</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%BC%96%E8%AF%91%E7%8E%AF%E5%A2%83%E5%87%86%E5%A4%87"><span class="nav-number">1.2.1.</span> <span class="nav-text">编译环境准备</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%BC%96%E8%AF%91%E7%9B%AE%E6%A0%87%E6%A8%A1%E5%9D%97"><span class="nav-number">1.2.2.</span> <span class="nav-text">编译目标模块</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%BB%88%E7%AB%AF%E4%B9%B1%E7%A0%81%E9%97%AE%E9%A2%98"><span class="nav-number">1.2.3.</span> <span class="nav-text">终端乱码问题</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%90%AD%E5%BB%BAUEFI-shell%E5%90%AF%E5%8A%A8%E7%9B%98"><span class="nav-number">1.3.</span> <span class="nav-text">搭建UEFI shell启动盘</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%88%9B%E5%BB%BAUEFI-shell%E7%9B%98"><span class="nav-number">1.3.1.</span> <span class="nav-text">创建UEFI shell盘</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#startup-nsh%E8%84%9A%E6%9C%AC"><span class="nav-number">1.3.2.</span> <span class="nav-text">startup.nsh脚本</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%BF%9B%E5%85%A5UEFI-shell"><span class="nav-number">1.3.3.</span> <span class="nav-text">进入UEFI shell</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#copy-startup%E5%8A%A0%E5%BF%AB%E6%B5%8B%E8%AF%95"><span class="nav-number">1.3.4.</span> <span class="nav-text">copy+startup加快测试</span></a></li></ol></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="cursorhu"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">cursorhu</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">113</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">41</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">55</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/cursorhu" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;cursorhu" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:2449055512@qq.com" title="E-Mail → mailto:2449055512@qq.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2025</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">cursorhu</span>
+</div>
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 8.0.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Noto+Serif+SC|Roboto/css?family=Noto Serif SC:300,300italic,400,400italic,700,700italic|Roboto:300,300italic,400,400italic,700,700italic&display=swap&subset=latin,latin-ext">
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"cursorhu.github.io","root":"/","scheme":"Pisces","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="0.概述前文分析了C++类内成员的关系，本文讨论类和类之间的关系。考虑用C++对现实世界的交通工具进行描述。  汽车可能包含各种类型，小汽车，公交车，但他们能抽象出四个轮子，烧油这些基本属性 飞机也有各种类型，但也能抽象出机翼，机身等基本属性 轮船…  如果自顶向下设计，如何设计这些对象的类？  提炼这些交通工具的共有属性，如材质，耗油量，价格，设计成一个交通工具基础类；然后设计一些操作方法，比如">
+<meta property="og:type" content="article">
+<meta property="og:title" content="C++面向对象笔记：继承与多态">
+<meta property="og:url" content="https://cursorhu.github.io/2020/03/20/C-%E9%9D%A2%E5%90%91%E5%AF%B9%E8%B1%A1%E7%AC%94%E8%AE%B0%EF%BC%9A%E7%BB%A7%E6%89%BF%E4%B8%8E%E5%A4%9A%E6%80%81/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="0.概述前文分析了C++类内成员的关系，本文讨论类和类之间的关系。考虑用C++对现实世界的交通工具进行描述。  汽车可能包含各种类型，小汽车，公交车，但他们能抽象出四个轮子，烧油这些基本属性 飞机也有各种类型，但也能抽象出机翼，机身等基本属性 轮船…  如果自顶向下设计，如何设计这些对象的类？  提炼这些交通工具的共有属性，如材质，耗油量，价格，设计成一个交通工具基础类；然后设计一些操作方法，比如">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081651314.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081651715.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081651894.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081652246.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081652390.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081652097.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081652980.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081653211.png">
+<meta property="article:published_time" content="2020-03-20T08:49:06.000Z">
+<meta property="article:modified_time" content="2024-11-04T03:43:03.173Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="C++">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081651314.png">
+
+<link rel="canonical" href="https://cursorhu.github.io/2020/03/20/C-%E9%9D%A2%E5%90%91%E5%AF%B9%E8%B1%A1%E7%AC%94%E8%AE%B0%EF%BC%9A%E7%BB%A7%E6%89%BF%E4%B8%8E%E5%A4%9A%E6%80%81/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>C++面向对象笔记：继承与多态 | ThinkNotes</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">ThinkNotes</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Simple is not easy</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于我</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/03/20/C-%E9%9D%A2%E5%90%91%E5%AF%B9%E8%B1%A1%E7%AC%94%E8%AE%B0%EF%BC%9A%E7%BB%A7%E6%89%BF%E4%B8%8E%E5%A4%9A%E6%80%81/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          C++面向对象笔记：继承与多态
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-03-20 16:49:06" itemprop="dateCreated datePublished" datetime="2020-03-20T16:49:06+08:00">2020-03-20</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2024-11-04 11:43:03" itemprop="dateModified" datetime="2024-11-04T11:43:03+08:00">2024-11-04</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/C/" itemprop="url" rel="index"><span itemprop="name">C++</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="0-概述"><a href="#0-概述" class="headerlink" title="0.概述"></a>0.概述</h1><p>前文分析了C++类内成员的关系，本文讨论类和类之间的关系。<br>考虑用C++对现实世界的交通工具进行描述。</p>
+<ul>
+<li>汽车可能包含各种类型，小汽车，公交车，但他们能抽象出四个轮子，烧油这些基本属性</li>
+<li>飞机也有各种类型，但也能抽象出机翼，机身等基本属性</li>
+<li>轮船…</li>
+</ul>
+<p>如果自顶向下设计，如何设计这些对象的类？</p>
+<ul>
+<li>提炼这些交通工具的共有属性，如材质，耗油量，价格，设计成一个交通工具基础类；然后设计一些操作方法，比如制造，启动，停止。</li>
+<li>分别设计汽车、飞机、轮船等更具体的类的属性，比如轮子、排水量等，注意，他们也包含基础类的材质，耗油量，价格等基本属性；然后也设计一些方法，比如制造汽车、开汽车和造飞机、开飞机等</li>
+<li>然后再设计更细节的类，作为汽车、飞机、轮船类的细化，比如A品牌的汽车，B品牌汽车，作为两个具体类。</li>
+</ul>
+<p>仔细考虑以上步骤，有以下问题：</p>
+<ul>
+<li>这些类的属性（成员变量）是相互独立的吗？</li>
+<li>这些类的方法（成员函数）是相互独立的吗？</li>
+</ul>
+<p>C++用类的“继承”描述层层细化的类及其成员变量的关系，用“多态”描述各层方法的实现关系。</p>
+<h1 id="类的继承"><a href="#类的继承" class="headerlink" title="类的继承"></a>类的继承</h1><h2 id="继承关系的概念"><a href="#继承关系的概念" class="headerlink" title="继承关系的概念"></a>继承关系的概念</h2><p>继承：在定义一个新的类B时，如果该类与某个已有的类A相似(指的是B拥有A的全部特点)，那么就可以把A作为一个<strong>基类</strong>（也叫父类），而把B作为基类的一个<strong>派生类</strong>(也叫子类)。</p>
+<ul>
+<li>派生类是通过对基类进行修改和扩充得到的。在派生类中，可以扩充新的成员变量和成员函数</li>
+<li>派生类一经定义后，可以独立使用，不依赖于基类。</li>
+<li>派生类拥有基类的全部成员函数和成员变量，不论是private、 protected、 public。但是派生类的成员函数不能访问基类中的private成员</li>
+</ul>
+<p>一个管理学生的类继承：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081651314.png" alt="image-20221208165130260"><br>派生类语法:</p>
+<pre><code>class 派生类名： public 基类名
+{
+};
+</code></pre>
+<p>学生类的派生:</p>
+<pre><code>class CStudent {
+    private:
+    string sName;
+    int nAge;
+    public:
+    bool IsThreeGood() { };
+    void SetName( const string &amp; name )
+    { sName = name; }
+        //......
+};
+
+class CUndergraduateStudent: public CStudent {
+    private:
+    int nDepartment;
+    public:
+    bool IsThreeGood() { ...... }; //覆盖
+    bool CanBaoYan() { .... };
+}; // 派生类的写法是：类名: public 基类名
+</code></pre>
+<h2 id="类继承的存储空间"><a href="#类继承的存储空间" class="headerlink" title="类继承的存储空间"></a>类继承的存储空间</h2><p>在类与对象一文讲过，类对象的存储空间，实际就是成员变量的空间，成员函数不在对象空间内（虚函数包含一个虚函数表指针）。那么基类和派生类的对象空间有什么相关性？<br>派生类对象的体积，等于基类对象的体积，再加上派生类对象自己的成员变量的体积。 在派生类对象中，包含着基类对象，而且基类对象的存储位置位于派生类对象新增的成员变量之前。<br>一个示例：</p>
+<pre><code>class CBase
+{
+    int v1, v2;
+};
+class CDerived:public CBase
+{
+    int v3;
+};
+</code></pre>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081651715.png" alt="image-20221208165140659"></p>
+<h2 id="类继承的覆盖"><a href="#类继承的覆盖" class="headerlink" title="类继承的覆盖"></a>类继承的覆盖</h2><p>类内的同名非同参的函数叫函数重载，那么基类与派生类的同名函数呢？<br>派生类可以定义和基类成员同名的成员，这叫<strong>覆盖</strong>。在派生类中访问这类成员时，默认访问派生类中定义的成员，基类的成员函数或变量被“覆盖”掉了。如果要在派生类中访问基类定义的同名成员时，要使用作用域符号::<br>一个例子：</p>
+<pre><code>class base {    //基类
+    int j;  //默认private
+    public:
+    int i;
+    void func();
+};
+class derived : public base{    //派生类
+    public:
+    int i;  //覆盖基类i
+    void access();
+    void func(); //覆盖基类func()
+};
+
+void derived::access() { //访问派生类成员
+    j = 5; //error
+    i = 5; //引用的是派生类的 i
+    base::i = 5; //引用的是基类的 i
+    func(); //派生类的
+    base::func(); //基类的
+}
+</code></pre>
+<p>调用函数:</p>
+<pre><code>derived obj;
+obj.i = 1;  //访问派生类成员i
+obj.base::i = 1; //访问基类成员i
+</code></pre>
+<p>内存分布:<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081651894.png" alt="image-20221208165150851"><br>以上只是示例，一般来说，基类和派生类不定义同名成员变量，但经常有同名成员函数，所以覆盖通常用于成员函数覆盖。</p>
+<h2 id="类继承的成员访问控制"><a href="#类继承的成员访问控制" class="headerlink" title="类继承的成员访问控制"></a>类继承的成员访问控制</h2><ul>
+<li>基类的private成员：可以被下列函数访问<br>– 基类的成员函数<br>– 基类的友元函数</li>
+<li>基类的public成员：可以被下列函数访问<br>– 基类的成员函数<br>– 基类的友元函数<br>– 派生类的成员函数<br>– 派生类的友元函数<br>– 其他的函数</li>
+<li>基类的protected成员：可以被下列函数访问<br>– 基类的成员函数<br>– 基类的友元函数<br>– 派生类的成员函数可以访问当前对象的基类的保护成员</li>
+</ul>
+<p>一个示例：</p>
+<pre><code>class Father {
+    private: int nPrivate; //私有成员
+    public: int nPublic; //公有成员
+    protected: int nProtected; // 保护成员
+};
+class Son :public Father{
+    void AccessFather () {
+        nPublic = 1; // ok;
+        nPrivate = 1; // wrong
+        nProtected = 1; // OK，访问从基类继承的protected成员
+        Son f;
+        f.nProtected = 1; //wrong ， f不是当前对象
+    }
+};
+
+int main()
+{
+    Father f;
+    Son s;
+    f.nPublic = 1; // Ok
+    s.nPublic = 1; // Ok
+    f.nProtected = 1; // error
+    f.nPrivate = 1; // error
+    s.nProtected = 1; //error
+    s.nPrivate = 1; // error
+    return 0;
+}
+</code></pre>
+<h2 id="类继承的构造函数"><a href="#类继承的构造函数" class="headerlink" title="类继承的构造函数"></a>类继承的构造函数</h2><p>类似于嵌套类（封闭类）的构造函数，使用初始化列表来实现层层构造，基类和派生类只初始化他们能访问的成员</p>
+<pre><code>class Bug {
+private :
+    int nLegs; int nColor;
+    public:
+    int nType;
+    Bug ( int legs, int color);
+    void PrintBug (){ };
+};
+
+class FlyBug: public Bug // FlyBug是Bug的派生类
+{
+    int nWings;
+    public:
+    FlyBug( int legs,int color, int wings);
+};
+
+Bug::Bug( int legs, int color) //Bug类的构造函数
+{
+    nLegs = legs;
+    nColor = color;
+}
+
+//错误的FlyBug构造函数！
+FlyBug::FlyBug ( int legs,int color, int wings)
+{
+    nLegs = legs; // 不能访问
+    nColor = color; // 不能访问
+    nType = 1; // ok
+    nWings = wings;
+}
+
+//正确的FlyBug构造函数：使用初始化列表
+FlyBug::FlyBug ( int legs, int color, int wings):Bug( legs, color)
+{
+    nWings = wings;
+}
+
+int main() {
+    FlyBug fb ( 2,3,4);
+    fb.PrintBug();
+    fb.nType = 1;
+    fb.nLegs = 2 ; // error. nLegs is private
+    return 0;
+}
+</code></pre>
+<h2 id="类继承的构造析构时序"><a href="#类继承的构造析构时序" class="headerlink" title="类继承的构造析构时序"></a>类继承的构造析构时序</h2><p>在创建派生类的对象时，需要调用基类的构造函数：初始化派生类对象中从基类继承的成员。在执行一个派生类的构造函数之前，总是先执行基类的构造函数。<br>调用基类构造函数的两种方式:</p>
+<ul>
+<li><p>显式方式：在派生类的构造函数中，为基类的构造函数提供参数.</p>
+<p> derived::derived(arg_derived-list):base(arg_base-list)</p>
+</li>
+<li><p>隐式方式：在派生类的构造函数中，省略基类构造函数时，派生类的构造函数则自动调用基类的默认构造函数</p>
+</li>
+</ul>
+<p>析构函数执行时序:<br>派生类的析构函数被执行时，执行完派生类的析构函数后，自动调用基类的析构函数。<br>一个例子：</p>
+<pre><code>class Base {
+    public:
+    int n;
+    Base(int i):n(i)
+    { cout &lt;&lt; &quot;Base &quot; &lt;&lt; n &lt;&lt; &quot; constructed&quot; &lt;&lt; endl;}
+    ~Base()
+    { cout &lt;&lt; &quot;Base &quot; &lt;&lt; n &lt;&lt; &quot; destructed&quot; &lt;&lt; endl; }
+};
+    
+class Derived:public Base {
+    public:
+    Derived(int i):Base(i)
+    { cout &lt;&lt; &quot;Derived constructed&quot; &lt;&lt; endl; }
+    ~Derived()
+    { cout &lt;&lt; &quot;Derived destructed&quot; &lt;&lt; endl;}
+};
+int main() { Derived Obj(3); return 0; }
+</code></pre>
+<p>输出结果:</p>
+<pre><code>Base 3 constructed
+Derived constructed
+Derived destructed
+Base 3 destructed
+</code></pre>
+<p>##封闭派生类的构造函数<br>封闭类的构造用初始化列表，派生类也用初始化列表，那么封闭派生类呢？<br>还是初始化列表</p>
+<pre><code>class Bug {
+    private :
+    int nLegs; int nColor;
+    public:
+    int nType;
+    Bug ( int legs, int color);
+    void PrintBug (){ };
+};
+
+class Skill {
+    public:
+    Skill(int n) { }
+};
+class FlyBug: public Bug {
+    int nWings;
+    Skill sk1, sk2;
+    public:
+    FlyBug( int legs, int color, int wings);
+};
+FlyBug::FlyBug( int legs, int color, int wings):
+    Bug(legs,color),sk1(5),sk2(color) ,nWings(wings) { //初始化列表，不能访问的通通交给下层构造函数
+}
+</code></pre>
+<h2 id="封闭派生类的构造析构时序"><a href="#封闭派生类的构造析构时序" class="headerlink" title="封闭派生类的构造析构时序"></a>封闭派生类的构造析构时序</h2><p>在创建派生类的对象时:</p>
+<ol>
+<li>先执行基类的构造函数，用以初始化派生类对象中从基类继承的成员</li>
+<li>再执行成员对象类的构造函数，用以初始化派生类对象中成员对象</li>
+<li>最后执行派生类自己的构造函数<br>在派生类对象消亡时：</li>
+<li>先执行派生类自己的析构函数</li>
+<li>再依次执行各成员对象类的析构函数</li>
+<li>最后执行基类的析构函数<br>析构函数的调用顺序与构造函数的调用顺序相反</li>
+</ol>
+<h1 id="类的复合"><a href="#类的复合" class="headerlink" title="类的复合"></a>类的复合</h1><p>在数学上，两个集合有无关、相交和包含的关系。对于多个类来说，也应该有以上三种关系。无关类&#x3D;两个成员不相关的类；继承类&#x3D;类成员间有继承关系的类；那么相交的类呢？</p>
+<h2 id="复合关系的概念"><a href="#复合关系的概念" class="headerlink" title="复合关系的概念"></a>复合关系的概念</h2><p>C++用“复合”表示类的相交关系。<br>1)继承：“是”的关系<br>基类是A， B是基类A的派生类，逻辑上要求：“一个B对象也是一个A对象”<br>2)复合：“有”的关系<br>类C中“有” 成员变量k，k是类D的对象，则C和D是复合关系，逻辑上要求：“D对象是C对象的固有属性或组成部分</p>
+<p>下面比较一下继承和复合在具体设计的实例：<br>继承关系顶层设计例子:</p>
+<ul>
+<li>写了一个 CMan 类代表男人</li>
+<li>后来又发现需要一个CWoman类来代表女人</li>
+<li>CWoman类和CMan类有共同之处,让CWoman类从CMan类派生而来，是否合适？</li>
+<li>错！从一开始就应该设计CHuman类，代表“人” ,然后CMan和CWoman都从<br>CHuman派生</li>
+</ul>
+<p>继承逻辑关系：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081652246.png" alt="image-20221208165210195"></p>
+<p>复合关系顶层设计例子：</p>
+<ul>
+<li>几何形体程序中，需要写“点”类，也需要写“圆”类</li>
+<li>每个圆都有圆心，那么点类应该从圆类派生出来吗？</li>
+<li>错！”点“不仅在圆内有，在其他图形也有，不是圆独有，非继承关系</li>
+<li>实际上，圆和点是复合关系，每一个“圆”对象里都包含(<strong>有</strong>)一个“点”对象</li>
+<li>逻辑上，复合关系就是，我的一部分可以看成是你的，但是我的全部东西不都属于你</li>
+</ul>
+<p>复合关系的类通常用友元实现：</p>
+<pre><code>class CPoint
+{
+    double x,y;
+    friend class CCircle;
+    //便于Ccirle类操作其圆心
+};
+
+class CCircle
+{
+    double r;
+    CPoint center;
+};
+</code></pre>
+<h2 id="复合关系的典型示例"><a href="#复合关系的典型示例" class="headerlink" title="复合关系的典型示例"></a>复合关系的典型示例</h2><p>如果要写一个小区养狗管理程序，需要写一个“业主”类，还需要写一个“狗” 类<br>狗是归宿于业主的，一个业主可以有多条狗，狗也可以随时脱离业主<br>考虑以下设计方法：<br>设计人和狗两个类，相互包含对方类</p>
+<pre><code>class CDog;
+class CMaster
+{
+    CDog dogs[10];
+};
+class CDog
+{
+    CMaster m;
+};
+</code></pre>
+<p> 这样有循环定义错误！且逻辑上，狗和人并非相互包含关系<br> 这种关系上相互相关，对象本身又完全独立的情况，用对象指针表示</p>
+<pre><code>class CMaster; //CMaster必须提前声明，不能先写CMaster类后写Cdog类
+class CDog {
+    CMaster * pm;
+};
+class CMaster {
+    CDog * dogs[10];
+};
+</code></pre>
+<p>逻辑关系:<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081652390.png" alt="image-20221208165220338"></p>
+<h1 id="继承的不足"><a href="#继承的不足" class="headerlink" title="继承的不足"></a>继承的不足</h1><h2 id="继承方式的访问限制"><a href="#继承方式的访问限制" class="headerlink" title="继承方式的访问限制"></a>继承方式的访问限制</h2><p>基类和派生类是包含的关系，那么基类对象和派生类对象是什么关系？<br>对于类的public派生方式:</p>
+<pre><code>class base { };
+class derived : public base { };
+base b;
+derived d;
+</code></pre>
+<p>1）派生类的对象可以赋值给基类对象<br>b &#x3D; d;<br>2）派生类对象可以初始化基类引用<br>base &amp; br &#x3D; d;<br>3）派生类对象的地址可以赋值给基类指针<br>base * pb &#x3D; &amp; d;<br>如果派生方式是 private或protected，则上述三条不可行</p>
+<p>对于类的protected和private派生方式:</p>
+<pre><code>class base {};
+class derived : protected base {};
+base b;
+derived d;
+</code></pre>
+<p>• protected继承时，基类的public成员和protected成员成为派生类的protected成员。<br>• private继承时，基类的public成员成为派生类的private成员，基类的protected成员成为派生类的不可访问成员。<br>• protected和private继承不是“是”的关系</p>
+<h2 id="派生类的对象指针转换"><a href="#派生类的对象指针转换" class="headerlink" title="派生类的对象指针转换"></a>派生类的对象指针转换</h2><p>public派生的情况下,派生类对象的指针可以直接赋值给基类指针</p>
+<pre><code>Base * ptrBase = &amp;objDerived;
+//ptrBase指向的是一个Derived类的对象；
+</code></pre>
+<p>*ptrBase可以看作一个Base类的对象，访问它的public成员直接通过ptrBase即可，但不能通过ptrBase访问objDerived对象中属于Derived类而不属于Base类的成员<br>过强制指针类型转换，可以把ptrBase转换成Derived类的指针</p>
+<pre><code>Base * ptrBase = &amp;objDerived;
+Derived *ptrDerived = (Derived * ) ptrBase;
+</code></pre>
+<p>程序员要保证ptrBase指向的是一个Derived类的对象，否则很容易会错</p>
+<p>派生类的指针赋值给基类后，基类指针也不能访问派生类的特有成员</p>
+<pre><code>#include &lt;iostream&gt;
+using namespace std;
+class Base {
+    protected:
+    int n;
+    public:
+    Base(int i):n(i){cout &lt;&lt; &quot;Base &quot; &lt;&lt; n &lt;&lt;&quot; constructed&quot; &lt;&lt; endl; }
+    ~Base() {cout &lt;&lt; &quot;Base &quot; &lt;&lt; n &lt;&lt;&quot; destructed&quot; &lt;&lt; endl;}
+    void Print() { cout &lt;&lt; &quot;Base:n=&quot; &lt;&lt; n &lt;&lt; endl;}
+};
+
+class Derived:public Base {
+    public:
+    int v;
+    Derived(int i):Base(i),v(2 * i) {
+    cout &lt;&lt; &quot;Derived constructed&quot; &lt;&lt; endl;
+}
+
+~Derived() {
+    cout &lt;&lt; &quot;Derived destructed&quot; &lt;&lt; endl;
+}
+
+void Func() { } ;
+    void Print() {
+        cout &lt;&lt; &quot;Derived:v=&quot; &lt;&lt; v &lt;&lt; endl;
+        cout &lt;&lt; &quot;Derived:n=&quot; &lt;&lt; n &lt;&lt; endl;
+    }
+};
+
+int main() {
+    Base objBase(5);
+    Derived objDerived(3);
+    Base * pBase = &amp; objDerived ;
+    //pBase-&gt;Func(); //err;Base类没有Func()成员函数
+    //pBase-&gt;v = 5; //err; Base类没有v成员变量
+    pBase-&gt;Print();
+    //Derived * pDerived = &amp; objBase; //error
+    Derived * pDerived = (Derived *)(&amp; objBase);
+    pDerived-&gt;Print(); //慎用，可能出现不可预期的错误
+    pDerived-&gt;v = 128; //往别人的空间里写入数据，会有问题
+    objDerived.Print();
+    return 0;
+}
+</code></pre>
+<p>输出：</p>
+<pre><code>Base 5 constructed
+Base 3 constructed
+Derived constructed
+Base:n=3
+Derived:v=1245104 //pDerived-&gt;n 位于别人的空间里
+Derived:n=5
+Derived:v=6
+Derived:n=3
+Derived destructed
+Base 3 destructed
+Base 5 destructed
+</code></pre>
+<p>从逻辑上来说，派生类指针既然能被赋值给基类指针，那么通过基类指针，应该能调用派生类的成员函数，获取派生类的成员变量。在下一章，继承类的多态将实现这个目的。</p>
+<h2 id="多级继承"><a href="#多级继承" class="headerlink" title="多级继承"></a>多级继承</h2><p>类A派生类B，类B派生类C，类C派生类D……<br>– 类A是类B的直接基类<br>– 类B是类C的直接基类，类A是类C的间接基类<br>– 类C是类D的直接基类，类A、 B是类D的间接基类<br>在声明派生类时， 只需要列出它的直接基类<br>– 派生类沿着类的层次自动向上继承它的间接基类<br>– 派生类的成员包括<br>• 派生类自己定义的成员<br>• 直接基类中的所有成员<br>• 所有间接基类的全部成员</p>
+<h1 id="多态：在继承上更进一步"><a href="#多态：在继承上更进一步" class="headerlink" title="多态：在继承上更进一步"></a>多态：在继承上更进一步</h1><p>前面派生类的对象指针转换一节，基类指针强转后也不能访问派生类私有对象。考虑一下本文开始讲的交通工具顶层设计思路，在顶层设计时就要设计类的成员函数，在派生类也要设计成员函数，这些函数会有重合的情况吗？如果有重合，基类指针也不能访问派生类成员，这样基类和派生类不就失去联系了吗？多级继承这种情况不是更加严重？<br>为了解决这种问题，本节引入继承类的“多态”<br>多态能够增强程序的可扩充性，即程序需要修改或增加功能的时候，需要改动和增加的代码较少</p>
+<h2 id="虚函数与多态"><a href="#虚函数与多态" class="headerlink" title="虚函数与多态"></a>虚函数与多态</h2><p>在类的定义中，前面有 virtual 关键字的成员函数就是虚函数</p>
+<pre><code>class base {
+    virtual int get() ;
+};
+int base::get(){ }
+</code></pre>
+<p>virtual关键字只用在类定义里的函数声明中使用，定义函数体时不用。<br>使用虚函数，来实现“多态”效果。多态有通过指针和引用两种表现形式:</p>
+<ul>
+<li>能通过基类的指针调用派生类虚函数，访问其特有成员变量</li>
+</ul>
+<p>派生类的指针可以赋给基类指针<br>通过基类指针调用基类和派生类中的同名虚函数时:<br>（1）若该指针指向一个基类的对象，那么被调用是<br>基类的虚函数；<br>（2）若该指针指向一个派生类的对象，那么被调用<br>的是派生类的虚函数</p>
+<pre><code>class CBase {
+public:
+    virtual void SomeVirtualFunction() { }
+};
+class CDerived:public CBase {
+public :
+    virtual void SomeVirtualFunction() { }
+};
+int main() {
+    CDerived ODerived;
+    CBase * p = &amp; ODerived;
+    p -&gt; SomeVirtualFunction(); //调用哪个虚函数取决于p指向哪种类型的对象
+    return 0;
+} 
+</code></pre>
+<ul>
+<li>能通过基类的引用调用派生类虚函数</li>
+</ul>
+<p>派生类的对象可以赋给基类引用<br>通过基类引用调用基类和派生类中的同名虚函数时:<br>（1）若该引用引用的是一个基类的对象，那么被调<br>用是基类的虚函数；<br>（2）若该引用引用的是一个派生类的对象，那么被<br>调用的是派生类的虚函数。</p>
+<pre><code>class CBase {
+public:
+    virtual void SomeVirtualFunction() { }
+};
+class CDerived:public CBase {
+public :
+    virtual void SomeVirtualFunction() { }
+};
+int main() {
+    CDerived ODerived;
+    CBase &amp; r = ODerived;
+    r.SomeVirtualFunction(); //调用哪个虚函数取决于r引用哪种类型的对象
+    return 0;
+} 
+</code></pre>
+<p>是不是所有成员函数加virtual都是多态？不是！</p>
+<ul>
+<li>在非构造或析构函数的成员函数中调用虚函数，是多态。在运行时才确定到底调用哪一层派生类函数</li>
+<li>在构造函数和析构函数中调用虚函数，不是多态。调用的函数是当前类的函数，编译时即确定</li>
+</ul>
+<p>多层继承实现多态，每一层都要加virtual关键字吗？</p>
+<ul>
+<li>派生类中和基类中虚函数同名同参数表的函数，不加virtual也自动成为虚函数</li>
+</ul>
+<h2 id="多态与对象指针"><a href="#多态与对象指针" class="headerlink" title="多态与对象指针"></a>多态与对象指针</h2><p>一个变量有两方面属性：类型、值<br>那么多态把derived类的地址值，赋值给base类的指针，访问对象成员时是什么效果？<br>以下例子的this指针指向什么？</p>
+<pre><code>class Base {
+public:
+    void fun1() { this-&gt;fun2(); } //this是基类指针， fun2是虚函数，所以是多态
+    virtual void fun2() { cout &lt;&lt; &quot;Base::fun2()&quot; &lt;&lt; endl; }
+};
+class Derived:public Base {
+public:
+    virtual void fun2() { cout &lt;&lt; &quot;Derived:fun2()&quot; &lt;&lt; endl; }
+};
+int main() {
+    Derived d;
+    Base * pBase = &amp; d;
+    pBase-&gt;fun1();
+    return 0;
+}
+</code></pre>
+<p>pBase被Derived对象的地址赋值后，其值为Derived对象的地址，但类型还是Base的指针（多态指针赋值不会强转）。pBase-&gt;fun1()会先在Base类访问其fun1()，传入this指针（指向fun2）,而this-&gt;fun2()会调用Derived类的fun2()<br>输出： </p>
+<pre><code>Derived:fun2()
+</code></pre>
+<p>虚函数也可以定义为private：</p>
+<pre><code>class Base {
+private:
+    virtual void fun2() { cout &lt;&lt; &quot;Base::fun2()&quot; &lt;&lt; endl; }
+};
+class Derived:public Base {
+public:
+    virtual void fun2() { cout &lt;&lt; &quot;Derived:fun2()&quot; &lt;&lt; endl; }
+};
+Derived d;
+Base * pBase = &amp; d;
+pBase -&gt; fun2(); // 编译出错
+</code></pre>
+<p>pBase已经被赋值为指向derived d的指针，不能调用base类的private函数。</p>
+<h2 id="多态的实例-游戏开发"><a href="#多态的实例-游戏开发" class="headerlink" title="多态的实例:游戏开发"></a>多态的实例:游戏开发</h2><p>游戏中有很多种怪物，每种怪物都有一个类与之对应。某个玩家创建的具体怪物就是对象<br>怪物的主要动作（成员函数）有：</p>
+<ul>
+<li>攻击（Attack），针对不同的被攻击者有不同的函数</li>
+<li>反击（FightBack），被某个怪物攻击时做出的相应动作</li>
+<li>掉血（Hurted），被攻击时会掉血，血量值不同有不同处理，如死亡</li>
+</ul>
+<p>现在的需求是：已经有CWolf、CGhost两种怪物，需要设计新的怪物CThunderBird，并能满足和其他怪物的交互<br>顶层设计:<br>设置基类 CCreature，并且使CDragon, CWolf等其他类都从CCreature派生而来<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081652097.png" alt="image-20221208165241029"><br>非多态的派生类设计：<br>由于每个怪物对于其他怪物的攻击和反击都是不同的，每个怪物类都要设计一组Attack和FightBack：</p>
+<pre><code>class class CCreature {
+    protected: int nPower ; //代表攻击力
+    int nLifeValue ; //代表生命值
+};
+class CThunderBird : public CCreature {
+    public:
+    void Attack(CWolf * pWolf) {
+        ．．．表现攻击动作的代码
+        pWolf-&gt;Hurted( nPower);
+        pWolf-&gt;FightBack( this);
+    }
+    void Attack( CDragon * pDragon) {
+        ．．．表现攻击动作的代码
+        pDragon-&gt;Hurted( nPower);
+        pDragon-&gt;FightBack( this);
+    }
+    void FightBack( CWolf * pWolf) {
+        ．．．．表现反击动作的代码
+        pWolf -&gt;Hurted( nPower / 2);
+    }
+    void FightBack( CDragon * pDragon) {
+        ．．．．表现反击动作的代码
+        pDragon-&gt;Hurted( nPower / 2 );
+    }
+    void Hurted ( int nPower) {
+        ．．．．表现受伤动作的代码
+        nLifeValue -= nPower;
+    }
+}
+</code></pre>
+<p>现有n种怪物，CThunderBird类中就得有n个Attack 和n个FightBack成员函数，对于其他类也得新增针对CThunderBird的Attack和FightBack。这种设计工作量过于巨大。原因就在于要区分传入的对象指针。<br>那么能否传入基类的指针呢，这样就不存在为各种类型写几个函数。基类指针要访问派生类的成员，得用虚函数形成多态。多态实现如下：</p>
+<pre><code>//基类 CCreature：
+class CCreature {
+protected :
+    int m_nLifeValue, m_nPower;
+    public:
+    virtual void Attack( CCreature * pCreature) {}
+    virtual void Hurted( int nPower) { }
+    virtual void FightBack( CCreature * pCreature) {}
+};
+//派生类 CDragon:
+class CDragon : public CCreature {
+public:
+    virtual void Attack( CCreature * pCreature);
+    virtual void Hurted( int nPower);
+    virtual void FightBack( CCreature * pCreature);
+};
+
+//派生类的成员函数实现具体操作
+void CDragon::Attack(CCreature * p) //传入基类指针
+{ …表现攻击动作的代码
+    p-&gt;Hurted(m_nPower); //多态
+    p-&gt;FightBack(this); //多态
+}
+void CDragon::Hurted( int nPower)
+{ …表现受伤动作的代码
+    m_nLifeValue -= nPower;
+}
+void CDragon::FightBack(CCreature * p)
+{ …表现反击动作的代码
+    p-&gt;Hurted(m_nPower/2); //多态
+}
+
+//多态的调用
+CDragon Dragon; CWolf Wolf; CGhost Ghost;
+CThunderBird Bird；
+Dragon.Attack( &amp; Wolf); //调用CWolf::Hurted
+Dragon.Attack( &amp; Ghost); //调用CGhost::Hurted
+Dragon.Attack( &amp; Bird); //调用CBird::Hurted
+</code></pre>
+<p>使用多态，新增某个派生类时，已有的类可以原封不动，因为传入基类指针，会“自动”调用正确的派生类函数，开发者只需要设计新增的派生类和其成员函数即可</p>
+<h2 id="多态的原理：虚函数表指针"><a href="#多态的原理：虚函数表指针" class="headerlink" title="多态的原理：虚函数表指针"></a>多态的原理：虚函数表指针</h2><p>多态” 的关键在于通过基类指针或引用调用一个虚函数时，编译时不确定到底调用的是基类还是派生类的函数，运行时才确定，这叫“动态联编”<br>首先分析包含虚函数的类对象的内存分布：</p>
+<pre><code>class Base {
+public:
+int i;
+    virtual void Print() { cout &lt;&lt; &quot;Base:Print&quot; ; }
+};
+
+class Derived : public Base{
+public:
+int n;
+    virtual void Print() { cout &lt;&lt;&quot;Drived:Print&quot; &lt;&lt; endl; }
+};
+
+int main() {
+    Derived d;
+    cout &lt;&lt; sizeof( Base) &lt;&lt; &quot;,&quot;&lt;&lt; sizeof( Derived ) ;
+    return 0;
+}
+</code></pre>
+<p>输出：8, 12<br>为什么类对象的size比成员变量int（4字节）还多4字节？<br>因为包含虚函数的基类，实例化的对象除了成员变量，还包含一个指针（一般4字节），指向虚函数的入口地址，如果有多个虚函数，这些地址连续排列形成虚函数表，指针指向首个虚函数地址。如果这个指针指向基类，就能找到基类的所有虚函数入口，如果指针指向派生类，就能找到派生类的的所有虚函数入口。基类和派生类对象的指针赋值，实际会导致虚函数表指针指向的虚函数入口地址不同，从而调用时不同。<br>如果当前指针指向基类，则调用基类自己的虚函数：</p>
+<pre><code>Base b;
+pBase = &amp;b;
+pBase-&gt;Print();
+</code></pre>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081652980.png" alt="image-20221208165259927"><br>如果当前指针指向派生类，则调用派生类的虚函数：</p>
+<pre><code>Derived d;
+pDerived = &amp;d;
+pBase = pDerived;
+pBase-&gt;Print();
+</code></pre>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081653211.png" alt="image-20221208165311145"><br>动态联编的实现：<br>多态的函数调用语句被编译成一系列根据基类指针所指向的（或基类引用所引用的)对象中存放的虚函数表的地址，在虚函数表中查找虚函数地址，并调用虚函数的指令<br>而普通函数是编译过程中确定了成员函数的入口地址，不存在运行时根据对象来改变某个函数的入口地址。</p>
+<h2 id="虚函数与抽象类"><a href="#虚函数与抽象类" class="headerlink" title="虚函数与抽象类"></a>虚函数与抽象类</h2><p>可以想象得到，前文的游戏使用虚函数的例子是通用的，先设计基类，提炼对象属性，定义虚函数；再派生子类，在子类实现局函数的具体操作。那么问题来了，基类的虚函数有必要实现函数体吗？<br>很多情况，基类只是一个抽象，定义了函数的名称和参数，不需要在基类实现虚函数，全部交给派生类实现。</p>
+<ul>
+<li>纯虚函数：没有函数体的虚函数</li>
+<li>抽象类：包含纯虚函数的类</li>
+</ul>
+<p>纯虚函数写法：没函数体{}，直接&#x3D;0</p>
+<pre><code>class A {
+private: int a;
+public:
+    virtual void Print( ) = 0 ; //纯虚函数
+    void fun() { cout &lt;&lt; &quot;fun&quot;; }
+};
+</code></pre>
+<p>抽象类特点：</p>
+<ul>
+<li>抽象类只能作为基类来派生新类使用，不能创建抽象类的对象</li>
+<li>可以创建抽象类的指针和引用，它们可以指向派生类的对象</li>
+</ul>
+<p>抽象类的指针：</p>
+<pre><code>A a ; // 错， A 是抽象类，不能创建对象
+A * pa ; // ok,可以定义抽象类的指针和引用
+pa = new A ; //错误, A 是抽象类，不能创建对象
+</code></pre>
+<p>如果一个类从抽象类派生而来，那么当且仅当它实现了基类中的所有纯虚函数，它才能成为非抽象类<br>抽象类的成员函数可以调用纯虚函数，但是构造函数或析构函数内不能调用纯虚函数</p>
+<pre><code>class A {
+public:
+    virtual void f() = 0; //纯虚函数
+    void g( ) { 
+        this-&gt;f( ) ; //ok
+    }
+    A( ){ 
+        f( ); // 错误
+    }
+};
+class B:public A{
+public:
+    void f(){cout&lt;&lt;&quot;B:f()&quot;&lt;&lt;endl; }
+};
+</code></pre>
+<h2 id="虚函数与构造析构函数"><a href="#虚函数与构造析构函数" class="headerlink" title="虚函数与构造析构函数"></a>虚函数与构造析构函数</h2><p>前面考虑了普通成员函数加virtual，可以形成虚函数达到继承类的多态效果。那么构造函数和析构函数呢？</p>
+<ul>
+<li>不允许以虚函数作为构造函数</li>
+<li>类继承需要把基类的析构函数设为虚函数</li>
+</ul>
+<p>对于常规析构函数，通过基类指针删除派生类对象时，只能调用基类的析构函数。但是合理的做法是，应该先调用派生类的析构函数，然后调用基类的析构函数。解决的方法：把析构函数定义为virtual，由于基类析构函数是虚函数，派生类的同名析构函数自然也是虚函数。<br>什么时候定义虚析构函数</p>
+<ul>
+<li>一个类只要定义了虚函数，则应该将析构函数也定义成虚函数</li>
+<li>一个类打算作为基类使用，则应该将析构函数定义成虚函数</li>
+</ul>
+<p>虚析构函数用法：通过基类的指针删除派生类对象，会首先调用派生类的析构函数，然后调用基类的析构函数</p>
+<pre><code>class son{
+public:
+    virtual ~son() {cout&lt;&lt;&quot;bye from son&quot;&lt;&lt;endl;};
+};
+class grandson:public son{
+public:
+    ~grandson(){cout&lt;&lt;&quot;bye from grandson&quot;&lt;&lt;endl;};
+};
+int main() {
+    son *pson;
+    pson= new grandson(); //pson指向派生类grandson
+    delete pson;
+    return 0;
+}
+</code></pre>
+<p>输出： </p>
+<pre><code>bye from grandson
+bye from son
+</code></pre>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/C/" rel="tag"># C++</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/03/18/C-%E9%9D%A2%E5%90%91%E5%AF%B9%E8%B1%A1%E7%AC%94%E8%AE%B0%EF%BC%9A%E7%B1%BB%E5%92%8C%E5%AF%B9%E8%B1%A1/" rel="prev" title="C++面向对象笔记：类和对象">
+      <i class="fa fa-chevron-left"></i> C++面向对象笔记：类和对象
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2020/03/21/C-%E9%9D%A2%E5%90%91%E5%AF%B9%E8%B1%A1%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%A8%A1%E6%9D%BF%E3%80%81%E6%B3%9B%E5%9E%8B%E4%B8%8ESTL/" rel="next" title="C++面向对象笔记：模板、泛型与STL">
+      C++面向对象笔记：模板、泛型与STL <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#0-%E6%A6%82%E8%BF%B0"><span class="nav-number">1.</span> <span class="nav-text">0.概述</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%B1%BB%E7%9A%84%E7%BB%A7%E6%89%BF"><span class="nav-number">2.</span> <span class="nav-text">类的继承</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BB%A7%E6%89%BF%E5%85%B3%E7%B3%BB%E7%9A%84%E6%A6%82%E5%BF%B5"><span class="nav-number">2.1.</span> <span class="nav-text">继承关系的概念</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%B1%BB%E7%BB%A7%E6%89%BF%E7%9A%84%E5%AD%98%E5%82%A8%E7%A9%BA%E9%97%B4"><span class="nav-number">2.2.</span> <span class="nav-text">类继承的存储空间</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%B1%BB%E7%BB%A7%E6%89%BF%E7%9A%84%E8%A6%86%E7%9B%96"><span class="nav-number">2.3.</span> <span class="nav-text">类继承的覆盖</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%B1%BB%E7%BB%A7%E6%89%BF%E7%9A%84%E6%88%90%E5%91%98%E8%AE%BF%E9%97%AE%E6%8E%A7%E5%88%B6"><span class="nav-number">2.4.</span> <span class="nav-text">类继承的成员访问控制</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%B1%BB%E7%BB%A7%E6%89%BF%E7%9A%84%E6%9E%84%E9%80%A0%E5%87%BD%E6%95%B0"><span class="nav-number">2.5.</span> <span class="nav-text">类继承的构造函数</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%B1%BB%E7%BB%A7%E6%89%BF%E7%9A%84%E6%9E%84%E9%80%A0%E6%9E%90%E6%9E%84%E6%97%B6%E5%BA%8F"><span class="nav-number">2.6.</span> <span class="nav-text">类继承的构造析构时序</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B0%81%E9%97%AD%E6%B4%BE%E7%94%9F%E7%B1%BB%E7%9A%84%E6%9E%84%E9%80%A0%E6%9E%90%E6%9E%84%E6%97%B6%E5%BA%8F"><span class="nav-number">2.7.</span> <span class="nav-text">封闭派生类的构造析构时序</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%B1%BB%E7%9A%84%E5%A4%8D%E5%90%88"><span class="nav-number">3.</span> <span class="nav-text">类的复合</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%A4%8D%E5%90%88%E5%85%B3%E7%B3%BB%E7%9A%84%E6%A6%82%E5%BF%B5"><span class="nav-number">3.1.</span> <span class="nav-text">复合关系的概念</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%A4%8D%E5%90%88%E5%85%B3%E7%B3%BB%E7%9A%84%E5%85%B8%E5%9E%8B%E7%A4%BA%E4%BE%8B"><span class="nav-number">3.2.</span> <span class="nav-text">复合关系的典型示例</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%BB%A7%E6%89%BF%E7%9A%84%E4%B8%8D%E8%B6%B3"><span class="nav-number">4.</span> <span class="nav-text">继承的不足</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BB%A7%E6%89%BF%E6%96%B9%E5%BC%8F%E7%9A%84%E8%AE%BF%E9%97%AE%E9%99%90%E5%88%B6"><span class="nav-number">4.1.</span> <span class="nav-text">继承方式的访问限制</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%B4%BE%E7%94%9F%E7%B1%BB%E7%9A%84%E5%AF%B9%E8%B1%A1%E6%8C%87%E9%92%88%E8%BD%AC%E6%8D%A2"><span class="nav-number">4.2.</span> <span class="nav-text">派生类的对象指针转换</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%A4%9A%E7%BA%A7%E7%BB%A7%E6%89%BF"><span class="nav-number">4.3.</span> <span class="nav-text">多级继承</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%A4%9A%E6%80%81%EF%BC%9A%E5%9C%A8%E7%BB%A7%E6%89%BF%E4%B8%8A%E6%9B%B4%E8%BF%9B%E4%B8%80%E6%AD%A5"><span class="nav-number">5.</span> <span class="nav-text">多态：在继承上更进一步</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%99%9A%E5%87%BD%E6%95%B0%E4%B8%8E%E5%A4%9A%E6%80%81"><span class="nav-number">5.1.</span> <span class="nav-text">虚函数与多态</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%A4%9A%E6%80%81%E4%B8%8E%E5%AF%B9%E8%B1%A1%E6%8C%87%E9%92%88"><span class="nav-number">5.2.</span> <span class="nav-text">多态与对象指针</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%A4%9A%E6%80%81%E7%9A%84%E5%AE%9E%E4%BE%8B-%E6%B8%B8%E6%88%8F%E5%BC%80%E5%8F%91"><span class="nav-number">5.3.</span> <span class="nav-text">多态的实例:游戏开发</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%A4%9A%E6%80%81%E7%9A%84%E5%8E%9F%E7%90%86%EF%BC%9A%E8%99%9A%E5%87%BD%E6%95%B0%E8%A1%A8%E6%8C%87%E9%92%88"><span class="nav-number">5.4.</span> <span class="nav-text">多态的原理：虚函数表指针</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%99%9A%E5%87%BD%E6%95%B0%E4%B8%8E%E6%8A%BD%E8%B1%A1%E7%B1%BB"><span class="nav-number">5.5.</span> <span class="nav-text">虚函数与抽象类</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%99%9A%E5%87%BD%E6%95%B0%E4%B8%8E%E6%9E%84%E9%80%A0%E6%9E%90%E6%9E%84%E5%87%BD%E6%95%B0"><span class="nav-number">5.6.</span> <span class="nav-text">虚函数与构造析构函数</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="cursorhu"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">cursorhu</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">113</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">41</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">55</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/cursorhu" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;cursorhu" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:2449055512@qq.com" title="E-Mail → mailto:2449055512@qq.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2025</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">cursorhu</span>
+</div>
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

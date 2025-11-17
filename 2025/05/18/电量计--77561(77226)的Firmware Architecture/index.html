@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 8.0.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Noto+Serif+SC|Roboto/css?family=Noto Serif SC:300,300italic,400,400italic,700,700italic|Roboto:300,300italic,400,400italic,700,700italic&display=swap&subset=latin,latin-ext">
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"cursorhu.github.io","root":"/","scheme":"Pisces","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="电量计–77561(77226)的Firmware ArchitecturePart1 总体结构概述Keil MDK项目结构项目基于ARM Cortex-M0 MCU，使用Keil MDK开发环境构建。核心代码分为底层驱动、算法库和应用三层结构。 1234567891011121314151617- newton.uvprojx           # Keil项目主文件- newton.sct">
+<meta property="og:type" content="article">
+<meta property="og:title" content="电量计--77561(77226)的Firmware Architecture">
+<meta property="og:url" content="https://cursorhu.github.io/2025/05/18/%E7%94%B5%E9%87%8F%E8%AE%A1--77561(77226)%E7%9A%84Firmware%20Architecture/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="电量计–77561(77226)的Firmware ArchitecturePart1 总体结构概述Keil MDK项目结构项目基于ARM Cortex-M0 MCU，使用Keil MDK开发环境构建。核心代码分为底层驱动、算法库和应用三层结构。 1234567891011121314151617- newton.uvprojx           # Keil项目主文件- newton.sct">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2025-05-18T07:50:54.000Z">
+<meta property="article:modified_time" content="2025-11-04T09:01:39.029Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="电量计">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="https://cursorhu.github.io/2025/05/18/%E7%94%B5%E9%87%8F%E8%AE%A1--77561(77226)%E7%9A%84Firmware%20Architecture/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>电量计--77561(77226)的Firmware Architecture | ThinkNotes</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">ThinkNotes</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Simple is not easy</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于我</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2025/05/18/%E7%94%B5%E9%87%8F%E8%AE%A1--77561(77226)%E7%9A%84Firmware%20Architecture/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          电量计--77561(77226)的Firmware Architecture
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2025-05-18 15:50:54" itemprop="dateCreated datePublished" datetime="2025-05-18T15:50:54+08:00">2025-05-18</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2025-11-04 17:01:39" itemprop="dateModified" datetime="2025-11-04T17:01:39+08:00">2025-11-04</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/BMS/" itemprop="url" rel="index"><span itemprop="name">BMS</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="电量计–77561-77226-的Firmware-Architecture"><a href="#电量计–77561-77226-的Firmware-Architecture" class="headerlink" title="电量计–77561(77226)的Firmware Architecture"></a>电量计–77561(77226)的Firmware Architecture</h1><h1 id="Part1-总体结构概述"><a href="#Part1-总体结构概述" class="headerlink" title="Part1 总体结构概述"></a>Part1 总体结构概述</h1><h2 id="Keil-MDK项目结构"><a href="#Keil-MDK项目结构" class="headerlink" title="Keil MDK项目结构"></a>Keil MDK项目结构</h2><p>项目基于ARM Cortex-M0 MCU，使用Keil MDK开发环境构建。核心代码分为底层驱动、算法库和应用三层结构。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">- newton.uvprojx           # Keil项目主文件</span><br><span class="line">- newton.sct               # 链接脚本</span><br><span class="line">- Device/                  # ARM M0 MCU设备相关文件</span><br><span class="line">- RTE/                     # 运行时环境配置</span><br><span class="line">- lib/                     # 核心算法库文件</span><br><span class="line">  - lib_fg.c/h             # 电量计核心算法库(Fuel Gauge)</span><br><span class="line">  - lib_pg.c/h             # 电池包电量计算法库(Pack Gauge)</span><br><span class="line">- user/                    # 用户应用代码</span><br><span class="line">  - main.c                 # 主程序入口</span><br><span class="line">  - parameter.c/h          # 参数配置</span><br><span class="line">  - sbsd.c/h               # SBS通信协议实现</span><br><span class="line">  - filter.c/h             # 数据滤波处理</span><br><span class="line">  - db_print.c/h           # 调试打印功能</span><br><span class="line">- flash/                   # Flash操作相关</span><br><span class="line">- chip/                    # 芯片驱动层</span><br><span class="line">- table/                   # 查找表数据</span><br><span class="line">- o2bootloader/            # 引导加载程序</span><br></pre></td></tr></table></figure>
+
+<h2 id="启动和运行主流程"><a href="#启动和运行主流程" class="headerlink" title="启动和运行主流程"></a>启动和运行主流程</h2><h3 id="启动流程"><a href="#启动流程" class="headerlink" title="启动流程"></a>启动流程</h3><ol>
+<li><p>上电后从o2bootloader引导区启动</p>
+</li>
+<li><p>初始化MCU系统时钟和基本外设</p>
+</li>
+<li><p>初始化电量计参数和查找表</p>
+</li>
+<li><p>调用fg_init函数初始化电量计算法库</p>
+</li>
+<li><p>进入主循环</p>
+</li>
+</ol>
+<h3 id="主循环流程"><a href="#主循环流程" class="headerlink" title="主循环流程"></a>主循环流程</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">[上电] → [初始化] → [主循环&#123;</span><br><span class="line">  读取电池数据(电压/电流/温度)</span><br><span class="line">  处理电量计算法</span><br><span class="line">  更新SOC和其他电池状态</span><br><span class="line">  处理SBS通信请求</span><br><span class="line">  进入低功耗状态</span><br><span class="line">&#125;]</span><br></pre></td></tr></table></figure>
+
+<p>主程序采用状态机设计，根据不同的电池状态(充电&#x2F;放电&#x2F;空闲)调用不同的处理函数。</p>
+<h3 id="模块关系和流程图"><a href="#模块关系和流程图" class="headerlink" title="模块关系和流程图"></a>模块关系和流程图</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">[硬件层]</span><br><span class="line">  │</span><br><span class="line">  ├── MCU外设(ADC/I2C/Flash) </span><br><span class="line">  │       │</span><br><span class="line">  │       ▼</span><br><span class="line">  ├── 驱动层(chip/) </span><br><span class="line">  │       │</span><br><span class="line">  │       ▼</span><br><span class="line">[软件层]</span><br><span class="line">  │       </span><br><span class="line">  ├── 电量计算法核心(lib_fg) ◄────┐</span><br><span class="line">  │       │                       │</span><br><span class="line">  │       ▼                       │</span><br><span class="line">  ├── 电池包管理(lib_pg)          │</span><br><span class="line">  │       │                       │</span><br><span class="line">  │       ▼                       │</span><br><span class="line">  ├── 应用层(user/main)           │</span><br><span class="line">  │       │                       │</span><br><span class="line">  │       ▼                       │</span><br><span class="line">  ├── SBS通信层(sbsd)             │</span><br><span class="line">  │       │                       │</span><br><span class="line">  │       ▼                       │</span><br><span class="line">[数据层]                          │</span><br><span class="line">  │                               │</span><br><span class="line">  └── 查找表(table/) ─────────────┘</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">读取原始数据(电压/电流/温度) </span><br><span class="line">       │</span><br><span class="line">       ▼</span><br><span class="line">数据过滤(filter.c) </span><br><span class="line">       │</span><br><span class="line">       ▼</span><br><span class="line">状态判断(充电/放电/空闲)</span><br><span class="line">       │</span><br><span class="line">       ┌───────────┬────────────┐</span><br><span class="line">       ▼           ▼            ▼</span><br><span class="line">   充电状态     放电状态      空闲状态</span><br><span class="line">   处理函数     处理函数      处理函数</span><br><span class="line">       │           │            │</span><br><span class="line">       └───────────┼────────────┘</span><br><span class="line">                   │</span><br><span class="line">                   ▼</span><br><span class="line">         SOC计算(库伦积分+OCV校正)</span><br><span class="line">                   │</span><br><span class="line">                   ▼</span><br><span class="line">            电量计状态更新</span><br><span class="line">                   │</span><br><span class="line">                   ▼</span><br><span class="line">              SBS数据更新</span><br></pre></td></tr></table></figure>
+
+<h2 id="I2C-SBS通信命令"><a href="#I2C-SBS通信命令" class="headerlink" title="I2C SBS通信命令"></a>I2C SBS通信命令</h2><p>SBS（Smart Battery System）通信是电量计与主机通信的标准协议。该项目中在sbsd.c&#x2F;h文件实现了SBS标准通信命令：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line">| 命令码 | 命令名称 | 描述 |</span><br><span class="line">|-------|---------|------|</span><br><span class="line">| 0x00 | ManufacturerAccess | 制造商访问 |</span><br><span class="line">| 0x01 | RemainingCapacityAlarm | 剩余容量警报 |</span><br><span class="line">| 0x02 | RemainingTimeAlarm | 剩余时间警报 |</span><br><span class="line">| 0x03 | BatteryMode | 电池模式 |</span><br><span class="line">| 0x04 | Temperature | 温度 |</span><br><span class="line">| 0x05 | Voltage | 电压 |</span><br><span class="line">| 0x06 | Current | 电流 |</span><br><span class="line">| 0x07 | AverageCurrent | 平均电流 |</span><br><span class="line">| 0x08 | MaxError | 最大误差 |</span><br><span class="line">| 0x09 | RelativeStateOfCharge | 相对电量百分比 |</span><br><span class="line">| 0x0A | AbsoluteStateOfCharge | 绝对电量百分比 |</span><br><span class="line">| 0x0B | RemainingCapacity | 剩余容量 |</span><br><span class="line">| 0x0C | FullChargeCapacity | 满充容量 |</span><br><span class="line">| 0x0D | RunTimeToEmpty | 运行剩余时间 |</span><br><span class="line">| 0x0E | AverageTimeToEmpty | 平均剩余时间 |</span><br><span class="line">| 0x0F | AverageTimeToFull | 平均充满时间 |</span><br><span class="line">| 0x10 | ChargingCurrent | 充电电流 |</span><br><span class="line">| 0x11 | ChargingVoltage | 充电电压 |</span><br><span class="line">| 0x12 | BatteryStatus | 电池状态 |</span><br><span class="line">| 0x13 | CycleCount | 循环次数 |</span><br><span class="line">| 0x14 | DesignCapacity | 设计容量 |</span><br><span class="line">| 0x15 | DesignVoltage | 设计电压 |</span><br><span class="line">| 0x16 | SpecificationInfo | 规格信息 |</span><br><span class="line">| 0x17 | ManufactureDate | 生产日期 |</span><br><span class="line">| 0x18 | SerialNumber | 序列号 |</span><br><span class="line">| 0x19 | ManufacturerName | 制造商名称 |</span><br><span class="line">| 0x1A | DeviceName | 设备名称 |</span><br><span class="line">| 0x1B | DeviceChemistry | 电池化学成分 |</span><br><span class="line">| 0x1C | ManufacturerData | 制造商数据 |</span><br><span class="line">| 0x3C-0x3F | GGMEM0-GGMEM8 | 调试内存区域 |</span><br></pre></td></tr></table></figure>
+
+<p>此外，项目还实现了一些扩展命令，用于调试和配置电量计算法参数。</p>
+<h2 id="电量计算法fg-lib分析"><a href="#电量计算法fg-lib分析" class="headerlink" title="电量计算法fg_lib分析"></a>电量计算法fg_lib分析</h2><h3 id="核心数据结构"><a href="#核心数据结构" class="headerlink" title="核心数据结构"></a>核心数据结构</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">typedef *struct* &#123;</span><br><span class="line">  // 电量计状态</span><br><span class="line">  *int* status;         // 电量计状态标志位</span><br><span class="line">  // 容量相关</span><br><span class="line">  *int* fcc;          // 满充容量(Full Charge Capacity)</span><br><span class="line">  *int* facc;          // 满充绝对容量(Full Absolute Charge Capacity)</span><br><span class="line">  *int* rca;          // 剩余容量(Remaining Capacity)</span><br><span class="line">  *int* chgcap;         // 充电容量</span><br><span class="line"></span><br><span class="line">  // SOC相关</span><br><span class="line">  *int* soc;          // 当前SOC百分比(0-10000，对应0-100%)</span><br><span class="line">  *int* soc_raw;        // 原始SOC</span><br><span class="line">  *int* soc_now;        // 实时SOC</span><br><span class="line">  *int* rsoc_now;        // 相对SOC</span><br><span class="line"></span><br><span class="line">  // 电池参数</span><br><span class="line">  *int* cell_temp;       // 电池温度</span><br><span class="line">  *int* cell_volt;       // 电池电压</span><br><span class="line">  *int* cell_curr;       // 电池电流</span><br><span class="line"></span><br><span class="line">  // 算法参数</span><br><span class="line">  *int* parm_eocmv;       // 充电截止电压</span><br><span class="line">  *int* parm_eocma;       // 充电截止电流</span><br><span class="line">  *int* parm_eodmv;       // 放电截止电压</span><br><span class="line"></span><br><span class="line">  // 时间记录</span><br><span class="line">  *unsigned* *int* chgtime;    // 充电时间</span><br><span class="line">  *unsigned* *int* dsgtime;    // 放电时间</span><br><span class="line">  *unsigned* *int* idletime;   // 空闲时间</span><br><span class="line"></span><br><span class="line">  // 表格数据</span><br><span class="line">  FG_LUT_T fg_tbls;      // 查找表结构</span><br><span class="line"></span><br><span class="line">  // 滤波相关</span><br><span class="line">  *int* cavgmov;        // 移动平均电流</span><br><span class="line">  *int* cavgcntr[4];      // 电流滤波器</span><br><span class="line">&#125; LIB_FG_TYPE_T;</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="算法核心模块"><a href="#算法核心模块" class="headerlink" title="算法核心模块"></a>算法核心模块</h3><h4 id="电量计状态机"><a href="#电量计状态机" class="headerlink" title="电量计状态机"></a>电量计状态机</h4><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">电量计使用状态机管理不同的工作状态：</span><br><span class="line">\#define FG_STAT_INIT    0x00000001 // 初始化状态</span><br><span class="line">\#define FG_STAT_CHG     0x00000002 // 充电状态</span><br><span class="line">\#define FG_STAT_DSG     0x00000004 // 放电状态</span><br><span class="line">\#define FG_STAT_IDLE    0x00000008 // 空闲状态</span><br><span class="line">\#define FG_STAT_CHG_CC   0x00000010 // 恒流充电</span><br><span class="line">\#define FG_STAT_CHG_CV   0x00000020 // 恒压充电</span><br><span class="line">\#define FG_STAT_CHG_EOC   0x00000040 // 充电截止</span><br><span class="line">\#define FG_STAT_DSG_EOD   0x00000080 // 放电截止</span><br><span class="line">\#define FG_STAT_DSG_FST1  0x00000100 // 快速放电1</span><br><span class="line">\#define FG_STAT_DSG_FST2  0x00000200 // 快速放电2</span><br><span class="line">\#define FG_STAT_DSG_LT   0x00000400 // 低温放电</span><br></pre></td></tr></table></figure>
+
+
+
+<h4 id="SOC计算核心"><a href="#SOC计算核心" class="headerlink" title="SOC计算核心"></a>SOC计算核心</h4><p>SOC (State of Charge) 计算采用混合算法：</p>
+<ol>
+<li><p>库伦积分法</p>
+<p>：根据电流积分计算电量变化</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">// 电流积分计算</span><br><span class="line">  delta_capacity = (current * delta_time) / 3600; // 单位：mAh</span><br><span class="line">  rca = rca - delta_capacity; // 更新剩余容量</span><br><span class="line">  soc = (rca * 10000) / fcc;  // 计算SOC(0-10000)</span><br></pre></td></tr></table></figure>
+
+
+</li>
+<li><p>OCV校准</p>
+<p>：通过电压查表获取SOC</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"> // 通过OCV查表获取SOC</span><br><span class="line">  FG_ERROR_T fg_get_soc_by_ocv(FG_HANDLE_T **handle*, *short* *ocv_mv*, *short* **soc*)</span><br><span class="line">  &#123;</span><br><span class="line">​    // 通过一维表查找获取SOC</span><br><span class="line">​    return lut_one_axis_r(handle, &amp;(((LIB_FG_TYPE_T *)handle)-&gt;fg_tbls.ocv_tbl), ocv_mv, soc);</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure>
+
+
+</li>
+<li><p>混合算法</p>
+<p>：结合库伦积分和OCV校准</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"> // 空闲状态下的OCV校准</span><br><span class="line">  if (idle_time &gt; OCV_RELAX_TIME) &#123;</span><br><span class="line">​    // 获取OCV对应的SOC</span><br><span class="line">​    fg_get_soc_by_ocv(handle, ocv, &amp;ocv_soc);</span><br><span class="line"></span><br><span class="line">​    // 计算偏差</span><br><span class="line">​    delta = ocv_soc - current_soc;</span><br><span class="line"></span><br><span class="line">​    // 如果偏差超过阈值，进行校准</span><br><span class="line">​    if (abs(delta) &gt; OCV_DELTA_THRESHOLD) &#123;</span><br><span class="line">​      // 使用滤波平滑过渡</span><br><span class="line">​      current_soc = current_soc + (delta * OCV_FILTER_FACTOR) / 100;</span><br><span class="line">​    &#125;</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure></li>
+</ol>
+<h4 id="温度补偿"><a href="#温度补偿" class="headerlink" title="温度补偿"></a>温度补偿</h4><p>温度对电池容量和电压有显著影响，算法中实现了温度补偿：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">// 温度补偿</span><br><span class="line">FG_ERROR_T fg_get_temp_factor(FG_HANDLE_T **handle*, *short* *temp*, *short* **factor*)</span><br><span class="line">&#123;</span><br><span class="line">  // 查表获取温度补偿系数</span><br><span class="line">  return lut_one_axis_f(handle, &amp;(((LIB_FG_TYPE_T *)handle)-&gt;fg_tbls.temp_factor_tbl), temp, factor);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// 应用温度补偿</span><br><span class="line">fcc_temp = (fcc * temp_factor) / 1000; // 温度修正后的满充容量</span><br></pre></td></tr></table></figure>
+
+
+
+<h4 id="老化补偿"><a href="#老化补偿" class="headerlink" title="老化补偿"></a>老化补偿</h4><p>电池循环次数增加会导致容量衰减，算法实现了老化补偿：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">// 老化因子计算</span><br><span class="line">*int* fg_check_agefactor(FG_HANDLE_T **handle*)</span><br><span class="line">&#123;</span><br><span class="line">  *int* temp = fg_idiv_rounddown(handle, ((LIB_FG_TYPE_T *)handle)-&gt;chgcap, ((LIB_FG_TYPE_T *)handle)-&gt;facc);</span><br><span class="line">  temp *= FG_AGING_RATIO_MIN; // 最小损耗 * 循环次数</span><br><span class="line">  temp = (10000 - temp) / 100;</span><br><span class="line">  return temp;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// 应用老化补偿</span><br><span class="line">fcc_aged = (fcc * (10000 - aging_factor)) / 10000; // 老化修正后的满充容量</span><br></pre></td></tr></table></figure>
+
+
+
+<h4 id="快速放电处理"><a href="#快速放电处理" class="headerlink" title="快速放电处理"></a>快速放电处理</h4><p>在大电流放电或低电压情况下，电池容量会急剧下降，算法实现了快速放电处理：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">static *int* fg_fast_dsg(FG_HANDLE_T **handle*, FG_PARAM_T **param*)</span><br><span class="line">&#123;</span><br><span class="line">  // 根据不同电压档位加速SOC下降速率</span><br><span class="line">  if (param-&gt;volt_lo_mv &lt; (((LIB_FG_TYPE_T *)handle)-&gt;parm_eodmv - ((LIB_FG_TYPE_T *)handle)-&gt;parm_ddv - 200)) &#123;</span><br><span class="line">​    // 每秒减少1%容量</span><br><span class="line">​    ((LIB_FG_TYPE_T *)handle)-&gt;deltauah -= fg_idiv_roundup(handle, ((LIB_FG_TYPE_T *)handle)-&gt;facc * param-&gt;delta_ms, 100);</span><br><span class="line">  &#125; else if (param-&gt;volt_lo_mv &lt; (((LIB_FG_TYPE_T *)handle)-&gt;parm_eodmv - ((LIB_FG_TYPE_T *)handle)-&gt;parm_ddv - 100)) &#123;</span><br><span class="line">​    // 每5秒减少1%容量</span><br><span class="line">​    ((LIB_FG_TYPE_T *)handle)-&gt;deltauah -= fg_idiv_roundup(handle, ((LIB_FG_TYPE_T *)handle)-&gt;facc * param-&gt;delta_ms, 500);</span><br><span class="line">  &#125; else &#123;</span><br><span class="line">​    // 每10秒减少1%容量</span><br><span class="line">​    ((LIB_FG_TYPE_T *)handle)-&gt;deltauah -= fg_idiv_roundup(handle, ((LIB_FG_TYPE_T *)handle)-&gt;facc * param-&gt;delta_ms, 1000);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  // 更新状态</span><br><span class="line">  ((LIB_FG_TYPE_T *)handle)-&gt;status |= FG_STAT_DSG_FST1;</span><br><span class="line">  return ERR_FG_NO_ERROR;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<h4 id="查表算法"><a href="#查表算法" class="headerlink" title="查表算法"></a>查表算法</h4><p>算法使用多种查表算法进行插值计算：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">// 一维表正向查找</span><br><span class="line">static *int* lut_one_axis_f(FG_HANDLE_T **handle*, *tbl_one_t* **table*, *short* *input*, *short* **output*)</span><br><span class="line">&#123;</span><br><span class="line">  // 通过输入值在表中查找并插值计算输出值</span><br><span class="line">  // ...</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// 一维表反向查找</span><br><span class="line">static *int* lut_one_axis_r(FG_HANDLE_T **handle*, *tbl_one_t* **table*, *short* *value*, *short* **output*)</span><br><span class="line">&#123;</span><br><span class="line">  // 通过目标值反向查找输入值</span><br><span class="line">  // ...</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// 三维表查找</span><br><span class="line">static *int* lut_three_axis(FG_HANDLE_T **handle*, *tbl_three_t* **table*, *short* *x_value*, *short* *y_value*, *short* *z_value*, *short* **output*)</span><br><span class="line">&#123;</span><br><span class="line">  // 三维插值计算</span><br><span class="line">  // ...</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="算法流程概述"><a href="#算法流程概述" class="headerlink" title="算法流程概述"></a>算法流程概述</h3><h4 id="初始化流程"><a href="#初始化流程" class="headerlink" title="初始化流程"></a>初始化流程</h4><p>fg_init() → 初始化电量计参数和状态 → 加载查找表 → OCV初始化SOC</p>
+<h4 id="充电处理流程"><a href="#充电处理流程" class="headerlink" title="充电处理流程"></a>充电处理流程</h4><p>检测充电状态 → 更新充电时间 → 库伦积分计算SOC → 判断CC&#x2F;CV模式 → 检查充电截止条件 → 更新SOC</p>
+<h4 id="放电处理流程"><a href="#放电处理流程" class="headerlink" title="放电处理流程"></a>放电处理流程</h4><p>检测放电状态 → 更新放电时间 → 库伦积分计算SOC → 温度补偿 → 低电压检测 → 快速放电处理 → 更新SOC</p>
+<h4 id="空闲处理流程"><a href="#空闲处理流程" class="headerlink" title="空闲处理流程"></a>空闲处理流程</h4><p>检测空闲状态 → 更新空闲时间 → 检查OCV稳定时间 → OCV校准SOC → 更新SOC</p>
+<h2 id="低功耗设计"><a href="#低功耗设计" class="headerlink" title="低功耗设计"></a>低功耗设计</h2><p>该电量计实现了以下低功耗策略：</p>
+<ol>
+<li><p>工作周期设计：系统大部分时间处于深度睡眠状态，定时唤醒采集数据和处理</p>
+</li>
+<li><p>外设优化：只在需要时启用ADC、I2C等外设</p>
+</li>
+<li><p>代码执行效率：优化算法减少指令执行次数</p>
+</li>
+<li><p>数据存储优化：使用查找表减少计算量</p>
+</li>
+</ol>
+<h2 id="调试和校准工具"><a href="#调试和校准工具" class="headerlink" title="调试和校准工具"></a>调试和校准工具</h2><p>根据Cobra工具文档，系统支持以下调试和校准功能：</p>
+<ol>
+<li>电流校准：通过Cobra工具校准0电流、正向电流和负向电流</li>
+<li>数据采集：通过SBS协议读取电量计内部状态</li>
+<li>内存调试：通过GGMEM0-GGMEM8访问电量计内部RAM</li>
+<li>参数配置：通过Cobra工具配置电量计算法参数</li>
+</ol>
+<h1 id="Part2-Firmware主要功能模块分析"><a href="#Part2-Firmware主要功能模块分析" class="headerlink" title="Part2 Firmware主要功能模块分析"></a>Part2 Firmware主要功能模块分析</h1><h2 id="通信接口（SBS命令流程）"><a href="#通信接口（SBS命令流程）" class="headerlink" title="通信接口（SBS命令流程）"></a>通信接口（SBS命令流程）</h2><p>以SBS命令0x0D(RSOC - 相对电量)为例，详细介绍整个处理流程，包含main.c、sbs.c和i2c.c三个文件在这个流程中的角色和作用</p>
+<h3 id="初始化阶段"><a href="#初始化阶段" class="headerlink" title="初始化阶段"></a>初始化阶段</h3><p>（1）main.c中的初始化：</p>
+<p>在main.c中：</p>
+<ol>
+<li>调用i2cif_init初始化I2C接口，设置从机地址和回调函数sbs_callback_i2c_slave</li>
+<li>调用sbsif_init初始化SBS接口</li>
+<li>调用gg_lib_init初始化电量计算库</li>
+</ol>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">int* main(*void*)</span><br><span class="line"></span><br><span class="line">&#123;</span><br><span class="line">  // ...系统初始化</span><br><span class="line"></span><br><span class="line">  // 初始化I2C接口，设置从机地址和回调函数</span><br><span class="line">  i2cif_init(param_board_cfg[PARM_BCFG_I2CADDR], tx_buff, sbs_callback_i2c_slave);</span><br><span class="line"></span><br><span class="line">  // 初始化SBS接口</span><br><span class="line">  sbsif_init(param_board_cfg[PARM_BCFG_I2CADDR]);</span><br><span class="line"></span><br><span class="line">  // 初始化电量计模块</span><br><span class="line">  gg_lib_init();</span><br><span class="line"></span><br><span class="line">  // ...其他初始化</span><br><span class="line"></span><br><span class="line">  // 进入主循环</span><br><span class="line">  main_loop();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>（2）sbs.c中的初始化</p>
+<ol>
+<li>初始化SBS接口数据结构</li>
+<li>初始化SBS数据缓冲区，包括SBS0D_RSOC（相对电量）的初始值</li>
+</ol>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">void* sbsif_init(*uint32_t* *slv_addr*)</span><br><span class="line"></span><br><span class="line">&#123;</span><br><span class="line">  psbsifHandle = (SBS_HANDLE_T *)sbs_mem;</span><br><span class="line">  ((SBSIF_T *)psbsifHandle)-&gt;sbs_slv_addr = slv_addr;</span><br><span class="line">  ((SBSIF_T *)psbsifHandle)-&gt;sbs_buff = sbs_data_buff;</span><br><span class="line"></span><br><span class="line">  // ...初始化各种SBS数据</span><br><span class="line"></span><br><span class="line">  // 初始相对电量为0</span><br><span class="line">  ((SBSIF_T *)psbsifHandle)-&gt;sbs_buff[SBS0D_RSOC] = 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>（2）i2c.c中的初始化</p>
+<ol>
+<li><p>初始化I2C接口数据结构</p>
+</li>
+<li><p>配置I2C硬件参数</p>
+</li>
+<li><p>设置回调函数，该函数将在I2C通信事件发生时被调用</p>
+</li>
+</ol>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">void* i2cif_init(*uint32_t* *slv_addr*, *uint8_t* **t_buff*, i2c_callback *p_callback*)</span><br><span class="line">&#123;</span><br><span class="line">  i2cif_p = (I2CIF_T *)(i2c_mem);</span><br><span class="line">  i2cif_p-&gt;pI2C_Base = I2C;      // I2C模块基地址</span><br><span class="line">  i2cif_p-&gt;slv_addr = slv_addr;    // 从机地址</span><br><span class="line">  i2cif_p-&gt;tx_buffer = t_buff;     // 发送缓冲区</span><br><span class="line">  i2cif_p-&gt;i2c_callback_f = p_callback; // 回调函数</span><br><span class="line"></span><br><span class="line">  // ...配置I2C硬件</span><br><span class="line"></span><br><span class="line">  // 启用中断</span><br><span class="line">  Chip_I2C_EnableInts(i2cif_p-&gt;pI2C_Base, (...));</span><br><span class="line">  Chip_I2C_Enable(i2cif_p-&gt;pI2C_Base);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="电量数据更新阶段"><a href="#电量数据更新阶段" class="headerlink" title="电量数据更新阶段"></a>电量数据更新阶段</h3><p>（1）main.c中的电量数据更新：</p>
+<p>主循环调用gg_step计算最新的电量数据<br>调用gg_sync_result将电量计算结果同步到SBS数据<br>调用sbsif_update和sbsif_update_time更新SBS数据</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">void* main_loop()</span><br><span class="line">&#123;</span><br><span class="line">  while (1) &#123;</span><br><span class="line">​    // ...其他循环处理</span><br><span class="line">​    // 更新电量计算</span><br><span class="line">​    gg_step(passSec);</span><br><span class="line">​    // 同步电量计结果到SBS</span><br><span class="line">​    gg_sync_result();</span><br><span class="line">​    // 更新SBS数据</span><br><span class="line">​    sbsif_update(1);</span><br><span class="line">​    sbsif_update_time();</span><br><span class="line">​    // ...其他处理</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">static *void* gg_sync_result(*void*)</span><br><span class="line"></span><br><span class="line">&#123;</span><br><span class="line">  // 将电量计计算结果同步到SBS数据</span><br><span class="line">  sbsif_set_data(SBS0D_RSOC, gg_result.rsoc);</span><br><span class="line">  // ...更新其他SBS数据</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>（2）sbs.c中的电量数据更新</p>
+<p>sbsif_set_data函数允许外部模块（如电量计）直接设置SBS数据<br>sbsif_update函数基于库仑计数据和满充容量计算相对电量<br>将计算结果存储在SBS0D_RSOC（相对电量）中</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">void sbsif_update(uint8_t updata_cc)</span><br><span class="line">&#123;</span><br><span class="line">    // ...更新其他数据</span><br><span class="line">    </span><br><span class="line"></span><br><span class="line">    // 更新相对电量</span><br><span class="line">    ((SBSIF_T *)psbsifHandle)-&gt;sbs_val = ((SBSIF_T *)psbsifHandle)-&gt;sbs_buff[SBS5F_CCACCMAH];</span><br><span class="line">    ((SBSIF_T *)psbsifHandle)-&gt;sbs_val *= 100;</span><br><span class="line">    ((SBSIF_T *)psbsifHandle)-&gt;sbs_val /= ((SBSIF_T *)psbsifHandle)-&gt;sbs_buff[SBS10_FCC];</span><br><span class="line">    temp1 = ((SBSIF_T *)psbsifHandle)-&gt;sbs_val;</span><br><span class="line">    if (temp1 &gt; 100)</span><br><span class="line">        temp1 = 100;</span><br><span class="line">    </span><br><span class="line">    ((SBSIF_T *)psbsifHandle)-&gt;sbs_buff[SBS0E_ASOC] = temp1;</span><br><span class="line">    ((SBSIF_T *)psbsifHandle)-&gt;sbs_buff[SBS0D_RSOC] = ((SBSIF_T *)psbsifHandle)-&gt;sbs_buff[SBS0E_ASOC];</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">void sbsif_set_data(SBS_DATA_T index, int32_t ivalue)</span><br><span class="line">&#123;</span><br><span class="line">    if (index &lt; SBSD_CMD_MAX) &#123;</span><br><span class="line">        sbs_data_buff[index] = ivalue;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="I2C通信阶段-处理SBS-0x0D命令"><a href="#I2C通信阶段-处理SBS-0x0D命令" class="headerlink" title="I2C通信阶段 - 处理SBS 0x0D命令"></a>I2C通信阶段 - 处理SBS 0x0D命令</h3><p>当上位机发送SBS命令0x0D（读取相对电量）时：</p>
+<p>（1）i2c.c中的命令接收</p>
+<p>首先接收SBS命令字节(0x0D)并识别它<br>当上位机发送读请求时，调用回调函数准备要发送的数据<br>当I2C发送缓冲区需要数据时，发送预先准备好的数据</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">I2C_STATUS_T i2cif_slave_handle(void)</span><br><span class="line">&#123;</span><br><span class="line">    // 地址匹配检测</span><br><span class="line">    if (i2cif_p-&gt;isr2stat &amp; I2C_ISR2_SLV_ADDR) &#123;</span><br><span class="line">        // 检查I2C方向（读/写）</span><br><span class="line">        if (i2cif_p-&gt;intstat &amp; I2C_ISR1_SLV_ADDR_DIR) &#123;</span><br><span class="line">            // 读操作 - 准备发送数据</span><br><span class="line">            i2cif_p-&gt;i2c_state = I2C_XFER_SLVSND;</span><br><span class="line">            // ...</span><br><span class="line">            i2cif_p-&gt;i2c_status = I2C_STATUS_TXDATA;</span><br><span class="line">            if (i2cif_p-&gt;i2c_callback_f) &#123;</span><br><span class="line">                i2cif_p-&gt;i2c_callback_f(i2cif_p-&gt;i2c_status, i2cif_p-&gt;sbd_idx);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125; else &#123;</span><br><span class="line">            // 写操作 - 准备接收命令</span><br><span class="line">            i2cif_p-&gt;i2c_state = I2C_XFER_SLVRCV;</span><br><span class="line">            i2cif_p-&gt;rx_idx = 0;</span><br><span class="line">            // ...</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    // 接收数据</span><br><span class="line">    if (i2cif_p-&gt;isr2stat &amp; I2C_ISR2_SLV_RXNE) &#123;</span><br><span class="line">        i2cif_p-&gt;data = Chip_I2C_ReadRXData(i2cif_p-&gt;pI2C_Base);</span><br><span class="line">        </span><br><span class="line">        // 第一个字节是SBS命令</span><br><span class="line">        if (i2cif_p-&gt;rx_idx == 0) &#123;</span><br><span class="line">            i2cif_p-&gt;i2c_cmd = (uint8_t)i2cif_p-&gt;data; // 0x0D</span><br><span class="line">            </span><br><span class="line">            // 查找命令定义</span><br><span class="line">            do &#123;</span><br><span class="line">                if (((sbsd_cmd_def[i2cif_p-&gt;sbd_idx] &amp; SBSD_CMD_Msk) &gt;&gt; SBSD_CMD_Pos) == i2cif_p-&gt;i2c_cmd) &#123;</span><br><span class="line">                    break;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125; while ((i2cif_p-&gt;sbd_idx++) &lt; SBSD_CMD_MAX);</span><br><span class="line">            </span><br><span class="line">            // ...处理命令</span><br><span class="line">        &#125;</span><br><span class="line">        </span><br><span class="line">        // ...</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    // 发送数据</span><br><span class="line">    if (i2cif_p-&gt;isr2stat &amp; I2C_ISR2_SLV_TXIS &amp;&amp; i2cif_p-&gt;i2c_state == I2C_XFER_SLVSND) &#123;</span><br><span class="line">        if (i2cif_p-&gt;tx_idx &lt; i2cif_p-&gt;tx_size) &#123;</span><br><span class="line">            if (i2cif_p-&gt;tx_buffer) &#123;</span><br><span class="line">                i2cif_p-&gt;data = *i2cif_p-&gt;tx_buffer;</span><br><span class="line">                i2cif_p-&gt;tx_buffer++;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        </span><br><span class="line">        // ...</span><br><span class="line">        </span><br><span class="line">        i2cif_p-&gt;tx_idx++;</span><br><span class="line">        Chip_I2C_WriteTXData(i2cif_p-&gt;pI2C_Base, i2cif_p-&gt;data);</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    // ...</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>（2）main.c中的I2C回调处理</p>
+<p>回调函数sbs_callback_i2c_slave处理I2C事件<br>当接收到状态I2C_STATUS_TXDATA时，准备发送数据<br>对于命令SBS0D_RSOC，调用sbsif_get_data获取当前相对电量<br>将数据填充到发送缓冲区<br>调用i2cif_set_tx通知I2C模块准备发送这些数据</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line">static void sbs_callback_i2c_slave(uint32_t status, uint32_t n)</span><br><span class="line">&#123;</span><br><span class="line">    switch (status) &#123;</span><br><span class="line">        case I2C_STATUS_TXDATA:</span><br><span class="line">            // 准备发送数据</span><br><span class="line">            switch (n) &#123;</span><br><span class="line">                case SBS0D_RSOC:</span><br><span class="line">                    // 准备发送相对电量数据</span><br><span class="line">                    value = sbsif_get_data(SBS0D_RSOC);</span><br><span class="line">                    </span><br><span class="line">                    // 设置发送缓冲区</span><br><span class="line">                    *tx_ptr++ = (uint8_t)value;</span><br><span class="line">                    *tx_ptr++ = (uint8_t)(value &gt;&gt; 8);</span><br><span class="line">                    </span><br><span class="line">                    // 设置要发送的数据大小</span><br><span class="line">                    i2cif_set_tx(tx_cnt, tx_buff);</span><br><span class="line">                    break;</span><br><span class="line">                </span><br><span class="line">                // ...处理其他SBS命令</span><br><span class="line">            &#125;</span><br><span class="line">            break;</span><br><span class="line">        </span><br><span class="line">        // ...处理其他I2C状态</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>（3）sbs.c中的数据获取</p>
+<p>sbsif_get_data函数返回指定SBS命令的当前值<br>对于SBS0D_RSOC，返回当前存储的相对电量值</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">int32_t sbsif_get_data(SBS_DATA_T index)</span><br><span class="line">&#123;</span><br><span class="line">    if (index &gt;= SBSD_CMD_MAX)</span><br><span class="line">        return sbs_data_buff[SBS03_BATTMODE];</span><br><span class="line">    else</span><br><span class="line">        return sbs_data_buff[index]; // 返回SBS0D_RSOC的值</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="完整流程图解"><a href="#完整流程图解" class="headerlink" title="完整流程图解"></a>完整流程图解</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line">【初始化阶段】</span><br><span class="line">main.c:main() </span><br><span class="line">    ↓</span><br><span class="line">    ├── i2c.c:i2cif_init() → 初始化I2C接口</span><br><span class="line">    ├── sbs.c:sbsif_init() → 初始化SBS数据接口</span><br><span class="line">    └── main.c:gg_lib_init() → 初始化电量计算库</span><br><span class="line"></span><br><span class="line">【电量数据更新阶段 - 周期性执行】</span><br><span class="line">main.c:main_loop()</span><br><span class="line">    ↓</span><br><span class="line">    ├── main.c:gg_step() → 电量计算</span><br><span class="line">    ├── main.c:gg_sync_result() → 同步电量计结果</span><br><span class="line">    │   └── sbs.c:sbsif_set_data(SBS0D_RSOC, ...) → 更新SBS数据</span><br><span class="line">    ├── sbs.c:sbsif_update() → 更新SBS接口数据</span><br><span class="line">    └── sbs.c:sbsif_update_time() → 更新时间预测数据</span><br><span class="line"></span><br><span class="line">【I2C通信阶段 - 上位机请求时】</span><br><span class="line">上位机发送SBS命令0x0D</span><br><span class="line">    ↓</span><br><span class="line">i2c.c:I2C_IRQHandler() → I2C中断处理</span><br><span class="line">    ↓</span><br><span class="line">i2c.c:i2cif_slave_handle() → 识别命令0x0D</span><br><span class="line">    ↓</span><br><span class="line">main.c:sbs_callback_i2c_slave() → 处理I2C回调</span><br><span class="line">    ↓</span><br><span class="line">sbs.c:sbsif_get_data(SBS0D_RSOC) → 获取当前相对电量值</span><br><span class="line">    ↓</span><br><span class="line">main.c:sbs_callback_i2c_slave() → 准备发送数据</span><br><span class="line">    ↓</span><br><span class="line">i2c.c:i2cif_set_tx() → 设置发送缓冲区</span><br><span class="line">    ↓</span><br><span class="line">i2c.c:i2cif_slave_handle() → 通过I2C发送数据</span><br><span class="line">    ↓</span><br><span class="line">上位机接收相对电量数据</span><br></pre></td></tr></table></figure>
+
+<h3 id="SBS命令的隐式支持"><a href="#SBS命令的隐式支持" class="headerlink" title="SBS命令的隐式支持"></a>SBS命令的隐式支持</h3><p>注意sbs_callback_i2c_slave中的default流程，可能隐藏支持一些SBS命令，例如SBS30_CV</p>
+<p>每秒轮询更新eocmv之后，存储到sbs buffer的SBS30_CV：</p>
+<pre><code>smart_charge_func:
+	((SBSIF_T *)psbsifHandle)-&gt;sbs_buff[SBS30_CV] = eocmv;
+	((SBSIF_T *)psbsifHandle)-&gt;sbs_buff[SBS34_EOC] = eocma;
+</code></pre>
+<p>((SBSIF_T *)psbsifHandle)-&gt;sbs_buff和sbs_data_buff指向同一个内存区域：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">void sbsif_init(uint32_t slv_addr)</span><br><span class="line">&#123;</span><br><span class="line">    psbsifHandle = (SBS_HANDLE_T *)sbs_mem;</span><br><span class="line">    ((SBSIF_T *)psbsifHandle)-&gt;sbs_slv_addr = slv_addr;</span><br><span class="line">    ((SBSIF_T *)psbsifHandle)-&gt;sbs_buff = sbs_data_buff;</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>Host发SBS30命令查询时，进到sbs_callback_i2c_slave的I2C_STATUS_TXDATA default，拿到sbs_data_buff数据：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">sbs_callback_i2c_slave:</span><br><span class="line"></span><br><span class="line">//命令返回数据大小</span><br><span class="line">size = ((sbsd_cmd_def[n] &amp; SBSD_LEN_Msk) &gt;&gt; SBSD_LEN_Pos);</span><br><span class="line"></span><br><span class="line">switch (n)&#123;</span><br><span class="line">... //显式定义的命令处理</span><br><span class="line">//隐式处理命令：只要定义过的命令数据写到了sbs_data_buff就能获取到</span><br><span class="line">default: </span><br><span class="line">	pBuff = (uint8_t*)(&amp;sbs_data_buff[n]);</span><br><span class="line">break;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">i2cif_set_tx(size, pBuff);</span><br></pre></td></tr></table></figure>
+
+<p>注意：</p>
+<ul>
+<li><p>default隐式支持的命令必须在sbsd_cmd_def数组中注册，否则I2C接口无法识别。</p>
+</li>
+<li><p>注册的数据大小要和传入值一致（0x30的SBSD_LEN_Pos处定义数据是4byte）</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">const unsigned int sbsd_cmd_def[SBSD_CMD_MAX] = &#123;</span><br><span class="line">	(0x03UL &lt;&lt; SBSD_CMD_Pos) | (4UL &lt;&lt; SBSD_LEN_Pos) | (SBSD_PRO_DIR_RW &lt;&lt; SBSD_PRO_DIR_Pos) | (SBSD_PRO_TYP_WWD),		//0x03000434UL, /* BattMode */</span><br><span class="line">	(0x09UL &lt;&lt; SBSD_CMD_Pos) | (4UL &lt;&lt; SBSD_LEN_Pos) | (SBSD_PRO_DIR_RD &lt;&lt; SBSD_PRO_DIR_Pos) | (SBSD_PRO_TYP_SWD),		//0x09000415UL, /* Voltage */</span><br><span class="line">	(0x0AUL &lt;&lt; SBSD_CMD_Pos) | (4UL &lt;&lt; SBSD_LEN_Pos) | (SBSD_PRO_DIR_RD &lt;&lt; SBSD_PRO_DIR_Pos) | (SBSD_PRO_TYP_SWD),		//0x0A000415UL, /* Current */</span><br><span class="line">	(0x0BUL &lt;&lt; SBSD_CMD_Pos) | (4UL &lt;&lt; SBSD_LEN_Pos) | (SBSD_PRO_DIR_RD &lt;&lt; SBSD_PRO_DIR_Pos) | (SBSD_PRO_TYP_SWD),		//0x0B000415UL, /* AvgCurrent */</span><br><span class="line">	(0x0DUL &lt;&lt; SBSD_CMD_Pos) | (4UL &lt;&lt; SBSD_LEN_Pos) | (SBSD_PRO_DIR_RD &lt;&lt; SBSD_PRO_DIR_Pos) | (SBSD_PRO_TYP_SWD),		//0x0D000415UL, /* RSOC */</span><br><span class="line">	(0x0EUL &lt;&lt; SBSD_CMD_Pos) | (4UL &lt;&lt; SBSD_LEN_Pos) | (SBSD_PRO_DIR_RD &lt;&lt; SBSD_PRO_DIR_Pos) | (SBSD_PRO_TYP_SWD),		//0x0E000415UL, /* ASOC */</span><br><span class="line"></span><br><span class="line">...</span><br><span class="line">(0x30UL &lt;&lt; SBSD_CMD_Pos) | (4UL &lt;&lt; SBSD_LEN_Pos) | (SBSD_PRO_DIR_RD &lt;&lt; SBSD_PRO_DIR_Pos) | (SBSD_PRO_TYP_WWD),			/* CHGVOLT */</span><br><span class="line">(0x32UL &lt;&lt; SBSD_CMD_Pos) | (4UL &lt;&lt; SBSD_LEN_Pos) | (SBSD_PRO_DIR_RD &lt;&lt; SBSD_PRO_DIR_Pos) | (SBSD_PRO_TYP_WWD),			/* CHGCURRENT */</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="参数初始化"><a href="#参数初始化" class="headerlink" title="参数初始化"></a>参数初始化</h2><p>FW参数有两个来源：</p>
+<p>代码的默认配置；</p>
+<p>Cobra写入到PRJ文件的Flash参数区域（GDM）</p>
+<h3 id="代码默认配置参数"><a href="#代码默认配置参数" class="headerlink" title="代码默认配置参数"></a>代码默认配置参数</h3><h3 id="Cobra写入Flash参数"><a href="#Cobra写入Flash参数" class="headerlink" title="Cobra写入Flash参数"></a>Cobra写入Flash参数</h3><p>以param_board_cfg[PARM_BCFG_DESIGNCAPACITY]为例：</p>
+<p>（1）定义：</p>
+<p>param_board_cfg[PARM_BCFG_DESIGNCAPACITY] 是从 Flash 中读取的设计容量参数</p>
+<p>在 parameter.h 中定义了参数的枚举类型：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">typedef enum &#123;</span><br><span class="line">  // ...</span><br><span class="line">  PARM_BCFG_DESIGNCAPACITY, //=14</span><br><span class="line">  // ...</span><br><span class="line">  PARM_BCFG_MAX</span><br><span class="line">&#125; PARM_TYPE_BCFG_T;</span><br></pre></td></tr></table></figure>
+
+<p>parameter.c 中定义了参数数组及其默认值（实际不是值，是Flash offset）</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">volatile signed int param_board_cfg[(PARM_BCFG_MAX)] = &#123;</span><br><span class="line">  // ...</span><br><span class="line">  0x1388,                //0x0D48, PARM_BCFG_DESIGNCAPACITY, 5000mAh</span><br><span class="line">  // ...</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>（2）参数加载过程：</p>
+<p>在 gdm_init() 函数中，位于 flash&#x2F;gdm.c 文件</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">void gdm_init()</span><br><span class="line">&#123;</span><br><span class="line">    // ...</span><br><span class="line">    if (M32(GDM_FLASH_TABLECHECKSUM) != NEWTON_FLASH_EMPTY_DWORD)</span><br><span class="line">    &#123;</span><br><span class="line">        // copy Board configure from flash</span><br><span class="line">        ptrmemu32 = (uint32_t *)param_board_cfg;</span><br><span class="line">        for (i = 0; i &lt; PARM_BCFG_MAX; i++)</span><br><span class="line">        &#123;</span><br><span class="line">            flashoffset = GDM_FLASH_BOARD_CONF + i * 4;</span><br><span class="line">            *(ptrmemu32 + i) = M32(flashoffset);</span><br><span class="line">        &#125;</span><br><span class="line">        // ...</span><br><span class="line">        gdm_load_sw_cali();</span><br><span class="line">        // ...</span><br><span class="line">    &#125;</span><br><span class="line">    // ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这段代码：<br>首先检查 Flash 中的校验和是否有效<br>如果有效，则从 Flash 地址 GDM_FLASH_BOARD_CONF 开始，按顺序读取所有配置参数<br>每个参数占用 4 字节，按照枚举顺序依次读取<br>将读取的值存储到 param_board_cfg 数组中</p>
+<p>（3）参数使用</p>
+<p>设计容量参数在多处被使用，例如在 user&#x2F;main.c 中初始化电量计算配置时：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">FG_CONFIG_T cfg;</span><br><span class="line">cfg.dsncap = (int32_t)(param_board_cfg[PARM_BCFG_DESIGNCAPACITY]);</span><br></pre></td></tr></table></figure>
+
+<p>在 sbs.c 中初始化 SBS 接口时：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">((SBSIF_T *)psbsifHandle)-&gt;sbs_buff[SBS18_DSNCAP] = param_board_cfg[PARM_BCFG_DESIGNCAPACITY];</span><br></pre></td></tr></table></figure>
+
+
+
+<h2 id="数据持久化（Flash-log日志）"><a href="#数据持久化（Flash-log日志）" class="headerlink" title="数据持久化（Flash log日志）"></a>数据持久化（Flash log日志）</h2><h3 id="log数据结构"><a href="#log数据结构" class="headerlink" title="log数据结构"></a>log数据结构</h3><p>log.c实现了电池管理系统的日志记录和数据持久化功能，主要包括：<br>历史数据记录：记录电池使用过程中的极值数据，如最高&#x2F;最低电压、最大充放电电流、最高&#x2F;最低温度等<br>参数持久化：存储电量计算所需的自学习参数，确保系统断电后能恢复重要数据<br>Flash管理：管理Flash存储空间，实现数据的读写和擦除功能<br>CRC校验：通过CRC校验确保持久化数据的完整性</p>
+<p>日志模块使用LOG_T结构体存储数据：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line">typedef struct &#123;</span><br><span class="line">    uint16_t checksum;        // CRC校验值</span><br><span class="line">    uint16_t logindex;        // 日志索引</span><br><span class="line">    uint32_t historiage;      // 历史容量老化累计</span><br><span class="line">    uint16_t rc;              // 当前剩余容量</span><br><span class="line">    uint8_t packinfo[64];     // 电池包信息</span><br><span class="line">    </span><br><span class="line"></span><br><span class="line">    // 极值记录</span><br><span class="line">    uint16_t vmaxcell1;       // 最高单体电压</span><br><span class="line">    uint16_t vmincell1;       // 最低单体电压</span><br><span class="line">    uint16_t cmaxchg;         // 最大充电电流</span><br><span class="line">    int16_t cmaxdsg;          // 最大放电电流</span><br><span class="line">    uint16_t maxtempcell;     // 最高温度</span><br><span class="line">    uint8_t maxtempcnt;       // 高温事件计数</span><br><span class="line">    uint16_t mintempcell;     // 最低温度</span><br><span class="line">    </span><br><span class="line">    // 时间统计</span><br><span class="line">    uint16_t timefw;          // 固件运行时间</span><br><span class="line">    uint16_t timeUT;          // 极低温时间</span><br><span class="line">    uint16_t timeELT;         // 超低温时间</span><br><span class="line">    uint16_t timeLTL;         // 低温下限时间</span><br><span class="line">    uint16_t timeLT;          // 低温时间</span><br><span class="line">    uint16_t timeLTH;         // 低温上限时间</span><br><span class="line">    uint16_t timeSTL;         // 标准温度下限时间</span><br><span class="line">    uint16_t timeRT;          // 参考温度时间</span><br><span class="line">    uint16_t timeSTH;         // 标准温度上限时间</span><br><span class="line">    uint16_t timeHT;          // 高温时间</span><br><span class="line">    uint16_t timeOT;          // 过温时间</span><br><span class="line"></span><br><span class="line">&#125; LOG_T;</span><br></pre></td></tr></table></figure>
+
+<h3 id="日志数据初始化和更新"><a href="#日志数据初始化和更新" class="headerlink" title="日志数据初始化和更新"></a>日志数据初始化和更新</h3><p>（1）初始化流程：初始化过程中，系统会从Flash中读取最新的日志记录，校验其完整性，并将数据同步到内存中</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line">void log_init(void)</span><br><span class="line">&#123;</span><br><span class="line">    // 初始化Flash接口</span><br><span class="line">    eflash_init();</span><br><span class="line">    </span><br><span class="line">    // 查找最新的日志</span><br><span class="line">    ret = find_latest_log();</span><br><span class="line">    if (-1 == ret) &#123;</span><br><span class="line">        // 没有找到日志，初始化缓冲区</span><br><span class="line">        log_init_buff();</span><br><span class="line">    &#125; else &#123;</span><br><span class="line">        // 读取日志数据</span><br><span class="line">        for (i = 0; i &lt; sizeof(LOG_T); i++)</span><br><span class="line">            log_mem[i] = Chip_Flash_Read_Main_Byte(...);</span><br><span class="line">        </span><br><span class="line">        // 校验CRC</span><br><span class="line">        for (i = LOG_DATA_START; i &lt; sizeof(LOG_T); i += 2)</span><br><span class="line">            wval = math_calc_crc16(*(uint16_t *)(log_mem + i), wval);</span><br><span class="line">            </span><br><span class="line">        if (wval == log_p-&gt;checksum) &#123;</span><br><span class="line">            // CRC校验通过，同步数据到内存</span><br><span class="line">            ((SBSIF_T *)psbsifHandle)-&gt;sbs_historiage = log_p-&gt;historiage;</span><br><span class="line">            vmaxcell1_now = log_p-&gt;vmaxcell1;</span><br><span class="line">            vmincell1_now = log_p-&gt;vmincell1;</span><br><span class="line">            // ...其他数据同步</span><br><span class="line">        &#125;</span><br><span class="line">        </span><br><span class="line">        // 日志索引自增</span><br><span class="line">        log_p-&gt;logindex++;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">void recover_dfcc_data()</span><br><span class="line">&#123;</span><br><span class="line">    // 从Flash读取DFCC数据</span><br><span class="line">    log_crc = Chip_Flash_Read_Main_DWord(PAGE_DEFCC_START &lt;&lt; PAGE_NO_SHIFT_TO_OFFSET);</span><br><span class="line"></span><br><span class="line">    // 计算数据的CRC校验值</span><br><span class="line">    for (i = 0; i &lt; DFCC_TABLE_LEN; i += 2) &#123;</span><br><span class="line">        value = Chip_Flash_Read_Main_Word((PAGE_DEFCC_START &lt;&lt; PAGE_NO_SHIFT_TO_OFFSET) + 4 + i);</span><br><span class="line">        wval = math_calc_crc16(value, wval);</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    // 校验CRC</span><br><span class="line">    if ((log_crc == wval) &amp;&amp; (wval != 0)) &#123;</span><br><span class="line">        // 复制数据到内存</span><br><span class="line">        fn_memcpy(DFCC_table, (uint8_t *)(PAGE_DEFCC_START &lt;&lt; PAGE_NO_SHIFT_TO_OFFSET) + 4, DFCC_TABLE_LEN);</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    // 类似地恢复充电FCC表和放电偏移量表...</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>（2）数据更新流程</p>
+<p>数据更新流程中，系统会持续监控电池参数的极值，并在特定条件下（如极值变化、定时更新、强制更新）将数据写入Flash。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br></pre></td><td class="code"><pre><span class="line">void update_log_data(uint8_t right_now)</span><br><span class="line">&#123;</span><br><span class="line">    // 更新电压极值</span><br><span class="line">    if (((SBSIF_T *)psbsifHandle)-&gt;sbs_buff[SBS3C_CELLMV01] &gt; vmaxcell1_now)</span><br><span class="line">        vmaxcell1_now = ((SBSIF_T *)psbsifHandle)-&gt;sbs_buff[SBS3C_CELLMV01];</span><br><span class="line">    </span><br><span class="line"></span><br><span class="line">    if (((SBSIF_T *)psbsifHandle)-&gt;sbs_buff[SBS3C_CELLMV01] &lt; vmincell1_now)</span><br><span class="line">        vmincell1_now = ((SBSIF_T *)psbsifHandle)-&gt;sbs_buff[SBS3C_CELLMV01];</span><br><span class="line">    </span><br><span class="line">    // 判断是否需要更新日志</span><br><span class="line">    if ((log_check_ultimate_value() &amp;&amp; lifetime_en) || right_now || (time_flag[10] &amp;&amp; lifetime_en)) &#123;</span><br><span class="line">        // 更新日志数据</span><br><span class="line">        log_p-&gt;historiage = ((SBSIF_T *)psbsifHandle)-&gt;sbs_agemah;</span><br><span class="line">        log_p-&gt;rc = sbsif_get_data(SBS0F_RC);</span><br><span class="line">        </span><br><span class="line">        if (lifetime_en) &#123;</span><br><span class="line">            log_p-&gt;vmaxcell1 = vmaxcell1_now;</span><br><span class="line">            log_p-&gt;vmincell1 = vmincell1_now;</span><br><span class="line">            log_p-&gt;cmaxchg = cmaxchg_now;</span><br><span class="line">            log_p-&gt;cmaxdsg = cmaxdsg_now;</span><br><span class="line">            log_p-&gt;maxtempcell = (maxtempcell_now - DK_BASE) / 10;</span><br><span class="line">            log_p-&gt;mintempcell = (mintempcell_now - DK_BASE) / 10;</span><br><span class="line">            log_p-&gt;maxtempcnt = maxtempcnt;</span><br><span class="line">            log_update_time();</span><br><span class="line">        &#125;</span><br><span class="line">        </span><br><span class="line">        // 计算CRC校验值</span><br><span class="line">        for (i = LOG_DATA_START; i &lt; sizeof(LOG_T); i += 2) &#123;</span><br><span class="line">            wval = math_calc_crc16(*(uint16_t *)(log_mem + i), wval);</span><br><span class="line">        &#125;</span><br><span class="line">        log_p-&gt;checksum = wval;</span><br><span class="line">        </span><br><span class="line">        // 写入Flash</span><br><span class="line">        write_log_into_flash();</span><br><span class="line">        log_p-&gt;logindex++;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    // 充电完成后更新自学习参数</span><br><span class="line">    if ((!charge_full_flag &amp;&amp; (sbsif_get_data(SBS16_BATTSTATUS) &amp; SBS16_FULLY_CHARGED)) || update_dfcc_flag) &#123;</span><br><span class="line">        if (log_check_update_condition()) &#123;</span><br><span class="line">            log_update_dfcc_data();</span><br><span class="line">            log_update_charge_fcc_data();</span><br><span class="line">            log_update_discharge_offset();</span><br><span class="line">        &#125;</span><br><span class="line">        update_dfcc_flag = 0;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="持久化数据类型"><a href="#持久化数据类型" class="headerlink" title="持久化数据类型"></a>持久化数据类型</h3><p>（1）基本电池信息日志</p>
+<p>由LOG_T结构体存储，包含：<br>电池容量老化历史<br>电压电流温度极值记录<br>各温度区间使用时间统计<br>这些数据用于追踪电池使用历史和健康状态。</p>
+<p>（2）放电容量动态学习表(DFCC)</p>
+<p>DFCC表存储了不同温度和电流条件下的放电容量校正因子，用于提高电量计算精度</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">void log_update_dfcc_data()</span><br><span class="line">&#123;</span><br><span class="line">    // 检查是否启用动态放电自学习</span><br><span class="line">    if (!plib_en_cfg-&gt;l_fg_dync_dsg_enable)</span><br><span class="line">        return;</span><br><span class="line"></span><br><span class="line">    // 擦除Flash页</span><br><span class="line">    eflash_erase_page(PAGE_DEFCC_START);</span><br><span class="line">    </span><br><span class="line">    // 计算CRC校验值</span><br><span class="line">    wval = log_calculate_crc((uint8_t *)DFCC_table, sizeof(DFCC_table));</span><br><span class="line">    </span><br><span class="line">    // 写入CRC校验值</span><br><span class="line">    eflash_mem_to_flash(PAGE_DEFCC_START, 0, 4, (uint8_t *)&amp;wval);</span><br><span class="line">    </span><br><span class="line">    // 写入DFCC表</span><br><span class="line">    eflash_mem_to_flashEX(PAGE_DEFCC_START, 4, sizeof(DFCC_table), (uint8_t *)DFCC_table);</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>（3）充电容量动态学习表(CFCC)</p>
+<p>充电FCC表记录了不同温度和电流条件下的充电容量校正数据，用于优化充电过程中的电量计算。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">void log_update_charge_fcc_data()</span><br><span class="line">&#123;</span><br><span class="line">    // 检查是否启用动态充电自学习</span><br><span class="line">    if (!plib_en_cfg-&gt;l_fg_dync_chg_enable)</span><br><span class="line">        return;</span><br><span class="line">    </span><br><span class="line">    // 计算CRC校验值</span><br><span class="line">    wval = log_calculate_crc((uint8_t *)charge_fcc_data, sizeof(charge_fcc_data));</span><br><span class="line">    </span><br><span class="line">    // 写入CRC校验值</span><br><span class="line">    eflash_mem_to_flash(PAGE_DEFCC_START, LOG_CHARGE_FCC_OFFSET, 4, (uint8_t *)&amp;wval);</span><br><span class="line">    </span><br><span class="line">    // 写入充电FCC表</span><br><span class="line">    eflash_mem_to_flash(PAGE_DEFCC_START, LOG_CHARGE_FCC_OFFSET + 4, sizeof(charge_fcc_data), (uint8_t *)charge_fcc_data);</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>（4）放电偏移量表</p>
+<p>放电偏移量表存储了不同条件下的放电偏移校正值，用于补偿放电过程中的误差。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">void log_update_discharge_offset(void)</span><br><span class="line">&#123;</span><br><span class="line">    // 检查是否启用动态放电自学习</span><br><span class="line">    if (!plib_en_cfg-&gt;l_fg_dync_dsg_enable)</span><br><span class="line">        return;</span><br><span class="line">    </span><br><span class="line"></span><br><span class="line">    // 计算CRC校验值</span><br><span class="line">    wval = log_calculate_crc((uint8_t *)discharge_offset, sizeof(discharge_offset));</span><br><span class="line">    </span><br><span class="line">    // 组装数据</span><br><span class="line">    fn_memcpy(log_buf, &amp;wval, 4);</span><br><span class="line">    fn_memcpy(log_buf + 4, discharge_offset, sizeof(discharge_offset));</span><br><span class="line">    </span><br><span class="line">    // 写入放电偏移量表</span><br><span class="line">    eflash_mem_to_flash(PAGE_DEFCC_START, LOG_DISCHARGE_OFFSET_OFFSET, 12, (uint8_t *)log_buf);</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="持久化的应用"><a href="#持久化的应用" class="headerlink" title="持久化的应用"></a>持久化的应用</h3><p>（1）电池电量计算精度提升</p>
+<p>问题：电池在不同温度、电流条件下的容量会有显著差异，使用固定参数难以保证准确性。<br>解决方案：通过日志模块记录DFCC表和充电FCC表，实现动态学习和参数调整。</p>
+<p>数据收集：<br>充放电过程中记录温度、电流等参数<br>完整放电&#x2F;充电周期后计算实际容量<br>参数更新：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">if (log_check_update_condition()) &#123;</span><br><span class="line">    log_update_dfcc_data();</span><br><span class="line">    log_update_charge_fcc_data();</span><br><span class="line">    log_update_discharge_offset();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>应用算法：<br>电量计根据当前温度和电流查表获取校正因子<br>应用校正因子调整容量计算</p>
+<p>（2）电池健康状态监测</p>
+<p>问题：需要监控电池寿命周期内的健康状态变化，为用户提供电池健康程度的指导。<br>解决方案：利用日志模块的极值记录功能。</p>
+<p>极值记录：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">if (((SBSIF_T *)psbsifHandle)-&gt;sbs_buff[SBS3C_CELLMV01] &gt; vmaxcell1_now)</span><br><span class="line">    vmaxcell1_now = ((SBSIF_T *)psbsifHandle)-&gt;sbs_buff[SBS3C_CELLMV01];</span><br><span class="line"></span><br><span class="line">// 定期持久化</span><br><span class="line">log_p-&gt;vmaxcell1 = vmaxcell1_now;</span><br></pre></td></tr></table></figure>
+
+<p>健康评估：<br>分析电压极值分布判断是否过充&#x2F;过放<br>通过温度极值记录判断是否经历过高&#x2F;低温<br>基于充放电电流极值评估是否有过大电流冲击</p>
+<p>容量衰减追踪：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">log_p-&gt;historiage = ((SBSIF_T *)psbsifHandle)-&gt;sbs_agemah;</span><br></pre></td></tr></table></figure>
+
+<p>（3）断电数据保护</p>
+<p>问题：电池管理系统断电后会丢失当前的电量计算参数和状态。<br>解决方案：关键参数的持久化存储与恢复。</p>
+<p>状态保存：<br>定期或在特定事件（如充满电）时保存电量计算状态<br>包括当前电量(RC)、最大容量(FCC)、学习参数等</p>
+<p>上电恢复：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">// 启动时恢复数据</span><br><span class="line">if (wval == log_p-&gt;checksum) &#123;</span><br><span class="line">    // CRC校验通过，同步数据</span><br><span class="line">    ((SBSIF_T *)psbsifHandle)-&gt;sbs_historiage = log_p-&gt;historiage;</span><br><span class="line">    vmaxcell1_now = log_p-&gt;vmaxcell1;</span><br><span class="line">    // ...其他数据恢复</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// 恢复学习参数</span><br><span class="line">recover_dfcc_data();</span><br></pre></td></tr></table></figure>
+
+<p>（4）Flash寿命管理</p>
+<p>考虑到Flash的有限擦写次数，系统采取了以下策略：<br>只在必要时（极值变化、定时更新）写入数据<br>使用日志循环写入机制，平均分布擦写压力</p>
+<h2 id="状态机（State-Machine）"><a href="#状态机（State-Machine）" class="headerlink" title="状态机（State Machine）"></a>状态机（State Machine）</h2><p>TODO</p>
+<h1 id="Part3：电量算法模块"><a href="#Part3：电量算法模块" class="headerlink" title="Part3：电量算法模块"></a>Part3：电量算法模块</h1><h2 id="OCV-table"><a href="#OCV-table" class="headerlink" title="OCV table"></a>OCV table</h2><p>OCV表在lib_fg.c中的确实应用主要集中在：<br>系统初始化时的SOC确定<br>静置状态下的SOC校正<br>电压与SOC之间的转换计算<br>反向查询电压</p>
+<p>（1）fg_init_soc函数：用于初始化SOC</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">static FG_ERROR_T fg_init_soc(FG_HANDLE_T *handle, short volt, short curr, short cellthm)</span><br><span class="line">&#123;</span><br><span class="line">    short soc = 0;</span><br><span class="line">    // 使用OCV表估算初始SOC</span><br><span class="line">    if (lut_soc_by_ocv(handle, volt, &amp;soc) != ERR_FG_NO_ERROR)</span><br><span class="line">        return ERR_FG_LUT_ERROR;</span><br><span class="line">    // ...设置初始SOC及库仑计数</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>（2）fg_idle_process函数：静置状态下的SOC校正</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">static FG_ERROR_T fg_idle_process(FG_HANDLE_T *handle, FG_PARAM_T *param)</span><br><span class="line">&#123;</span><br><span class="line">    // ...在静置条件下</span><br><span class="line">    // 使用OCV表估算SOC并进行校正</span><br><span class="line">    if (lut_soc_by_ocv(handle, tmp_volt, &amp;ocv_soc) == ERR_FG_NO_ERROR)</span><br><span class="line">    &#123;</span><br><span class="line">        // ...根据OCV表估算结果校正SOC</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>（3）lut_soc_by_ocv函数本身：OCV查表获取SOC</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">static FG_ERROR_T lut_soc_by_ocv(FG_HANDLE_T *handle, int volt, short *soc)</span><br><span class="line">&#123;</span><br><span class="line">    // 实现查表逻辑，根据电压和温度获取SOC</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>（3）使用OCV表反向查询电压</p>
+<p>lib_fg.c中的lut_ocv_by_soc函数提供了OCV表的反向查询能力，用于预测特定SOC点的电压：</p>
+<p>在以下场景有应用：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">static int fg_time_estimation(FG_HANDLE_T *handle, FG_PARAM_T *param)</span><br><span class="line">&#123;</span><br><span class="line">    short eod_ocv = 0;</span><br><span class="line">    int time_to_empty = 0;</span><br><span class="line"></span><br><span class="line">    // 预测放电终止点的OCV</span><br><span class="line">    if (lut_ocv_by_soc(handle, 0, &amp;eod_ocv) == ERR_FG_NO_ERROR)</span><br><span class="line">    &#123;</span><br><span class="line">        // 根据当前电压与终止电压的差距，以及当前放电速率，估算剩余时间</span><br><span class="line">        int voltage_drop = param-&gt;volt_lo_mv - eod_ocv;</span><br><span class="line">        int discharge_rate = voltage_drop * 3600 / ((LIB_FG_TYPE_T*)handle)-&gt;bat_avg_rate;</span><br><span class="line">        </span><br><span class="line">        time_to_empty = ((LIB_FG_TYPE_T*)handle)-&gt;cc_prv * 3600 / </span><br><span class="line">                        (param-&gt;current_ma * discharge_rate / 100);</span><br><span class="line">        </span><br><span class="line">        ((LIB_FG_TYPE_T*)handle)-&gt;time_to_empty = time_to_empty;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    return 0;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<h2 id="RC-table"><a href="#RC-table" class="headerlink" title="RC table"></a>RC table</h2><p>RC表是一个三维查找表，存储了电池在不同电压、电流和温度条件下电池内阻相关的容量校正因子。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">// RC表的查询实现</span><br><span class="line">// 输入电压、电流、温度，输出RC值</span><br><span class="line">static FG_ERROR_T lut_rc_f(FG_HANDLE_T *handle, short volt, short curr, short temp, short *output)</span><br><span class="line">&#123;</span><br><span class="line">    // 检查输入参数有效性</span><br><span class="line">    // 可能会对电流取绝对值</span><br><span class="line"></span><br><span class="line">    // 使用三维表查询函数获取RC值</span><br><span class="line">    // 可能调用三线性插值函数</span><br><span class="line">    </span><br><span class="line">    return ERR_FG_NO_ERROR; // 成功返回</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="RC表的应用"><a href="#RC表的应用" class="headerlink" title="RC表的应用"></a>RC表的应用</h3><p>RC表在fg_update中的应用</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">FG_ERROR_T fg_update(FG_HANDLE_T *handle, FG_PARAM_T *param, FG_RESULT_T *result)</span><br><span class="line">&#123;</span><br><span class="line">    // 更新电池状态</span><br><span class="line">    // ...</span><br><span class="line">    </span><br><span class="line"></span><br><span class="line">    // 在这里调用lut_rc_f获取RC值</span><br><span class="line">    </span><br><span class="line">    // 将RC值填充到结果结构体中</span><br><span class="line">    result-&gt;rc = ((LIB_FG_TYPE_T *)handle)-&gt;rc;</span><br><span class="line">    </span><br><span class="line">    return ERR_FG_NO_ERROR;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>RC表在放电过程中的应用</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">在fg_mobile_discharge_process函数中，RC表用于调整放电容量估计</span><br><span class="line"></span><br><span class="line">static FG_ERROR_T fg_mobile_discharge_process(FG_HANDLE_T *handle, FG_PARAM_T *param)</span><br><span class="line">&#123;</span><br><span class="line">    // 放电处理逻辑</span><br><span class="line">    </span><br><span class="line">    // 在这里调用lut_rc_f获取放电条件下的RC值</span><br><span class="line">    // 使用RC值调整容量估计</span><br><span class="line">    </span><br><span class="line">    // 更新内部状态</span><br><span class="line">    </span><br><span class="line">    return ERR_FG_NO_ERROR;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>RC表在充电过程中的应用</p>
+<p>在fg_mobile_charge_process函数中，RC表用于调整充电容量估计：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">static FG_ERROR_T fg_mobile_charge_process(FG_HANDLE_T *handle, FG_PARAM_T *param)</span><br><span class="line">&#123;</span><br><span class="line">    // 充电处理逻辑</span><br><span class="line"></span><br><span class="line">    // 在这里调用lut_rc_f获取充电条件下的RC值</span><br><span class="line">    // 使用RC值调整容量估计</span><br><span class="line">    </span><br><span class="line">    // 更新内部状态</span><br><span class="line">    </span><br><span class="line">    return ERR_FG_NO_ERROR;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>RC表在时间预估中的应用：</p>
+<p>用于fg_time_estimation函数中，影响剩余时间计算：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">static int fg_time_estimation(FG_HANDLE_T *handle, FG_PARAM_T *param)</span><br><span class="line">&#123;</span><br><span class="line">    // 在这里间接调用lut_rc_f获取的RC值</span><br><span class="line">    // 使用RC值调整剩余时间计算</span><br><span class="line">    </span><br><span class="line">    // 计算并更新time_to_empty或time_to_full</span><br><span class="line">    </span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>RC表在SOH计算中的应用：</p>
+<p>在soh_update函数中用于电池健康状态评估：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">static void soh_update(FG_HANDLE_T *handle, FG_PARAM_T *param)</span><br><span class="line">&#123;</span><br><span class="line">    // 在这里调用lut_rc_f获取标准条件下的RC值</span><br><span class="line">    // 使用RC值参与SOH计算</span><br><span class="line">   </span><br><span class="line">    // 更新SOH值</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="RC表小结"><a href="#RC表小结" class="headerlink" title="RC表小结"></a>RC表小结</h3><p>RC与电池内阻：</p>
+<p>RC表代表以下含义：<br>在放电过程中：RC表值较大表示内阻小、可用容量高；RC表值较小表示内阻大、可用容量低<br>在低温条件下：RC表值会降低，反映低温对容量的不利影响<br>在大电流条件下：RC表值会降低，反映大电流放电对有效容量的减少<br>在电池老化后：RC表配合SOH机制，反映容量衰减</p>
+<p>因为温度和负载情况(电流大小)都会最终反映到锂电池内阻上，RC表的容量值变化实际是与电池内阻相关：<br>IR压降补偿：<br>估算负载下的电压损失<br>计算实际OCV(开路电压)<br>提高电量估算精度</p>
+<p>容量校正：<br>调整电池在不同条件下的实际可用容量<br>考虑温度和电流对容量的影响</p>
+<p>放电终点预测：<br>根据内阻预测不同负载下的放电终止点<br>提高剩余时间估算精度</p>
+<p>RC表在实际应用中的一般流程：</p>
+<p>获取实时数据：读取电池电压、电流和温度<br>查询RC表：调用lut_rc_f函数，获取当前条件下的RC值<br>容量调整：根据RC值调整FCC(满充容量)和CC(当前容量)<br>SOC计算：基于调整后的容量计算SOC<br>结果输出：将RC值和其他计算结果返回给系统</p>
+<h2 id="DFCC-table"><a href="#DFCC-table" class="headerlink" title="DFCC table"></a>DFCC table</h2><h3 id="DFCC表的配置与初始化"><a href="#DFCC表的配置与初始化" class="headerlink" title="DFCC表的配置与初始化"></a>DFCC表的配置与初始化</h3><p>默认数据结构和初始值：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">// 表的维度定义</span><br><span class="line">#define DFCC_X 11  // SOC轴</span><br><span class="line">#define DFCC_Y 3   // 电流轴  </span><br><span class="line">#define DFCC_Z 4   // 温度轴</span><br><span class="line"></span><br><span class="line">// 各轴的数据范围</span><br><span class="line">const short DFCC_XDATA[DFCC_X] = &#123;500, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000&#125;; // SOC: 5%-100%</span><br><span class="line">const short DFCC_YDATA[DFCC_Y] = &#123;600, 1500, 3000&#125;;  // 电流: 600mA-3000mA</span><br><span class="line">const short DFCC_ZDATA[DFCC_Z] = &#123;-100, 0, 250, 550&#125;; // 温度: -10°C到55°C</span><br><span class="line"></span><br><span class="line">// DFCC表数据结构</span><br><span class="line">short DFCC_table[DFCC_Y * DFCC_Z][DFCC_X];  // 3D查找表</span><br></pre></td></tr></table></figure>
+
+<p>使用前的初始化：</p>
+<p>从main.c中的代码片段可以看到DFCC表是作为查找表(lut)的一部分进行初始化的：</p>
+<p>这段代码配置了一个三维查找表结构(tbl_three_t)，包含：<br>轴点数量：x_num, y_num, z_num<br>轴数据指针：p_x_start, p_y_start, p_z_start<br>表数据指针：p_data_start</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">lut.dfcc_tbl.x_num = DFCC_X;</span><br><span class="line">lut.dfcc_tbl.y_num = DFCC_Y;</span><br><span class="line">lut.dfcc_tbl.z_num = DFCC_Z;</span><br><span class="line">lut.dfcc_tbl.p_x_start = (short *)DFCC_XDATA;</span><br><span class="line">lut.dfcc_tbl.p_y_start = (short *)DFCC_YDATA;</span><br><span class="line">lut.dfcc_tbl.p_z_start = (short *)DFCC_ZDATA;</span><br><span class="line">lut.dfcc_tbl.p_data_start = (short *)DFCC_table;</span><br></pre></td></tr></table></figure>
+
+<p>查找表结构：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">typedef struct &#123;</span><br><span class="line">    int     x_num;              // X轴点数</span><br><span class="line">    int     y_num;              // Y轴点数</span><br><span class="line">    int     z_num;              // Z轴点数</span><br><span class="line">    short*  p_x_start;          // X轴数据起始指针</span><br><span class="line">    short*  p_y_start;          // Y轴数据起始指针</span><br><span class="line">    short*  p_z_start;          // Z轴数据起始指针</span><br><span class="line">    short*  p_data_start;       // 表数据起始指针</span><br><span class="line">&#125; tbl_three_t;</span><br><span class="line"></span><br><span class="line">typedef struct &#123;</span><br><span class="line">    tbl_read_t  readfunc;       // 表读取函数</span><br><span class="line">    tbl_one_t   thm_tbl;        // 温度表信息</span><br><span class="line">    tbl_one_t   ocv_tbl;        // OCV表信息</span><br><span class="line">    tbl_three_t rc_tbl;         // RC表信息</span><br><span class="line">    tbl_three_t dfcc_tbl;       // DFCC表信息</span><br><span class="line">&#125; FG_LUT_T;</span><br></pre></td></tr></table></figure>
+
+<h3 id="lut-dfcc-f查表函数"><a href="#lut-dfcc-f查表函数" class="headerlink" title="lut_dfcc_f查表函数"></a>lut_dfcc_f查表函数</h3><p>定义DFCC table为宏DDTABLE </p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">#define DDTABLE ((LIB_FG_TYPE_T *)handle)-&gt;fg_tbls.dfcc_tbl.p_data_start</span><br></pre></td></tr></table></figure>
+
+<p>在放电处理流程内调用lut_dfcc_f查表，过程：</p>
+<p>a) 输入参数限制</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">// SOC限制</span><br><span class="line">if (soc &lt; XDTABLE[0]) &#123;</span><br><span class="line">    soc = XDTABLE[0];</span><br><span class="line">&#125;</span><br><span class="line">if (soc &gt; XDTABLE[XDNUM - 1]) &#123;</span><br><span class="line">    soc = XDTABLE[XDNUM - 1];</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// 电流限制</span><br><span class="line">if (curr &lt; YDTABLE[0]) &#123;</span><br><span class="line">    curr = YDTABLE[0];</span><br><span class="line">&#125;</span><br><span class="line">if (curr &gt; YDTABLE[YDNUM - 1]) &#123;</span><br><span class="line">    curr = YDTABLE[YDNUM - 1];</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// 温度限制</span><br><span class="line">if (temp &lt; ZDTABLE[0]) &#123;</span><br><span class="line">    temp = ZDTABLE[0];</span><br><span class="line">&#125;</span><br><span class="line">if (temp &gt; ZDTABLE[ZDNUM - 1]) &#123;</span><br><span class="line">    temp = ZDTABLE[ZDNUM - 1];</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>b) 索引查找：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">// 查找SOC对应的索引</span><br><span class="line">for (IDX = 1; IDX &lt; XDNUM; IDX++) &#123;</span><br><span class="line">    if ((XDTABLE[IDX-1] &lt;= soc) &amp;&amp; (XDTABLE[IDX] &gt; soc)) &#123;</span><br><span class="line">        break;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// 查找电流对应的索引</span><br><span class="line">for (IDY = 1; IDY &lt; YDNUM; IDY++) &#123;</span><br><span class="line">    if ((YDTABLE[IDY-1] &lt;= curr) &amp;&amp; (YDTABLE[IDY] &gt; curr)) &#123;</span><br><span class="line">        break;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// 查找温度对应的索引</span><br><span class="line">for (IDZ = 1; IDZ &lt; ZDNUM; IDZ++) &#123;</span><br><span class="line">    if ((ZDTABLE[IDZ-1] &lt;= temp) &amp;&amp; (ZDTABLE[IDZ] &gt; temp)) &#123;</span><br><span class="line">        break;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>c) 三线性插值计算：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">// X轴(SOC)方向插值</span><br><span class="line">if (SVAL == STMP) &#123;</span><br><span class="line">    XFRACS = 1 * 100;</span><br><span class="line">&#125; else &#123;</span><br><span class="line">    XFRACS = fg_idiv(handle, (soc - STMP) * 100, (SVAL - STMP));</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// Y轴(电流)方向插值</span><br><span class="line">if (SVAL == STMP) &#123;</span><br><span class="line">    YFRAC = 1;</span><br><span class="line">&#125; else &#123;</span><br><span class="line">    YFRAC = (SVAL - STMP);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// Z轴(温度)方向插值</span><br><span class="line">if (SVAL == STMP) &#123;</span><br><span class="line">    ZFRAC = 1;</span><br><span class="line">&#125; else &#123;</span><br><span class="line">    ZFRAC = (SVAL - STMP);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="DFCC与动态容量"><a href="#DFCC与动态容量" class="headerlink" title="DFCC与动态容量"></a>DFCC与动态容量</h3><p>放电流程中查找RC table后继续查找DFCC table，动态修改FCC容量值</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">error = lut_dfcc_f(*handle*, ((LIB_FG_TYPE_T *)*handle*)-&gt;rsoc_now, -curr_now, *param*-&gt;cellthm, (*short* *)&amp;dfcc_comp);</span><br><span class="line"></span><br><span class="line">rca_prv = (fg_idiv(*handle*, tmp_soh_mah, ((LIB_FG_TYPE_T *)*handle*)-&gt;rsoc_now) * dfcc_comp) / 10000;</span><br><span class="line"></span><br><span class="line">((LIB_FG_TYPE_T *)*handle*)-&gt;fcc = rca_prv;</span><br></pre></td></tr></table></figure>
+
+<h2 id="查表函数的插值原理"><a href="#查表函数的插值原理" class="headerlink" title="查表函数的插值原理"></a>查表函数的插值原理</h2><p>RC table和DFCC table都是三维查表函数，是离散点。而电量计检测到的温度电流电压soc等数据是连续点。因此需要三维插值去处理连续点无法在离散表中查询到的情况。</p>
+<p>三线性插值是一种在三维空间中进行插值的技术，它基于周围8个已知点的值来估计任意位置的值。整个过程分三步：</p>
+<ol>
+<li><p>X方向插值：对Z和Y固定，在X方向上插值得到4个点</p>
+</li>
+<li><p>Y方向插值：对这4个点在Y方向上插值得到2个点</p>
+</li>
+<li><p>Z方向插值：对这2个点在Z方向上插值得到最终结果</p>
+</li>
+</ol>
+<p>插值公式：</p>
+<p>!V &#x3D; V_{000}(1-x)(1-y)(1-z) + V_{100}x(1-y)(1-z) + V_{010}(1-x)y(1-z) + V_{110}xy(1-z) + V_{001}(1-x)(1-y)z + V_{101}x(1-y)z + V_{011}(1-x)yz + V_{111}xyz</p>
+<p>其中x, y, z是归一化的坐标（范围0到1）。</p>
+<p>以下是示例代码</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br></pre></td><td class="code"><pre><span class="line">int lut_three_latitude(tbl_three_t *p_tbl, short x, short y, short z, short *result)</span><br><span class="line">&#123;</span><br><span class="line">    int i, j, k;</span><br><span class="line">    int x_idx, y_idx, z_idx;</span><br><span class="line">    float fx[2], fy[2], fz[2];  // 插值权重</span><br><span class="line">    float tmp_xyz[8];           // 八个顶点的值</span><br><span class="line">    float tmp_xy[4];            // 四条边的插值结果</span><br><span class="line">    float tmp_x[2];             // 两个面的插值结果</span><br><span class="line">    </span><br><span class="line"></span><br><span class="line">    // 查找X轴索引并计算插值权重</span><br><span class="line">    x_idx = find_table_index(p_tbl-&gt;p_x_start, p_tbl-&gt;x_num, x);</span><br><span class="line">    if (x_idx &lt; 0) return -1;</span><br><span class="line">    if (x_idx == p_tbl-&gt;x_num - 1) &#123;</span><br><span class="line">        fx[0] = 1.0f; fx[1] = 0.0f;</span><br><span class="line">    &#125; else &#123;</span><br><span class="line">        fx[1] = (float)(x - p_tbl-&gt;p_x_start[x_idx]) / </span><br><span class="line">                (float)(p_tbl-&gt;p_x_start[x_idx+1] - p_tbl-&gt;p_x_start[x_idx]);</span><br><span class="line">        fx[0] = 1.0f - fx[1];</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    // 查找Y轴索引并计算插值权重</span><br><span class="line">    y_idx = find_table_index(p_tbl-&gt;p_y_start, p_tbl-&gt;y_num, y);</span><br><span class="line">    if (y_idx &lt; 0) return -1;</span><br><span class="line">    if (y_idx == p_tbl-&gt;y_num - 1) &#123;</span><br><span class="line">        fy[0] = 1.0f; fy[1] = 0.0f;</span><br><span class="line">    &#125; else &#123;</span><br><span class="line">        fy[1] = (float)(y - p_tbl-&gt;p_y_start[y_idx]) / </span><br><span class="line">                (float)(p_tbl-&gt;p_y_start[y_idx+1] - p_tbl-&gt;p_y_start[y_idx]);</span><br><span class="line">        fy[0] = 1.0f - fy[1];</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    // 查找Z轴索引并计算插值权重</span><br><span class="line">    z_idx = find_table_index(p_tbl-&gt;p_z_start, p_tbl-&gt;z_num, z);</span><br><span class="line">    if (z_idx &lt; 0) return -1;</span><br><span class="line">    if (z_idx == p_tbl-&gt;z_num - 1) &#123;</span><br><span class="line">        fz[0] = 1.0f; fz[1] = 0.0f;</span><br><span class="line">    &#125; else &#123;</span><br><span class="line">        fz[1] = (float)(z - p_tbl-&gt;p_z_start[z_idx]) / </span><br><span class="line">                (float)(p_tbl-&gt;p_z_start[z_idx+1] - p_tbl-&gt;p_z_start[z_idx]);</span><br><span class="line">        fz[0] = 1.0f - fz[1];</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    // 获取周围8个点的值</span><br><span class="line">    for (k = 0; k &lt; 2 &amp;&amp; (z_idx + k) &lt; p_tbl-&gt;z_num; k++) &#123;</span><br><span class="line">        for (j = 0; j &lt; 2 &amp;&amp; (y_idx + j) &lt; p_tbl-&gt;y_num; j++) &#123;</span><br><span class="line">            for (i = 0; i &lt; 2 &amp;&amp; (x_idx + i) &lt; p_tbl-&gt;x_num; i++) &#123;</span><br><span class="line">                int data_idx = (z_idx + k) * (p_tbl-&gt;y_num * p_tbl-&gt;x_num) + </span><br><span class="line">                               (y_idx + j) * p_tbl-&gt;x_num + (x_idx + i);</span><br><span class="line">                tmp_xyz[k*4 + j*2 + i] = (float)p_tbl-&gt;p_data_start[data_idx];</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    // 沿X轴插值，得到4个边的值</span><br><span class="line">    for (k = 0; k &lt; 2; k++) &#123;</span><br><span class="line">        for (j = 0; j &lt; 2; j++) &#123;</span><br><span class="line">            tmp_xy[k*2 + j] = tmp_xyz[k*4 + j*2] * fx[0] + tmp_xyz[k*4 + j*2 + 1] * fx[1];</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    // 沿Y轴插值，得到2个面的值</span><br><span class="line">    for (k = 0; k &lt; 2; k++) &#123;</span><br><span class="line">        tmp_x[k] = tmp_xy[k*2] * fy[0] + tmp_xy[k*2 + 1] * fy[1];</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    // 沿Z轴插值，得到最终结果</span><br><span class="line">    *result = (short)(tmp_x[0] * fz[0] + tmp_x[1] * fz[1]);</span><br><span class="line">    </span><br><span class="line">    return 0;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>通过三线性插值，系统能够在RC表&#x2F;DFCC表的离散数据点之间生成平滑的过渡值，这带来以下优势：</p>
+<ol>
+<li><p>平滑过渡：避免在临界点附近出现电量跳变</p>
+</li>
+<li><p>精细粒度：无需为每个可能的条件定义离散值，大幅减少表的大小</p>
+</li>
+<li><p>处理边界条件：即使输入参数超出表定义范围，也能提供合理的边界值</p>
+</li>
+<li><p>适用性广：同一表格可用于各种电池和工作条件</p>
+</li>
+</ol>
+<p>一个插值示例：</p>
+<p>场景：电池在-5°C环境下以1500mA电流放电，SOC为25%。</p>
+<p>插值过程：</p>
+<ol>
+<li>温度在-10°C(DFCC_ZDATA[0]&#x3D;-100)和0°C(DFCC_ZDATA[1]&#x3D;0)之间</li>
+</ol>
+<ul>
+<li>温度插值权重：fz[0]&#x3D;0.5, fz[1]&#x3D;0.5</li>
+</ul>
+<ol>
+<li>电流在1000mA(DFCC_YDATA[1])和2000mA(DFCC_YDATA[2])之间</li>
+</ol>
+<ul>
+<li>电流插值权重：fy[0]&#x3D;0.5, fy[1]&#x3D;0.5</li>
+</ul>
+<ol>
+<li>SOC在10%(DFCC_XDATA[1]&#x3D;1000)和30%(DFCC_XDATA[2]&#x3D;3000)之间</li>
+</ol>
+<ul>
+<li>SOC插值权重：fx[0]&#x3D;0.75, fx[1]&#x3D;0.25</li>
+</ul>
+<p>计算过程：</p>
+<ul>
+<li><p>获取8个顶点值：</p>
+</li>
+<li><p>V000 &#x3D; DFCC_table[0<em>3+1][1] &#x3D; 88（-10°C, 1000mA, 10%SOC）</em></p>
+</li>
+<li><p>V001 &#x3D; DFCC_table[1<em>3+1][1] &#x3D; 85（0°C, 1000mA, 10%SOC）</em></p>
+</li>
+<li><p>V010 &#x3D; DFCC_table[0<em>3+2][1] &#x3D; 60（-10°C, 2000mA, 10%SOC）</em></p>
+</li>
+<li><p>V011 &#x3D; DFCC_table[1<em>3+2][1] &#x3D; 75（0°C, 2000mA, 10%SOC）</em></p>
+</li>
+<li><p>V100 &#x3D; DFCC_table[0<em>3+1][2] &#x3D; 90（-10°C, 1000mA, 30%SOC）</em></p>
+</li>
+<li><p>V101 &#x3D; DFCC_table[1<em>3+1][2] &#x3D; 85（0°C, 1000mA, 30%SOC）</em></p>
+</li>
+<li><p>V110 &#x3D; DFCC_table[0<em>3+2][2] &#x3D; 75（-10°C, 2000mA, 30%SOC）</em></p>
+</li>
+<li><p>V111 &#x3D; DFCC_table[1<em>3+2][2] &#x3D; 75（0°C, 2000mA, 30%SOC）</em></p>
+</li>
+<li><p>应用三线性插值公式计算最终值（简化计算）：</p>
+</li>
+<li><p>X方向插值（SOC）：</p>
+</li>
+<li><p>tmp_xy[0] &#x3D; 88<em>0.75 + 90</em>0.25 &#x3D; 88.5</p>
+</li>
+<li><p>tmp_xy[1] &#x3D; 60<em>0.75 + 75</em>0.25 &#x3D; 63.75</p>
+</li>
+<li><p>tmp_xy[2] &#x3D; 85<em>0.75 + 85</em>0.25 &#x3D; 85</p>
+</li>
+<li><p>tmp_xy[3] &#x3D; 75<em>0.75 + 75</em>0.25 &#x3D; 75</p>
+</li>
+<li><p>Y方向插值（电流）：</p>
+</li>
+<li><p>tmp_x[0] &#x3D; 88.5<em>0.5 + 63.75</em>0.5 &#x3D; 76.125</p>
+</li>
+<li><p>tmp_x[1] &#x3D; 85<em>0.5 + 75</em>0.5 &#x3D; 80</p>
+</li>
+<li><p>Z方向插值（温度）：</p>
+</li>
+<li><p>result &#x3D; 76.125<em>0.5 + 80</em>0.5 &#x3D; 78.06</p>
+</li>
+</ul>
+<p>最终校正因子约为78.06%，表示在-5°C、1500mA放电电流和25% SOC条件下，电池实际可用容量约为标称容量的78.06%。</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E7%94%B5%E9%87%8F%E8%AE%A1/" rel="tag"># 电量计</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2025/05/18/%E7%94%B5%E9%87%8F%E8%AE%A1--%E9%97%AE%E9%A2%98%E5%92%8C%E5%8A%9F%E8%83%BD%E8%AE%B0%E5%BD%95/" rel="prev" title="电量计--问题和功能记录">
+      <i class="fa fa-chevron-left"></i> 电量计--问题和功能记录
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2025/05/18/%E7%94%B5%E9%87%8F%E8%AE%A1--Cobra%E5%BE%AA%E7%8E%AF%E4%BB%AA%E7%94%B5%E6%B1%A0%E5%8C%85%E7%9A%84%E6%B5%8B%E8%AF%95%E7%8E%AF%E5%A2%83%E8%AF%B4%E6%98%8E/" rel="next" title="电量计--Cobra/循环仪/电池包的测试环境说明">
+      电量计--Cobra/循环仪/电池包的测试环境说明 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%94%B5%E9%87%8F%E8%AE%A1%E2%80%9377561-77226-%E7%9A%84Firmware-Architecture"><span class="nav-number">1.</span> <span class="nav-text">电量计–77561(77226)的Firmware Architecture</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Part1-%E6%80%BB%E4%BD%93%E7%BB%93%E6%9E%84%E6%A6%82%E8%BF%B0"><span class="nav-number">2.</span> <span class="nav-text">Part1 总体结构概述</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Keil-MDK%E9%A1%B9%E7%9B%AE%E7%BB%93%E6%9E%84"><span class="nav-number">2.1.</span> <span class="nav-text">Keil MDK项目结构</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%90%AF%E5%8A%A8%E5%92%8C%E8%BF%90%E8%A1%8C%E4%B8%BB%E6%B5%81%E7%A8%8B"><span class="nav-number">2.2.</span> <span class="nav-text">启动和运行主流程</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B"><span class="nav-number">2.2.1.</span> <span class="nav-text">启动流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%BB%E5%BE%AA%E7%8E%AF%E6%B5%81%E7%A8%8B"><span class="nav-number">2.2.2.</span> <span class="nav-text">主循环流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A8%A1%E5%9D%97%E5%85%B3%E7%B3%BB%E5%92%8C%E6%B5%81%E7%A8%8B%E5%9B%BE"><span class="nav-number">2.2.3.</span> <span class="nav-text">模块关系和流程图</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#I2C-SBS%E9%80%9A%E4%BF%A1%E5%91%BD%E4%BB%A4"><span class="nav-number">2.3.</span> <span class="nav-text">I2C SBS通信命令</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%94%B5%E9%87%8F%E8%AE%A1%E7%AE%97%E6%B3%95fg-lib%E5%88%86%E6%9E%90"><span class="nav-number">2.4.</span> <span class="nav-text">电量计算法fg_lib分析</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A0%B8%E5%BF%83%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84"><span class="nav-number">2.4.1.</span> <span class="nav-text">核心数据结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%AE%97%E6%B3%95%E6%A0%B8%E5%BF%83%E6%A8%A1%E5%9D%97"><span class="nav-number">2.4.2.</span> <span class="nav-text">算法核心模块</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E7%94%B5%E9%87%8F%E8%AE%A1%E7%8A%B6%E6%80%81%E6%9C%BA"><span class="nav-number">2.4.2.1.</span> <span class="nav-text">电量计状态机</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#SOC%E8%AE%A1%E7%AE%97%E6%A0%B8%E5%BF%83"><span class="nav-number">2.4.2.2.</span> <span class="nav-text">SOC计算核心</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%B8%A9%E5%BA%A6%E8%A1%A5%E5%81%BF"><span class="nav-number">2.4.2.3.</span> <span class="nav-text">温度补偿</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E8%80%81%E5%8C%96%E8%A1%A5%E5%81%BF"><span class="nav-number">2.4.2.4.</span> <span class="nav-text">老化补偿</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%BF%AB%E9%80%9F%E6%94%BE%E7%94%B5%E5%A4%84%E7%90%86"><span class="nav-number">2.4.2.5.</span> <span class="nav-text">快速放电处理</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%9F%A5%E8%A1%A8%E7%AE%97%E6%B3%95"><span class="nav-number">2.4.2.6.</span> <span class="nav-text">查表算法</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%AE%97%E6%B3%95%E6%B5%81%E7%A8%8B%E6%A6%82%E8%BF%B0"><span class="nav-number">2.4.3.</span> <span class="nav-text">算法流程概述</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%88%9D%E5%A7%8B%E5%8C%96%E6%B5%81%E7%A8%8B"><span class="nav-number">2.4.3.1.</span> <span class="nav-text">初始化流程</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%85%85%E7%94%B5%E5%A4%84%E7%90%86%E6%B5%81%E7%A8%8B"><span class="nav-number">2.4.3.2.</span> <span class="nav-text">充电处理流程</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%94%BE%E7%94%B5%E5%A4%84%E7%90%86%E6%B5%81%E7%A8%8B"><span class="nav-number">2.4.3.3.</span> <span class="nav-text">放电处理流程</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E7%A9%BA%E9%97%B2%E5%A4%84%E7%90%86%E6%B5%81%E7%A8%8B"><span class="nav-number">2.4.3.4.</span> <span class="nav-text">空闲处理流程</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BD%8E%E5%8A%9F%E8%80%97%E8%AE%BE%E8%AE%A1"><span class="nav-number">2.5.</span> <span class="nav-text">低功耗设计</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%B0%83%E8%AF%95%E5%92%8C%E6%A0%A1%E5%87%86%E5%B7%A5%E5%85%B7"><span class="nav-number">2.6.</span> <span class="nav-text">调试和校准工具</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Part2-Firmware%E4%B8%BB%E8%A6%81%E5%8A%9F%E8%83%BD%E6%A8%A1%E5%9D%97%E5%88%86%E6%9E%90"><span class="nav-number">3.</span> <span class="nav-text">Part2 Firmware主要功能模块分析</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%80%9A%E4%BF%A1%E6%8E%A5%E5%8F%A3%EF%BC%88SBS%E5%91%BD%E4%BB%A4%E6%B5%81%E7%A8%8B%EF%BC%89"><span class="nav-number">3.1.</span> <span class="nav-text">通信接口（SBS命令流程）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%88%9D%E5%A7%8B%E5%8C%96%E9%98%B6%E6%AE%B5"><span class="nav-number">3.1.1.</span> <span class="nav-text">初始化阶段</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%94%B5%E9%87%8F%E6%95%B0%E6%8D%AE%E6%9B%B4%E6%96%B0%E9%98%B6%E6%AE%B5"><span class="nav-number">3.1.2.</span> <span class="nav-text">电量数据更新阶段</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#I2C%E9%80%9A%E4%BF%A1%E9%98%B6%E6%AE%B5-%E5%A4%84%E7%90%86SBS-0x0D%E5%91%BD%E4%BB%A4"><span class="nav-number">3.1.3.</span> <span class="nav-text">I2C通信阶段 - 处理SBS 0x0D命令</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AE%8C%E6%95%B4%E6%B5%81%E7%A8%8B%E5%9B%BE%E8%A7%A3"><span class="nav-number">3.1.4.</span> <span class="nav-text">完整流程图解</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#SBS%E5%91%BD%E4%BB%A4%E7%9A%84%E9%9A%90%E5%BC%8F%E6%94%AF%E6%8C%81"><span class="nav-number">3.1.5.</span> <span class="nav-text">SBS命令的隐式支持</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%82%E6%95%B0%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="nav-number">3.2.</span> <span class="nav-text">参数初始化</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BB%A3%E7%A0%81%E9%BB%98%E8%AE%A4%E9%85%8D%E7%BD%AE%E5%8F%82%E6%95%B0"><span class="nav-number">3.2.1.</span> <span class="nav-text">代码默认配置参数</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Cobra%E5%86%99%E5%85%A5Flash%E5%8F%82%E6%95%B0"><span class="nav-number">3.2.2.</span> <span class="nav-text">Cobra写入Flash参数</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%95%B0%E6%8D%AE%E6%8C%81%E4%B9%85%E5%8C%96%EF%BC%88Flash-log%E6%97%A5%E5%BF%97%EF%BC%89"><span class="nav-number">3.3.</span> <span class="nav-text">数据持久化（Flash log日志）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#log%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84"><span class="nav-number">3.3.1.</span> <span class="nav-text">log数据结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%97%A5%E5%BF%97%E6%95%B0%E6%8D%AE%E5%88%9D%E5%A7%8B%E5%8C%96%E5%92%8C%E6%9B%B4%E6%96%B0"><span class="nav-number">3.3.2.</span> <span class="nav-text">日志数据初始化和更新</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8C%81%E4%B9%85%E5%8C%96%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B"><span class="nav-number">3.3.3.</span> <span class="nav-text">持久化数据类型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8C%81%E4%B9%85%E5%8C%96%E7%9A%84%E5%BA%94%E7%94%A8"><span class="nav-number">3.3.4.</span> <span class="nav-text">持久化的应用</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%8A%B6%E6%80%81%E6%9C%BA%EF%BC%88State-Machine%EF%BC%89"><span class="nav-number">3.4.</span> <span class="nav-text">状态机（State Machine）</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Part3%EF%BC%9A%E7%94%B5%E9%87%8F%E7%AE%97%E6%B3%95%E6%A8%A1%E5%9D%97"><span class="nav-number">4.</span> <span class="nav-text">Part3：电量算法模块</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#OCV-table"><span class="nav-number">4.1.</span> <span class="nav-text">OCV table</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#RC-table"><span class="nav-number">4.2.</span> <span class="nav-text">RC table</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#RC%E8%A1%A8%E7%9A%84%E5%BA%94%E7%94%A8"><span class="nav-number">4.2.1.</span> <span class="nav-text">RC表的应用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#RC%E8%A1%A8%E5%B0%8F%E7%BB%93"><span class="nav-number">4.2.2.</span> <span class="nav-text">RC表小结</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#DFCC-table"><span class="nav-number">4.3.</span> <span class="nav-text">DFCC table</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#DFCC%E8%A1%A8%E7%9A%84%E9%85%8D%E7%BD%AE%E4%B8%8E%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="nav-number">4.3.1.</span> <span class="nav-text">DFCC表的配置与初始化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#lut-dfcc-f%E6%9F%A5%E8%A1%A8%E5%87%BD%E6%95%B0"><span class="nav-number">4.3.2.</span> <span class="nav-text">lut_dfcc_f查表函数</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#DFCC%E4%B8%8E%E5%8A%A8%E6%80%81%E5%AE%B9%E9%87%8F"><span class="nav-number">4.3.3.</span> <span class="nav-text">DFCC与动态容量</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9F%A5%E8%A1%A8%E5%87%BD%E6%95%B0%E7%9A%84%E6%8F%92%E5%80%BC%E5%8E%9F%E7%90%86"><span class="nav-number">4.4.</span> <span class="nav-text">查表函数的插值原理</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="cursorhu"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">cursorhu</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">113</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">41</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">55</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/cursorhu" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;cursorhu" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:2449055512@qq.com" title="E-Mail → mailto:2449055512@qq.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2025</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">cursorhu</span>
+</div>
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

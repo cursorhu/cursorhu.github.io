@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 8.0.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Noto+Serif+SC|Roboto/css?family=Noto Serif SC:300,300italic,400,400italic,700,700italic|Roboto:300,300italic,400,400italic,700,700italic&display=swap&subset=latin,latin-ext">
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"cursorhu.github.io","root":"/","scheme":"Pisces","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="QCOM BH202 SDR50 tuning问题问题描述现象：QCOM+BH202平台，SDR50模式下，Host侧发送tuning CMD19命令处理响应失败(TIMEOUT)，导致无法工作在SDR50模式，BH202驱动log打印wait DLL unlock和CMD19 timeout。其他模式如SDR104模式可以正常工作。 分析：经SD CMD&#x2F;DATA line信号测量，S">
+<meta property="og:type" content="article">
+<meta property="og:title" content="QCOM BH202 SDR50 tuning问题">
+<meta property="og:url" content="https://cursorhu.github.io/2025/10/30/QCOM%20BH202%20SDR50%20tuning%E9%97%AE%E9%A2%98/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="QCOM BH202 SDR50 tuning问题问题描述现象：QCOM+BH202平台，SDR50模式下，Host侧发送tuning CMD19命令处理响应失败(TIMEOUT)，导致无法工作在SDR50模式，BH202驱动log打印wait DLL unlock和CMD19 timeout。其他模式如SDR104模式可以正常工作。 分析：经SD CMD&#x2F;DATA line信号测量，S">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://s3.bmp.ovh/imgs/2025/11/04/16c0750eff90aa6f.png">
+<meta property="article:published_time" content="2025-10-30T09:52:38.000Z">
+<meta property="article:modified_time" content="2025-11-04T09:17:58.304Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="BH201">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://s3.bmp.ovh/imgs/2025/11/04/16c0750eff90aa6f.png">
+
+<link rel="canonical" href="https://cursorhu.github.io/2025/10/30/QCOM%20BH202%20SDR50%20tuning%E9%97%AE%E9%A2%98/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>QCOM BH202 SDR50 tuning问题 | ThinkNotes</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">ThinkNotes</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Simple is not easy</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于我</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2025/10/30/QCOM%20BH202%20SDR50%20tuning%E9%97%AE%E9%A2%98/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          QCOM BH202 SDR50 tuning问题
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2025-10-30 17:52:38" itemprop="dateCreated datePublished" datetime="2025-10-30T17:52:38+08:00">2025-10-30</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2025-11-04 17:17:58" itemprop="dateModified" datetime="2025-11-04T17:17:58+08:00">2025-11-04</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/linux%E9%A9%B1%E5%8A%A8/" itemprop="url" rel="index"><span itemprop="name">linux驱动</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="QCOM-BH202-SDR50-tuning问题"><a href="#QCOM-BH202-SDR50-tuning问题" class="headerlink" title="QCOM BH202 SDR50 tuning问题"></a>QCOM BH202 SDR50 tuning问题</h1><h2 id="问题描述"><a href="#问题描述" class="headerlink" title="问题描述"></a>问题描述</h2><p>现象：QCOM+BH202平台，SDR50模式下，Host侧发送tuning CMD19命令处理响应失败(TIMEOUT)，导致无法工作在SDR50模式，BH202驱动log打印wait DLL unlock和CMD19 timeout。其他模式如SDR104模式可以正常工作。</p>
+<p>分析：经SD CMD&#x2F;DATA line信号测量，SD card发送了CMD19的响应，问题出在SD Host侧未处理响应。</p>
+<p>问题指向SD Host侧在SDR50模式的tuning配置有问题。</p>
+<h2 id="解决方案"><a href="#解决方案" class="headerlink" title="解决方案"></a>解决方案</h2><p><img src="https://s3.bmp.ovh/imgs/2025/11/04/16c0750eff90aa6f.png" alt="BH202 tuning sdr50.drawio"></p>
+<p>如图是SD Host - BH20X bridge - SD card系统。</p>
+<p>通常SD Host直连SD card时，SDR50模式host clock &lt;&#x3D;100MHz, 不需要执行SDR50 tuning流程，SDR50 tuning只是可选项。</p>
+<p>但是BH20X bridge的数字逻辑要求SDR50模式下也走SDR50 tuning流程，否则SDR50模式无法正常工作。</p>
+<p>因此需要修改Host驱动，支持SDR50 tuning，包括两个部分：</p>
+<ul>
+<li>配置DLL，以支持tuning block所需要的时钟</li>
+<li>发送多个(16个) tuning block CMD19命令，解析SD卡响应数据，统计tuning pass相位窗口</li>
+</ul>
+<p>BH20X驱动也需要适配，调用Host tuning函数时使用高通的tuning流程，而不再直接发tuning block CMD19而不配置DLL。</p>
+<h2 id="代码说明"><a href="#代码说明" class="headerlink" title="代码说明"></a>代码说明</h2><p>如下是SDR50 tuning patch，修改点见三处注释</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line">diff --git a/mmc/host/sdhci-bayhub.c b/mmc/host/sdhci-bayhub.c</span><br><span class="line">index 5533d38..762d46c 100644</span><br><span class="line">--- a/mmc/host/sdhci-bayhub.c</span><br><span class="line">+++ b/mmc/host/sdhci-bayhub.c</span><br><span class="line">@@ -2087,7 +2087,7 @@ int sdhci_bht_sdr104_execute_tuning(struct sdhci_host *host, u32 opcode)</span><br><span class="line"> </span><br><span class="line"> int sdhci_bht_sdr50_execute_tuning(struct sdhci_host *host, u32 opcode)</span><br><span class="line"> &#123;</span><br><span class="line">-#ifdef MSM_HOST_USED</span><br><span class="line">+#if 0         /* SDR50 host side tuning使用SDR104一样的入口，即调用qcom的sdhci_msm_execute_tuning */</span><br><span class="line">     u8 phase, *data_buf;</span><br><span class="line">     int size = 64;</span><br><span class="line">     int rc = 0;</span><br><span class="line">@@ -3671,7 +3671,7 @@ void ggc_tuning_result_reset(struct sdhci_host *host)</span><br><span class="line">     vendor_host-&gt;ggc.dll_unlock_reinit_flg = 0;</span><br><span class="line">     vendor_host-&gt;ggc.tuning_cmd7_timeout_reinit_flg = 0;</span><br><span class="line">     vendor_host-&gt;ggc.tuning_cmd7_timeout_reinit_cnt = 0;</span><br><span class="line">-    vendor_host-&gt;ggc.sdr50_notuning_sela_inject_flag = 1;</span><br><span class="line">+    vendor_host-&gt;ggc.sdr50_notuning_sela_inject_flag = 0; /* SDR50不需要指定notuning相位，按高通tuning流程执行即可 */</span><br><span class="line">     vendor_host-&gt;ggc.sdr50_notuning_crc_error_flag = 0;</span><br><span class="line">     vendor_host-&gt;ggc.degrade = 0;</span><br><span class="line"> </span><br><span class="line">diff --git a/mmc/host/sdhci-msm.c b/mmc/host/sdhci-msm.c</span><br><span class="line">index 8da7c4f..5a49b7e 100644</span><br><span class="line">--- a/mmc/host/sdhci-msm.c</span><br><span class="line">+++ b/mmc/host/sdhci-msm.c</span><br><span class="line">@@ -1131,6 +1131,10 @@ static bool sdhci_msm_is_tuning_needed(struct sdhci_host *host)</span><br><span class="line"> &#123;</span><br><span class="line"> 	struct mmc_ios *ios = &amp;host-&gt;mmc-&gt;ios;</span><br><span class="line"> 	</span><br><span class="line"> /* 如果当前模式是SDR50且host flag配置了NEEDS_TUNING，则执行tuning流程（DLL配置和CMD19） </span><br><span class="line"> *	注：BH20X驱动默认配置了host-&gt;flags SDHCI_SDR50_NEEDS_TUNING</span><br><span class="line"> */</span><br><span class="line"> +#ifdef CONFIG_MMC_SDHCI_BH201</span><br><span class="line"> +    if (ios-&gt;timing == MMC_TIMING_UHS_SDR50 &amp;&amp;</span><br><span class="line"> +        host-&gt;flags &amp; SDHCI_SDR50_NEEDS_TUNING)</span><br><span class="line"> +    return true;</span><br><span class="line"> +#endif</span><br><span class="line"> 	/*</span><br><span class="line"> 	 * Tuning is required for SDR104, HS200 and HS400 cards and</span><br><span class="line"> 	 * if clock frequency is greater than 100MHz in these modes.</span><br></pre></td></tr></table></figure>
+
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/BH201/" rel="tag"># BH201</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2025/10/30/Qualcomm%20HDK845%E5%BC%80%E5%8F%91%E7%8E%AF%E5%A2%83/" rel="prev" title="Qualcomm HDK845开发环境">
+      <i class="fa fa-chevron-left"></i> Qualcomm HDK845开发环境
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#QCOM-BH202-SDR50-tuning%E9%97%AE%E9%A2%98"><span class="nav-number">1.</span> <span class="nav-text">QCOM BH202 SDR50 tuning问题</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%97%AE%E9%A2%98%E6%8F%8F%E8%BF%B0"><span class="nav-number">1.1.</span> <span class="nav-text">问题描述</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88"><span class="nav-number">1.2.</span> <span class="nav-text">解决方案</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BB%A3%E7%A0%81%E8%AF%B4%E6%98%8E"><span class="nav-number">1.3.</span> <span class="nav-text">代码说明</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="cursorhu"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">cursorhu</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">113</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">41</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">55</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/cursorhu" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;cursorhu" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:2449055512@qq.com" title="E-Mail → mailto:2449055512@qq.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2025</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">cursorhu</span>
+</div>
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

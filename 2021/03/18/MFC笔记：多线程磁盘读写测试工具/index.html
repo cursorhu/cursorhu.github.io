@@ -1,0 +1,1392 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 8.0.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Noto+Serif+SC|Roboto/css?family=Noto Serif SC:300,300italic,400,400italic,700,700italic|Roboto:300,300italic,400,400italic,700,700italic&display=swap&subset=latin,latin-ext">
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"cursorhu.github.io","root":"/","scheme":"Pisces","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="前言MFC（Microsoft Foundation Classes）是微软在win32 API上，用C++封装的GUI框架，在现在，MFC相比其他的GUI框架有些过时，可以参考：很多人说 C++ 的 MFC 已经过时了，那新入门的人到底应该学什么？不同环境的选择：  跨平台： QT C#: WPF Web：React，Vue，Electron  既然如此，为何本文用MFC？1.部分功能从老MFC">
+<meta property="og:type" content="article">
+<meta property="og:title" content="MFC笔记：多线程磁盘读写测试工具">
+<meta property="og:url" content="https://cursorhu.github.io/2021/03/18/MFC%E7%AC%94%E8%AE%B0%EF%BC%9A%E5%A4%9A%E7%BA%BF%E7%A8%8B%E7%A3%81%E7%9B%98%E8%AF%BB%E5%86%99%E6%B5%8B%E8%AF%95%E5%B7%A5%E5%85%B7/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="前言MFC（Microsoft Foundation Classes）是微软在win32 API上，用C++封装的GUI框架，在现在，MFC相比其他的GUI框架有些过时，可以参考：很多人说 C++ 的 MFC 已经过时了，那新入门的人到底应该学什么？不同环境的选择：  跨平台： QT C#: WPF Web：React，Vue，Electron  既然如此，为何本文用MFC？1.部分功能从老MFC">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051510224.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051514738.png">
+<meta property="og:image" content="c:\Users\thomas.hu\Desktop\3.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051514703.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051514147.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051515208.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051512803.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051512701.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051513686.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051515196.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051515342.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051516636.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051516611.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051516530.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051516097.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051517122.png">
+<meta property="article:published_time" content="2021-03-18T07:05:47.000Z">
+<meta property="article:modified_time" content="2024-11-04T03:43:03.173Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="MFC">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051510224.png">
+
+<link rel="canonical" href="https://cursorhu.github.io/2021/03/18/MFC%E7%AC%94%E8%AE%B0%EF%BC%9A%E5%A4%9A%E7%BA%BF%E7%A8%8B%E7%A3%81%E7%9B%98%E8%AF%BB%E5%86%99%E6%B5%8B%E8%AF%95%E5%B7%A5%E5%85%B7/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>MFC笔记：多线程磁盘读写测试工具 | ThinkNotes</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">ThinkNotes</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Simple is not easy</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于我</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2021/03/18/MFC%E7%AC%94%E8%AE%B0%EF%BC%9A%E5%A4%9A%E7%BA%BF%E7%A8%8B%E7%A3%81%E7%9B%98%E8%AF%BB%E5%86%99%E6%B5%8B%E8%AF%95%E5%B7%A5%E5%85%B7/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          MFC笔记：多线程磁盘读写测试工具
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2021-03-18 15:05:47" itemprop="dateCreated datePublished" datetime="2021-03-18T15:05:47+08:00">2021-03-18</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2024-11-04 11:43:03" itemprop="dateModified" datetime="2024-11-04T11:43:03+08:00">2024-11-04</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/windows/" itemprop="url" rel="index"><span itemprop="name">windows</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>MFC（Microsoft Foundation Classes）是微软在win32 API上，用C++封装的GUI框架，在现在，MFC相比其他的GUI框架有些过时，可以参考：<br><a target="_blank" rel="noopener" href="https://www.zhihu.com/question/327876401">很多人说 C++ 的 MFC 已经过时了，那新入门的人到底应该学什么？</a><br>不同环境的选择：</p>
+<ul>
+<li>跨平台： QT</li>
+<li>C#: WPF</li>
+<li>Web：React，Vue，Electron</li>
+</ul>
+<p>既然如此，为何本文用MFC？<br>1.部分功能从老MFC项目移植，且VS环境能快速上手<br>2.技术本身不会过时，过时的是应用场景，GUI回调式的交互机制，以及Win32线程和进程的使用都是通用的技术。这是写本文的原因</p>
+<p>本文源码：<a target="_blank" rel="noopener" href="https://github.com/cursorhu/myMFCForAutoRWTest.git">cursorhu&#x2F;myMFCForAutoRWTest</a></p>
+<p>GUI界面：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051510224.png" alt="1"></p>
+<h1 id="初识MFC项目"><a href="#初识MFC项目" class="headerlink" title="初识MFC项目"></a>初识MFC项目</h1><p>VS新建MFC项目，例如“myMFC”，目录结构如下<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051514738.png" alt="2"><br>myMFC.cpp是VS自动创建的MFC项目入口，其主要功能是：创建一个窗口实例，注册会话对象（Dialog)<br>界面的交互一定是分层的</p>
+<ul>
+<li>对用户的是控件层，即各种按钮，输入输出框等可见可操作的东西</li>
+<li>处理数据的是逻辑层，例如从输入框输入，底层保存该字符串，点击运行，底层开始执行对应函数</li>
+</ul>
+<p>在MFC中，会话对象就是处理底层逻辑的类对象，其方法定义在myMFCDlg.cpp<br>也是开发的主要内容</p>
+<h2 id="MFC入口"><a href="#MFC入口" class="headerlink" title="MFC入口"></a>MFC入口</h2><p>下面介绍myMFC.cpp的MFC入口：</p>
+<pre><code>BOOL CmyMFCApp::InitInstance()
+&#123;
+	// 如果一个运行在 Windows XP 上的应用程序清单指定要
+	// 使用 ComCtl32.dll 版本 6 或更高版本来启用可视化方式，
+	//则需要 InitCommonControlsEx()。  否则，将无法创建窗口。
+	INITCOMMONCONTROLSEX InitCtrls;
+	InitCtrls.dwSize = sizeof(InitCtrls);
+	// 将它设置为包括所有要在应用程序中使用的
+	// 公共控件类。
+	InitCtrls.dwICC = ICC_WIN95_CLASSES;
+	InitCommonControlsEx(&amp;InitCtrls);
+
+	CWinApp::InitInstance();
+	
+	AfxEnableControlContainer();
+
+	// 创建 shell 管理器，以防对话框包含
+	// 任何 shell 树视图控件或 shell 列表视图控件。
+	CShellManager *pShellManager = new CShellManager;
+
+	// 激活“Windows Native”视觉管理器，以便在 MFC 控件中启用主题
+	CMFCVisualManager::SetDefaultManager(RUNTIME_CLASS(CMFCVisualManagerWindows));
+
+	// 标准初始化
+	// 如果未使用这些功能并希望减小
+	// 最终可执行文件的大小，则应移除下列
+	// 不需要的特定初始化例程
+	// 更改用于存储设置的注册表项
+	// TODO: 应适当修改该字符串，
+	// 例如修改为公司或组织名
+	SetRegistryKey(_T(&quot;应用程序向导生成的本地应用程序&quot;));
+
+	CmyMFCDlg dlg;
+	m_pMainWnd = &amp;dlg;
+	INT_PTR nResponse = dlg.DoModal();
+	if (nResponse == IDOK)
+	&#123;
+		// TODO: 在此放置处理何时用
+		//  “确定”来关闭对话框的代码
+	&#125;
+	else if (nResponse == IDCANCEL)
+	&#123;
+		// TODO: 在此放置处理何时用
+		//  “取消”来关闭对话框的代码
+	&#125;
+	else if (nResponse == -1)
+	&#123;
+		TRACE(traceAppMsg, 0, &quot;警告: 对话框创建失败，应用程序将意外终止。\n&quot;);
+		TRACE(traceAppMsg, 0, &quot;警告: 如果您在对话框上使用 MFC 控件，则无法 #define _AFX_NO_MFC_CONTROLS_IN_DIALOGS。\n&quot;);
+	&#125;
+
+	// 删除上面创建的 shell 管理器。
+	if (pShellManager != nullptr)
+	&#123;
+		delete pShellManager;
+	&#125;
+
+#if !defined(_AFXDLL) &amp;&amp; !defined(_AFX_NO_MFC_CONTROLS_IN_DIALOGS)
+	ControlBarCleanUp();
+#endif
+
+	return FALSE;
+&#125;
+</code></pre>
+<p>只需要关注这几句</p>
+<pre><code>CmyMFCDlg dlg;
+m_pMainWnd = &amp;dlg;
+INT_PTR nResponse = dlg.DoModal();
+</code></pre>
+<p>CmyMFCDlg类是在myMFCDlg.cpp定义的，即底层逻辑类。m_pMainWnd是myMFC.cpp的CmyMFCApp类(继承win32 API)的成员，表示主窗口，这两句就是把会话对象注册到窗口类，这样窗口运行时可以回调会话对象的方法。dlg.DoModal()是运行会话窗口，运行哪个会话？其调用者CmyMFCDlg类对象dlg。</p>
+<h2 id="MFC逻辑层"><a href="#MFC逻辑层" class="headerlink" title="MFC逻辑层"></a>MFC逻辑层</h2><p>VS自动创建myMFC项目的会话逻辑层，myMFCDlg.cpp<br>几个自动生成的方法如下，这里为了作为示例，加了自定义的类成员m_src, m_dst和方法OnBnClickedButtonsrc，OnBnClickedButtondst<br>(1)会话类构造函数</p>
+<pre><code>CmyMFCDlg::CmyMFCDlg(CWnd* pParent /*=nullptr*/)
+	: CDialogEx(IDD_MYMFC_DIALOG, pParent)
+	, m_src(_T(&quot;&quot;)) //初始化为空串，_T是兼容不同编码的转换
+    , m_dst(_T(&quot;&quot;))
+&#123;
+	m_hIcon = AfxGetApp()-&gt;LoadIcon(IDR_MAINFRAME);
+&#125;
+</code></pre>
+<p>(2)界面和类成员数据关联</p>
+<pre><code>void CmyMFCDlg::DoDataExchange(CDataExchange* pDX)
+&#123;
+	CDialogEx::DoDataExchange(pDX);
+	DDX_Text(pDX, IDC_EDIT_src, m_src); //关联m_src和IDC_EDIT_src控件，该控件是界面输入框
+	DDX_Text(pDX, IDC_EDIT_dst, m_dst);
+&#125;
+</code></pre>
+<p>(3)界面和类方法的关联</p>
+<pre><code>BEGIN_MESSAGE_MAP(CmyMFCDlg, CDialogEx)
+	ON_WM_SYSCOMMAND()
+	ON_WM_PAINT()
+	ON_WM_QUERYDRAGICON()
+	ON_BN_CLICKED(IDC_BUTTON_src, &amp;CmyMFCDlg::OnBnClickedButtonsrc) //关联IDC_BUTTON_src按钮和OnBnClickedButtonsrc方法
+	ON_BN_CLICKED(IDC_BUTTON_dst, &amp;CmyMFCDlg::OnBnClickedButtondst)
+END_MESSAGE_MAP()
+</code></pre>
+<p>类在头文件的定义：</p>
+<pre><code>class CmyMFCDlg : public CDialogEx
+&#123;
+// 构造
+public:
+	CmyMFCDlg(CWnd* pParent = nullptr);	// 标准构造函数
+
+// 对话框数据
+#ifdef AFX_DESIGN_TIME
+	enum &#123; IDD = IDD_MYMFC_DIALOG &#125;;
+#endif
+
+	protected:
+	virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV 支持
+
+// 实现
+protected:
+	HICON m_hIcon;
+
+	// 生成的消息映射函数
+	virtual BOOL OnInitDialog();
+	afx_msg void OnSysCommand(UINT nID, LPARAM lParam);
+	afx_msg void OnPaint();
+	afx_msg HCURSOR OnQueryDragIcon();
+	DECLARE_MESSAGE_MAP()
+	
+public:
+	CString m_src; //CString: MFC的字符串类型
+	CString m_dst;
+	afx_msg void OnBnClickedButtonsrc(); //afx_msg: MFC的方法对应的消息响应类型
+	afx_msg void OnBnClickedButtondst();
+&#125;;
+</code></pre>
+<p>在VS环境下,这些变量和方法的定义都不需要写代码，在控件资源视图直接配置即可。</p>
+<h2 id="界面资源层"><a href="#界面资源层" class="headerlink" title="界面资源层"></a>界面资源层</h2><p>注意项目文件有个Resource.h，包含界面相关的资源，如每个按钮有个ID，这个不要手动配置，在编辑UI控件时自动生成</p>
+<pre><code>//&#123;&#123;NO_DEPENDENCIES&#125;&#125;
+// Microsoft Visual C++ 生成的包含文件。
+// 供 myMFC.rc 使用
+//
+#define IDM_ABOUTBOX                    0x0010
+#define IDD_ABOUTBOX                    100
+#define IDS_ABOUTBOX                    101
+#define IDD_MYMFC_DIALOG                102
+#define IDR_MAINFRAME                   128
+#define IDC_BUTTON_src                  1000
+#define IDC_BUTTON_dst                  1001
+</code></pre>
+<p>myMFC.rc是UI的资源文件，打开就是UI界面<br><img src="C:\Users\thomas.hu\Desktop\3.png" alt="3"><br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051514703.png" alt="4"><br>可以看到界面的按钮，右键查看属性，可以修改标题和控件ID，会映射到Resource.h。双击按钮，myMFCDlg.cpp会自动创建方法<code>CmyMFCDlg::OnBnClickedButtondst()</code>，头文件自动加方法声明。<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051514147.png" alt="5"></p>
+<p>前文的Dlg.cpp中的控件ID, dlg类的方法，变量，从一开始就可以从资源界面配置，自动生成：</p>
+<ul>
+<li>在资源界面选按钮或其他控件</li>
+<li>右键配置控件ID</li>
+<li>右键添加值变量或控件变量</li>
+<li>双击添加方法</li>
+</ul>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051515208.png" alt="6"><br>关于值变量和控件变量：<br>值变量用于关联界面和类成员，值变量就是类成员名，例如点击dst按钮调用其方法后，获得的路径，会写入m_dst值变量<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051512803.png" alt="7"><br>控件变量代表控件本身，用于底层逻辑中，直接调用控件的方法，例如控件变量叫dst_ctrl，可以在某个方法中<code>ctrl_dst.SetWindowText(_T(&quot;&quot;))</code>清空界面的字符串<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051512701.png" alt="8"></p>
+<h1 id="简单拷贝校验的实现"><a href="#简单拷贝校验的实现" class="headerlink" title="简单拷贝校验的实现"></a>简单拷贝校验的实现</h1><p>实现从src目录拷贝所有文件到dst目录，并比较拷贝前后的文件是否一致</p>
+<h2 id="获取文件路径"><a href="#获取文件路径" class="headerlink" title="获取文件路径"></a>获取文件路径</h2><p>两个路径选择按钮和对应的编辑框显示路径，一个Start按钮<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051513686.png" alt="9"></p>
+<p>button src的方法：</p>
+<pre><code>void CmyMFCDlg::OnBnClickedButtonsrc()
+&#123;
+	CString SrcPath;
+	SrcPath = GetFolderPath(); //获取文件夹路径
+	ctrl_src.SetWindowText(SrcPath); //显示获取的路径字符串
+	m_src = SrcPath; //保存路径到会话对象的变量
+&#125;
+</code></pre>
+<p>GetFolderPath打开一个目录框，让用户选择：<br>SHBrowseForFolder是win32 API，专用于打开目录</p>
+<pre><code>CString CmyMFCDlg::GetFolderPath(void)
+&#123;
+	CString strPath;
+	BROWSEINFO bInfo;
+	ZeroMemory(&amp;bInfo, sizeof(bInfo));
+	bInfo.hwndOwner = m_hWnd;
+	bInfo.lpszTitle = _T(&quot;Select Folder: &quot;);
+	bInfo.ulFlags = BIF_RETURNONLYFSDIRS;
+
+	LPITEMIDLIST lpDlist;					
+	lpDlist = SHBrowseForFolder(&amp;bInfo); //win32 API, 打开目录	
+	if (lpDlist != NULL)						
+	&#123;
+		TCHAR chPath[255];					
+		SHGetPathFromIDList(lpDlist, chPath);
+		strPath = chPath;					
+	&#125;
+	return strPath;
+&#125;
+</code></pre>
+<p>如果是打开文件，用CFileDialog</p>
+<pre><code>CString CmyMFCDlg::GetFilePath(void)
+&#123;
+	CFileDialog mFileDlg(TRUE, NULL, NULL,
+		OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT | OFN_ALLOWMULTISELECT | OFN_NOCHANGEDIR,
+		_T(&quot;All Files(*.*)|*.*||&quot;), AfxGetMainWnd());
+	CString str(&quot; &quot;, 10000);
+	mFileDlg.m_ofn.lpstrFile = str.GetBuffer(10000);
+	mFileDlg.m_ofn.lpstrTitle = _T(&quot;Select File&quot;);
+	str.ReleaseBuffer();
+	mFileDlg.DoModal();
+	POSITION mPos = mFileDlg.GetStartPosition();
+	CFileStatus status;
+	CString strPath;
+	while (mPos != NULL)
+	&#123;
+		strPath = mFileDlg.GetNextPathName(mPos);
+		CFile::GetStatus(strPath, status);
+	&#125;
+	return strPath;
+&#125;
+</code></pre>
+<p>不管哪一种，效果如下<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051515196.png" alt="10"><br>选择完后，路径会在编辑框显示，这就是控件语句<code>ctrl_src.SetWindowText(SrcPath)</code>的效果<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051515342.png" alt="11"></p>
+<h2 id="拷贝和比较"><a href="#拷贝和比较" class="headerlink" title="拷贝和比较"></a>拷贝和比较</h2><p>拷贝函数如下，只需关注几个函数：</p>
+<ul>
+<li>CFileFind类的CFileFind(), FindNextFile(), GetFilePath(), GetFilePath()，这些都是afx.h定义，属于MFC库的类</li>
+<li>CopyFile()， 执行拷贝，这个也是继承自MFC类</li>
+</ul>
+<p>代码：</p>
+<pre><code>BOOL CmyMFCDlg::ModeTestCopyFileFromSRCtoDST(CString SRC, CString DST, CString&amp; StrResult)
+&#123;
+
+	CFileFind ff, ff_DST;
+	CString SRCDir = SRC;                 //source folder path
+	CString DSTDir = DST;
+	UINT copyFileResult = 0;
+	int i = 0;
+
+	BOOL bmakedir = MakeDirectory(DSTDir);
+
+	if (SRCDir.Right(1) != _T(&quot;\\&quot;))
+		SRCDir += _T(&quot;\\&quot;);
+	SRCDir += _T(&quot;*.*&quot;);
+
+	if (DSTDir.Right(1) != _T(&quot;\\&quot;))
+		DSTDir += _T(&quot;\\&quot;);
+</code></pre>
+<p>​<br>​    	SetLastError(0);<br>​    	CString DST_tmp &#x3D; DSTDir + _T(“<em>.</em>“);<br>​    	BOOL res_DST &#x3D; ff_DST.FindFile(DST_tmp);<br>​    	if (res_DST &#x3D;&#x3D; 0)<br>​    	{<br>​    		StrResult.Format(_T(“Access DST folder error, error code is %d. “), GetLastError());<br>​    	}<br>​    	BOOL res &#x3D; ff.FindFile(SRCDir);<br>​<br>​    	while (res)<br>​    	{<br>​    		res &#x3D; ff.FindNextFile();<br>​    		if (!ff.IsDirectory() &amp;&amp; !ff.IsDots())<br>​    		{<br>​    			CString DSTFildPath;<br>​    			CString SRCFilePath &#x3D; ff.GetFilePath();<br>​    			DSTFildPath &#x3D; DSTDir + ff.GetFileName();<br>​    			copyFileResult &#x3D; CopyFile(ff.GetFilePath(), DSTFildPath, FALSE);<br>​<br>    			Sleep(2000);</p>
+<pre><code>			if (copyFileResult == 0)
+			&#123;
+				DWORD ErrCode = GetLastError();
+				StrResult.Format(_T(&quot;CopyFile failed! The ErrCode is %d. &quot;), ErrCode);
+
+				for (i = 0; i &lt; 10; i++)
+				&#123;
+					copyFileResult = CopyFile(ff.GetFilePath(), DSTFildPath, FALSE);
+					Sleep(2000);
+					if (copyFileResult == 0)
+					&#123;
+						ErrCode = GetLastError();
+						StrResult.Format(_T(&quot;Retry CopyFile failed! The ErrCode is %d. &quot;), ErrCode);
+					&#125;
+					else
+					&#123;
+						break;
+					&#125;
+				&#125;
+
+				if (copyFileResult == 0)
+				&#123;
+					ff.Close();
+					return FALSE;
+				&#125;
+			&#125;
+		&#125;
+		else if (ff.IsDirectory() &amp;&amp; !ff.IsDots())
+		&#123;
+			CString DSTFildPath;
+			DSTFildPath = DSTDir + ff.GetFileName();
+			copyFileResult = ModeTestCopyFileFromSRCtoDST(ff.GetFilePath(), DSTFildPath, StrResult);
+			if (copyFileResult == 0)
+				break;
+		&#125;
+	&#125;
+
+	ff.Close();
+	if (copyFileResult == 0)
+		return FALSE;
+	else
+		return TRUE;
+&#125;
+</code></pre>
+<p>比较两个路径的文件：<br>其方法是，文件读到buffer, 再用memcmp比较buffer, 其FindNextFile也是如何从目录搜索到文件的关键方法</p>
+<pre><code>BOOL CmyMFCDlg::ModeTestCompareFilesBetweenSRCandDST(CString SRC, CString DST, CString&amp; StrResult)
+&#123;
+	CFileFind ff;
+	CString SRCDir = SRC;
+	CString DSTDir = DST;
+	BOOL bRes = TRUE;
+	HANDLE hSrcFile, hDstFile;
+	DWORD dwSRCFile, dwDSTFile, dwCB;
+
+	if (SRCDir.Right(1) != _T(&quot;\\&quot;))
+		SRCDir += _T(&quot;\\&quot;);
+	SRCDir += _T(&quot;*.*&quot;);
+
+	if (DSTDir.Right(1) != _T(&quot;\\&quot;))
+		DSTDir += _T(&quot;\\&quot;);
+	hSrcFile = hDstFile = NULL;
+	BYTE* pSrcBuffer = new BYTE[M_BUFSIZE];
+	BYTE* pDstBuffer = new BYTE[M_BUFSIZE];
+	memset(pSrcBuffer, 0, M_BUFSIZE);
+	memset(pSrcBuffer, 0, M_BUFSIZE);
+
+	BOOL res = ff.FindFile(SRCDir);
+
+	while (res)
+	&#123;
+		res = ff.FindNextFile();
+		if (!ff.IsDirectory() &amp;&amp; !ff.IsDots())
+		&#123;
+			CString DSTFilePath;
+			DSTFilePath = DSTDir + ff.GetFileName();
+			CString SRCFilePath = ff.GetFilePath();
+
+			if (hSrcFile)
+			&#123;
+				CloseHandle(hSrcFile);
+				hSrcFile = NULL;
+			&#125;
+
+			if (hDstFile)
+			&#123;
+				CloseHandle(hDstFile);
+				hSrcFile = NULL;
+			&#125;
+
+			hSrcFile = CreateFile(SRCFilePath, GENERIC_READ, 0, NULL, OPEN_EXISTING, 0, NULL);
+			if (hSrcFile == INVALID_HANDLE_VALUE)
+			&#123;
+				StrResult.Format(_T(&quot;\n Create Source file failed!! Error code = %d \n&quot;), GetLastError());
+				bRes = FALSE;
+				break;
+			&#125;
+
+			hDstFile = CreateFile(DSTFilePath, GENERIC_READ, 0, NULL, OPEN_EXISTING, 0, NULL);
+			if (hDstFile == INVALID_HANDLE_VALUE)
+			&#123;
+				StrResult.Format(_T(&quot;\n Create Destination file failed!! Error code = %d \n&quot;), GetLastError());
+				bRes = FALSE;
+				break;
+			&#125;
+
+			LARGE_INTEGER SrcFileSize, DstFileSize;
+
+			dwSRCFile = GetFileSizeEx(hSrcFile, &amp;SrcFileSize);
+			dwDSTFile = GetFileSizeEx(hDstFile, &amp;DstFileSize);
+
+			if (SrcFileSize.LowPart != DstFileSize.LowPart)
+			&#123;
+				StrResult.Format(_T(&quot;\n Compare file is different!! Src Length = %d, Dest Length = %d \n&quot;), SrcFileSize.LowPart, DstFileSize.LowPart);
+				bRes = FALSE;
+				break;
+			&#125;
+
+			while (SrcFileSize.LowPart &gt; 0)
+			&#123;
+				BOOL bCmpResult;
+				bCmpResult = ReadFile(hSrcFile, pSrcBuffer, M_BUFSIZE, &amp;dwCB, NULL);
+				if (bCmpResult == 0)
+				&#123;
+					bRes = FALSE;
+					break;
+				&#125;
+				bCmpResult = ReadFile(hDstFile, pDstBuffer, M_BUFSIZE, &amp;dwCB, NULL);
+				if (bCmpResult == 0)
+				&#123;
+					bRes = FALSE;
+					break;
+				&#125;
+				bCmpResult = memcmp(pSrcBuffer, pDstBuffer, dwCB);
+
+				if (bCmpResult != 0)
+				&#123;
+					bRes = FALSE;
+					CString DiffByte;
+
+					CString PostCmpErrorStr;
+					CString SrcDumpData, DstDumpData;
+					StrResult.Format(_T(&quot;\n Fatal_Error: Src Data from %d to %d.\n&quot;), (DstFileSize.LowPart - SrcFileSize.LowPart), (DstFileSize.LowPart - SrcFileSize.LowPart + dwCB));
+
+					PostCmpErrorStr = _T(&quot;SourceFilePath: &quot;) + SRCFilePath + _T(&quot; To \r\n&quot;) + _T(&quot;DstFilePath: &quot;) + DSTFilePath;
+					StrResult = PostCmpErrorStr + _T(&quot;  has compare error! \r\n&quot;);
+					//HugoPostMessageAndShowSD1(PostCmpErrorStr,1);
+					//HugoPostMessageAndShowSD2(PostCmpErrorStr,1);
+
+					::MessageBox(
+						NULL,
+						(LPCWSTR)L&quot;Compare error happened!!&quot;,
+						(LPCWSTR)L&quot;Fatal Error!&quot;,
+						MB_OK
+					);
+
+					break;
+				&#125;
+				SrcFileSize.LowPart -= dwCB;
+			&#125;
+
+			if (bRes == FALSE)
+				break;
+			else
+				ReadFile(hDstFile, pDstBuffer, 512, &amp;dwCB, NULL);
+		&#125;
+		else if (ff.IsDirectory() &amp;&amp; !ff.IsDots())
+		&#123;
+			CString DSTFildPath;
+			DSTFildPath = DSTDir + ff.GetFileName();
+			bRes = ModeTestCompareFilesBetweenSRCandDST(ff.GetFilePath(), DSTFildPath, StrResult);
+			if (bRes == FALSE)
+				break;
+		&#125;
+	&#125;
+
+	if (hSrcFile)
+	&#123;
+		CloseHandle(hSrcFile);
+		hSrcFile = NULL;
+	&#125;
+
+	if (hDstFile)
+	&#123;
+		CloseHandle(hDstFile);
+		hSrcFile = NULL;
+	&#125;
+
+	if (bRes == FALSE)
+	&#123;
+		delete[]pSrcBuffer;
+		delete[]pDstBuffer;
+		ff.Close();
+		return FALSE;
+	&#125;
+	else
+	&#123;
+		delete[]pSrcBuffer;
+		delete[]pDstBuffer;
+		ff.Close();
+		return TRUE;
+	&#125;
+&#125;
+</code></pre>
+<p>关于CString的格式化输出：<a target="_blank" rel="noopener" href="https://blog.csdn.net/wangkaishou/article/details/5846152">MFC中CString.Format的详细用法</a><br>关于CFile文件操作：<a target="_blank" rel="noopener" href="https://blog.csdn.net/perfectguyipeng/article/details/60148222">MFC——文件操作（CFile）</a></p>
+<h2 id="开始按钮"><a href="#开始按钮" class="headerlink" title="开始按钮"></a>开始按钮</h2><p>一般操作顺序：选择src和dst，再点击Start按钮<br>start按钮的方法调用已保存的m_src和m_dst路径，传入拷贝和比较，再输出结果即可，大致流程如下</p>
+<pre><code>void CmyMFCDlg::OnBnClickedButtonrun()
+&#123;
+    //读入所有界面数据
+	UpdateData(true);
+	
+	BOOL ret;
+	CString outStr;
+	
+	ret = ModeTestCopyFileFromSRCtoDST(m_src, m_dst, outStr);
+	if (!ret)
+			MessageBox(NULL, _T(outStr), _T(&quot;ERROR&quot;), MB_OK);
+	
+	ret = ModeTestCompareFilesBetweenSRCandDST(m_src, m_dst, outStr);
+	if (!ret)
+			MessageBox(NULL, _T(outStr), _T(&quot;ERROR&quot;), MB_OK);
+&#125;
+</code></pre>
+<p>这里用messagebox输出结果，即弹窗，弹窗是阻塞式的。也可以用编辑框，写文件输出。<br>关于messagebox，参考：<a target="_blank" rel="noopener" href="https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-messagebox">MessageBox function (winuser.h)</a><br>关于updateData：<a target="_blank" rel="noopener" href="https://www.cnblogs.com/lidabo/archive/2012/07/17/2595464.html">MFC中UpdateData()函数的使用</a><br>以上完成一个简单的文件拷贝和比较功能</p>
+<h1 id="多线程文件拷贝和写日志"><a href="#多线程文件拷贝和写日志" class="headerlink" title="多线程文件拷贝和写日志"></a>多线程文件拷贝和写日志</h1><p>将简单拷贝扩展，支持：</p>
+<ul>
+<li>多线程拷贝和比较，每个线程完成简单拷贝比较的功能</li>
+<li>在每个工作线程，输出打印到界面文本框，同时写到同一个日志文件</li>
+<li>界面主线程需要等待所有工作线程完成后，输出测试完成信息到文本框和日志</li>
+</ul>
+<h2 id="线程列表获取各自路径"><a href="#线程列表获取各自路径" class="headerlink" title="线程列表获取各自路径"></a>线程列表获取各自路径</h2><p>add和delete配置几个工作线程，每个线程配置其src和dst路径</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051516636.png" alt="12"></p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051516611.png" alt="13"></p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051516530.png" alt="14"></p>
+<p>这种动态增删的列表，在资源界面新建listbox类型变量和方法：</p>
+<pre><code>CListBox m_rwlist;
+afx_msg void OnLbnSelchangeListrwlist();
+</code></pre>
+<p>Add和Delete对应的方法：</p>
+<pre><code>void CmyMFCDlg::OnBnClickedButtonadd()
+void CmyMFCDlg::OnBnClickedButtondelete()
+</code></pre>
+<p>Add和Delete的方法控制listbox变量m_rwlist，选中任意m_rwlist后又会调用其方法OnLbnSelchangeListrwlist，获取每个线程各自的src、dst。</p>
+<p>按键控制m_rwlist的实现：</p>
+<pre><code>void CmyMFCDlg::OnBnClickedButtonadd()
+&#123;
+	CString Threadtest = _T(&quot;TestThread&quot;);
+	UINT ThreadCount = m_rwlist.GetCount();
+	if (ThreadCount == 0)
+	&#123;
+		m_rwlist.AddString(_T(&quot;TestThread1&quot;));
+	&#125;
+	else if (ThreadCount &lt; MAX_THREAD_COUNT)
+	&#123;
+		CString ThreadNum;
+		ThreadNum.Format(_T(&quot;%d&quot;), ThreadCount + 1);
+		Threadtest = Threadtest + ThreadNum;
+		m_rwlist.AddString(Threadtest);
+	&#125;
+	else if (ThreadCount == MAX_THREAD_COUNT)
+	&#123;
+		CString str;
+		str.Format(_T(&quot;Only support %d threads at most!!&quot;), MAX_THREAD_COUNT);
+		MessageBox(str);
+	&#125;
+	m_rwlist.SetCurSel(ThreadCount);
+	if (ThreadCount &lt; MAX_THREAD_COUNT)
+		totalThreadCount++;
+&#125;
+
+void CmyMFCDlg::OnBnClickedButtondelete()
+&#123;
+	UINT ThreadCount = m_rwlist.GetCount();
+	if (ThreadCount != 0)
+	&#123;
+		m_rwlist.DeleteString(ThreadCount - 1);
+		m_rwlist.SetCurSel(0);
+	&#125;
+	if (ThreadCount &gt; 0)
+		totalThreadCount--;
+&#125;
+</code></pre>
+<p>线程列表m_rwlist的方法读取路径到会话对象成员变量：</p>
+<pre><code>void CmyMFCDlg::OnLbnSelchangeListrwlist()
+&#123;
+	UpdateData(true); //update true: 从界面读入值到变量（使上次编辑生效）
+	if (m_rwlist.GetCount() != 0)
+	&#123;
+		UINT selectNum = m_rwlist.GetCurSel();
+		RWTestParamArray[selectNum].ThreadNum = m_rwlist.GetCount();
+		RefreshRWParam(RWTestParamArray, selectNum);
+	&#125;
+&#125;
+
+void CmyMFCDlg::RefreshRWParam(TabDialogRWTestParam(&amp;Array)[MAX_THREAD_COUNT], UINT CSel)
+&#123;
+	ctrl_src.SetWindowText(Array[CSel].SRCFolder_Path);
+	ctrl_dst.SetWindowText(Array[CSel].DSTFolder_Path);
+
+	UpdateData(false); //update false: 把变量写入到界面（实时显示）
+&#125;
+</code></pre>
+<p>真正读入路径的是dst、src按钮的方法：</p>
+<pre><code>void CmyMFCDlg::OnBnClickedButtonsrc()
+&#123;
+	CString SrcPath;
+	UINT ThreadCSelNum = m_rwlist.GetCurSel();
+	SrcPath = GetFolderPath();
+	ctrl_src.SetWindowText(SrcPath);
+	RWTestParamArray[ThreadCSelNum].SRCFolder_Path = SrcPath;
+&#125;
+
+void CmyMFCDlg::OnBnClickedButtondst()
+&#123;
+	CString DstPath;
+	UINT ThreadCSelNum = m_rwlist.GetCurSel();
+	DstPath = GetFolderPath();
+	ctrl_dst.SetWindowText(DstPath);
+	RWTestParamArray[ThreadCSelNum].DSTFolder_Path = DstPath;
+&#125;
+</code></pre>
+<p>线程数组定义在会话类，存储每个工作线程要用的数据</p>
+<pre><code>TabDialogRWTestParam RWTestParamArray[MAX_THREAD_COUNT];
+typedef struct TabRWParam
+&#123;
+	CString SRCFolder_Path;
+	CString DSTFolder_Path;
+	UINT ThreadNum;
+	UINT TestTimes;
+&#125;TabDialogRWTestParam;
+</code></pre>
+<h2 id="创建线程"><a href="#创建线程" class="headerlink" title="创建线程"></a>创建线程</h2><p>创建线程参考MS文档：<a target="_blank" rel="noopener" href="https://docs.microsoft.com/zh-cn/cpp/c-runtime-library/reference/beginthread-beginthreadex?view=msvc-160">beginthread、_beginthreadex</a><br>关注2点：</p>
+<ul>
+<li>传入线程内要执行的函数，和参数(可为NULL)</li>
+<li>返回线程句柄，如果是多个线程则是个数组</li>
+</ul>
+<p>创建线程的部分代码：</p>
+<pre><code>void CmyMFCDlg::RunModeTestInstance()
+&#123;
+    ....
+    
+	//线程内除了对象，还需要知道自己是哪个线程，因此打包this和ThreadCount
+	pTransParam ThreadTransPArray[MAX_THREAD_COUNT];
+
+	for (int i = 0; i &lt; totalThreadCount; i++)
+	&#123;
+		ThreadTransPArray[i] = new(TransParam);
+		ThreadTransPArray[i]-&gt;i = i;
+		ThreadTransPArray[i]-&gt;translpParam = this;
+
+		unsigned int rwThreadID;
+
+		//hThread defined as global data
+		hThread[i] = (HANDLE)_beginthreadex(
+			NULL,
+			0,
+			DoThreadProc,
+			ThreadTransPArray[i],
+			0,
+			&amp;rwThreadID);
+
+		if (hThread[i] == NULL)
+			MessageBox(_T(&quot;CreateThread Fail!!&quot;), MB_OK);
+		
+		....
+		
+		//release resource
+    	for (int i = 0; i &lt; totalThreadCount; i++)
+    	&#123;
+    		delete ThreadTransPArray[i];
+    		ThreadTransPArray[i] = NULL;
+    		CloseHandle(hThread[i]);
+    	&#125;
+	&#125;
+</code></pre>
+<p>由于要在线程内打印当前是哪个线程，这个从Dlg对象的this指针是获取不到的，因此把this指针和线程id打包结构体，传入DoThreadProc线程函数，结构体如下</p>
+<pre><code>typedef struct transParam
+&#123;
+	LPVOID translpParam;
+	int i;
+&#125;TransParam, *pTransParam;
+
+#define MAX_THREAD_COUNT 6
+</code></pre>
+<p>注意使用完后释放线程句柄和其他相关资源</p>
+<h2 id="主线程和工作线程的通信：Message机制"><a href="#主线程和工作线程的通信：Message机制" class="headerlink" title="主线程和工作线程的通信：Message机制"></a>主线程和工作线程的通信：Message机制</h2><p>先明白几点：</p>
+<ul>
+<li>所有工作线程都共享主线程（界面线程）的数据，即会话类对象的成员</li>
+<li>界面控件的操作函数，都是主线程独有的，工作线程不能调用</li>
+<li>主线程如果要等待工作线程，一般会阻塞</li>
+</ul>
+<p>问题：<br>如何将工作线程的打印输出到主线程界面控件？</p>
+<p>Windows消息机制可以解决工作线程和主线程通信问题，简单的讲，主线程有消息队列，工作线程可以发送消息到消息队列中，主线程用FIFO原则处理队列中的消息，在阻塞等待动作线程时，也支持消息队列的处理。<br>关于消息队列：<a target="_blank" rel="noopener" href="https://www.jianshu.com/p/5fd5bdaac69c">windows消息机制（MFC）</a></p>
+<p>（1）工作线程函数</p>
+<pre><code>unsigned int WINAPI DoThreadProc(void *threadTransParam)
+&#123;
+	pTransParam pTrans = (pTransParam)threadTransParam;
+	CString strResult;
+	BOOL res = 0;
+
+	CmyMFCDlg* pDlg = (CmyMFCDlg *)pTrans-&gt;translpParam;
+	int thread_id = pTrans-&gt;i;
+
+	for (int i = 0; i &lt; (int)pDlg-&gt;rwtime; i++)
+	&#123;
+		
+		res = pDlg-&gt;ModeTestCopyFileFromSRCtoDST(pDlg-&gt;RWTestParamArray[thread_id].SRCFolder_Path, pDlg-&gt;RWTestParamArray[thread_id].DSTFolder_Path, strResult);
+
+		res = pDlg-&gt;ModeTestCompareFilesBetweenSRCandDST(pDlg-&gt;RWTestParamArray[thread_id].SRCFolder_Path, pDlg-&gt;RWTestParamArray[thread_id].DSTFolder_Path, strResult);
+		if (res)
+		&#123;
+			criticalSec.Lock();
+			::PostMessage(pDlg-&gt;GetSafeHwnd(), WM_USER_MSG, WPARAM(thread_id + 1), LPARAM(i + 1));
+			criticalSec.Unlock();
+		&#125;
+	&#125;
+
+	return res;
+&#125;
+</code></pre>
+<p>几点说明：</p>
+<ul>
+<li>线程函数要用WINAPI实现，不属于会话类内的方法，因此需要this指针显式调用</li>
+<li>rwtime是测试次数，每个线程执行多次拷贝比较</li>
+<li>PostMessage是发布消息到主线程消息队列，可以传参：WPARAM和LPARAM</li>
+<li>由于不确定PostMessage是不是线程安全，这里加了锁：CCriticalSection类型的criticalSec</li>
+</ul>
+<p>(2)消息处理函数<br>来看message处理函数：</p>
+<pre><code>LRESULT CmyMFCDlg::OnMsg(WPARAM wp, LPARAM lp)
+&#123;
+	strAppend.Format(_T(&quot;Thread %d src:%s ---&gt; des:%s, Copy&amp;Compare Pass: test loop: %d \n&quot;), wp, RWTestParamArray[wp-1].SRCFolder_Path, RWTestParamArray[wp-1].DSTFolder_Path, lp);
+	ShowLogInEditBox(); //字符串显示到界面
+	return 0;
+&#125;
+</code></pre>
+<p>主界面字符串显示函数</p>
+<pre><code>/* call by message handler, for multiple child thread*/
+void CmyMFCDlg::ShowLogInEditBox()
+&#123;
+	CString str;
+	UINT i;
+
+	/*message 队列只在主线程内处理，无需加锁*/
+	//criticalSec.Lock();
+		WriteLogFile(this-&gt;strAppend); //only write append str
+	//criticalSec.Unlock();
+
+	this-&gt;GetDlgItemText(IDC_EDIT_logbox, str);
+	str += this-&gt;strAppend; //update old+append str
+	str += &quot;\r\n&quot;; //这里换行没用，要在控件设置中允许换行
+
+	this-&gt;SetDlgItemText(IDC_EDIT_logbox, str);
+
+	i = ((CEdit*)GetDlgItem(IDC_EDIT_logbox))-&gt;GetLineCount();
+	((CEdit*)GetDlgItem(IDC_EDIT_logbox))-&gt;LineScroll(++i, 0); //定位到下一行
+
+&#125;
+</code></pre>
+<p>写日志的相关方法如下：</p>
+<pre><code>BOOL CmyMFCDlg::CreateLogFile()
+&#123;
+	CString strName;
+	SYSTEMTIME st;
+
+	GetLocalTime(&amp;st);
+	strName.Format(_T(&quot;UtilityLogFile_%4d-%d-%d_%d-%d-%d.log&quot;), st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
+
+	if (!m_File.Open(strName, (CFile::modeCreate | CFile::modeReadWrite), 0))
+	&#123;
+		::AfxMessageBox(_T(&quot;Create Utility Log File Error!!&quot;));
+		return FALSE;
+	&#125;
+
+	m_logCreated = 1;
+	return TRUE;
+&#125;
+
+void CmyMFCDlg::WriteLogFile(CString str)
+&#123;
+	BOOL CreateRes = TRUE;
+
+	if (m_logCreated == 0)
+		CreateRes = CreateLogFile();
+
+	if (CreateRes)
+	&#123;
+		str += _T(&quot;\r\n&quot;);
+		int length = str.GetLength();
+		length *= 2;
+		m_File.Write(str, length);
+		m_File.Flush();
+	&#125;
+&#125;
+
+void CmyMFCDlg::CloseLogFile()
+&#123;
+	if (m_logCreated == 1)
+	&#123;
+		m_File.Close();
+		m_logCreated = 0;
+	&#125;
+&#125;
+</code></pre>
+<p>注意message处理函数的关键点：</p>
+<ul>
+<li>只在主线程中处理，不存在其他线程操作，无临界区问题。因此上述的窗口输出，日志文件写入都是线程安全的。</li>
+</ul>
+<p>编辑框作为输出要注意几点：</p>
+<ul>
+<li>换行要在设置里配置，字符串换行没用</li>
+<li>设置输出滚动显示</li>
+</ul>
+<p>效果如下：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051516097.png" alt="15"></p>
+<p>（3）线程同步<br>日志完成的输出是主线程等待所有工作线程函数返回后才执行，如何实现？<br>参考：<a target="_blank" rel="noopener" href="https://www.cnblogs.com/shangdawei/p/4015772.html">WaitForMultipleObject与MsgWaitForMultipleObjects用法</a><br>我们的需求是主线程在阻塞等待时要处理消息，因此用MsgWaitForMultipleObjects方法。<br>代码如下：</p>
+<pre><code>//wait all child threads return
+
+	/*
+	//主线程阻塞，不能处理消息
+	DWORD dwWaitResult = WaitForMultipleObjects(
+		totalThreadCount,
+		hThread,
+		TRUE,
+		INFINITE);
+	*/
+	//主线程阻塞，但不阻塞消息
+	int nWaitCount = totalThreadCount;
+	int nExitThreadCount = 0;      //标记已经有几个线程退出了
+	BOOL bWaitAll = FALSE;		//不等待所有线程完成，实时处理。如果TRUE, 会阻塞到所有线程完成
+	DWORD result;
+	MSG msg;
+
+	while (TRUE)
+	&#123;
+		/*该函数等待：多个线程的完成信号，或其他消息信号,有任意一种就返回
+		*返回值为[WAIT_OBJECT_0, WAIT_OBJECT_0 + nWaitCount - 1]表示对应下标的线程已完成
+		*返回值为WAIT_OBJECT_0 + nWaitCount表示有其他信号，如线程内发送的message
+		*WAIT_OBJECT_0值为0
+		*/
+		result = MsgWaitForMultipleObjects(nWaitCount, hThread, bWaitAll, INFINITE, QS_ALLINPUT);
+
+		if (result == WAIT_OBJECT_0 + nWaitCount) //表示收到消息
+		&#123;
+			while (PeekMessage(&amp;msg, NULL, 0, 0, PM_REMOVE)) //处理所有已入队的消息
+			&#123;
+				TranslateMessage(&amp;msg); //message translat and format, add into message queue
+				DispatchMessage(&amp;msg); //call message handler
+			&#125;
+		&#125;
+		else if (result &gt;= WAIT_OBJECT_0 &amp;&amp; result &lt; WAIT_OBJECT_0 + nWaitCount) //表示收到了线程结束信号
+		&#123;
+			nExitThreadCount++;
+			if (nExitThreadCount &lt; totalThreadCount)
+			&#123;
+				/*必须更新hThread，否则已退出的线程一直被检测到*/
+				int nIndex = result - WAIT_OBJECT_0; //退出线程的index
+				hThread[nIndex] = hThread[nWaitCount - 1]; //更新等待列表：hThread, 交换退出的成员和尾部成员
+				hThread[nWaitCount - 1] = NULL;
+
+				nWaitCount--; //更新要等待的线程数
+			&#125;
+			else
+			&#123;
+				break; //等待的所有线程都已完成
+			&#125;
+		&#125;
+	&#125;
+
+	//All threads returned
+</code></pre>
+<p>MsgWaitForMultipleObjects的MS说明文档：<a target="_blank" rel="noopener" href="https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-msgwaitformultipleobjects">MsgWaitForMultipleObjects function (winuser.h)</a><br>返回值的含义是重点，这个文档说的很隐晦：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051517122.png" alt="16"></p>
+<p>大意是：等待n个线程</p>
+<ul>
+<li>如果返回的值i是属于0~n-1，说明第i个工作线程结束了</li>
+<li>如果返回值是n，不是线程结束，而是收了到消息，例如工作线程内发送的消息。</li>
+</ul>
+<p>因此代码逻辑是：<br>1.如果有消息，就处理消息<br>关于message的peek,translate和dispatch:<br><a target="_blank" rel="noopener" href="https://blog.csdn.net/caimagic/article/details/50629570">PeekMessage使用方法</a><br><a target="_blank" rel="noopener" href="https://blog.csdn.net/wang15061955806/article/details/52066559">消息循环中TranslateMessage和Dispatch函数的作用</a></p>
+<p>2.如果有线程结束，要更新线程句柄数组，只保留未等待到的线程；<br>当所有线程都等待到，退出等待循环</p>
+<p>以上完成了主线程和多个工作线程的同步机制</p>
+<h1 id="再进一步：调用其他进程"><a href="#再进一步：调用其他进程" class="headerlink" title="再进一步：调用其他进程"></a>再进一步：调用其他进程</h1><p>现需求如下：<br>有多个功能的FW需要测试，要求测试工具遍历每个FW, 调用其他的程序，更新到磁盘固件后，做之前的多进程读写比较流程<br>重点关注如何调用其他程序。假设FW更新程序是FirwmareUpdateTool.exe，接受FW相关的参数<br>需要实现：</p>
+<ul>
+<li>界面接收参数</li>
+<li>调用其他程序，传参，且注意与主线程的同步</li>
+</ul>
+<p>代码：</p>
+<pre><code>BOOL CmyMFCDlg::DoUpdateFirmware(CString filename)
+&#123;
+	TCHAR szFilePath[MAX_PATH + 1] = &#123; 0 &#125;;
+	GetModuleFileName(NULL, szFilePath, MAX_PATH);
+	(_tcsrchr(szFilePath, _T(&#39;\\&#39;)))[1] = 0;
+
+	CString strToolPath(szFilePath);
+	strToolPath = strToolPath + _T(&quot;FirwmareUpdateTool.exe&quot;);
+	CString strPath;
+	strPath.Format(_T(&quot;%s %s %s %d&quot;), strToolPath.GetBuffer(0), m_str_VendorID.GetBuffer(0), filename.GetBuffer(0), m_SlotID);
+	
+	strAppend = strPath;
+	ShowLogInEditBox();
+
+	if (!PathFileExists(strToolPath))
+	&#123;
+		strAppend.Format(_T(&quot;The %s is not exist!&quot;), strToolPath.GetBuffer(0));
+		ShowLogInEditBox();
+		MessageBox(strAppend, MB_OK);
+		return FALSE;
+	&#125;
+
+	STARTUPINFO si = &#123; sizeof(STARTUPINFO) &#125;;//在产生子进程时，子进程的窗口相关信息
+	PROCESS_INFORMATION pi;                  //子进程的ID/线程相关信息
+	memset(&amp;pi, 0, sizeof(PROCESS_INFORMATION));
+	DWORD returnCode = -1;              //用于保存子程进的返回值;
+
+	BOOL bRet = CreateProcess(              //调用失败，返回0；调用成功返回非0；
+		NULL,                               //一般都是空；（另一种批处理情况：此参数指定&quot;cmd.exe&quot;,下一个命令行参数 &quot;/c otherBatFile&quot;)
+		strPath.GetBuffer(0),              //命令行参数         
+		NULL,                               //_In_opt_    LPSECURITY_ATTRIBUTES lpProcessAttributes,
+		NULL,                               //_In_opt_    LPSECURITY_ATTRIBUTES lpThreadAttributes,
+		FALSE,                              //_In_        BOOL                  bInheritHandles,
+		CREATE_NEW_CONSOLE,                 //新的进程使用新的窗口。
+		NULL,                               //_In_opt_    LPVOID                lpEnvironment,
+		NULL,                               //_In_opt_    LPCTSTR               lpCurrentDirectory,
+		&amp;si,                                //_In_        LPSTARTUPINFO         lpStartupInfo,
+		&amp;pi);                               //_Out_       LPPROCESS_INFORMATION lpProcessInformation
+
+	if (bRet)
+	&#123;
+		while (TRUE) //这里也是为了输出打印和日志而等待进程，同时也阻塞了主线程
+		&#123;
+			DWORD result;
+			MSG msg;
+			result = MsgWaitForMultipleObjects(1, &amp;pi.hProcess, FALSE, INFINITE, QS_ALLINPUT);
+			if (result == (WAIT_OBJECT_0))
+			&#123;
+				//获取子进程的返回值
+				GetExitCodeProcess(pi.hProcess, &amp;returnCode);
+				CloseHandle(pi.hThread);
+				CloseHandle(pi.hProcess);
+				break;
+			&#125;
+			else
+			&#123;
+				PeekMessage(&amp;msg, NULL, 0, 0, PM_REMOVE);
+				DispatchMessage(&amp;msg);
+			&#125;
+		&#125;
+		strAppend.Format(_T(&quot;%s returnCode : %d &quot;), strToolPath.GetBuffer(0), returnCode);
+		ShowLogInEditBox();
+	&#125;
+	else
+	&#123;
+		strAppend.Format(_T(&quot;Start the %s failed!&quot;), strToolPath.GetBuffer(0));
+		ShowLogInEditBox();
+		MessageBox(strAppend, MB_OK);
+	&#125;
+
+	if (!returnCode)
+	&#123;
+		return TRUE;
+	&#125;
+	return FALSE;
+&#125;
+</code></pre>
+<p>CreateProcess创建进程，执行第三方程序<br>MsgWaitForMultipleObjects等待第三方进程返回，阻塞了当前主进程</p>
+<h1 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h1><p>本文涉及的知识点：</p>
+<ul>
+<li>界面控件与底层类的数据交互</li>
+<li>MFC的文件，字符串操作</li>
+<li>线程创建和线程同步</li>
+<li>线程通信：消息机制</li>
+<li>进程创建与同步</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/MFC/" rel="tag"># MFC</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/12/12/Markdown%E4%BD%BF%E7%94%A8%E7%AC%94%E8%AE%B0/" rel="prev" title="Markdown使用笔记">
+      <i class="fa fa-chevron-left"></i> Markdown使用笔记
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2021/04/17/Vim%E4%BD%BF%E7%94%A8%E7%AC%94%E8%AE%B0/" rel="next" title="Vim使用笔记.">
+      Vim使用笔记. <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%89%8D%E8%A8%80"><span class="nav-number">1.</span> <span class="nav-text">前言</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%88%9D%E8%AF%86MFC%E9%A1%B9%E7%9B%AE"><span class="nav-number">2.</span> <span class="nav-text">初识MFC项目</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#MFC%E5%85%A5%E5%8F%A3"><span class="nav-number">2.1.</span> <span class="nav-text">MFC入口</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#MFC%E9%80%BB%E8%BE%91%E5%B1%82"><span class="nav-number">2.2.</span> <span class="nav-text">MFC逻辑层</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%95%8C%E9%9D%A2%E8%B5%84%E6%BA%90%E5%B1%82"><span class="nav-number">2.3.</span> <span class="nav-text">界面资源层</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AE%80%E5%8D%95%E6%8B%B7%E8%B4%9D%E6%A0%A1%E9%AA%8C%E7%9A%84%E5%AE%9E%E7%8E%B0"><span class="nav-number">3.</span> <span class="nav-text">简单拷贝校验的实现</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%8E%B7%E5%8F%96%E6%96%87%E4%BB%B6%E8%B7%AF%E5%BE%84"><span class="nav-number">3.1.</span> <span class="nav-text">获取文件路径</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8B%B7%E8%B4%9D%E5%92%8C%E6%AF%94%E8%BE%83"><span class="nav-number">3.2.</span> <span class="nav-text">拷贝和比较</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%BC%80%E5%A7%8B%E6%8C%89%E9%92%AE"><span class="nav-number">3.3.</span> <span class="nav-text">开始按钮</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%96%87%E4%BB%B6%E6%8B%B7%E8%B4%9D%E5%92%8C%E5%86%99%E6%97%A5%E5%BF%97"><span class="nav-number">4.</span> <span class="nav-text">多线程文件拷贝和写日志</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BA%BF%E7%A8%8B%E5%88%97%E8%A1%A8%E8%8E%B7%E5%8F%96%E5%90%84%E8%87%AA%E8%B7%AF%E5%BE%84"><span class="nav-number">4.1.</span> <span class="nav-text">线程列表获取各自路径</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%88%9B%E5%BB%BA%E7%BA%BF%E7%A8%8B"><span class="nav-number">4.2.</span> <span class="nav-text">创建线程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%BB%E7%BA%BF%E7%A8%8B%E5%92%8C%E5%B7%A5%E4%BD%9C%E7%BA%BF%E7%A8%8B%E7%9A%84%E9%80%9A%E4%BF%A1%EF%BC%9AMessage%E6%9C%BA%E5%88%B6"><span class="nav-number">4.3.</span> <span class="nav-text">主线程和工作线程的通信：Message机制</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%86%8D%E8%BF%9B%E4%B8%80%E6%AD%A5%EF%BC%9A%E8%B0%83%E7%94%A8%E5%85%B6%E4%BB%96%E8%BF%9B%E7%A8%8B"><span class="nav-number">5.</span> <span class="nav-text">再进一步：调用其他进程</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%B0%8F%E7%BB%93"><span class="nav-number">6.</span> <span class="nav-text">小结</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="cursorhu"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">cursorhu</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">113</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">41</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">55</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/cursorhu" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;cursorhu" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:2449055512@qq.com" title="E-Mail → mailto:2449055512@qq.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2025</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">cursorhu</span>
+</div>
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

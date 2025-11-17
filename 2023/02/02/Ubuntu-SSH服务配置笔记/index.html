@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 8.0.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Noto+Serif+SC|Roboto/css?family=Noto Serif SC:300,300italic,400,400italic,700,700italic|Roboto:300,300italic,400,400italic,700,700italic&display=swap&subset=latin,latin-ext">
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"cursorhu.github.io","root":"/","scheme":"Pisces","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="SSH配置SSH基本概念 SSH是Secure Shell缩写，实现安全远程登录  ​	SSH的安全性好，原因是其对数据进行加密，方式主要有两种：对称加密（密钥加密）和非对称加密（公钥加密）​	对称加密指加密解密使用的是同一套秘钥。Client端把密钥加密后发送给Server端，Server用同一套密钥解密。对称加密的加密强度比较高，很难破解。但是如果有一个Client端的密钥泄漏，那么整个系统的">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Ubuntu SSH服务配置笔记">
+<meta property="og:url" content="https://cursorhu.github.io/2023/02/02/Ubuntu-SSH%E6%9C%8D%E5%8A%A1%E9%85%8D%E7%BD%AE%E7%AC%94%E8%AE%B0/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="SSH配置SSH基本概念 SSH是Secure Shell缩写，实现安全远程登录  ​	SSH的安全性好，原因是其对数据进行加密，方式主要有两种：对称加密（密钥加密）和非对称加密（公钥加密）​	对称加密指加密解密使用的是同一套秘钥。Client端把密钥加密后发送给Server端，Server用同一套密钥解密。对称加密的加密强度比较高，很难破解。但是如果有一个Client端的密钥泄漏，那么整个系统的">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2023-02-02T03:01:24.000Z">
+<meta property="article:modified_time" content="2024-12-25T08:54:27.898Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="ssh">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="https://cursorhu.github.io/2023/02/02/Ubuntu-SSH%E6%9C%8D%E5%8A%A1%E9%85%8D%E7%BD%AE%E7%AC%94%E8%AE%B0/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>Ubuntu SSH服务配置笔记 | ThinkNotes</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">ThinkNotes</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Simple is not easy</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于我</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2023/02/02/Ubuntu-SSH%E6%9C%8D%E5%8A%A1%E9%85%8D%E7%BD%AE%E7%AC%94%E8%AE%B0/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Ubuntu SSH服务配置笔记
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2023-02-02 11:01:24" itemprop="dateCreated datePublished" datetime="2023-02-02T11:01:24+08:00">2023-02-02</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2024-12-25 16:54:27" itemprop="dateModified" datetime="2024-12-25T16:54:27+08:00">2024-12-25</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/linux/" itemprop="url" rel="index"><span itemprop="name">linux</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="SSH配置"><a href="#SSH配置" class="headerlink" title="SSH配置"></a>SSH配置</h1><h2 id="SSH基本概念"><a href="#SSH基本概念" class="headerlink" title="SSH基本概念"></a>SSH基本概念</h2><ul>
+<li>SSH是Secure Shell缩写，实现安全远程登录</li>
+</ul>
+<p>​	SSH的安全性好，原因是其对数据进行加密，方式主要有两种：对称加密（密钥加密）和非对称加密（公钥加密）<br>​	对称加密指加密解密使用的是同一套秘钥。Client端把密钥加密后发送给Server端，Server用同一套密钥解密。对称加密的加密强度比较高，很难破解。但是如果有一个Client端的密钥泄漏，那么整个系统的安全性就存在严重的漏洞。<br>​	为了解决对称加密的漏洞，于是就产生了非对称加密。<br>​	非对称加密有两个密钥：“公钥”和“私钥”。公钥加密后的密文，只能通过对应的私钥进行解密。想从公钥推理出私钥几乎不可能，所以非对称加密的安全性比较高。</p>
+<ul>
+<li>SSH的加密原理中，使用了RSA非对称加密算法。</li>
+</ul>
+<p>​	整个过程：</p>
+<p>​	（1）远程主机收到用户的登录请求，把自己的公钥发给用户。</p>
+<p>​	（2）用户使用这个公钥，将登录密码加密后，发送回来。</p>
+<p>​	（3）远程主机用自己的私钥，解密登录密码，如果密码正确，就同意用户登录。</p>
+<ul>
+<li>关于中间人攻击（Man-in-the-middle attack）</li>
+</ul>
+<p>​	中间人攻击的概念：如果有人冒充远程主机将伪造的公钥发给用户，用户很难辨别公钥真伪，用户	会和伪造主机通信而不是真正的主机。</p>
+<p>​	因为SSH不像https协议，SSH协议的公钥是没有证书中心（CA）公证的，是主机和用户之间自己签	发的，所有SSH从原理上无法彻底防止中间人攻击</p>
+<ul>
+<li><p>SSH使用首次验证方式减少中间人攻击的概率：</p>
+<p>SSH首次连接会下载服务端的公钥，用户确认后公钥将被保存并信任。</p>
+<p>下次访问时客户端将会核对服务端发来的公钥和本地保存的是否相同，如果不同就发出中间人攻击的警告拒绝连接，除非用户手动清除已保存的公钥。</p>
+<p>所以，只要SSH首次连接没有中间人攻击，之后的SSH连接就无需担心中间人攻击</p>
+</li>
+</ul>
+<h2 id="Ubuntu安装SSH服务"><a href="#Ubuntu安装SSH服务" class="headerlink" title="Ubuntu安装SSH服务"></a>Ubuntu安装SSH服务</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">sudo apt install ssh -y</span><br><span class="line">sudo service ssh start</span><br><span class="line">sudo service ssh status</span><br></pre></td></tr></table></figure>
+
+<p>在系统重启后ssh service会自启动，不需要<code>systemctl enable</code>去配置自启动</p>
+<h2 id="Windows访问SSH服务"><a href="#Windows访问SSH服务" class="headerlink" title="Windows访问SSH服务"></a>Windows访问SSH服务</h2><ul>
+<li><p>使用win+R CMD验证SSH连接</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ssh 远程主机用户名@远程主机IP</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>使用putty，xshell等工具访问主机</p>
+</li>
+</ul>
+<p>参考：<a target="_blank" rel="noopener" href="https://www.how2shout.com/how-to/how-to-login-into-ubuntu-using-ssh-from-windows-10-8-7.html#:~:text=How%20do%20I%20SSH%20into%20Ubuntu%20from%20Windows%3F,to%20Ubuntu%20server%20via%20Putty%20SSH%20client%20">how2shout.com&#x2F;how-to&#x2F;how-to-login-into-ubuntu-using-ssh-from-windows-10-8-7</a></p>
+<p>首次登陆会验证RSA公钥（1024位）的MD5 fingerprint（128位）</p>
+<blockquote>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">RSA key fingerprint is 98:2e:d7:e0:de:9f:ac:67:28:c2:42:2d:37:16:58:4d.</span><br><span class="line">Are you sure you want to continue connecting (yes/no)?</span><br></pre></td></tr></table></figure></blockquote>
+<p>当首次连接的公钥被接受以后，会保存在本地文件。下次再连接这台主机会跳过公钥警告，直接提示输入密码。如果以后的连接是中间人攻击，其公钥和本地的首次公钥不同，从而保证安全性。</p>
+<ul>
+<li>使用xftp, filezilla工具传输文件</li>
+</ul>
+<p>和putty，xshell配置类似</p>
+<ul>
+<li>使用scp命令传输文件</li>
+</ul>
+<p>在linux主机之间可以用scp传输文件和目录</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">#从远程cp到本地</span><br><span class="line">scp username@ip_address:/home/username/filename .</span><br><span class="line">#从本地cp到远程</span><br><span class="line">scp filename username@ip_address:/home/username</span><br><span class="line">#拷贝目录</span><br><span class="line">scp -r source_dir username@ip_address:/home/username/target_dir</span><br></pre></td></tr></table></figure>
+
+<h2 id="SSH远程开发"><a href="#SSH远程开发" class="headerlink" title="SSH远程开发"></a>SSH远程开发</h2><p>示例一：在SSH server和客户端建立后，可以使用VSCode和source insight等代码编辑工具改代码，用xftp传输代码到SSH Linux主机，用xshell远程编译。</p>
+<p>示例二：VSCode安装SSH远程开发插件，可以直接远程SSH Linux主机完成代码编辑、编译，<a target="_blank" rel="noopener" href="https://code.visualstudio.com/docs/remote/ssh">visualstudio.com&#x2F;Remote Development using SSH</a></p>
+<p>VSCode安装Remote-SSH插件后，添加远程host：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">In VS Code, select **Remote-SSH: Connect to Host...** from the Command Palette (F1, Ctrl+Shift+P) and use the same `user@hostname`</span><br></pre></td></tr></table></figure>
+
+
+
+<h1 id="远程连接相关的Ubuntu配置"><a href="#远程连接相关的Ubuntu配置" class="headerlink" title="远程连接相关的Ubuntu配置"></a>远程连接相关的Ubuntu配置</h1><h2 id="Ubuntu设置静态IP"><a href="#Ubuntu设置静态IP" class="headerlink" title="Ubuntu设置静态IP"></a>Ubuntu设置静态IP</h2><p>在使用SSH和Samba连远程Ubuntu PC时，发现IP有时候会改变，因此需要配置Ubuntu PC为静态IP</p>
+<p>1.ifconfig查看ethernet接口和当前IP</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">ubuntu@ubuntu-Z390-GAMING-X:~$ ifconfig</span><br><span class="line">eno1: flags=4163&lt;UP,BROADCAST,RUNNING,MULTICAST&gt;  mtu 1500</span><br><span class="line">        inet 10.52.4.71  netmask 255.255.255.0  broadcast 10.52.4.255</span><br></pre></td></tr></table></figure>
+
+<p>2.编辑Ubuntu的netplan配置文件&#x2F;etc&#x2F;netplan&#x2F;*.yaml，用tab补全找到具体的yaml，制定静态IP和DNS</p>
+<p>参考 <a target="_blank" rel="noopener" href="https://linuxconfig.org/netplan-network-configuration-tutorial-for-beginners">Netplan network configuration tutorial for beginners</a></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">network:</span><br><span class="line">  version: 2</span><br><span class="line">  renderer: NetworkManager</span><br><span class="line">  ethernets:</span><br><span class="line">    eno1:</span><br><span class="line">      addresses:</span><br><span class="line">        - 10.52.4.71/24</span><br><span class="line">      nameservers:</span><br><span class="line">         addresses:</span><br><span class="line">            - 10.52.1.1</span><br><span class="line">            - 10.52.1.2</span><br><span class="line">      #gateway4: 10.52.0.1</span><br><span class="line">      routes:</span><br><span class="line">         - to: default</span><br><span class="line">           via: 10.52.0.1</span><br></pre></td></tr></table></figure>
+
+<p>以上IP和nameservers(DNS)是必须的，gateway4是网关，在ubuntu22被废弃（ubuntu22显示 &#96;&#96;gateway4<code> has been deprecated, use default routes instead.</code>）使用routes配置网关，参考 <a target="_blank" rel="noopener" href="https://askubuntu.com/questions/1410750/netplan-gateway-has-been-deprecated">netplan-gateway-has-been-deprecated</a>。怎么获取这三个值，参考以下网络命令：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">#查看所有</span><br><span class="line">nmcli</span><br><span class="line">#查看gateway</span><br><span class="line">netstat -rn 或 route -n</span><br><span class="line">#DNS配置文件</span><br><span class="line">cat /etc/resolv.conf</span><br></pre></td></tr></table></figure>
+
+<p>例如nmcli输出如下，其中 <code> inet4 10.52.4.71/24</code>即当前IP&#x2F;mask， <code>route4 default via 10.52.0.1</code>即默认网关，<code>DNS configuration servers: 10.52.1.1 10.52.1.2</code>即nameservers</p>
+<blockquote>
+<p>eno1: connected to netplan-eno1<br>        “Intel I219-V”<br>        ethernet (e1000e), 18:C0:4D:1F:BA:B7, hw, mtu 1500<br>        ip4 default<br>        inet4 10.52.4.71&#x2F;24<br>        route4 10.52.4.0&#x2F;24 metric 100<br>        route4 10.52.0.1&#x2F;32 metric 100<br>        route4 default via 10.52.0.1 metric 100<br>        inet6 fe80::1ac0:4dff:fe1f:bab7&#x2F;64<br>        route6 fe80::&#x2F;64 metric 256</p>
+<p>virbr0: connected (externally) to virbr0<br>        “virbr0”<br>        bridge, 52:54:00:13:EB:68, sw, mtu 1500<br>        inet4 192.168.122.1&#x2F;24<br>        route4 169.254.0.0&#x2F;16 metric 1000<br>        route4 192.168.122.0&#x2F;24 metric 0</p>
+<p>lo: unmanaged<br>        “lo”<br>        loopback (unknown), 00:00:00:00:00:00, sw, mtu 65536</p>
+<p>DNS configuration:<br>        servers: 10.52.1.1 10.52.1.2<br>        interface: eno1</p>
+</blockquote>
+<p>3.生效</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo netplan apply</span><br></pre></td></tr></table></figure>
+
+<p>ping确认网络正常：</p>
+<blockquote>
+<p>ubuntu@ubuntu-Z390-GAMING-X:~$ ping <a target="_blank" rel="noopener" href="http://www.bing.com/">www.bing.com</a><br>PING china.bing123.com (202.89.233.101) 56(84) bytes of data.<br>64 bytes from 202.89.233.101 (202.89.233.101): icmp_seq&#x3D;1 ttl&#x3D;117 time&#x3D;27.1 ms<br>64 bytes from 202.89.233.101 (202.89.233.101): icmp_seq&#x3D;2 ttl&#x3D;117 time&#x3D;27.2 ms<br>64 bytes from 202.89.233.101 (202.89.233.101): icmp_seq&#x3D;3 ttl&#x3D;117 time&#x3D;27.2 ms</p>
+</blockquote>
+<p>如果DNS server或gateway不符合当前网络状况，ping会失败，输出：</p>
+<blockquote>
+<p>Name or service not known</p>
+</blockquote>
+<h2 id="Ubuntu禁止自动登出"><a href="#Ubuntu禁止自动登出" class="headerlink" title="Ubuntu禁止自动登出"></a>Ubuntu禁止自动登出</h2><p>自动登出会使SSH断开链接，按如下禁用</p>
+<blockquote>
+<p>setting-&gt;Privacy-&gt;Screen-&gt;Automatic Screen Lock (OFF)</p>
+</blockquote>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/ssh/" rel="tag"># ssh</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2023/01/30/Ubuntu%20Samba%E9%85%8D%E7%BD%AE%E7%AC%94%E8%AE%B0/" rel="prev" title="Ubuntu Samba配置笔记">
+      <i class="fa fa-chevron-left"></i> Ubuntu Samba配置笔记
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2023/03/01/%E6%B5%85%E8%B0%88%E6%95%B0%E5%AD%97%E7%94%B5%E8%B7%AF%E4%B9%8BPLL/" rel="next" title="浅谈数字电路之PLL">
+      浅谈数字电路之PLL <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#SSH%E9%85%8D%E7%BD%AE"><span class="nav-number">1.</span> <span class="nav-text">SSH配置</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#SSH%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5"><span class="nav-number">1.1.</span> <span class="nav-text">SSH基本概念</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Ubuntu%E5%AE%89%E8%A3%85SSH%E6%9C%8D%E5%8A%A1"><span class="nav-number">1.2.</span> <span class="nav-text">Ubuntu安装SSH服务</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Windows%E8%AE%BF%E9%97%AESSH%E6%9C%8D%E5%8A%A1"><span class="nav-number">1.3.</span> <span class="nav-text">Windows访问SSH服务</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#SSH%E8%BF%9C%E7%A8%8B%E5%BC%80%E5%8F%91"><span class="nav-number">1.4.</span> <span class="nav-text">SSH远程开发</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E8%BF%9C%E7%A8%8B%E8%BF%9E%E6%8E%A5%E7%9B%B8%E5%85%B3%E7%9A%84Ubuntu%E9%85%8D%E7%BD%AE"><span class="nav-number">2.</span> <span class="nav-text">远程连接相关的Ubuntu配置</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Ubuntu%E8%AE%BE%E7%BD%AE%E9%9D%99%E6%80%81IP"><span class="nav-number">2.1.</span> <span class="nav-text">Ubuntu设置静态IP</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Ubuntu%E7%A6%81%E6%AD%A2%E8%87%AA%E5%8A%A8%E7%99%BB%E5%87%BA"><span class="nav-number">2.2.</span> <span class="nav-text">Ubuntu禁止自动登出</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="cursorhu"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">cursorhu</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">113</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">41</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">55</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/cursorhu" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;cursorhu" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:2449055512@qq.com" title="E-Mail → mailto:2449055512@qq.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2025</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">cursorhu</span>
+</div>
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

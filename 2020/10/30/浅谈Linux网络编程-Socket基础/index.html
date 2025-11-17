@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 8.0.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Noto+Serif+SC|Roboto/css?family=Noto Serif SC:300,300italic,400,400italic,700,700italic|Roboto:300,300italic,400,400italic,700,700italic&display=swap&subset=latin,latin-ext">
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"cursorhu.github.io","root":"/","scheme":"Pisces","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="套接字（socket）基础套接字是网络编程中，应用层和传输层之间的数据结构，其作用如下:应用层通过传输层进行数据通信时，TCP和UDP会遇到同时为多个应用程序进程提供并发服务的问题。多个TCP连接或多个应用程序进程可能需要通过同一个TCP协议端口传输数据。为了区别不同的应用程序进程和连接，许多计算机操作系统为应用程序与TCP／IP协议交互提供了称为套接字(Socket)的接口，以区分不同应用程序进">
+<meta property="og:type" content="article">
+<meta property="og:title" content="浅谈Linux网络编程: Socket基础">
+<meta property="og:url" content="https://cursorhu.github.io/2020/10/30/%E6%B5%85%E8%B0%88Linux%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B-Socket%E5%9F%BA%E7%A1%80/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="套接字（socket）基础套接字是网络编程中，应用层和传输层之间的数据结构，其作用如下:应用层通过传输层进行数据通信时，TCP和UDP会遇到同时为多个应用程序进程提供并发服务的问题。多个TCP连接或多个应用程序进程可能需要通过同一个TCP协议端口传输数据。为了区别不同的应用程序进程和连接，许多计算机操作系统为应用程序与TCP／IP协议交互提供了称为套接字(Socket)的接口，以区分不同应用程序进">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051411648.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051411109.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051411045.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051411360.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051411733.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051411951.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051412551.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051412551.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051412223.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051412180.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051412975.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051412776.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051415958.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051413920.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051413732.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051413483.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051413289.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051418474.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051414568.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051419762.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051419995.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051419209.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051420456.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051420563.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051420232.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051421941.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051422137.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051422137.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051423142.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051423066.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051423066.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051423842.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051424795.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051424795.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051424796.png">
+<meta property="article:published_time" content="2020-10-30T04:06:24.000Z">
+<meta property="article:modified_time" content="2024-11-04T03:43:03.133Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="linux">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051411648.png">
+
+<link rel="canonical" href="https://cursorhu.github.io/2020/10/30/%E6%B5%85%E8%B0%88Linux%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B-Socket%E5%9F%BA%E7%A1%80/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>浅谈Linux网络编程: Socket基础 | ThinkNotes</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">ThinkNotes</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Simple is not easy</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于我</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/10/30/%E6%B5%85%E8%B0%88Linux%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B-Socket%E5%9F%BA%E7%A1%80/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          浅谈Linux网络编程: Socket基础
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-10-30 12:06:24" itemprop="dateCreated datePublished" datetime="2020-10-30T12:06:24+08:00">2020-10-30</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2024-11-04 11:43:03" itemprop="dateModified" datetime="2024-11-04T11:43:03+08:00">2024-11-04</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/linux/" itemprop="url" rel="index"><span itemprop="name">linux</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="套接字（socket）基础"><a href="#套接字（socket）基础" class="headerlink" title="套接字（socket）基础"></a>套接字（socket）基础</h1><p>套接字是网络编程中，应用层和传输层之间的数据结构，其作用如下:<br>应用层通过传输层进行数据通信时，TCP和UDP会遇到同时为多个应用程序进程提供并发服务的问题。多个TCP连接或多个应用程序进程可能需要通过同一个TCP协议端口传输数据。为了区别不同的应用程序进程和连接，许多计算机操作系统为应用程序与TCP／IP协议交互提供了称为套接字(Socket)的接口，以区分不同应用程序进程间的网络通信和连接。</p>
+<h1 id="套接字地址结构"><a href="#套接字地址结构" class="headerlink" title="套接字地址结构"></a>套接字地址结构</h1><p>通用套接字地址的结构体sockaddr定义如下：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051411648.png" alt="1"><br>在以太网中，不直接使用sockaddr结构体，而使用sockaddr_in,其定义如下：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051411109.png"><br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051411045.png" alt="3"></p>
+<p>通用结构体sockaddr和以太网的sockaddr_in结构体，有点像C++中的父类和子类的关系，sockaddr_in是对sockaddr的细化，其存储结构大小相同，分布如下：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051411360.png" alt="4"><br>由于大小相同，在设置socket地址时，一般先设置sockaddr_in结构体，然后强转为sockaddr类型</p>
+<h1 id="套接字地址结构在用户层和内核层的交互"><a href="#套接字地址结构在用户层和内核层的交互" class="headerlink" title="套接字地址结构在用户层和内核层的交互"></a>套接字地址结构在用户层和内核层的交互</h1><p>sockaddr的使用，以socket流程中的bind()函数为例：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051411733.png" alt="5"><br>bind函数需要传入sockaddr结构体的指针，和sockaddr结构体的长度</p>
+<h2 id="向内核传入数据"><a href="#向内核传入数据" class="headerlink" title="向内核传入数据"></a>向内核传入数据</h2><p>向内核传入数据的socket函数有：bind,send<br>传入过程如下：</p>
+<ul>
+<li>sockaddr结构体的长度，以传值方式传入内核</li>
+<li>内核通过sockaddr结构体的指针以及结构体长度，以内存复制的方式，从用户层拷贝sockaddr结构体到内核层。</li>
+</ul>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051411951.png" alt="6"></p>
+<h2 id="从内核获取数据"><a href="#从内核获取数据" class="headerlink" title="从内核获取数据"></a>从内核获取数据</h2><p>从内核得到数据的socket函数有：accept,recv</p>
+<ul>
+<li>sockaddr结构体的长度，以传值方式传入内核</li>
+<li>内核通过sockaddr结构体的指针以及结构体长度，以内存复制的方式，从内核层拷贝sockaddr结构体到用户层。</li>
+<li>内核返回内核的结构体的长度<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051412551.png" alt="7"></li>
+</ul>
+<h1 id="Socket编程流程"><a href="#Socket编程流程" class="headerlink" title="Socket编程流程"></a>Socket编程流程</h1><h2 id="总体架构"><a href="#总体架构" class="headerlink" title="总体架构"></a>总体架构</h2><p>TCP编程主要为C&#x2F;S模式，即服务器和客户端编程，我们讲socket编程，要区分是服务器端的流程还是客户端的流程。</p>
+<ul>
+<li>服务器端：创建服务-等待客户端连接-收到连接请求-处理</li>
+<li>客户端：发起对服务器的连接请求-根据服务器的响应做处理</li>
+</ul>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051412551.png"></p>
+<p>服务端各函数含义:</p>
+<ul>
+<li>socket：套接字初始化</li>
+<li>bind：绑定套接字和端口</li>
+<li>listen：配置服务器的请求队列，监测连接请求</li>
+<li>accept：接受客户端连接</li>
+<li>read&#x2F;write：数据的接收、发送</li>
+<li>close：断开连接，释放套接字</li>
+</ul>
+<p>客户端函数：</p>
+<ul>
+<li>客户端套接字不需要绑定端口和监听，直接connect发起连接请求，其他函数和服务端一致。</li>
+</ul>
+<h2 id="socket函数"><a href="#socket函数" class="headerlink" title="socket函数"></a>socket函数</h2><p>socket函数用于创建socket套接字的文件描述符，</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051412223.png" alt="9"></p>
+<p>有三个入参：</p>
+<ul>
+<li>domain：域，区分本地，IPV4 Internet，IPV6 Internet等。有的以PF开头，有的以AF开头，这两者值一样。</li>
+</ul>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051412180.png" alt="10"></p>
+<ul>
+<li>type：通信类型，如流式（TCP）,数据报式（UDP）等</li>
+</ul>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051412975.png" alt="11"></p>
+<ul>
+<li>protocal：协议类型，指定通信类型中的子类型，一般为0</li>
+</ul>
+<p>socket套接字初始化的一个例子：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051412776.png" alt="12"></p>
+<h2 id="socket函数在应用层和内核层的交互"><a href="#socket函数在应用层和内核层的交互" class="headerlink" title="socket函数在应用层和内核层的交互"></a>socket函数在应用层和内核层的交互</h2><p>用户调用的socket函数，会调用内核的sys_socket函数</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051415958.png" alt="2"></p>
+<p>sys_socket做两件事：</p>
+<ul>
+<li><p>sock_create生成内核的socket结构，和应用层的结构不同，如下：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051413920.png" alt="13"></p>
+</li>
+<li><p>sock_map_fd将内核socket结构绑定文件描述符fd,用户层可通过fd访问内核socket结构</p>
+</li>
+</ul>
+<h2 id="bind函数"><a href="#bind函数" class="headerlink" title="bind函数"></a>bind函数</h2><p>服务端用socket函数建立套接字文件描述符后，需要绑定地址和端口到该文件描述符，才能接受客户端请求。</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051413732.png" alt="14"></p>
+<ul>
+<li>sockfd：socket函数创建的文件描述符</li>
+<li>sockaddr结构的指针：指向的sockaddr结构，包含ip和port等信息</li>
+<li>addrlen：即sizeof(struct sockaddr)</li>
+</ul>
+<p>bind函数绑定UNIX族的套接字：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051413483.png" alt="15"></p>
+<p>bind函数绑定AF_INET族的套接字:</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051413289.png" alt="16"></p>
+<h2 id="bind函数在应用层和内核层的交互"><a href="#bind函数在应用层和内核层的交互" class="headerlink" title="bind函数在应用层和内核层的交互"></a>bind函数在应用层和内核层的交互</h2><p>以AF_INET族的套接字绑定为例，不同协议族实际上是调用内核不同的绑定函数<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051418474.png" alt="image-20221205141814380"></p>
+<h2 id="listen函数"><a href="#listen函数" class="headerlink" title="listen函数"></a>listen函数</h2><p>listen函数用于初始化服务器的可连接队列，即服务器处理客户的请求，不是并行处理，而是异步的串行处理。服务器建立可连接队列，将当前不能同步处理的新请求放到队列中，等队列前面的请求处理完了，才异步处理这个请求。<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051414568.png" alt="18"></p>
+<ul>
+<li>backlog是服务器可连接队列的最大长度</li>
+<li>当前队列没满，即当前队列的请求没超过backlog值，才可以调用accept</li>
+<li>listen函数只针对SOCK_STREAM和SOCK_SEQPACKET才能调用，因为TCP请求才需要建立连接。对于SOCK_DGRAM不支持listen，因为UDP是无连接的。</li>
+</ul>
+<p>TCP连接中，SOCK_STREAM类型的套接字，调用listen的示例：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051419762.png" alt="image-20221205141912644"><br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051419995.png" alt="image-20221205141921877"></p>
+<h2 id="listen函数在应用层和内核层的交互"><a href="#listen函数在应用层和内核层的交互" class="headerlink" title="listen函数在应用层和内核层的交互"></a>listen函数在应用层和内核层的交互</h2><p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051419209.png" alt="image-20221205141934130"></p>
+<h2 id="accept函数"><a href="#accept函数" class="headerlink" title="accept函数"></a>accept函数</h2><p>服务端用listen建立连接队列后，客户端以connect发来一个请求，会加入到服务端连接队列的队尾，当这个请求到达队头，会调用accept真正处理该请求。<br>accept会创建一个新的套接字文件描述符，用来描述客户端的连接，这个时候会有两个套接字描述符并存：</p>
+<ul>
+<li>socket函数创建的老的sockfd，表示正在监听的ip和端口</li>
+<li>accept函数创建的新的clientfd，表示当前的客户端连接，后续的客户端的收发和客户端关闭，即send，recv，close函数，都使用clientfd</li>
+</ul>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051420456.png" alt="image-20221205142030402"></p>
+<p>流式连接的accept示例：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051420563.png" alt="image-20221205142038423"><br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051420232.png" alt="image-20221205142048069"></p>
+<h2 id="accept函数在应用层和内核层的交互"><a href="#accept函数在应用层和内核层的交互" class="headerlink" title="accept函数在应用层和内核层的交互"></a>accept函数在应用层和内核层的交互</h2><p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051421941.png" alt="image-20221205142100841"></p>
+<h2 id="connect函数"><a href="#connect函数" class="headerlink" title="connect函数"></a>connect函数</h2><p>connect函数是客户端调用的函数，在客户端调用socket函数创建套接字文件sockfd后，可调用connect函数向服务端发起连接请求，请求的ip和端口信息包含在sockaddr结构体内。<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051422137.png" alt="image-20221205142256082"></p>
+<p>客户端的socket connect示例：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051422137.png"></p>
+<h2 id="connect函数在应用层和内核层的交互"><a href="#connect函数在应用层和内核层的交互" class="headerlink" title="connect函数在应用层和内核层的交互"></a>connect函数在应用层和内核层的交互</h2><p>根据数据流式或数据报式的请求，具体调用inet_stream_connect或inet_dgram_connect<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051423142.png" alt="image-20221205142315046"></p>
+<h2 id="read和write函数"><a href="#read和write函数" class="headerlink" title="read和write函数"></a>read和write函数</h2><p>服务端和客户端真正建立连接后（socket通信逻辑连接，不是TCP&#x2F;UDP的面向连接&#x2F;无连接的传输层连接），即客户端发起connect，服务端accept完成，双方就可以相互read&#x2F;write，读写对方的数据，通过sockfd文件描述符，就像读写本地文件一样。</p>
+<ul>
+<li>read：从套接字文件读取数据，写入本地缓冲区，返回非空的有效数据大小<br> <img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051423066.png" alt="image-20221205142328017"></li>
+<li>write：向套接字文件写入数据，将本地缓冲区数据写入socket函数创建的socket文件<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051423066.png"></li>
+</ul>
+<h2 id="close和shutdown函数"><a href="#close和shutdown函数" class="headerlink" title="close和shutdown函数"></a>close和shutdown函数</h2><ul>
+<li>close：关闭socket连接，释放内核的套接字资源，不能通过套接字文件来读写操作</li>
+<li>shutdown：支持读写的单向关闭，即关闭套接字文件的读、写、或者读写能力（等同于close）</li>
+</ul>
+<h1 id="Socket客户端和服务端交互的例程"><a href="#Socket客户端和服务端交互的例程" class="headerlink" title="Socket客户端和服务端交互的例程"></a>Socket客户端和服务端交互的例程</h1><h2 id="整体架构"><a href="#整体架构" class="headerlink" title="整体架构"></a>整体架构</h2><p>客户端从标准输入读取用户输入的字符串，发送给服务端，服务端读取数据，回写这些数据到客户端，客户端收到数据后输出到标准输出。<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051423842.png" alt="image-20221205142345794"></p>
+<p>客户端和服务端可以在同一台机器部署，访问回环地址127.0.0.1即可，注意服务端的监听端口不能和其他进程的端口冲突。</p>
+<h2 id="代码实现"><a href="#代码实现" class="headerlink" title="代码实现"></a>代码实现</h2><p>服务端代码：</p>
+<pre><code>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt;
+#include &lt;sys/types.h&gt;
+#include &lt;sys/socket.h&gt;
+#include &lt;arpa/inet.h&gt;
+#include &lt;unistd.h&gt;
+//#define PORT 8088						/*侦听端口地址*/
+#define BACKLOG 2						/*侦听队列长度*/
+
+int main(int argc, char *argv[])
+{
+	int ss,sc;		/*ss为服务器的socket描述符，sc为客户端的socket描述符*/
+	struct sockaddr_in server_addr;	/*服务器地址结构*/
+	struct sockaddr_in client_addr;	/*客户端地址结构*/
+	int err;							/*返回值*/
+	pid_t pid;							/*分叉的进行ID*/
+
+	/*建立一个流式套接字*/
+	ss = socket(AF_INET, SOCK_STREAM, 0);
+	if(ss &lt; 0){							/*出错*/
+		printf(&quot;socket error\n&quot;);
+		return -1;	
+	}
+	
+	/*设置服务器地址*/
+	bzero(&amp;server_addr, sizeof(server_addr));			/*清零*/
+	server_addr.sin_family = AF_INET;					/*协议族*/
+	server_addr.sin_addr.s_addr = htonl(INADDR_ANY);	/*本地地址*/
+	//server_addr.sin_port = htons(PORT);
+	server_addr.sin_port = htons(atoi(argv[1]));		/*服务器端口*/
+	
+	/*绑定地址结构到套接字描述符*/
+	err = bind(ss, (struct sockaddr*)&amp;server_addr, sizeof(server_addr));
+	if(err &lt; 0){/*出错*/
+		printf(&quot;bind error\n&quot;);
+		return -1;	
+	}
+	
+	/*设置侦听*/
+	err = listen(ss, BACKLOG);
+	if(err &lt; 0){										/*出错*/
+		printf(&quot;listen error\n&quot;);
+		return -1;	
+	}
+	
+		/*主循环过程*/
+	for(;;)	{
+		socklen_t addrlen = sizeof(struct sockaddr);
+		/*接受客户端连接*/
+		sc = accept(ss, (struct sockaddr*)&amp;client_addr, &amp;addrlen); 
+		if(sc &lt; 0){							/*出错*/
+			continue;						/*结束本次循环*/
+		}	
+		
+		/*建立一个新的进程处理到来的连接*/
+		pid = fork();						/*分叉进程*/
+		if( pid == 0 ){						/*子进程中*/
+			process_conn_server(sc);		/*处理连接*/
+			close(ss);						/*在子进程中关闭服务器的侦听*/
+		}else{
+			close(sc);						/*在父进程中关闭客户端的连接*/
+		}
+	}
+}
+</code></pre>
+<p>服务端注意几点:</p>
+<ul>
+<li>accept后处理连接的过程，是在子进程中处理的，使用fork创建子进程用于连接处理。根据fork返回的pid是0还是其他，判断当前调度到子进程还是父进程，从全局上来讲，这个<code>if-else</code>的两种流程分别在父进程和子进程中指向。</li>
+<li>服务端有两个套接字：侦听套接字和连接套接字。处理连接传入的是连接套接字。</li>
+<li>在父进程（侦听进程）中，要关闭连接套接字；在子进程（连接处理进程）中，要关闭侦听套接字。这是为了避免子父进程相互影响。</li>
+<li>对于多进程，一个进程的套接字关闭不会释放该套接字内存，只有所有进程都关闭了这个套接字，内核才会 释放该套接字，所有可以放心在侦听进程和连接处理进程中，关闭对方的套接字。</li>
+</ul>
+<p>客户端代码：</p>
+<pre><code>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt;
+#include &lt;sys/types.h&gt;
+#include &lt;sys/socket.h&gt;
+#include &lt;unistd.h&gt;
+#include &lt;arpa/inet.h&gt;
+//#define PORT 8088								/*侦听端口地址*/
+
+int main(int argc, char *argv[])
+{
+	int s;										/*s为socket描述符*/
+	struct sockaddr_in server_addr;			/*服务器地址结构*/
+	
+	s = socket(AF_INET, SOCK_STREAM, 0); 		/*建立一个流式套接字 */
+	if(s &lt; 0){									/*出错*/
+		printf(&quot;socket error\n&quot;);
+		return -1;
+	}	
+	
+	/*设置服务器地址*/
+	bzero(&amp;server_addr, sizeof(server_addr));	/*清零*/
+	server_addr.sin_family = AF_INET;					/*协议族*/
+	server_addr.sin_addr.s_addr = htonl(INADDR_ANY);	/*本地地址*/
+	server_addr.sin_port = htons(atoi(argv[2]));		/*服务器端口*/
+	
+	/*将用户输入的字符串类型的IP地址转为整型*/
+	inet_pton(AF_INET, argv[1], &amp;server_addr.sin_addr);	
+	/*连接服务器*/
+	connect(s, (struct sockaddr*)&amp;server_addr, sizeof(struct sockaddr));
+	process_conn_client(s);						/*客户端处理过程*/
+	close(s);									/*关闭连接*/
+	return 0;
+}
+</code></pre>
+<p>建立连接后的读写交互代码，包含服务端的调用和客户端的调用：</p>
+<pre><code>#include &lt;stdio.h&gt;
+#include &lt;string.h&gt;
+/*客户端的处理过程*/
+void process_conn_client(int s)					/* 传入的是客户端调用socket时创建的s */
+{
+	ssize_t size = 0;
+	char buffer[1024];							/*数据的缓冲区*/
+	
+	for(;;){									/*循环处理过程*/
+		/*从标准输入中读取数据放到缓冲区buffer中,标准输入：0，标准输出：1，标准错误：2*/
+		size = read(0, buffer, 1024);
+		if(size &gt; 0){							/*读到数据*/
+			write(s, buffer, size);				/*发送给服务器*/
+			/*客户端阻塞，等待服务器有数据可读*/
+			size = read(s, buffer, 1024);		/*从服务器读取数据*/
+			write(1, buffer, size);				/*写到标准输出*/
+		}
+	}	
+}
+/*服务器对客户端的处理*/
+void process_conn_server(int s) 				/* 传入的是服务端调用accept时创建的sc */
+{
+	ssize_t size = 0;
+	char buffer[1024];							/*数据的缓冲区*/
+	
+	for(;;){									/*循环处理过程*/		
+		size = read(s, buffer, 1024);			/*从套接字中读取数据放到缓冲区buffer中*/
+		if(size == 0){							/*没有数据*/
+			return;	
+		}
+		
+		/*构建响应数据*/
+		//sprintf(buffer, &quot;server receive %d bytes from client\n&quot;, size);
+		//write(s, buffer, strlen(buffer));
+		write(s, buffer, size);					/*发回给客户端*/
+	}	
+}
+</code></pre>
+<p>Makefile编译脚本:</p>
+<pre><code>all:client server					#all规则，它依赖于client和server规则
+
+client:tcp_process.o tcp_client.o	#client规则，生成客户端可执行程序
+	gcc -o client tcp_process.o tcp_client.o
+server:tcp_process.o tcp_server.o	#server规则，生成服务器端可执行程序
+	gcc -o server tcp_process.o tcp_server.o	
+tcp_process.o:						#tcp_process.o规则，生成tcp_process.o
+	gcc -c tcp_process.c -o tcp_process.o
+clean:								#清理规则，删除client、server和中间文件
+	rm -f client server *.o
+</code></pre>
+<h2 id="部署和运行"><a href="#部署和运行" class="headerlink" title="部署和运行"></a>部署和运行</h2><p>后台运行server,指定监听端口:<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051424795.png" alt="image-20221205142401747"><br>运行client，指定服务端的ip, port：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051424795.png"><br>客户端每输入一个字符串，服务端返回完全相同的字符串，通信正常<br>如果运行服务端时，有bind error，可能是端口被占用，<code>netstat</code>找到占用端口的PID，kill之后再运行server<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051424796.png" alt="image-20221205142416741"></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/linux/" rel="tag"># linux</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/09/06/Git%E5%A4%9A%E4%BA%BA%E5%8D%8F%E4%BD%9C%E4%B8%8B%E7%9A%84%E6%8D%A2%E8%A1%8C%E7%AC%A6%E9%97%AE%E9%A2%98/" rel="prev" title="Git多人协作下的换行符问题">
+      <i class="fa fa-chevron-left"></i> Git多人协作下的换行符问题
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2020/11/08/%E6%B5%85%E8%B0%88C-%E7%9A%84RAII%E6%9C%BA%E5%88%B6/" rel="next" title="浅谈C++的RAII机制">
+      浅谈C++的RAII机制 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%A5%97%E6%8E%A5%E5%AD%97%EF%BC%88socket%EF%BC%89%E5%9F%BA%E7%A1%80"><span class="nav-number">1.</span> <span class="nav-text">套接字（socket）基础</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%A5%97%E6%8E%A5%E5%AD%97%E5%9C%B0%E5%9D%80%E7%BB%93%E6%9E%84"><span class="nav-number">2.</span> <span class="nav-text">套接字地址结构</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%A5%97%E6%8E%A5%E5%AD%97%E5%9C%B0%E5%9D%80%E7%BB%93%E6%9E%84%E5%9C%A8%E7%94%A8%E6%88%B7%E5%B1%82%E5%92%8C%E5%86%85%E6%A0%B8%E5%B1%82%E7%9A%84%E4%BA%A4%E4%BA%92"><span class="nav-number">3.</span> <span class="nav-text">套接字地址结构在用户层和内核层的交互</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%90%91%E5%86%85%E6%A0%B8%E4%BC%A0%E5%85%A5%E6%95%B0%E6%8D%AE"><span class="nav-number">3.1.</span> <span class="nav-text">向内核传入数据</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BB%8E%E5%86%85%E6%A0%B8%E8%8E%B7%E5%8F%96%E6%95%B0%E6%8D%AE"><span class="nav-number">3.2.</span> <span class="nav-text">从内核获取数据</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Socket%E7%BC%96%E7%A8%8B%E6%B5%81%E7%A8%8B"><span class="nav-number">4.</span> <span class="nav-text">Socket编程流程</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%80%BB%E4%BD%93%E6%9E%B6%E6%9E%84"><span class="nav-number">4.1.</span> <span class="nav-text">总体架构</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#socket%E5%87%BD%E6%95%B0"><span class="nav-number">4.2.</span> <span class="nav-text">socket函数</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#socket%E5%87%BD%E6%95%B0%E5%9C%A8%E5%BA%94%E7%94%A8%E5%B1%82%E5%92%8C%E5%86%85%E6%A0%B8%E5%B1%82%E7%9A%84%E4%BA%A4%E4%BA%92"><span class="nav-number">4.3.</span> <span class="nav-text">socket函数在应用层和内核层的交互</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#bind%E5%87%BD%E6%95%B0"><span class="nav-number">4.4.</span> <span class="nav-text">bind函数</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#bind%E5%87%BD%E6%95%B0%E5%9C%A8%E5%BA%94%E7%94%A8%E5%B1%82%E5%92%8C%E5%86%85%E6%A0%B8%E5%B1%82%E7%9A%84%E4%BA%A4%E4%BA%92"><span class="nav-number">4.5.</span> <span class="nav-text">bind函数在应用层和内核层的交互</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#listen%E5%87%BD%E6%95%B0"><span class="nav-number">4.6.</span> <span class="nav-text">listen函数</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#listen%E5%87%BD%E6%95%B0%E5%9C%A8%E5%BA%94%E7%94%A8%E5%B1%82%E5%92%8C%E5%86%85%E6%A0%B8%E5%B1%82%E7%9A%84%E4%BA%A4%E4%BA%92"><span class="nav-number">4.7.</span> <span class="nav-text">listen函数在应用层和内核层的交互</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#accept%E5%87%BD%E6%95%B0"><span class="nav-number">4.8.</span> <span class="nav-text">accept函数</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#accept%E5%87%BD%E6%95%B0%E5%9C%A8%E5%BA%94%E7%94%A8%E5%B1%82%E5%92%8C%E5%86%85%E6%A0%B8%E5%B1%82%E7%9A%84%E4%BA%A4%E4%BA%92"><span class="nav-number">4.9.</span> <span class="nav-text">accept函数在应用层和内核层的交互</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#connect%E5%87%BD%E6%95%B0"><span class="nav-number">4.10.</span> <span class="nav-text">connect函数</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#connect%E5%87%BD%E6%95%B0%E5%9C%A8%E5%BA%94%E7%94%A8%E5%B1%82%E5%92%8C%E5%86%85%E6%A0%B8%E5%B1%82%E7%9A%84%E4%BA%A4%E4%BA%92"><span class="nav-number">4.11.</span> <span class="nav-text">connect函数在应用层和内核层的交互</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#read%E5%92%8Cwrite%E5%87%BD%E6%95%B0"><span class="nav-number">4.12.</span> <span class="nav-text">read和write函数</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#close%E5%92%8Cshutdown%E5%87%BD%E6%95%B0"><span class="nav-number">4.13.</span> <span class="nav-text">close和shutdown函数</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Socket%E5%AE%A2%E6%88%B7%E7%AB%AF%E5%92%8C%E6%9C%8D%E5%8A%A1%E7%AB%AF%E4%BA%A4%E4%BA%92%E7%9A%84%E4%BE%8B%E7%A8%8B"><span class="nav-number">5.</span> <span class="nav-text">Socket客户端和服务端交互的例程</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%95%B4%E4%BD%93%E6%9E%B6%E6%9E%84"><span class="nav-number">5.1.</span> <span class="nav-text">整体架构</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BB%A3%E7%A0%81%E5%AE%9E%E7%8E%B0"><span class="nav-number">5.2.</span> <span class="nav-text">代码实现</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%83%A8%E7%BD%B2%E5%92%8C%E8%BF%90%E8%A1%8C"><span class="nav-number">5.3.</span> <span class="nav-text">部署和运行</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="cursorhu"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">cursorhu</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">113</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">41</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">55</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/cursorhu" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;cursorhu" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:2449055512@qq.com" title="E-Mail → mailto:2449055512@qq.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2025</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">cursorhu</span>
+</div>
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

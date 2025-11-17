@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 8.0.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Noto+Serif+SC|Roboto/css?family=Noto Serif SC:300,300italic,400,400italic,700,700italic|Roboto:300,300italic,400,400italic,700,700italic&display=swap&subset=latin,latin-ext">
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"cursorhu.github.io","root":"/","scheme":"Pisces","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="Windows Hardware driver submissionDriver Update failure (rejected) 问题分析背景描述：V10700 + Hardware ID：PCI\VEN_1217&amp;DEV_8621&amp;SUBSYS_389517aa 在windows hardware driver submission被reject，提交单和关键信息如下： ht">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Windows Hardware driver submission">
+<meta property="og:url" content="https://cursorhu.github.io/2024/08/30/Windows%20Hardware%20driver%20submission/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="Windows Hardware driver submissionDriver Update failure (rejected) 问题分析背景描述：V10700 + Hardware ID：PCI\VEN_1217&amp;DEV_8621&amp;SUBSYS_389517aa 在windows hardware driver submission被reject，提交单和关键信息如下： ht">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202501031506203.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202501031520135.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202501031513121.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202501031514877.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202501031536917.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202501031534126.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202501031538765.png">
+<meta property="article:published_time" content="2024-08-30T09:52:38.000Z">
+<meta property="article:modified_time" content="2025-11-04T09:29:48.541Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="windows驱动">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202501031506203.png">
+
+<link rel="canonical" href="https://cursorhu.github.io/2024/08/30/Windows%20Hardware%20driver%20submission/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>Windows Hardware driver submission | ThinkNotes</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">ThinkNotes</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Simple is not easy</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于我</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2024/08/30/Windows%20Hardware%20driver%20submission/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Windows Hardware driver submission
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2024-08-30 17:52:38" itemprop="dateCreated datePublished" datetime="2024-08-30T17:52:38+08:00">2024-08-30</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2025-11-04 17:29:48" itemprop="dateModified" datetime="2025-11-04T17:29:48+08:00">2025-11-04</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/windows%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91/" itemprop="url" rel="index"><span itemprop="name">windows驱动开发</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="Windows-Hardware-driver-submission"><a href="#Windows-Hardware-driver-submission" class="headerlink" title="Windows Hardware driver submission"></a>Windows Hardware driver submission</h1><h2 id="Driver-Update-failure-rejected-问题分析"><a href="#Driver-Update-failure-rejected-问题分析" class="headerlink" title="Driver Update failure (rejected) 问题分析"></a>Driver Update failure (rejected) 问题分析</h2><h3 id="背景描述："><a href="#背景描述：" class="headerlink" title="背景描述："></a>背景描述：</h3><p>V10700 + Hardware ID：PCI\VEN_1217&amp;DEV_8621&amp;SUBSYS_389517aa</p>
+<p>在windows hardware driver submission被reject，提交单和关键信息如下：</p>
+<p><a target="_blank" rel="noopener" href="https://partner.microsoft.com/en-us/dashboard/hardware/driver/14391505706251263/submission/1152921505697924694/ShippingLabel/401531646">https://partner.microsoft.com/en-us/dashboard/hardware/driver/14391505706251263/submission/1152921505697924694/ShippingLabel/401531646</a></p>
+<p>Rejection Theme: Measure Failure Rejection Reason: Systemic Measure Failure Provide Measure ID(s): 26387215 ADO bugId: 55312863: Bug ID(s) and Partner ID(s): Link to documentation: Link to reliability report (if applicable): Details: Rejected because Measure ID 26387215 (Percent of machines where the driver install process completes successfully) is failing. Please read more on “<a target="_blank" rel="noopener" href="https://docs.microsoft.com/en-us/windows-hardware/drivers/dashboard/pct-machines-where-driver-install-completes-successfully">https://docs.microsoft.com/en-us/windows-hardware/drivers/dashboard/pct-machines-where-driver-install-completes-successfully</a>“ See the Plug and Play Extended Flight Report document for additional information on the failures. The “driver flight report” bug can be found by searching on Collaborate with the Submission ID. More info: <a target="_blank" rel="noopener" href="https://docs.microsoft.com/en-us/windows-hardware/drivers/dashboard/pnp-failure-report">https://docs.microsoft.com/en-us/windows-hardware/drivers/dashboard/pnp-failure-report</a> and <a target="_blank" rel="noopener" href="https://docs.microsoft.com/en-us/collaborate/feedback-items-search#search">https://docs.microsoft.com/en-us/collaborate/feedback-items-search#search</a></p>
+<h3 id="报告分析"><a href="#报告分析" class="headerlink" title="报告分析"></a>报告分析</h3><p>根据以上信息，在Microsoft partner center的feedback&#x2F;bugs页面找到提交单对应的failure报告：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202501031506203.png" alt="image-20250103150628028"></p>
+<p>（1）RejectionReport中的关键信息：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202501031520135.png" alt="image-20250103152056064"></p>
+<p>小结：微软测试了118个machine，其中在10台硬件平台ID PCI\VEN_1217&amp;DEV_8621&amp;SUBSYS_38DF17AA的机器上发生install failure. </p>
+<p>错误码是ERROR_ACCESS_DENIED, 可能是微软环境问题或者硬件访问异常导致。</p>
+<p>（2）report.html中的关键信息：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202501031513121.png" alt="image-20250103151330025"></p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202501031514877.png" alt="image-20250103151409828"></p>
+<p>小结：Driver install failure基本都发生在硬件平台ID PCI\VEN_1217&amp;DEV_8621&amp;SUBSYS_38DF17AA上，而且是不带Problem Code Description &amp; Problem Status 类型的安装错误，也就是说不是PNP error引起的install failure。</p>
+<h3 id="Driver分析"><a href="#Driver分析" class="headerlink" title="Driver分析"></a>Driver分析</h3><p>为了确认此install error是driver相关还是硬件平台相关（PCI\VEN_1217&amp;DEV_8621&amp;SUBSYS_38DF17AA），做如下对比：</p>
+<p>1.找到相同Driver installer V10700的其他提交单，和当前failure提交单的区别只在于支持的硬件平台ID不一样：</p>
+<p><a target="_blank" rel="noopener" href="https://partner.microsoft.com/en-us/dashboard/hardware/driver/14391505706251263">https://partner.microsoft.com/en-us/dashboard/hardware/driver/14391505706251263</a></p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202501031536917.png" alt="image-20250103153612882"></p>
+<p>2.两个提交单只有Hardware ID有区别，系统都是Win11 24H2：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202501031534126.png" alt="image-20250103153449036"></p>
+<p>3.两个提交单的微软反馈报告的区别：一个pass，一个failure（failure install发生在Bad hardware ID上）</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202501031538765.png" alt="image-20250103153815661"></p>
+<p><a target="_blank" rel="noopener" href="https://partner.microsoft.com/en-us/dashboard/collaborate/engagements/5133/feedback/wits/Bugs/1056149">https://partner.microsoft.com/en-us/dashboard/collaborate/engagements/5133/feedback/wits/Bugs/1056149</a></p>
+<p><a target="_blank" rel="noopener" href="https://partner.microsoft.com/en-us/dashboard/collaborate/engagements/5133/feedback/wits/Bugs/1069371">https://partner.microsoft.com/en-us/dashboard/collaborate/engagements/5133/feedback/wits/Bugs/1069371</a></p>
+<h3 id="结论"><a href="#结论" class="headerlink" title="结论"></a>结论</h3><p><strong>分析小结：</strong></p>
+<p>微软的自动化测试流程发现V10700 installer在平台PCI\VEN_1217&amp;DEV_8621&amp;SUBSYS_38DF17AA上有install failure，超出了允许的failure rate（&lt;5%）,所以reject driver提交单。</p>
+<p>根据Driver提交单对比分析，这不是Driver installer的问题，因为相同的driver在其他平台的提交单是100% pass，此问题只发生在平台PCI\VEN_1217&amp;DEV_8621&amp;SUBSYS_38DF17AA上。</p>
+<p><strong>Debug方向：</strong></p>
+<p>不确定微软是如何在平台PCI\VEN_1217&amp;DEV_8621&amp;SUBSYS_38DF17AA上测试此driver install，有可能是物理机器或者虚拟机器上测试，也就是说，不排除是微软软件环境问题引起。</p>
+<p>另外一方面，如果是物理机器确实有此问题，建议检查平台PCI\VEN_1217&amp;DEV_8621&amp;SUBSYS_38DF17AA上是否有特殊系统设置，或者PCIe bug，导致Bayhub SD Host硬件有时无法访问？</p>
+<p><strong>当前解决办法：</strong></p>
+<p>重新提交此driver，不需要做修改，以排除是微软软件环境引起的偶然性问题。</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/windows%E9%A9%B1%E5%8A%A8/" rel="tag"># windows驱动</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2024/08/30/Windows%20Driver%20Model%20Architecture%20for%20SD%20Host%20projects/" rel="prev" title="Windows Driver Model Architecture for SD Host projects">
+      <i class="fa fa-chevron-left"></i> Windows Driver Model Architecture for SD Host projects
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2024/08/30/Windows%20Driver%20--%20%E9%80%9A%E8%BF%87IDA%E9%80%86%E5%90%91%E5%88%86%E6%9E%90.sys/" rel="next" title="Windows Driver -- 通过IDA逆向分析.sys">
+      Windows Driver -- 通过IDA逆向分析.sys <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Windows-Hardware-driver-submission"><span class="nav-number">1.</span> <span class="nav-text">Windows Hardware driver submission</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Driver-Update-failure-rejected-%E9%97%AE%E9%A2%98%E5%88%86%E6%9E%90"><span class="nav-number">1.1.</span> <span class="nav-text">Driver Update failure (rejected) 问题分析</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%83%8C%E6%99%AF%E6%8F%8F%E8%BF%B0%EF%BC%9A"><span class="nav-number">1.1.1.</span> <span class="nav-text">背景描述：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8A%A5%E5%91%8A%E5%88%86%E6%9E%90"><span class="nav-number">1.1.2.</span> <span class="nav-text">报告分析</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Driver%E5%88%86%E6%9E%90"><span class="nav-number">1.1.3.</span> <span class="nav-text">Driver分析</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%BB%93%E8%AE%BA"><span class="nav-number">1.1.4.</span> <span class="nav-text">结论</span></a></li></ol></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="cursorhu"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">cursorhu</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">113</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">41</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">55</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/cursorhu" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;cursorhu" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:2449055512@qq.com" title="E-Mail → mailto:2449055512@qq.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2025</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">cursorhu</span>
+</div>
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

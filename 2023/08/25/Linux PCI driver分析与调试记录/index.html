@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 8.0.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Noto+Serif+SC|Roboto/css?family=Noto Serif SC:300,300italic,400,400italic,700,700italic|Roboto:300,300italic,400,400italic,700,700italic&display=swap&subset=latin,latin-ext">
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"cursorhu.github.io","root":"/","scheme":"Pisces","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="PCI tree结构关于PCIe tree的bus&#x2F;device的详细architecture，参考LDD3和Mastering Linux Device Driver Development - John Madieu    Root complex (RC): This refers to the PCIe host controller in the SoC. It can acc">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux PCI driver分析与调试记录">
+<meta property="og:url" content="https://cursorhu.github.io/2023/08/25/Linux%20PCI%20driver%E5%88%86%E6%9E%90%E4%B8%8E%E8%B0%83%E8%AF%95%E8%AE%B0%E5%BD%95/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="PCI tree结构关于PCIe tree的bus&#x2F;device的详细architecture，参考LDD3和Mastering Linux Device Driver Development - John Madieu    Root complex (RC): This refers to the PCIe host controller in the SoC. It can acc">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202308291114824.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202308291117111.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202308291129433.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202308301706671.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202308251714033.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202308251714855.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202308251715226.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202308251756929.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202308291149954.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202308291158420.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202308291151689.png">
+<meta property="article:published_time" content="2023-08-25T03:56:14.000Z">
+<meta property="article:modified_time" content="2024-11-04T03:43:03.173Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="PCI">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202308291114824.png">
+
+<link rel="canonical" href="https://cursorhu.github.io/2023/08/25/Linux%20PCI%20driver%E5%88%86%E6%9E%90%E4%B8%8E%E8%B0%83%E8%AF%95%E8%AE%B0%E5%BD%95/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>Linux PCI driver分析与调试记录 | ThinkNotes</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">ThinkNotes</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Simple is not easy</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于我</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2023/08/25/Linux%20PCI%20driver%E5%88%86%E6%9E%90%E4%B8%8E%E8%B0%83%E8%AF%95%E8%AE%B0%E5%BD%95/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Linux PCI driver分析与调试记录
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2023-08-25 11:56:14" itemprop="dateCreated datePublished" datetime="2023-08-25T11:56:14+08:00">2023-08-25</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2024-11-04 11:43:03" itemprop="dateModified" datetime="2024-11-04T11:43:03+08:00">2024-11-04</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/linux/" itemprop="url" rel="index"><span itemprop="name">linux</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="PCI-tree结构"><a href="#PCI-tree结构" class="headerlink" title="PCI tree结构"></a>PCI tree结构</h3><p>关于PCIe tree的bus&#x2F;device的详细architecture，参考LDD3和Mastering Linux Device Driver Development - John Madieu</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202308291114824.png" alt="image-20230829111444515"></p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202308291117111.png" alt="image-20230829111727760"></p>
+<blockquote>
+<p>Root complex (RC): This refers to the PCIe host controller in the SoC. It can access the main memory without CPU intervening, which is a feature used by other devices to access the main memory. They are also known as Host-to-PCI bridges.</p>
+<p>Bridges: These provide an interface to other buses, such as PCI or PCI X, or even another PCIe bus. A bridge can also provide an interface to the same bus</p>
+<p>Endpoint (EP): Endpoints are PCIe devices, and are represented by type 00h configuration space headers. They never appear on a switch’s internal bus and have no downstream port</p>
+</blockquote>
+<h3 id="lspci使用示例"><a href="#lspci使用示例" class="headerlink" title="lspci使用示例"></a>lspci使用示例</h3><p>下面介绍如何找到一个PCI(e)设备的信息，及其上游端口信息，以及设备的register space内容</p>
+<p>(1)查看所有pci设备：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">cursorhu@ubuntu-PC:~$ lspci</span><br><span class="line">00:00.0 Host bridge: Intel Corporation 11th Gen Core Processor Host Bridge/DRAM Registers (rev 01)</span><br><span class="line">00:02.0 VGA compatible controller: Intel Corporation TigerLake-LP GT2 [Iris Xe Graphics] (rev 01)</span><br><span class="line">00:04.0 Signal processing controller: Intel Corporation TigerLake-LP Dynamic Tuning Processor Participant (rev 01)</span><br><span class="line">00:05.0 Multimedia controller: Intel Corporation Device 9a19 (rev 01)</span><br><span class="line">00:07.0 PCI bridge: Intel Corporation Tiger Lake-LP Thunderbolt 4 PCI Express Root Port #0 (rev 01)</span><br><span class="line">00:07.1 PCI bridge: Intel Corporation Tiger Lake-LP Thunderbolt 4 PCI Express Root Port #1 (rev 01)</span><br><span class="line">00:07.2 PCI bridge: Intel Corporation Tiger Lake-LP Thunderbolt 4 PCI Express Root Port #2 (rev 01)</span><br><span class="line">00:07.3 PCI bridge: Intel Corporation Tiger Lake-LP Thunderbolt 4 PCI Express Root Port #3 (rev 01)</span><br><span class="line">...</span><br><span class="line">00:1c.0 PCI bridge: Intel Corporation Tiger Lake-LP PCI Express Root Port #8 (rev 20)</span><br><span class="line">...</span><br><span class="line">a9:00.0 Non-Volatile memory controller: Device 0012:1cc1</span><br></pre></td></tr></table></figure>
+
+<p>(2)查看PCI设备上下游信息</p>
+<p>下面关注PCIe device a9:00.0, 用 lspci -v (verbose)查看详细信息:</p>
+<p>是一个nvme设备，使用的driver是nvme；device id是0012:1cc1</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">cursorhu@ubuntu-PC:~$ lspci -v</span><br><span class="line">a9:00.0 Non-Volatile memory controller: Device 0012:1cc1 (prog-if 02 [NVM Express])</span><br><span class="line">	Subsystem: Device 3456:5344</span><br><span class="line">	Physical Slot: 7</span><br><span class="line">	Flags: bus master, fast devsel, latency 0, IRQ 19, NUMA node 0, IOMMU group 20</span><br><span class="line">	Memory at 88c00000 (64-bit, non-prefetchable) [size=16K]</span><br><span class="line">	Capabilities: &lt;access denied&gt;</span><br><span class="line">	Kernel driver in use: nvme</span><br><span class="line">	Kernel modules: nvme</span><br></pre></td></tr></table></figure>
+
+<p>查看这个设备的上游信息，包括它所在的PCIe bridge（即PCIe port，端口也是PCI设备）</p>
+<p>如下lspci -t (tree)列出PCI tree，其中[]内的是bus号，-xx.x是设备号</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">cursorhu@ubuntu-PC:~$ lspci -t</span><br><span class="line">-[0000:00]-+-00.0</span><br><span class="line">           +-02.0</span><br><span class="line">           +-04.0</span><br><span class="line">           +-05.0</span><br><span class="line">           +-07.0-[01-2a]--</span><br><span class="line">           +-07.1-[2b-54]--</span><br><span class="line">           +-07.2-[55-7e]--</span><br><span class="line">           +-07.3-[7f-a8]--</span><br><span class="line">          ....</span><br><span class="line">           +-1c.0-[a9]----00.0</span><br><span class="line">           +-1d.0-[aa]--</span><br><span class="line">          ....</span><br><span class="line">           \-1f.6</span><br></pre></td></tr></table></figure>
+
+<p>我们关注的设备a9:00.0表示该设备的 bus是a9, device是00.0，对应PCI tree的 [a9]—-00.0</p>
+<p>其上游设备是1c.0，完整设备号为00:1c.0，是个PCIe bridge；每个bridge都是PCIe设备，只不过它比较特殊，是连接其他PCIe设备的设备。根据lspci信息查看该PCIe bridge为：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">00:1c.0 PCI bridge: Intel Corporation Tiger Lake-LP PCI Express Root Port #8 (rev 20)</span><br></pre></td></tr></table></figure>
+
+<p>PCIe bridge的更上游即bus 00，是PCIe RC (root complex)</p>
+<p>上图中有的bridge可以支持一定范围的bus号，例如bus范围为01-2a：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">+-07.0-[01-2a]--</span><br></pre></td></tr></table></figure>
+
+<p>(3)查看PCI设备的register space</p>
+<p>使用<code>lspci -s [bus]:[device].[function] -xxxx</code> 查看完整的PCIe register space(需要root权限)， -s: show, <code>lspci --help</code>查看各选项</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">cursorhu@ubuntu-PC:~$ sudo lspci -s 00:1c.0 -xxxx (或者-xxx，显示00~ff)</span><br><span class="line">[sudo] password for cursorhu: </span><br><span class="line">00:1c.0 PCI bridge: Intel Corporation Tiger Lake-LP PCI Express Root Port #8 (rev 20)</span><br><span class="line">00: 86 80 bf a0 07 04 10 00 20 00 04 06 00 00 81 00</span><br><span class="line">10: 00 00 00 00 00 00 00 00 00 a9 a9 00 40 40 00 20</span><br><span class="line">20: c0 88 50 89 01 7e 91 7e 60 00 00 00 60 00 00 00</span><br><span class="line">30: 00 00 00 00 40 00 00 00 00 00 00 00 ff 04 02 00</span><br><span class="line">40: 10 80 42 01 01 80 00 00 20 00 11 00 13 4c 72 08</span><br><span class="line">50: 42 00 13 70 60 b2 3c 00 08 10 40 00 08 00 00 00</span><br><span class="line">60: 00 00 00 00 37 08 00 00 00 04 00 00 0e 00 00 00</span><br><span class="line">70: 03 00 1f 00 00 00 00 00 00 00 00 00 00 00 00 00</span><br><span class="line">80: 05 90 01 00 78 02 e0 fe 00 00 00 00 00 00 00 00</span><br><span class="line">90: 0d a0 00 00 00 00 00 00 00 00 00 00 00 00 00 00</span><br><span class="line">a0: 01 00 03 c8 00 00 00 00 00 00 00 00 00 00 00 00</span><br><span class="line">b0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00</span><br><span class="line">c0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00</span><br><span class="line">d0: 11 10 00 07 42 18 01 40 0a 00 9e 09 00 00 00 00</span><br><span class="line">e0: 00 03 e3 00 03 90 03 90 16 00 10 00 00 00 00 00</span><br><span class="line">f0: 50 01 00 00 00 00 00 4c b5 0f 21 01 04 00 00 84</span><br><span class="line">100: 01 00 01 22 00 00 00 00 00 40 00 00 11 00 06 00</span><br><span class="line">110: 01 20 00 00 00 20 00 00 00 00 00 00 00 00 00 00</span><br><span class="line">120: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+
+<p>我们要确认PCI bridge的 link status register(位于capability register offset 0x12, bit 13 Link active bit) 以知道 PCIe link 是否 active.<br>如何查看：如下图 0x00 ~ 0x3C 是config space标准空间；0x34 capability pointer是地址，指向capability register空间，其值为0x40，因此capability register空间是从0x40开始；因此 link status regsiter 是 0x40+0x12 &#x3D; 0x52, 其bit13 即 0x53 的 bit5. </p>
+<p>详细register mapping参考PCI Express Base Spec.</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202308291129433.png" alt="image-20230829112915119"></p>
+<h3 id="PCI-device的创建过程"><a href="#PCI-device的创建过程" class="headerlink" title="PCI device的创建过程"></a>PCI device的创建过程</h3><p>参考LDD3 LDM(Linux Device Model)</p>
+<p>PCI device包括PCI driver, PCI core driver, Kobject三个层次，并在用户层sysfs反映device和driver。</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202308301706671.png" alt="image-20230830170650433"></p>
+<h3 id="使用sysfs操作pci-device"><a href="#使用sysfs操作pci-device" class="headerlink" title="使用sysfs操作pci device"></a>使用sysfs操作pci device</h3><p><strong>(1)使用&#x2F;sys&#x2F;bus&#x2F;pci文件接口对device操作：</strong></p>
+<p>remove设备：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">echo 1 &gt; /sys/bus/pci/devices/AAAA:BB:CC.D/remove</span><br></pre></td></tr></table></figure>
+
+<p>AAAA:BB:CC.D为bus-info，分别为<a target="_blank" rel="noopener" href="https://www.kernel.org/doc/Documentation/ABI/testing/sysfs-bus-pci">Domain:Bus:Device.Function</a></p>
+<p>rescan设备</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">echo 1 &gt; /sys/bus/pci/rescan</span><br></pre></td></tr></table></figure>
+
+<p>reset设备</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">echo 1 &gt; /sys/bus/pci/devices/AAAA:BB:CC.D/reset</span><br></pre></td></tr></table></figure>
+
+<p><strong>(2) lspci &amp; dmesg &amp; 源码 分析：</strong></p>
+<p>首先lspci设备，以设备03:00.0 (SD Host controller)为例</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">cursorhu@ubuntu-PC:~/linuxkernel/linux-6.2$ lspci</span><br><span class="line">...</span><br><span class="line">00:1c.7 PCI bridge: Intel Corporation Cannon Lake PCH PCI Express Root Port #8 (rev f0)</span><br><span class="line">...</span><br><span class="line">03:00.0 SD Host controller: O2 Micro, Inc. Device 9862 (rev 01)</span><br></pre></td></tr></table></figure>
+
+<p>remove设备：</p>
+<p>非root用户执行时需要用sudo sh -c “命令内容”</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo sh -c &quot;echo 1 &gt; /sys/bus/pci/devices/0000:03:00.0/remove&quot;</span><br></pre></td></tr></table></figure>
+
+<p>dmesg显示remove调用了该device driver的 .remove</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">[ 241.962185] BHT-OSENTRY: BHT sd remove begin</span><br></pre></td></tr></table></figure>
+
+<p>remove之后<code>lspci</code>看不到设备03:00.0，<code>lspci -t</code>可见其bus号03下挂的设备为空</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">cursorhu@ubuntu-PC:~/linuxkernel/linux-6.2$ lspci -t</span><br><span class="line">-[0000:00]-+-00.0</span><br><span class="line">           +-02.0</span><br><span class="line">           +-12.0</span><br><span class="line">           +-14.0</span><br><span class="line">           +-14.2</span><br><span class="line">           +-16.0</span><br><span class="line">           +-17.0</span><br><span class="line">           +-1b.0-[01]--</span><br><span class="line">           +-1c.0-[02]--</span><br><span class="line">           +-1c.7-[03]--</span><br><span class="line">           +-1d.0-[04]--</span><br><span class="line">           +-1f.0</span><br><span class="line">           +-1f.3</span><br><span class="line">           +-1f.4</span><br><span class="line">           +-1f.5</span><br><span class="line">           \-1f.6</span><br></pre></td></tr></table></figure>
+
+<p>rescan设备：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo sh -c &quot;echo 1 &gt; /sys/bus/pci/rescan&quot;</span><br></pre></td></tr></table></figure>
+
+<p>再<code>lspci -t</code>可见其bus号03下挂的设备为为00.0，即设备的[bus:device.function]为03:00.0</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">-[0000:00]-+-00.0</span><br><span class="line">           +-02.0</span><br><span class="line">           +-12.0</span><br><span class="line">           +-14.0</span><br><span class="line">           +-14.2</span><br><span class="line">           +-16.0</span><br><span class="line">           +-17.0</span><br><span class="line">           +-1b.0-[01]--</span><br><span class="line">           +-1c.0-[02]--</span><br><span class="line">           +-1c.7-[03]----00.0</span><br><span class="line">           +-1d.0-[04]--</span><br><span class="line">           +-1f.0</span><br><span class="line">           +-1f.3</span><br><span class="line">           +-1f.4</span><br><span class="line">           +-1f.5</span><br><span class="line">           \-1f.6</span><br></pre></td></tr></table></figure>
+
+<p>dmesg显示rescan调用了该device driver的 .probe</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">[ 617.171735] BHT-OSENTRY: BHT sd probe begin</span><br></pre></td></tr></table></figure>
+
+<p>reset设备：</p>
+<p>备份设备的config register 0x0~0x3C，然后调用<a target="_blank" rel="noopener" href="https://elixir.bootlin.com/linux/latest/source/drivers/pci/pci.c#L5555">pci_dev_restore</a>:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">* This function does not just reset the PCI portion of a device, but</span><br><span class="line"> * clears all the state associated with the device.</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">[ 1116.993784] bht-sd 0000:03:00.0: saving config space at offset 0x0 (reading 0x98621217)</span><br><span class="line">[ 1116.993790] bht-sd 0000:03:00.0: saving config space at offset 0x4 (reading 0x100406)</span><br><span class="line">[ 1116.993793] bht-sd 0000:03:00.0: saving config space at offset 0x8 (reading 0x8050101)</span><br><span class="line">[ 1116.993796] bht-sd 0000:03:00.0: saving config space at offset 0xc (reading 0x10)</span><br><span class="line">[ 1116.993798] bht-sd 0000:03:00.0: saving config space at offset 0x10 (reading 0x51100000)</span><br><span class="line">[ 1116.993801] bht-sd 0000:03:00.0: saving config space at offset 0x14 (reading 0x51101000)</span><br><span class="line">[ 1116.993804] bht-sd 0000:03:00.0: saving config space at offset 0x18 (reading 0x0)</span><br><span class="line">[ 1116.993806] bht-sd 0000:03:00.0: saving config space at offset 0x1c (reading 0x0)</span><br><span class="line">[ 1116.993809] bht-sd 0000:03:00.0: saving config space at offset 0x20 (reading 0x0)</span><br><span class="line">[ 1116.993811] bht-sd 0000:03:00.0: saving config space at offset 0x24 (reading 0x0)</span><br><span class="line">[ 1116.993813] bht-sd 0000:03:00.0: saving config space at offset 0x28 (reading 0x0)</span><br><span class="line">[ 1116.993816] bht-sd 0000:03:00.0: saving config space at offset 0x2c (reading 0x21217)</span><br><span class="line">[ 1116.993818] bht-sd 0000:03:00.0: saving config space at offset 0x30 (reading 0x0)</span><br><span class="line">[ 1116.993821] bht-sd 0000:03:00.0: saving config space at offset 0x34 (reading 0x6c)</span><br><span class="line">[ 1116.993823] bht-sd 0000:03:00.0: saving config space at offset 0x38 (reading 0x0)</span><br><span class="line">[ 1116.993826] bht-sd 0000:03:00.0: saving config space at offset 0x3c (reading 0x10b)</span><br><span class="line">[ 1118.015083] pcieport 0000:00:1c.7: re-enabling LTR</span><br><span class="line">[ 1118.015133] bht-sd 0000:03:00.0: restoring config space at offset 0x3c (was 0x100, writing 0x10b)</span><br><span class="line">[ 1118.015170] bht-sd 0000:03:00.0: restoring config space at offset 0x14 (was 0x0, writing 0x51101000)</span><br><span class="line">[ 1118.015191] bht-sd 0000:03:00.0: restoring config space at offset 0x10 (was 0x0, writing 0x51100000)</span><br><span class="line">[ 1118.015205] bht-sd 0000:03:00.0: restoring config space at offset 0xc (was 0x0, writing 0x10)</span><br><span class="line">[ 1118.015227] bht-sd 0000:03:00.0: restoring config space at offset 0x4 (was 0x100000, writing 0x100406)</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="PCI-driver的register-access-API分析"><a href="#PCI-driver的register-access-API分析" class="headerlink" title="PCI driver的register access API分析"></a>PCI driver的register access API分析</h3><p>API在LDD3的PCI driver一章已经有较详细说明：</p>
+<p>*<em>Linux offers a standard interface to access the configuration space.</em><br><em>As far as the driver is concerned, the configuration space can be accessed through 8-</em><br><em>bit, 16-bit, or 32-bit data transfers. The relevant functions are prototyped in &lt;linux&#x2F;*<br>pci.h&gt;</em>  </p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">int pci_read_config_byte(struct pci_dev *dev, int where, u8 *val);</span><br><span class="line">int pci_read_config_word(struct pci_dev *dev, int where, u16 *val);</span><br><span class="line">int pci_read_config_dword(struct pci_dev *dev, int where, u32 *val);</span><br><span class="line">int pci_write_config_byte(struct pci_dev *dev, int where, u8 val);</span><br><span class="line">int pci_write_config_word(struct pci_dev *dev, int where, u16 val);</span><br><span class="line">int pci_write_config_dword(struct pci_dev *dev, int where, u32 val);</span><br></pre></td></tr></table></figure>
+
+<p>内部实现实际是pci_bus_read_config_word，参考：<a target="_blank" rel="noopener" href="https://elixir.bootlin.com/linux/latest/source/drivers/pci/access.c#L554">access.c#L554</a></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">int pci_read_config_word(const struct pci_dev *dev, int where, u16 *val)</span><br><span class="line">&#123;</span><br><span class="line">	if (pci_dev_is_disconnected(dev)) &#123;</span><br><span class="line">		PCI_SET_ERROR_RESPONSE(val);</span><br><span class="line">		return PCIBIOS_DEVICE_NOT_FOUND;</span><br><span class="line">	&#125;</span><br><span class="line">	return pci_bus_read_config_word(dev-&gt;bus, dev-&gt;devfn, where, val);</span><br><span class="line">&#125;</span><br><span class="line">EXPORT_SYMBOL(pci_read_config_word);</span><br></pre></td></tr></table></figure>
+
+<p>pci_bus_read_config_word的内部实现LDD3也说了：</p>
+<p><em><em>The actual implementation of pci_read_config_byte(dev, where, val), for instance, expands to:</em><br>dev-&gt;bus-&gt;ops-&gt;read(bus, devfn, where, 8, val);</em>  </p>
+<p>其中bus-&gt;ops使用pci_ops结构：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">struct pci_ops &#123;</span><br><span class="line">int (*read)(struct pci_bus *bus, unsigned int devfn, int where, int size,</span><br><span class="line">u32 *val);</span><br><span class="line">int (*write)(struct pci_bus *bus, unsigned int devfn, int where, int size,</span><br><span class="line">u32 val);</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>pci_read_config_byte的实现是宏函数，使用##连接符动态定义byte, word, dword，因此直接搜索不到，实际还是在<a target="_blank" rel="noopener" href="https://elixir.bootlin.com/linux/latest/source/drivers/pci/access.c#L74">access.c#L74</a>，就在EXPORT_SYMBOL(pci_bus_read_config_word); 的前面定义:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">#define PCI_OP_READ(size, type, len) \</span><br><span class="line">int noinline pci_bus_read_config_##size \</span><br><span class="line">	(struct pci_bus *bus, unsigned int devfn, int pos, type *value)	\</span><br><span class="line">&#123;									\</span><br><span class="line">	int res;							\</span><br><span class="line">	unsigned long flags;						\</span><br><span class="line">	u32 data = 0;							\</span><br><span class="line">	if (PCI_##size##_BAD) return PCIBIOS_BAD_REGISTER_NUMBER;	\</span><br><span class="line">	pci_lock_config(flags);						\</span><br><span class="line">	res = bus-&gt;ops-&gt;read(bus, devfn, pos, len, &amp;data);		\</span><br><span class="line">	if (res)							\</span><br><span class="line">		PCI_SET_ERROR_RESPONSE(value);				\</span><br><span class="line">	else								\</span><br><span class="line">		*value = (type)data;					\</span><br><span class="line">	pci_unlock_config(flags);					\</span><br><span class="line">	return res;							\</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>那么bus-&gt;ops-&gt;read的底层实现到底是什么？取决于cpu和pci架构，例如arm&#x2F;x86&#x2F;ia64…</p>
+<p>全局搜索定义struct pci_ops的代码即可见，以<a target="_blank" rel="noopener" href="https://elixir.bootlin.com/linux/latest/source/arch/x86/pci/common.c#L72">x86为例</a></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">struct pci_ops pci_root_ops = &#123;</span><br><span class="line">	.read = pci_read,</span><br><span class="line">	.write = pci_write,</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">static int pci_read(struct pci_bus *bus, unsigned int devfn, int where, int size, u32 *value)</span><br><span class="line">&#123;</span><br><span class="line">	return raw_pci_read(pci_domain_nr(bus), bus-&gt;number,</span><br><span class="line">				 devfn, where, size, value);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">int raw_pci_read(unsigned int domain, unsigned int bus, unsigned int devfn,</span><br><span class="line">						int reg, int len, u32 *val)</span><br><span class="line">&#123;</span><br><span class="line">	if (domain == 0 &amp;&amp; reg &lt; 256 &amp;&amp; raw_pci_ops)</span><br><span class="line">		return raw_pci_ops-&gt;read(domain, bus, devfn, reg, len, val);</span><br><span class="line">	if (raw_pci_ext_ops)</span><br><span class="line">		return raw_pci_ext_ops-&gt;read(domain, bus, devfn, reg, len, val);</span><br><span class="line">	return -EINVAL;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><em>struct</em> pci_raw_ops有几处定义，direct.c, mmconfig_32.c, mmconfig_64.c, 分别对应不同的访问方式。下面以<a target="_blank" rel="noopener" href="https://elixir.bootlin.com/linux/latest/source/arch/x86/pci/direct.c#L83">direct.c中的实现</a>为例：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">const struct pci_raw_ops pci_direct_conf1 = &#123;</span><br><span class="line">	.read =		pci_conf1_read,</span><br><span class="line">	.write =	pci_conf1_write,</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">static const struct pci_raw_ops pci_direct_conf2 = &#123;</span><br><span class="line">	.read =		pci_conf2_read,</span><br><span class="line">	.write =	pci_conf2_write,</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>有两种direct config访问方式，区别在于指令结构不一样，参考PCI express base spec 的 Configuration Space Header。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">/*</span><br><span class="line"> * Functions for accessing PCI base (first 256 bytes) and extended</span><br><span class="line"> * (4096 bytes per PCI function) configuration space with type 1</span><br><span class="line"> * accesses.</span><br><span class="line"> */</span><br><span class="line"></span><br><span class="line">#define PCI_CONF1_ADDRESS(bus, devfn, reg) \</span><br><span class="line">	(0x80000000 | ((reg &amp; 0xF00) &lt;&lt; 16) | (bus &lt;&lt; 16) \</span><br><span class="line">	| (devfn &lt;&lt; 8) | (reg &amp; 0xFC))</span><br><span class="line">	</span><br><span class="line">/*</span><br><span class="line"> * Functions for accessing PCI configuration space with type 2 accesses</span><br><span class="line"> */</span><br><span class="line">#define PCI_CONF2_ADDRESS(dev, reg)	(u16)(0xC000 | (dev &lt;&lt; 8) | reg)</span><br></pre></td></tr></table></figure>
+
+<p>以pci_conf1_read的内部实现为例：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line">static int pci_conf1_read(unsigned int seg, unsigned int bus,</span><br><span class="line">			  unsigned int devfn, int reg, int len, u32 *value)</span><br><span class="line">&#123;</span><br><span class="line">	unsigned long flags;</span><br><span class="line"></span><br><span class="line">	if (seg || (bus &gt; 255) || (devfn &gt; 255) || (reg &gt; 4095)) &#123;</span><br><span class="line">		*value = -1;</span><br><span class="line">		return -EINVAL;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	raw_spin_lock_irqsave(&amp;pci_config_lock, flags);</span><br><span class="line"></span><br><span class="line">	outl(PCI_CONF1_ADDRESS(bus, devfn, reg), 0xCF8);</span><br><span class="line"></span><br><span class="line">	switch (len) &#123;</span><br><span class="line">	case 1:</span><br><span class="line">		*value = inb(0xCFC + (reg &amp; 3));</span><br><span class="line">		break;</span><br><span class="line">	case 2:</span><br><span class="line">		*value = inw(0xCFC + (reg &amp; 2));</span><br><span class="line">		break;</span><br><span class="line">	case 4:</span><br><span class="line">		*value = inl(0xCFC);</span><br><span class="line">		break;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	raw_spin_unlock_irqrestore(&amp;pci_config_lock, flags);</span><br><span class="line"></span><br><span class="line">	return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>最底层调用的是x86的in, out汇编指令，也是宏函数封装，参考<a target="_blank" rel="noopener" href="https://elixir.bootlin.com/linux/latest/source/arch/x86/include/asm/shared/io.h#L27">arch&#x2F;x86&#x2F;include&#x2F;asm&#x2F;shared&#x2F;io.h#L27</a></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">static __always_inline void __out##bwl(type value, u16 port)		\</span><br><span class="line">&#123;									\</span><br><span class="line">	asm volatile(&quot;out&quot; #bwl &quot; %&quot; #bw &quot;0, %w1&quot;			\</span><br><span class="line">		     : : &quot;a&quot;(value), &quot;Nd&quot;(port));			\</span><br><span class="line">&#125;									\</span><br><span class="line">									\</span><br><span class="line">static __always_inline type __in##bwl(u16 port)				\</span><br><span class="line">&#123;									\</span><br><span class="line">	type value;							\</span><br><span class="line">	asm volatile(&quot;in&quot; #bwl &quot; %w1, %&quot; #bw &quot;0&quot;			\</span><br><span class="line">		     : &quot;=a&quot;(value) : &quot;Nd&quot;(port));			\</span><br><span class="line">	return value;							\</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>至此pci_read_config_byte一类的PCI register acess API分析完毕。</p>
+<h3 id="PCIe-AER-driver分析和debug记录"><a href="#PCIe-AER-driver分析和debug记录" class="headerlink" title="PCIe AER driver分析和debug记录"></a>PCIe AER driver分析和debug记录</h3><p>AER: Advanced Error Reporting  </p>
+<p>PCIe的AER是PCIe spec协议的标准功能，AER涉及到Error信号产生，上报，处理，错误恢复等。</p>
+<h4 id="PCIe-base-spec摘要："><a href="#PCIe-base-spec摘要：" class="headerlink" title="PCIe base spec摘要："></a>PCIe base spec摘要：</h4><p>Error分类：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202308251714033.png" alt="image-20230825171440881"></p>
+<p>Error信号在数字逻辑的处理流水：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202308251714855.png" alt="image-20230825171423678"></p>
+<p>AER的capability regsiter:</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202308251715226.png" alt="image-20230825171511047"></p>
+<h4 id="PCIe-AER-driver摘要"><a href="#PCIe-AER-driver摘要" class="headerlink" title="PCIe AER driver摘要"></a>PCIe AER driver摘要</h4><p>PCIe driver的使用aer service driver实现软件处理流程，aer service属于PCIe bus driver的子功能，而PCIe driver又属于PCI driver字类。</p>
+<p>什么是PCIe service driver: <a target="_blank" rel="noopener" href="https://www.kernel.org/doc/html/v6.1/PCI/pciebus-howto.html">2. The PCI Express Port Bus Driver Guide HOWTO</a></p>
+<p>什么是PCIe AER driver: <a target="_blank" rel="noopener" href="https://www.kernel.org/doc/html/v6.1/PCI/pcieaer-howto.html">8. The PCI Express Advanced Error Reporting Driver Guide HOWTO</a></p>
+<h4 id="PCIe-AER-driver在Kconfig的开关"><a href="#PCIe-AER-driver在Kconfig的开关" class="headerlink" title="PCIe AER driver在Kconfig的开关"></a>PCIe AER driver在Kconfig的开关</h4><p>配置Kconfig可开关：make menuconfig -&gt; &#x2F; -&gt; 搜索PCIEAER -&gt; n关闭，y打开</p>
+<p>如下Kconfig的AER三个相关项都被关闭：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">CONFIG_PCIAER=n</span><br><span class="line">CONFIG_ACPI_APEI_PCIEAER=n</span><br><span class="line">CONFIG_PCIAER_INJECT=n</span><br></pre></td></tr></table></figure>
+
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202308251756929.png" alt="image-20230825175611772"></p>
+<h4 id="示例：ACS-violation-error的debug过程"><a href="#示例：ACS-violation-error的debug过程" class="headerlink" title="示例：ACS violation error的debug过程"></a>示例：ACS violation error的debug过程</h4><p>在调试SD express host controller driver过程中，发现部分SD express card（ADATA &amp; Lexar）在linux下无法正常初始化，windows下正常。以下为issue debug过程。</p>
+<p>(1)首先打开PCI driver的debug打印</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">make menuconfig -&gt; /搜索 -&gt; PCI_DEBUG -&gt; y</span><br></pre></td></tr></table></figure>
+
+<p>参考<a href="https://cursorhu.github.io/2023/08/02/Linux-driver%E9%80%9A%E7%94%A8%E8%B0%83%E8%AF%95%E6%8A%80%E6%9C%AF%E8%AE%B0%E5%BD%95/">Linux driver常用调试技术记录</a></p>
+<p>(2)对比Good Case和Bad case</p>
+<p>SD express card的切换是包含PCIe linkdown和linkup的过程，会有两次hot-plug中断处理。</p>
+<p>Bad case的log中，发现如下两种AER error report:</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202308291149954.png" alt="image-20230829114906631"></p>
+<p>a. RxErr</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">Link Training Error：一插卡就有此error. 此error发生在hot-plug中断之前</span><br><span class="line">[  106.119856] pcie port 0000:00:1b.4: pciehp: pending interrupts 0x0100 from Slot Status</span><br><span class="line">[  106.119863] pcieport 0000:00:1b.4: PCIe Bus Error: severity=Corrected, type=Physical Layer, (Receiver ID) //PCI driver检测到error属于Physical Layer</span><br><span class="line">[  106.119864] pcieport 0000:00:1b.4:   device [8086:43c4] error status/mask=00000001/00002000 //error status bit0 =1</span><br><span class="line">[  106.119866] pcieport 0000:00:1b.4:    [ 0] RxErr                  (First) //error的含义：在old version of PCIe spec表示Link Training Error.</span><br></pre></td></tr></table></figure>
+
+<p>b. ACS Violation</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"> ACS Violation error: 在hot-plug driver检测到hot-plug中断之后正在处理hot-plug的card/link状态检测过程中，PCIe driver检测到此error</span><br><span class="line">[  107.493928] enter pciehp_ist</span><br><span class="line">[  107.494136] pcieport 0000:00:1b.4: DPC: containment event, status:0x1f01 source:0x0000</span><br><span class="line">[  107.494140] pcieport 0000:00:1b.4: DPC: unmasked uncorrectable error detected //PCI driver检测到error</span><br><span class="line">[  107.494145] pcieport 0000:00:1b.4: PCIe Bus Error: severity=Uncorrected (Non-Fatal), type=Transaction Layer, (Receiver ID) //PCI driver检测到error属于Transaction Layer</span><br><span class="line">[  107.494148] pcieport 0000:00:1b.4:   device [8086:43c4] error status/mask=00200000/00004000  //error status bit21 =1</span><br><span class="line">[  107.494151] pcieport 0000:00:1b.4:    [21] ACSViol                (First)     //error的含义：ACS Violation</span><br></pre></td></tr></table></figure>
+
+<p>在此ACS error发生之后，hot-plug driver检测不到LinkUp（1st 检测）, polling 10s后也检测不到LinkUp（2nd 检测），最终打印No link，PCIe设备未启动configuration。</p>
+<p>(3) ACS violation分析</p>
+<p>PCIe协议分析抓包发现一个可疑的vendor defined message，可能是对应上述错误信息：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202308291158420.png" alt="image-20230829115802177"></p>
+<p>ACS violation在PCIe spec描述如下：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202308291151689.png" alt="image-20230829115115392"></p>
+<p>(4)原因和解决办法</p>
+<p>逻辑链：PCIe Link training到L0之后，PCI driver还没发送Config Write操作定义Bus number的时候, SD express卡就发送了一个Vendor Specific defined message，这个是违反spec规定的；而RC side ACS 功能是enable的，会检测收到的包中的bus number是否和自己已扫描的bus相符，如果不符就报错ACS violation，并放弃卡初始化。</p>
+<p>解决办法(workaround)：关闭PCIe bridge driver的ACS enable bit (ACS Control register bit0&#x3D;1’b0):</p>
+<p>具体代码改动为：</p>
+<p>1). drivers&#x2F;pci&#x2F;pci.c -&gt; pci_std_enable_acs ：pcie默认enable ACS Control register的ACS violation bit，此处修改为disable ACS violation bit.</p>
+<p>2). drivers&#x2F;pci&#x2F;quirk.c -&gt; pci_quirk_enable_intel_spt_pch_acs: 此处为Intel PCIe的特有配置，此处也 disable ACS violation bit</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/PCI/" rel="tag"># PCI</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2023/08/11/Debian12-Gnome%E9%85%8D%E7%BD%AE%E7%AC%94%E8%AE%B0/" rel="prev" title="Debian12+Gnome配置笔记">
+      <i class="fa fa-chevron-left"></i> Debian12+Gnome配置笔记
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2023/09/18/%E4%BB%A3%E7%A0%81%E8%B0%83%E7%94%A8%E9%93%BE%E5%8F%AF%E8%A7%86%E5%8C%96%E5%B7%A5%E5%85%B7/" rel="next" title="代码调用链可视化工具Sourcetrail">
+      代码调用链可视化工具Sourcetrail <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#PCI-tree%E7%BB%93%E6%9E%84"><span class="nav-number">1.</span> <span class="nav-text">PCI tree结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#lspci%E4%BD%BF%E7%94%A8%E7%A4%BA%E4%BE%8B"><span class="nav-number">2.</span> <span class="nav-text">lspci使用示例</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#PCI-device%E7%9A%84%E5%88%9B%E5%BB%BA%E8%BF%87%E7%A8%8B"><span class="nav-number">3.</span> <span class="nav-text">PCI device的创建过程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BD%BF%E7%94%A8sysfs%E6%93%8D%E4%BD%9Cpci-device"><span class="nav-number">4.</span> <span class="nav-text">使用sysfs操作pci device</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#PCI-driver%E7%9A%84register-access-API%E5%88%86%E6%9E%90"><span class="nav-number">5.</span> <span class="nav-text">PCI driver的register access API分析</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#PCIe-AER-driver%E5%88%86%E6%9E%90%E5%92%8Cdebug%E8%AE%B0%E5%BD%95"><span class="nav-number">6.</span> <span class="nav-text">PCIe AER driver分析和debug记录</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#PCIe-base-spec%E6%91%98%E8%A6%81%EF%BC%9A"><span class="nav-number">6.1.</span> <span class="nav-text">PCIe base spec摘要：</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#PCIe-AER-driver%E6%91%98%E8%A6%81"><span class="nav-number">6.2.</span> <span class="nav-text">PCIe AER driver摘要</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#PCIe-AER-driver%E5%9C%A8Kconfig%E7%9A%84%E5%BC%80%E5%85%B3"><span class="nav-number">6.3.</span> <span class="nav-text">PCIe AER driver在Kconfig的开关</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E7%A4%BA%E4%BE%8B%EF%BC%9AACS-violation-error%E7%9A%84debug%E8%BF%87%E7%A8%8B"><span class="nav-number">6.4.</span> <span class="nav-text">示例：ACS violation error的debug过程</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="cursorhu"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">cursorhu</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">113</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">41</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">55</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/cursorhu" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;cursorhu" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:2449055512@qq.com" title="E-Mail → mailto:2449055512@qq.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2025</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">cursorhu</span>
+</div>
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

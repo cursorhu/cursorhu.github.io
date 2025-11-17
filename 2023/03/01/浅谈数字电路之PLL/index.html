@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 8.0.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Noto+Serif+SC|Roboto/css?family=Noto Serif SC:300,300italic,400,400italic,700,700italic|Roboto:300,300italic,400,400italic,700,700italic&display=swap&subset=latin,latin-ext">
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"cursorhu.github.io","root":"/","scheme":"Pisces","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="本文PLL的基础内容参考了Digital Integrated Circuits一书，下载方式：在 vdoc 搜索关键字 Digital Integrated Circuits  PLL的应用概述两个作用：Clock Synthesis（时钟综合）和 Clock Synchronization（时钟同步）  Clock Synthesis，Synthesis是综合&#x2F;生成的意思，Clock">
+<meta property="og:type" content="article">
+<meta property="og:title" content="浅谈数字电路之PLL">
+<meta property="og:url" content="https://cursorhu.github.io/2023/03/01/%E6%B5%85%E8%B0%88%E6%95%B0%E5%AD%97%E7%94%B5%E8%B7%AF%E4%B9%8BPLL/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="本文PLL的基础内容参考了Digital Integrated Circuits一书，下载方式：在 vdoc 搜索关键字 Digital Integrated Circuits  PLL的应用概述两个作用：Clock Synthesis（时钟综合）和 Clock Synchronization（时钟同步）  Clock Synthesis，Synthesis是综合&#x2F;生成的意思，Clock">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303011144938.jpeg">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303031043844.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303031634330.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303031635776.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303031433820.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303031532421.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303031500042.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303031517323.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303031423652.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303061656462.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303061707268.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303061711496.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303061954691.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303062016985.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303062013044.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303071046331.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303071050761.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303071050372.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303071202081.png">
+<meta property="article:published_time" content="2023-03-01T03:40:15.000Z">
+<meta property="article:modified_time" content="2024-11-04T03:43:03.129Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="PLL">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303011144938.jpeg">
+
+<link rel="canonical" href="https://cursorhu.github.io/2023/03/01/%E6%B5%85%E8%B0%88%E6%95%B0%E5%AD%97%E7%94%B5%E8%B7%AF%E4%B9%8BPLL/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>浅谈数字电路之PLL | ThinkNotes</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">ThinkNotes</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Simple is not easy</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于我</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2023/03/01/%E6%B5%85%E8%B0%88%E6%95%B0%E5%AD%97%E7%94%B5%E8%B7%AF%E4%B9%8BPLL/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          浅谈数字电路之PLL
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2023-03-01 11:40:15" itemprop="dateCreated datePublished" datetime="2023-03-01T11:40:15+08:00">2023-03-01</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2024-11-04 11:43:03" itemprop="dateModified" datetime="2024-11-04T11:43:03+08:00">2024-11-04</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/IC/" itemprop="url" rel="index"><span itemprop="name">IC</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>本文PLL的基础内容参考了Digital Integrated Circuits一书，下载方式：在 <a target="_blank" rel="noopener" href="https://vdoc.pub/">vdoc</a> 搜索关键字 Digital Integrated Circuits</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303011144938.jpeg" alt="img"></p>
+<h2 id="PLL的应用概述"><a href="#PLL的应用概述" class="headerlink" title="PLL的应用概述"></a>PLL的应用概述</h2><p>两个作用：Clock Synthesis（时钟综合）和 Clock Synchronization（时钟同步）</p>
+<ul>
+<li>Clock Synthesis，Synthesis是综合&#x2F;生成的意思，Clock Synthesis即生成时钟，但此处含义不是作为时钟源，而是在低频晶振时钟的基础上倍频生成高频时钟：其中低频的晶振时钟的特性：10~200MHz， accurate, low-jitter ，高频时钟特性：200MHz ~ GHz级别，通常也称为系统时钟，例如SOC core的基准频率</li>
+<li>Clock Synchronization，不同芯片之间传递时钟信号需要同步时钟相位，例如SOC的CPU和外设之间的通信接口一般是：分频后的时钟信号（reference clock）和数据信号（Date），CPU和外设间的信号传递是需要时间的，高速信号传递到外设侧有相位偏移（可以简单理解为延迟），因此需要PLL同步时钟相位以保证对数据采样的正确性（想象一下，如果reference clock相位偏移过大，可能每个采样时刻得到的data数据都是错位的）</li>
+</ul>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303031043844.png" alt="image-20230303104354744"></p>
+<h2 id="相位的概念"><a href="#相位的概念" class="headerlink" title="相位的概念"></a>相位的概念</h2><p>Digital Integrated Circuits一书对相位的描述：</p>
+<p>Periodic signals of known frequency can be discribed exactly by only one parameter, their<br>phase. More accurately a set of two or more periodic signals of the same frequency can be<br>well defined if we know one of them and its phase with respect to the other signals.  </p>
+<p>翻译下就是：</p>
+<ul>
+<li><p>多个已知频率的周期信号只用一个参数就能精确区分：相位</p>
+</li>
+<li><p>如果这些信号的频率相同，则只需知道相位差就可以从一个信号精确推测另一个信号</p>
+</li>
+</ul>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303031634330.png" alt="image-20230303163446269"></p>
+<p>基于以上概念，下面介绍PLL的两个核心功能：</p>
+<ul>
+<li>将输入PLL的时钟和PLL输出时钟的频率精确同步：输出时钟信号频率是输入时钟信号频率的精确的N倍</li>
+<li>将输入PLL的时钟和PLL输出时钟的相位精确同步：输出时钟信号N分频后，其应该和输入信号完全一致，其上升&#x2F;下降沿应该精确对齐输入时钟信号的上升&#x2F;下降沿</li>
+</ul>
+<h2 id="PLL内部实现"><a href="#PLL内部实现" class="headerlink" title="PLL内部实现"></a>PLL内部实现</h2><p>PLL内部结构如下，真正核心的只有两个组件：</p>
+<ul>
+<li>VCO: The voltage-controlled oscillator (VCO) takes an analog control input and generates a clock signal of the desired frequency.  VCO接受电压（模拟信号），转换为频率（数字信号），也就是说，VCO使输出频率是电压的函数(非线性)。Charge pump是控制电压增加和减少的模块，Loop filter是低通滤波器，过滤掉电压信号中的高频正弦噪声，使VCO的输入更“纯粹”（减少毛刺信号，jittery clock）</li>
+<li>Phase Detectors: 为什么带s ? 因为可以有两种实现：XOR Phase Detector  和 Phase-Frequency Detector ，Phase Detectors是相位和频率同步的核心，具体原理下面讲</li>
+</ul>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303031635776.png" alt="image-20230303163504732"></p>
+<h3 id="XOR-Phase-Detector"><a href="#XOR-Phase-Detector" class="headerlink" title="XOR Phase Detector"></a>XOR Phase Detector</h3><p>用一个异或门(XOR)就能实现相位检测，是最简单但有缺陷的实现：</p>
+<p>当ref clock和local clock(反馈时钟)有相位差，异或之后输出的就是相位差信号(phase error)，这个信号经过线性函数转换成Vdd, 作为VCO的控制电压。</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303031433820.png" alt="image-20230303143346757"></p>
+<p>XOR的缺陷：当local clock相位和ref clock相位一致，但local clock频率是ref clock的N倍时，XOR检不输出相位差，但此时PLL输出频率不是预期的频率，而是N倍的预期频率。</p>
+<h3 id="Phase-Frequency-Detector-PFD"><a href="#Phase-Frequency-Detector-PFD" class="headerlink" title="Phase-Frequency Detector (PFD)"></a>Phase-Frequency Detector (PFD)</h3><p>为了解决XOR的缺陷，引入了Phase-Frequency Detector (PFD)，看名字就知道，它同时检测相位和频率，以保证PLL输出的正确性</p>
+<p>如下图，UP&#x2F;DN是控制VCO的信号，用于给VCO加压&#x2F;降压；A和B是local clock和ref clock；</p>
+<p>PFD使用触发器(flip-flops)，将UP&#x2F;DN变成A和B的状态机；关于flip-flops的特性，参考 <a target="_blank" rel="noopener" href="https://courses.cs.washington.edu/courses/cse370/03sp/pdfs/lectures/lecture15.pdf">Overview The D latch - University of Washington</a></p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303031532421.png" alt="image-20230303153203366"></p>
+<p>(1) PFD如何检测相位差</p>
+<p>以左侧信号为例，过程如下：</p>
+<ol>
+<li>信号A相位超前于信号B, A上升沿时会触发UP信号输出(D触发器特性，这里A作为D触发器的CLK输入信号)；</li>
+<li>当信号B上升沿变化时, B处的触发器也输出DN脉冲，两个触发器的输出都为1，经过与门后Rst复位信号为1，导致A和B的触发器都被reset, 之后UP和DN都变为低；</li>
+<li>综合下来看，UP信号的宽度就等于相位差，线性转换后就可以作为控制VCO的电压</li>
+</ol>
+<p>右侧波形同理，信号A相位落后于信号B，DN即相位差</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303031500042.png" alt="image-20230303150043973"></p>
+<p>(2) PFD如何检测频率差</p>
+<p>如下图，当B频率比A低，PFD输出更多的UP信号增加VCO电压，提高B的频率；当B频率比A高则相反，PFD输出更多DN信号降低B的频率</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303031517323.png" alt="image-20230303151725271"></p>
+<h2 id="PLL的指标"><a href="#PLL的指标" class="headerlink" title="PLL的指标"></a>PLL的指标</h2><p>PLL structure is a feedback structure and the addition of extra phase shifts, as is done by a high-order filter, may result in instability. </p>
+<p>PLL是能造成相位偏移（矫正）的反馈电路，既然是反馈就得像数学求极限一样不断趋近，这决定PLL不是一上电就能马上稳定工作，因此引入PLL的关键指标如下：</p>
+<p>Important properties of a PLL are：</p>
+<ul>
+<li><p>lock range—the range of input frequencies over which the loop can maintain functionality; PLL能接受的输入时钟不可能太高，一般是OSC晶振低频时钟。想象一下，太高的输入时钟要去同步相位和倍频，对VCO和相位检测器的精度要求也极高</p>
+</li>
+<li><p>the lock time—the time it takes for the PLL to lock onto a given input signal; PLL是反馈环路电路，需要不断递归趋近于目标时钟信号直到稳定，稳定需要的时间称为PLL锁定时间</p>
+</li>
+<li><p>jitter.  毛刺信号，在模拟端称为noise(VCO输入电压)，在数字端称为jitter毛刺(VCO输出时钟)，这是时钟信号相关模块必不可少的指标</p>
+</li>
+</ul>
+<h2 id="PLL的稳定过程"><a href="#PLL的稳定过程" class="headerlink" title="PLL的稳定过程"></a>PLL的稳定过程</h2><p>如下图是Spice 仿真将100Mhz reference clock倍频8倍，VCO最终稳定输出800Mhz system clock的过程：</p>
+<ul>
+<li><p>左侧是VCO控制电压，经过几次反馈调整后最终稳定</p>
+</li>
+<li><p>右侧是时钟信号，ref是输入的100Mhz reference clock，vco是输出的system clock， div是vco输出8分频后的反馈时钟</p>
+</li>
+</ul>
+<p>可见PLL稳定过程是将ref，vco和div时钟信号的相位、频率都收敛到一致</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303031423652.png" alt="image-20230303142344571"></p>
+<h2 id="PLL在IC设计IP的实例"><a href="#PLL在IC设计IP的实例" class="headerlink" title="PLL在IC设计IP的实例"></a>PLL在IC设计IP的实例</h2><p>以SMIC的PLL IP S65NLLPLLGS 为例介绍实际IC设计中的PLL模块：</p>
+<p>(1) 简介</p>
+<p>This PLL is developed as an IP block to reduce time to market, risk and cost in the<br>development of Analog Front –End design. This macro cell is mainly for the clock<br>generator. It can generate stable high-speed clock from a slower clock signal with<br>single power supply. The output frequency is adjustable and can be up to 1500MHz.<br>This PLL integrates a Phase Frequency Detector (PFD), a Low Pass Filter (LPF), a<br>Voltage Controlled Oscillator and other associated circuit. All fundamental building<br>blocks as well as fully programmable dividers are integrated in the core. It is useful<br>for clock multiplication of stable crystal oscillator sources and for de-skew clock<br>signals  </p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303061656462.png" alt="image-20230306165657371"></p>
+<p>可见主要模块还是PFD + VCO，输出时钟加了一些逻辑门控制，例如PDRST是PLL时钟复位控制。</p>
+<p>(2) 主要参数</p>
+<p>Technology: SMIC 65nm logic LL process  </p>
+<p>PFD comparison frequency range from 1Mhz to 50Mhz.  </p>
+<p>Output clock frequency range from 62.5MHz to 1500MHz  </p>
+<p>基本体现了PLL的指标：输入输出时钟频率有限制</p>
+<p>(3) PLL reset</p>
+<p>PLL作为实际可用的模块，其输出频率一定是可调的，以下PLL IP的pin中的M, N即调整频率；对于固件、驱动软件开发者，M，N分频的访问接口是作为寄存器来动态配置。</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303061707268.png" alt="image-20230306170709189"></p>
+<p>在M，N调整分配时，必须reset PLL并等待PLL再次稳定（PLL lock time），如下图：</p>
+<p>LKDT: Lock Detection, 表示目前PLL正在lock，即反映PLL是否处于不稳定状态</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303061711496.png" alt="image-20230306171156449"></p>
+<h2 id="PLL在外设时钟配置的实例"><a href="#PLL在外设时钟配置的实例" class="headerlink" title="PLL在外设时钟配置的实例"></a>PLL在外设时钟配置的实例</h2><p>SD控制器(SD host)是SOC中常用的外围模块，通过SD specification规定的SD Command通信格式向SD卡通信。</p>
+<p>下面以SD host&#x2F;card的时钟初始化为例，介绍PLL的lock time在外设时钟初始化的影响</p>
+<p>(1) SD 4.0标准的host和card的物理框图如下图，这里重点关注host侧的时钟相关的模块：</p>
+<ul>
+<li>OSC: host 的时钟来源，同时也是PLL的输入</li>
+<li>PLL: host的倍频器，为了给SD UHS-II card提供更高速的工作时钟(UHS-I低速SD card不需要此PLL)</li>
+<li>RCLK: SD card的工作时钟(reference clock)</li>
+</ul>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303061954691.png" alt="image-20230306195458581"></p>
+<p>(2) SD host和card的时钟初始化</p>
+<p>SD host和card的时钟初始化包含三步：</p>
+<p>1.使能internal clock: sd host chip自己的工作时钟(即base clock，来源是OSC)，并等待其稳定，如下图(3)~(4)</p>
+<p>2.enable PLL，并等待其稳定，这个等待稳定超时时间为150ms ，如下图(5)~(6)。</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303062016985.png" alt="image-20230306172758282"></p>
+<p>3.待host PLL输出稳定后，即可enable SD clock开始对SD卡供应reference clock时钟, 注意SD clock是下图(1)~(2)就已经计算好的，如下表Base Clock为internal clock，M可理解为PLL倍频后的频率, 经过2^N分频后给SD card作为reference clock。</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303062013044.png" alt="image-20230306201345998"></p>
+<h2 id="PLL在电源管理的实例"><a href="#PLL在电源管理的实例" class="headerlink" title="PLL在电源管理的实例"></a>PLL在电源管理的实例</h2><p>所谓电源管理，通俗的讲就是按需管理电源：</p>
+<ul>
+<li>按需，指的是按应用场景的需求，例如在高性能肯定对应高功耗，各种模块全部开启，且时钟频率拉到最大；而睡眠休眠等模式，有时只需要保留能唤醒系统的时钟就行；</li>
+<li>管理电源，涉及到供电和时钟：将低功耗情景下不需要用到的模块直接关电，将要用到但速度要求不高的模块进入低速时钟工作。</li>
+</ul>
+<p>下面以PCIe的电源管理为例，介绍低功耗状态如何影响PLL的状态</p>
+<p>（1）PCIe电源管理基本概念</p>
+<p>PCIe的电源管理基本概念参考 <a target="_blank" rel="noopener" href="https://www.intel.cn/content/www/cn/zh/io/pci-express/pci-express-architecture-power-management-rev-1-1-paper.html">PCI EXPRESS ARCHITECTURE POWER MANAGEMENT</a>, 也可以参考PCIe标准协议PCIe Base Spec</p>
+<p>从上到下包含三层：系统电源状态(S)，PCIe链路电源状态(L)，PCIe设备电源状态(D)</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303071046331.png" alt="Untitled Diagram"></p>
+<ul>
+<li>Sleep state</li>
+</ul>
+<p>S0 (Working): This is the active system state in which the platform appears to be “on.”  </p>
+<p>S1&#x2F;POS, S1 (Microsoft* OS Stand By): These are the lowest wake latency sleeping states.  </p>
+<p>S3 (Microsoft OS Stand By) and S4 (Microsoft OS Hibernate): S3 is a low wake latency sleeping state in which all device contexts are lost except system memory</p>
+<p>S5 (Microsoft OS Soft-off): In this state, the OS does not save any context and requires a complete OS boot when the system wakes  </p>
+<ul>
+<li>Link States</li>
+</ul>
+<p>L0: Active state  </p>
+<p>L1: This link state is a low exit latency link state that is intended to reduce power when the device becomes aware of a lack of outstanding requests or pending transactions  </p>
+<p>L2&#x2F;L3 Ready: This link state prepares the PCI Express link for the removal of power and clock.   </p>
+<p>L3 (link off): Power and clock are removed in this link state  </p>
+<ul>
+<li>Device States</li>
+</ul>
+<p>D0 (Fully-on): The device is completely active and responsive during this D-state  </p>
+<p>D1 and D2: There is no universal definition for these D-states. In general, D1 is expected to save<br>less power but preserve more device context than D2  </p>
+<p>D3 (Off): Primary power may be fully removed from the device (D3cold), or not removed from the device (D3hot). </p>
+<p>S, L, D 三层状态的对应关系如下表</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303071050761.png" alt="image-20230307105034704"></p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303071050372.png" alt="image-20230307105052312"></p>
+<p>注意，Link state是Sleep state对Device state作用的结果，即状态变化的过程是：</p>
+<p>系统发起S3 -&gt; Device sate进入D3-&gt;Link state进入L2&#x2F;L3</p>
+<p>（2）使用PLL控制Device state</p>
+<p>Device sate进入D3, 设备内部操作即包含PLL的disable，将PLL模块整个关掉，保留OSC低速时钟作为退出D3状态的唤醒时钟源（软件上可以理解为heart beat），当PLL关掉后，其他依赖PLL的高速模块通常也断电，整个设备接近（或彻底）断电，因此设备功耗极低。</p>
+<p>Device sate退出D3并进入D0则是相反过程，设备的PLL模块打开，其他依赖PLL的高速模块也打开，整个设备进入Active状态，功耗自然升高。</p>
+<p>（3）使用PLL控制Link state</p>
+<p>参考chapter11 of <a target="_blank" rel="noopener" href="https://vdoc.pub/download/introduction-to-pci-express-a-hardware-and-software-developers-guide-1r2bcv8l7e6o">Introduction to PCI Express: A Hardware and Software Developer’s Guide</a></p>
+<p>当PCIe link改变时，本质是PCIe时钟改变；PCIe host侧（bridge&#x2F;Root Complex）的时钟也是低速clock source经PLL倍频后的2.5GHz，如下图：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303071202081.png" alt="image-20230307120222026"></p>
+<p>L1 link state的本质：The L1 Link state is an idle state with the internal Phase Lock Loop Circuit turned off. The source clock is still feeding a 100-megahertz differential clock signal to the PCI Express component.</p>
+<p>L2 link state的本质：The L2 Link state is an optional auxiliary idle state with the internal Phase Lock Loop Circuit, the external clock source, and the main device power turned off (auxiliary power remains on)</p>
+<p>总结就是：PCIe Link State本质是通过关闭PCIe host侧的PLL甚至clock source来实现的。</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/PLL/" rel="tag"># PLL</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2023/02/02/Ubuntu-SSH%E6%9C%8D%E5%8A%A1%E9%85%8D%E7%BD%AE%E7%AC%94%E8%AE%B0/" rel="prev" title="Ubuntu SSH服务配置笔记">
+      <i class="fa fa-chevron-left"></i> Ubuntu SSH服务配置笔记
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2023/03/09/Linux%20kernel%E4%BB%A3%E7%A0%81%E6%8F%90%E4%BA%A4%E5%92%8Cpatch%E4%BD%BF%E7%94%A8/" rel="next" title="Linux kernel代码提交和patch使用">
+      Linux kernel代码提交和patch使用 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#PLL%E7%9A%84%E5%BA%94%E7%94%A8%E6%A6%82%E8%BF%B0"><span class="nav-number">1.</span> <span class="nav-text">PLL的应用概述</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%9B%B8%E4%BD%8D%E7%9A%84%E6%A6%82%E5%BF%B5"><span class="nav-number">2.</span> <span class="nav-text">相位的概念</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#PLL%E5%86%85%E9%83%A8%E5%AE%9E%E7%8E%B0"><span class="nav-number">3.</span> <span class="nav-text">PLL内部实现</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#XOR-Phase-Detector"><span class="nav-number">3.1.</span> <span class="nav-text">XOR Phase Detector</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Phase-Frequency-Detector-PFD"><span class="nav-number">3.2.</span> <span class="nav-text">Phase-Frequency Detector (PFD)</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#PLL%E7%9A%84%E6%8C%87%E6%A0%87"><span class="nav-number">4.</span> <span class="nav-text">PLL的指标</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#PLL%E7%9A%84%E7%A8%B3%E5%AE%9A%E8%BF%87%E7%A8%8B"><span class="nav-number">5.</span> <span class="nav-text">PLL的稳定过程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#PLL%E5%9C%A8IC%E8%AE%BE%E8%AE%A1IP%E7%9A%84%E5%AE%9E%E4%BE%8B"><span class="nav-number">6.</span> <span class="nav-text">PLL在IC设计IP的实例</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#PLL%E5%9C%A8%E5%A4%96%E8%AE%BE%E6%97%B6%E9%92%9F%E9%85%8D%E7%BD%AE%E7%9A%84%E5%AE%9E%E4%BE%8B"><span class="nav-number">7.</span> <span class="nav-text">PLL在外设时钟配置的实例</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#PLL%E5%9C%A8%E7%94%B5%E6%BA%90%E7%AE%A1%E7%90%86%E7%9A%84%E5%AE%9E%E4%BE%8B"><span class="nav-number">8.</span> <span class="nav-text">PLL在电源管理的实例</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="cursorhu"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">cursorhu</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">113</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">41</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">55</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/cursorhu" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;cursorhu" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:2449055512@qq.com" title="E-Mail → mailto:2449055512@qq.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2025</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">cursorhu</span>
+</div>
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

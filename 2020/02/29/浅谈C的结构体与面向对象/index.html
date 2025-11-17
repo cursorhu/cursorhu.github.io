@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 8.0.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Noto+Serif+SC|Roboto/css?family=Noto Serif SC:300,300italic,400,400italic,700,700italic|Roboto:300,300italic,400,400italic,700,700italic&display=swap&subset=latin,latin-ext">
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"cursorhu.github.io","root":"/","scheme":"Pisces","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="0.概述结构体（Struct）：存放一组不同类型的数据的数据结构。数组（Array）：存放一组相同类型的数据的数据结构。结构体和int,char，指针等基础数据类型一样，也是一种数据类型。格式定义如下： struct 结构体名&#123;     成员类型1 成员名1;     成员类型2 成员名2； &#125;实例1，实例2;  结构体的成员（Member）可以为任意类型，如int,char，">
+<meta property="og:type" content="article">
+<meta property="og:title" content="浅谈C的结构体与面向对象">
+<meta property="og:url" content="https://cursorhu.github.io/2020/02/29/%E6%B5%85%E8%B0%88C%E7%9A%84%E7%BB%93%E6%9E%84%E4%BD%93%E4%B8%8E%E9%9D%A2%E5%90%91%E5%AF%B9%E8%B1%A1/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="0.概述结构体（Struct）：存放一组不同类型的数据的数据结构。数组（Array）：存放一组相同类型的数据的数据结构。结构体和int,char，指针等基础数据类型一样，也是一种数据类型。格式定义如下： struct 结构体名&#123;     成员类型1 成员名1;     成员类型2 成员名2； &#125;实例1，实例2;  结构体的成员（Member）可以为任意类型，如int,char，">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061515193.jpeg">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061516336.jpeg">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061516111.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061517211.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061517262.jpeg">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061517807.png">
+<meta property="article:published_time" content="2020-02-29T07:13:18.000Z">
+<meta property="article:modified_time" content="2024-11-04T03:43:03.133Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="c">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061515193.jpeg">
+
+<link rel="canonical" href="https://cursorhu.github.io/2020/02/29/%E6%B5%85%E8%B0%88C%E7%9A%84%E7%BB%93%E6%9E%84%E4%BD%93%E4%B8%8E%E9%9D%A2%E5%90%91%E5%AF%B9%E8%B1%A1/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>浅谈C的结构体与面向对象 | ThinkNotes</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">ThinkNotes</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Simple is not easy</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于我</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/02/29/%E6%B5%85%E8%B0%88C%E7%9A%84%E7%BB%93%E6%9E%84%E4%BD%93%E4%B8%8E%E9%9D%A2%E5%90%91%E5%AF%B9%E8%B1%A1/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          浅谈C的结构体与面向对象
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-02-29 15:13:18" itemprop="dateCreated datePublished" datetime="2020-02-29T15:13:18+08:00">2020-02-29</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2024-11-04 11:43:03" itemprop="dateModified" datetime="2024-11-04T11:43:03+08:00">2024-11-04</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/c-c/" itemprop="url" rel="index"><span itemprop="name">c/c++</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="0-概述"><a href="#0-概述" class="headerlink" title="0.概述"></a>0.概述</h1><p>结构体（Struct）：存放一组不同类型的数据的数据结构。<br>数组（Array）：存放一组相同类型的数据的数据结构。<br>结构体和int,char，指针等基础数据类型一样，也是一种数据类型。格式定义如下：</p>
+<pre><code>struct 结构体名&#123;
+    成员类型1 成员名1;
+    成员类型2 成员名2；
+&#125;实例1，实例2;
+</code></pre>
+<p>结构体的成员（Member）可以为任意类型，如int,char，指针，甚至结构体类型。<br>结构体可以配合结构体数组、普通指针、函数指针、以及自身嵌套的使用方法，实现复杂数据结构，以及面向对象的代码风格。</p>
+<h1 id="1-结构体声明"><a href="#1-结构体声明" class="headerlink" title="1.结构体声明"></a>1.结构体声明</h1><p>声明是告诉编译器某个数据结构的定义。一般在头文件对结构体、函数等类型声明。声明过程不分配内存。<br>一个结构体类型的声明：</p>
+<pre><code>struct stu&#123;
+    char *name;     //姓名
+    int num;        //学号
+    int age;        //年龄
+    char group;     //所在小组
+    float score;    //成绩
+&#125;;
+</code></pre>
+<p>注意：<br>1.结构体声明类似于函数声明，是一个语句，末尾加；<br>2.结构体声明只声明了类型，不实例化变量，因此不分配内存。<br>3.结构体成员的变量只在实例结构体才分配内存。</p>
+<h1 id="2-结构体实例"><a href="#2-结构体实例" class="headerlink" title="2.结构体实例"></a>2.结构体实例</h1><h2 id="2-1基础方法"><a href="#2-1基础方法" class="headerlink" title="2.1基础方法"></a>2.1基础方法</h2><p>结构体变量是结构体类型的实例，实例化就是在内存分配一个结构体类型的变量空间。<br>方法一：先声明结构体类型stu，再实例变量stu1,stu2。<br>该方法结构体类型声明和实例化分离。声明一次，到处实例化。注意实例变量要带struct关键字。</p>
+<pre><code>struct stu stu1, stu2;
+</code></pre>
+<p>方法二：声明的时候也实例变量stu1,stu2。</p>
+<pre><code>struct stu&#123;
+    char *name;     //姓名
+    int num;        //学号
+    int age;        //年龄
+    char group;     //所在小组
+    float score;    //成绩
+&#125; stu1, stu2;
+</code></pre>
+<p>方法三：不声明接头体名，直接实例变量。<br>适用于只需要 stu1、stu2两个变量，后面不需要再使用结构体名定义其他变量的情况</p>
+<pre><code>struct&#123;             //没有写stu
+    char *name;     //姓名
+    int num;        //学号
+    int age;        //年龄
+    char group;     //所在小组
+    float score;    //成绩
+&#125; stu1, stu2;
+</code></pre>
+<h2 id="2-2重定义方法"><a href="#2-2重定义方法" class="headerlink" title="2.2重定义方法"></a>2.2重定义方法</h2><p>结构体类型通常配合typedef重定义后声明。<br>声明一次，到处实例化。不需要带struct关键字。</p>
+<pre><code>    typedef struct stu&#123; //stu可省略
+        char *name;     //姓名
+        int num;        //学号
+        int age;        //年龄
+        char group;     //所在小组
+        float score;    //成绩
+    &#125;stu_t, *stu_p;    //声明stu_t为stu类型，stu_p为stu类型的指针
+</code></pre>
+<p>实例变量：</p>
+<pre><code>stu_t stu1,stu2;    //实例两个stu结构体变量
+stu_p *stu1_p, *stu2_p; //实例两个指向stu结构体指针
+stu1_p = &amp;stu1; //指向实例stu1
+stu2_p = &amp;stu2; //指向实例stu2
+</code></pre>
+<h1 id="3-结构体初始化"><a href="#3-结构体初始化" class="headerlink" title="3.结构体初始化"></a>3.结构体初始化</h1><p>初始化&#x3D;赋初始值。<br>结构体的实例只分配了内存，其成员的值要手动赋值后才能确定。否则直接拿来用会得到不确定的值（取决于分配到的内存原本的值）。<br>以重定义的结构体类型stu_t为例，实例变量时顺便初始化所有成员为0：</p>
+<pre><code>stu_t stu1,stu2 = &#123;0&#125;;
+</code></pre>
+<p>有的编译器可能要求这种写法：</p>
+<pre><code>stu_t stu1,stu2 = &#123;&#123;0&#125;&#125;;
+</code></pre>
+<p>如果各成员有默认初始值，初始化如下：</p>
+<pre><code>stu_t stu1, stu2 = &#123; &quot;Tom&quot;, 9527, 18, &#39;A&#39;, 136.5 &#125;;
+</code></pre>
+<h1 id="4-结构体的赋值"><a href="#4-结构体的赋值" class="headerlink" title="4.结构体的赋值"></a>4.结构体的赋值</h1><p>结构体赋值是对结构体变量内的成员赋值。<br>两种方式访问成员：</p>
+<pre><code>结构体变量.成员名;
+stu1.name = &#39;Tom&#39;;
+结构体指针-&gt;成员名
+stu1_p-&gt;name = &#39;Tom&#39;;
+</code></pre>
+<p>这两种方法的选择取决于使用情况。如果结构体作为参数在函数之间频繁传递和赋值，建议使用传指针，而不是传结构体变量，这样减少函数为结构体频繁分配局部内存，但要注意结构体已被释放，形成空指针的判断。<br>注意是对实例的成员赋值（已分配内存），而不能对结构体类型的成员赋值（只是个标签）。例如如下操作是错误的：</p>
+<pre><code>stu_t.name = &quot;Tom&quot;  //错，stu_t是类型
+stu1_p = &amp;stu_t     //错，stu_t没地址
+</code></pre>
+<p>可以对结构体类型进行sizeof操作，而不需要分配内存。</p>
+<pre><code>sizeof(stu_t);      //获取结构体（将）占用的内存空间
+</code></pre>
+<h1 id="5-结构体的内存分配"><a href="#5-结构体的内存分配" class="headerlink" title="5.结构体的内存分配"></a>5.结构体的内存分配</h1><p><strong>理论上</strong>结构体的内存占用是成员占用的和。各成员在内存中连续存储的，和数组非常类似，例如结构体变量 stu1、stu2的内存分布如下，共占用 4+4+4+1+4&#x3D;17字节。<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061515193.jpeg" alt="1"><br>但实际上，编译器会遵循<strong>内存对齐</strong>规则。实际内存占用大于各成员占用的和。如下图，stu1、stu2 其实占用了 17+3&#x3D;20 字节<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061516336.jpeg" alt="2"></p>
+<h2 id="5-1内存对齐概述"><a href="#5-1内存对齐概述" class="headerlink" title="5.1内存对齐概述"></a>5.1内存对齐概述</h2><p>1.CPU怎么访问内存中的数据最高效？<br>答：用最少的访问次数，获取该数据所在的内存空间的值。<br>2.怎么做到对某类型数据的最少访问？<br>答：编译器设置数据的存放地址的单位为数据占用空间的长度，CPU以数据长度为单位查询偏移地址，找到数据空间首地址后，根据数据类型取出其占用空间大小的数据。<br>如int数据，就存放在以4字节为单位的偏移地址，如0，4，8…,CPU取数据就按0，4，8…的地址查询，找到该数据地址后取4字节。这样做到一次性访问获取int数据。如果CPU按单字节访问int,就要查询4次，如int首字节地址为0x00001024, CPU要分4次查询0x00001024~0x00001027才能得到一个int。<br>3.对于结构体，包含多种数据类型，怎么对齐？<br>答：各成员按各自的类型对齐，即对于成员来说不存在结构体的概念，它认为它就是基本的数据类型int、char、指针等。</p>
+<h2 id="5-2结构体与内存对齐"><a href="#5-2结构体与内存对齐" class="headerlink" title="5.2结构体与内存对齐"></a>5.2结构体与内存对齐</h2><p>结构体是不同类型数据的集合，因此内存对齐问题就特别突出。一个例子：</p>
+<pre><code>#include &quot;stdio.h&quot;
+typedef struct &#123;
+    int a;
+    double b;
+    char c;
+&#125;A; 
+
+typedef struct &#123;
+    int a;
+    char b;
+    double c;
+&#125;B;
+
+int main()
+&#123;
+	printf(&quot;sizeof A: %d, sizeof B: %d\n&quot;, sizeof(A), sizeof(B));
+&#125;
+</code></pre>
+<p>A和B的内存占用：A&#x3D;24字节，B&#x3D;16字节。<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061516111.png" alt="3"><br>结构体内存对齐的计算规则：<br>1.默认首地址已对齐（或认为是0地址)<br>2.各成员按自己的类型对齐<br>3.整个结构体分配的空间是期中最大成员占用空间的整数倍<br>对于A：<br>int a占用4字节，地址byte[0<del>3]<br>double b占8字节，起始地址必须是8的倍数，占用byte[7</del>15]<br>char c占1字节，因此占byte[16]<br>目前共占用17字节。编译器会按照规则3，将byte[17~13]也分配给结构体，因此最终结构体占用3<em>8&#x3D;24字节。<br>对于B, int a和char b加起来都不够8字节，double c再占用8字节，共占用2</em>8&#x3D;16字节。<br>因此<strong>结构体的内存分配&#x3D;各成员按类型对齐+总空间是最大成员空间的倍数</strong><br>注意，结构体不仅成员间要对齐，最后一个成员后面的空余空间可能也分配给结构体。<br>查看下面的测试程序：</p>
+<pre><code>typedef struct &#123;
+    int a;
+    double b;
+    char c;
+    char d;         //d作为成员
+&#125;C;
+
+typedef struct &#123;
+    int a;
+    double b;
+    char c;
+    struct &#123;        //d作为嵌套结构体的成员
+    	char d; 
+    &#125;;
+&#125;D;
+
+printf(&quot;sizeof C: %d, sizeof D: %d\n&quot;, sizeof(C), sizeof(D));
+</code></pre>
+<p>C和D的内存占用：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061517211.png" alt="4"><br>新增的char d作为C的成员被分配在第三个8byte区域的第二个字节（byte[17])，嵌套的结构体并不从第四个8byte开始分配，它占用空间还是byte[17]。可见编译器对结构体内存分配不区分成员类型，只根据成员大小来处理。</p>
+<h1 id="6-联合、位域、枚举"><a href="#6-联合、位域、枚举" class="headerlink" title="6.联合、位域、枚举"></a>6.联合、位域、枚举</h1><p>这几种数据结构体和结构体相关联，通常混合使用。</p>
+<h2 id="6-1联合"><a href="#6-1联合" class="headerlink" title="6.1联合"></a>6.1联合</h2><p>联合(Union)也称共用体，和结构体的区别：<br>结构体的各个成员会占用不同的内存，互相之间没有影响；而共用体的所有成员占用同一段内存，修改一个成员会影响其余所有成员。<br>声明格式：</p>
+<pre><code>union 共用体名&#123;
+    成员列表
+&#125;;
+</code></pre>
+<p>共用体占用的内存等于最长的成员占用的内存。共用体使用了内存覆盖技术，同一时刻只能保存一个成员的值，如果对新的成员赋值，就会把原来成员的值覆盖掉。<br>联合的一个示例：</p>
+<pre><code>#include &lt;stdio.h&gt;
+union data&#123;
+    int n;
+    char ch;
+    short m;
+&#125;;
+int main()&#123;
+    union data a;
+    printf(&quot;%d, %d\n&quot;, sizeof(a), sizeof(union data) );
+    a.n = 0x40;
+    printf(&quot;%X, %c, %hX\n&quot;, a.n, a.ch, a.m);
+    a.ch = &#39;9&#39;;
+    printf(&quot;%X, %c, %hX\n&quot;, a.n, a.ch, a.m);
+    a.m = 0x2059;
+    printf(&quot;%X, %c, %hX\n&quot;, a.n, a.ch, a.m);
+    a.n = 0x3E25AD54;
+    printf(&quot;%X, %c, %hX\n&quot;, a.n, a.ch, a.m);
+    return 0;
+&#125;
+</code></pre>
+<p>输出：</p>
+<pre><code>4, 4
+40, @, 40
+39, 9, 39
+2059, Y, 2059
+3E25AD54, T, AD54
+</code></pre>
+<p>在内存中数据分布如下（以大端，低字节存高位为例）<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061517262.jpeg" alt="5"><br>可见数据会相互覆盖，联合可以理解为分时复用的结构体，其空间占用定长，为最大的成员长度，在不同时间，值的含义不同。</p>
+<h2 id="6-2位域"><a href="#6-2位域" class="headerlink" title="6.2位域"></a>6.2位域</h2><p>有的结构体成员在存储时并不占用一个完整的字节，只需要按二进制位为单位分配空间即可。可以指定该成员所占用的二进制位数（Bit），这就是位域。</p>
+<pre><code>#include &quot;stdio.h&quot;
+struct &#123;
+        unsigned char a;    //a占完整的8bit
+        unsigned char b: 2; //b占2bit
+        unsigned char c: 6; //C占6bit
+&#125;bs;
+
+int main()
+&#123;
+	printf(&quot;sizeof bs: %d\n&quot;, sizeof(bs));
+&#125;
+</code></pre>
+<p>输出2字节，可见b和c刚好拼成一个unsigned char(8 bit)：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061517807.png" alt="6"><br>位域将结构体成员占用的空间从基本数据类型为单位，变成了以二进制位为单位，是更精细的结构体内存分配。<br>位域不能超过对应基本类型的二进制位数。</p>
+<h2 id="6-3枚举"><a href="#6-3枚举" class="headerlink" title="6.3枚举"></a>6.3枚举</h2><p>枚举可以理解为计数宏的结构体。</p>
+<pre><code>#include &lt;stdio.h&gt;
+int main()&#123;
+    enum week&#123; Mon = 1, Tues, Wed, Thurs, Fri, Sat, Sun &#125; day;
+    scanf(&quot;%d&quot;, &amp;day);
+    switch(day)&#123;
+        case Mon: puts(&quot;Monday&quot;); break;
+        case Tues: puts(&quot;Tuesday&quot;); break;
+        case Wed: puts(&quot;Wednesday&quot;); break;
+        case Thurs: puts(&quot;Thursday&quot;); break;
+        case Fri: puts(&quot;Friday&quot;); break;
+        case Sat: puts(&quot;Saturday&quot;); break;
+        case Sun: puts(&quot;Sunday&quot;); break;
+        default: puts(&quot;Error!&quot;);
+    &#125;
+    return 0;
+&#125;
+</code></pre>
+<p>枚举值默认从0开始，往后逐个加 1（递增）；如果第一个成员赋值，从那个成员值往后递增。也就是说，week中的 Mon、Tues …… Sun 对应的值分别为 1、2… 7。<br>宏在编译的预处理阶段将名字替换成对应的值，而枚举在编译阶段将名字替换成对应的值。在编译过程中，Mon、Tues、Wed 名字都被替换成了对应的数字。这意味着Mon、Tues、Wed 等都不是变量，不占用数据区（常量区、全局数据区、栈区和堆区）的内存，而是被编译到指令里面，放到代码区，所以不能用&amp;取得它们的地址。这就是枚举的本质。<br>枚举类型实例的内存占用通常&#x3D;int类型占用&#x3D;4字节。</p>
+<h1 id="7-结构体常见用法"><a href="#7-结构体常见用法" class="headerlink" title="7.结构体常见用法"></a>7.结构体常见用法</h1><h2 id="7-1结构体数组"><a href="#7-1结构体数组" class="headerlink" title="7.1结构体数组"></a>7.1结构体数组</h2><p>结构体数组是将多个同类型结构体按数组的方式存储，其成员访问方式为：先访问数组元素，再访问结构体成员。<br>结构体数组本质还是数组，但数组成员是结构体，结构体内可以包含各种类型的成员。<br>一个Linux NandFlash驱动的结构体数组如下：</p>
+<pre><code>    static struct mtd_partition s3c_nand_parts[] = &#123;
+	[0] = &#123;
+        .name   = &quot;bootloader&quot;,
+        .size   = 0x00040000,
+		.offset	= 0,
+	&#125;,
+	[1] = &#123;
+        .name   = &quot;params&quot;,
+        .offset = MTDPART_OFS_APPEND,
+        .size   = 0x00020000,
+	&#125;,
+	[2] = &#123;
+        .name   = &quot;kernel&quot;,
+        .offset = MTDPART_OFS_APPEND,
+        .size   = 0x00200000,
+	&#125;,
+	[3] = &#123;
+        .name   = &quot;root&quot;,
+        .offset = MTDPART_OFS_APPEND,
+        .size   = MTDPART_SIZ_FULL,
+	&#125;
+&#125;;
+</code></pre>
+<p> 该数组名为s3c_nand_parts，成员为mtd_partition结构体，包含分区名，分区大小和分区偏移地址。每个结构体成员分别初始化赋值。注意结构体数组实例没写结构体名，只有数组下标[]，结构体成员没写结构体名,只有.符号。这是Linux kernel常见的精简写法。<br> 访问一个结构体数组的成员：</p>
+<pre><code>s3c_nand_parts[0].name = &quot;bootloader_2&quot;
+</code></pre>
+<p>结构体数组的内存占用&#x3D;数组成员数*单个结构体内存占用。</p>
+<h2 id="7-2结构体指针"><a href="#7-2结构体指针" class="headerlink" title="7.2结构体指针"></a>7.2结构体指针</h2><p>结构体指针本质是指针变量，其值是结构体的地址。<br>前面结构体重定义一节已经定义和初始化过结构体指针，需要注意的是，结构体指针的初始化值来源于结构体实例，结构体类型名只是标签，不代表结构体地址，注意和”数组名&#x3D;数组地址“区分。</p>
+<pre><code>struct stu&#123;         
+    char *name;     //姓名
+    int num;        //学号
+    int age;        //年龄
+    char group;     //所在小组
+    float score;    //成绩
+&#125; stu1, stu2;
+
+struct stu *stu_p = stu;    //错，stu只是符号，不占内存
+struct stu *stu_p = &amp;stu1;  //对，stu1是结构体实例，占内存  //对，stu1是stu实例变量，有内存占用
+</code></pre>
+<p>结构体指针的常见用途：malloc分配结构体空间</p>
+<pre><code>stu_p =(stu_t *)malloc(sizeof(stu_t));  //分配结构体空间，返回地址给结构体指针
+</code></pre>
+<p>结构体指针最重要的用途：函数传参<br>结构体变量作为函数参数时传递的是整个结构体内存空间，也就是所有成员空间，而不是像数组一样被编译器转换成一个指针。如果结构体成员较多，传送的时间和空间开销会很大，影响程序的运行效率。所以最好的办法就是使用结构体指针，这时由实参传向形参的只是一个地址，非常快速。</p>
+<h2 id="7-2结构体嵌套"><a href="#7-2结构体嵌套" class="headerlink" title="7.2结构体嵌套"></a>7.2结构体嵌套</h2><p>结构体嵌套是结构体的成员也是结构体。有两种情况：<br>1.成员是其他类型的结构体<br>2.成员是同类型的结构体</p>
+<h3 id="7-2-1-嵌套其他类型"><a href="#7-2-1-嵌套其他类型" class="headerlink" title="7.2.1.嵌套其他类型"></a>7.2.1.嵌套其他类型</h3><p>在协议开发中，一个命令的数据可以用结构体来表达，在命令的内部又分为很多个数据域，每个数据域又用结构体来表达，因此需要结构体嵌套。对于同一块数据，根据命令的不同，解析为不同的结构体,因此存在多类命令公用一块数据域的情况，因此需要联合（Union）。以NVMe协议为例，结构体嵌套和联合一起使用的例子：</p>
+<pre><code>typedef struct  //nvme命令结构体
+&#123;
+     union      //命令中dword10空间的联合
+    &#123;
+        u32 command_dw10;
+        struct
+        &#123;
+            u32 cntid:16;   //16 bit位域
+            u32 resv1:8;    //8 bit位域
+            u32 cns:8;      //8 bit位域
+        &#125;identify;          //当命令为identify时
+        struct
+        &#123;
+            u32 save:1;
+            u32 resv1:20;
+            u32 select:3;
+            u32 feature_identifier:8;
+        &#125;get_features;      //当命令为get_featuresy时
+        struct
+        &#123;
+            u32 queue_size:16;
+            u32 queue_identifier:16;
+        &#125;io_queue_create_delete_dw10;
+        ...
+    &#125;;
+    
+    union   //命令中dword11空间的联合
+    &#123;
+        u32 command_dw11;
+        struct
+        &#123;
+            u32 completion:16;
+            u32 submission:16;
+        &#125;number_of_queues;
+        struct
+        &#123;
+            u32 interrupt_vector:16;
+            u32 resv1:14;
+            u32 interrupt_enabled:1;
+            u32 physically_contiguous:1;
+        &#125;create_io_completion_queue_dw11;
+        ...
+    &#125;;
+    
+&#125;command_t, *command_p;
+</code></pre>
+<p>该例子结合了结构体、联合、位域。对每个nvme命令，多个联合并存在结构体command_t实例里，每个联合长度为一个dword(4字节)，分别表示dword0~15中的一个。对于dword内部，根据解析到命令的不同，作为不同含义处理，如解析为identify就按identify的结构体读写成员，如解析为get_features则按get_features的结构体读写成员。在结构体内部，用位域更精细控制这个dword内各bit的含义。</p>
+<h3 id="7-2-2嵌套自身类型"><a href="#7-2-2嵌套自身类型" class="headerlink" title="7.2.2嵌套自身类型"></a>7.2.2嵌套自身类型</h3><p>结构体嵌套自身类型的典型应用：链表数据结构体</p>
+<pre><code>typedef struct ListNode &#123;
+	DataType data;          // 节点数据 
+	struct ListNode *next;  // 指向下一个结点的指针 
+&#125; ListNode_t;
+</code></pre>
+<p>这个结构体有两个成员：DataType类型的数据，和指向 struct ListNode类型(&#x3D;ListNode_t类型)的实例的指针。有多个ListNode_t类型的结构体被实例化且依次指向后续节点后，可以依次node1-&gt;next-&gt;next…-&gt;data访问链表中的节点数据。<br>注意：结构体体能嵌套自身类型的指针，而不能嵌套自身类型的实例。因为指针分配内存是定长（通常4字节），而循环嵌套结构体变量是无穷的。以下写法是错的</p>
+<pre><code>typedef struct ListNode &#123;
+	DataType data;           
+	struct ListNode next;  // 错，嵌套的是实例 
+&#125; ListNode_t;
+</code></pre>
+<h1 id="8-结构体高级用法：面向对象"><a href="#8-结构体高级用法：面向对象" class="headerlink" title="8.结构体高级用法：面向对象"></a>8.结构体高级用法：面向对象</h1><h2 id="8-1函数指针"><a href="#8-1函数指针" class="headerlink" title="8.1函数指针"></a>8.1函数指针</h2><p>程序中定义的函数，在编译时会为这个函数代码分配一段存储空间，这段存储空间的首地址称为这个函数的入口地址。函数名表示的就是这个地址的值。可以定义一个指针变量来存放函数的入口地址，这个指针变量就叫作函数指针变量，简称函数指针。<br>这段话什么意思？<br>1.函数名&#x3D;函数入口地址<br>2.可以用指针变量的值取代函数名，函数的调用和该指针变量的调用等价<br>3.可以把这个指针变量当参数传递给别的函数，也可以把这个指针变量作为结构体的成员，总之，一切指针能做的，函数指针都能做。<br>函数指针的定义：</p>
+<pre><code>返回值 函数入口地址(入参1的类型，入参2的类型，...)
+int (*p)(int, int);     //p为函数指针，*p为入口地址
+</code></pre>
+<p>定义了一个指针变量 p，该指针变量可以指向返回值类型为 int 型，且有两个整型参数的函数。p 的类型为 int(*)(int，int)<br>函数指针的初始化：</p>
+<pre><code>int Func(int x);   /*声明一个函数，包含入参名*/
+int (*p) (int);  /*声明一个函数指针，只有入参类型*/
+p = Func;         /*将Func函数的入口地址赋给指针变量p*/
+</code></pre>
+<p>函数指针作为结构体成员的调用如下</p>
+<pre><code>struct&#123;
+    int (* func)(int);
+&#125;stu1, *stu1_p; //分配两个结构体实例：stu1结构体和指针stu1_p
+
+stu1.func(10);  //通过结构体调用函数指针
+stu1_p-&gt;func(10);   //通过结构体指针调用函数指针
+</code></pre>
+<h2 id="8-2回调函数"><a href="#8-2回调函数" class="headerlink" title="8.2回调函数"></a>8.2回调函数</h2><p>回调函数(Callback)就是一个通过函数指针调用的函数。把函数指针（地址）作为参数传递给另一个函数，当这个指针被用来调用其所指向的函数时，我们就说这是回调函数。回调函数不是由函数的实现方直接调用，而是在特定的事件或条件发生时，由把它当参数的那个函数调用的，用于对该事件或条件进行响应。<br>回调的两个特点：<br>1.函数&#x3D;参数。函数A指针当参数传递B<br>2.异步。特定时间发生时，B才调用A指针指向的函数</p>
+<h2 id="8-3结构体与面向对象"><a href="#8-3结构体与面向对象" class="headerlink" title="8.3结构体与面向对象"></a>8.3结构体与面向对象</h2><p>当函数指针作为结构体的成员，可以通过结构体实例调用成员函数，此时可以实现类似其他语言中“类”或“接口”的概念：<br>结构体声明&#x3D;类声明&#x3D;接口声明<br>结构体的函数指针成员&#x3D;类方法&#x3D;接口函数<br>结构体实例调用函数指针成员&#x3D;类实例调用方法&#x3D;接口的实现<br>这种设计思想在Linux内核和驱动框架中很常用。以字符设备驱动为例：<br>字符设备驱动顶层框架将所有字符操作函数作为接口在结构体file_operations中定义，在底层具体的设备驱动中实现file_operations的方法。底层驱动实例化file_operations结构体（分配内存），将各种操作的具体实现函数赋值给接口定义的函数，然后上报（注册）该file_operations实例给顶层驱动框架，顶层驱动框架接收到应用层的系统调用请求时，回调已注册的file_operations实例的函数。<br>上层驱动框架定义的字符文件操作接口如下，这些open、read、write作为文件操作的方法供应用层调用。</p>
+<pre><code> struct file_operations &#123;   //字符文件操作的接口定义
+　　struct module *owner;   //结构体指针
+　　ssize_t(*read) (struct file *, char __user *, size_t, loff_t *);      //函数指针read
+　　ssize_t(*write) (struct file *, const char __user *, size_t, loff_t *);    //函数指针write
+　　int (*open) (struct inode *, struct file *);    //函数指针open
+　　int (*ioctl) (struct inode *, struct file *, unsigned int, unsigned long);   //函数指针ioctl
+　　...
+&#125;;
+</code></pre>
+<p>而这些方法具体实现（内部做什么）是由底层驱动代码实现：</p>
+<pre><code>static int my_drv_open(struct inode *inode, struct file *file)
+&#123;
+	//硬件寄存器操作A...
+	return 0;
+&#125;
+
+static ssize_t my_drv_write(struct file *file, const char __user *buf, size_t count, loff_t * ppos)
+&#123;
+	//硬件寄存器操作B...
+	return 0;
+&#125;
+</code></pre>
+<p>那么这些实现怎么关联接口：在底层驱动分配结构体实例，初始化函数指针为实现函数</p>
+<pre><code>static struct file_operations my_drv_fops = &#123;
+    .owner  =   THIS_MODULE,   
+    .open   =   my_drv_open,   //open接口由my_drv_open函数实现  
+	.write	=	my_drv_write,	 //write接口由my_drv_write函数实现  
+&#125;;
+</code></pre>
+<p>关联完了，上层驱动怎么调用：结构体指针传参+回调<br>my_drv_fops是file_operations的实例，上报给上层驱动，上层驱动有它自己的字符设备结构体cdev，取出my_drv_fops实例的.结构体指针fops的值，赋给cdev实例内的ops指针。之后它就能用ops调用my_drv_open、my_drv_write函数。</p>
+<pre><code>//注册结构体
+cdev-&gt;owner = fops-&gt;owner;
+cdev-&gt;ops = fops;
+//回调.open方法
+cdev-&gt;ops-&gt;open(inode,file);
+</code></pre>
+<p>由于my_drv_write是值，open才是结构体成员，因此调用的时候看上去调用的是open函数，本质上执行的还是my_drv_write的流程。函数指针的回调能将接口名暴露，方法名隐藏。因此底层实现的函数名和上层驱动的调用函数名不相关，上层永远都可以用.open .read .write这些接口调用底层驱动，而底层函数可以随便改名（不能改入参出参类型，否则函数指针类型变了），这种特性都是函数指针决定的。<br>对于应用程序，是调用上层驱动提供的系统调用接口，还是如.open .read .write等接口。Linux驱动将设备抽象成了文件，驱动程序实现了文件的各种方法，所以对应用程序，打开文件&#x3D;打开设备，调用文件对应的接口&#x3D;调用设备驱动提供的接口。</p>
+<pre><code>fd = open(&quot;/dev/xyz&quot;, O_RDWR);  //打开文件（设备）
+read(fd, &amp;val, 1);  //读fd文件（设备）的值到val变量
+</code></pre>
+<p>除了C语言，在golang中也有类似的结构体+函数指针实现的面向对象方法。<br>NOTE:关于结构体中的函数指针写法易错点：<br>不包含变量名，只能使用基本类型</p>
+<pre><code>   #一个结构体
+   typedef stru&#123;    //定义结构体名
+        int a;
+        char b;
+   &#125;stru_t, *stru_p; //重定义结构体变量和指针
+    
+    #普通函数声明
+    int func(int a, stru_p p); //参数写类型且写值，可以使用typedef后的结构体指针类型
+    
+    #函数指针声明
+    int (*func)(int, struct stru *);    //参数只写类型不写参数，只能使用C基本类型，不能使用typedef后的类型，只能写struct stru *类型
+</code></pre>
+<p>函数指针声明使用typedef后的类型名，编译器不认识，产生syntax error。    </p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/c/" rel="tag"># c</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/02/15/Linux%20command%E7%AC%94%E8%AE%B0/" rel="prev" title="Linux command笔记">
+      <i class="fa fa-chevron-left"></i> Linux command笔记
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2020/03/14/C-%E9%9D%A2%E5%90%91%E5%AF%B9%E8%B1%A1%E7%AC%94%E8%AE%B0%EF%BC%9A%E4%BB%8EC%E5%88%B0C/" rel="next" title="C++面向对象笔记：从C到C++">
+      C++面向对象笔记：从C到C++ <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#0-%E6%A6%82%E8%BF%B0"><span class="nav-number">1.</span> <span class="nav-text">0.概述</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#1-%E7%BB%93%E6%9E%84%E4%BD%93%E5%A3%B0%E6%98%8E"><span class="nav-number">2.</span> <span class="nav-text">1.结构体声明</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#2-%E7%BB%93%E6%9E%84%E4%BD%93%E5%AE%9E%E4%BE%8B"><span class="nav-number">3.</span> <span class="nav-text">2.结构体实例</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#2-1%E5%9F%BA%E7%A1%80%E6%96%B9%E6%B3%95"><span class="nav-number">3.1.</span> <span class="nav-text">2.1基础方法</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-2%E9%87%8D%E5%AE%9A%E4%B9%89%E6%96%B9%E6%B3%95"><span class="nav-number">3.2.</span> <span class="nav-text">2.2重定义方法</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#3-%E7%BB%93%E6%9E%84%E4%BD%93%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="nav-number">4.</span> <span class="nav-text">3.结构体初始化</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#4-%E7%BB%93%E6%9E%84%E4%BD%93%E7%9A%84%E8%B5%8B%E5%80%BC"><span class="nav-number">5.</span> <span class="nav-text">4.结构体的赋值</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#5-%E7%BB%93%E6%9E%84%E4%BD%93%E7%9A%84%E5%86%85%E5%AD%98%E5%88%86%E9%85%8D"><span class="nav-number">6.</span> <span class="nav-text">5.结构体的内存分配</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#5-1%E5%86%85%E5%AD%98%E5%AF%B9%E9%BD%90%E6%A6%82%E8%BF%B0"><span class="nav-number">6.1.</span> <span class="nav-text">5.1内存对齐概述</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-2%E7%BB%93%E6%9E%84%E4%BD%93%E4%B8%8E%E5%86%85%E5%AD%98%E5%AF%B9%E9%BD%90"><span class="nav-number">6.2.</span> <span class="nav-text">5.2结构体与内存对齐</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#6-%E8%81%94%E5%90%88%E3%80%81%E4%BD%8D%E5%9F%9F%E3%80%81%E6%9E%9A%E4%B8%BE"><span class="nav-number">7.</span> <span class="nav-text">6.联合、位域、枚举</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#6-1%E8%81%94%E5%90%88"><span class="nav-number">7.1.</span> <span class="nav-text">6.1联合</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-2%E4%BD%8D%E5%9F%9F"><span class="nav-number">7.2.</span> <span class="nav-text">6.2位域</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-3%E6%9E%9A%E4%B8%BE"><span class="nav-number">7.3.</span> <span class="nav-text">6.3枚举</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#7-%E7%BB%93%E6%9E%84%E4%BD%93%E5%B8%B8%E8%A7%81%E7%94%A8%E6%B3%95"><span class="nav-number">8.</span> <span class="nav-text">7.结构体常见用法</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#7-1%E7%BB%93%E6%9E%84%E4%BD%93%E6%95%B0%E7%BB%84"><span class="nav-number">8.1.</span> <span class="nav-text">7.1结构体数组</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-2%E7%BB%93%E6%9E%84%E4%BD%93%E6%8C%87%E9%92%88"><span class="nav-number">8.2.</span> <span class="nav-text">7.2结构体指针</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-2%E7%BB%93%E6%9E%84%E4%BD%93%E5%B5%8C%E5%A5%97"><span class="nav-number">8.3.</span> <span class="nav-text">7.2结构体嵌套</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#7-2-1-%E5%B5%8C%E5%A5%97%E5%85%B6%E4%BB%96%E7%B1%BB%E5%9E%8B"><span class="nav-number">8.3.1.</span> <span class="nav-text">7.2.1.嵌套其他类型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-2-2%E5%B5%8C%E5%A5%97%E8%87%AA%E8%BA%AB%E7%B1%BB%E5%9E%8B"><span class="nav-number">8.3.2.</span> <span class="nav-text">7.2.2嵌套自身类型</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#8-%E7%BB%93%E6%9E%84%E4%BD%93%E9%AB%98%E7%BA%A7%E7%94%A8%E6%B3%95%EF%BC%9A%E9%9D%A2%E5%90%91%E5%AF%B9%E8%B1%A1"><span class="nav-number">9.</span> <span class="nav-text">8.结构体高级用法：面向对象</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#8-1%E5%87%BD%E6%95%B0%E6%8C%87%E9%92%88"><span class="nav-number">9.1.</span> <span class="nav-text">8.1函数指针</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#8-2%E5%9B%9E%E8%B0%83%E5%87%BD%E6%95%B0"><span class="nav-number">9.2.</span> <span class="nav-text">8.2回调函数</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#8-3%E7%BB%93%E6%9E%84%E4%BD%93%E4%B8%8E%E9%9D%A2%E5%90%91%E5%AF%B9%E8%B1%A1"><span class="nav-number">9.3.</span> <span class="nav-text">8.3结构体与面向对象</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="cursorhu"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">cursorhu</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">113</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">41</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">55</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/cursorhu" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;cursorhu" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:2449055512@qq.com" title="E-Mail → mailto:2449055512@qq.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2025</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">cursorhu</span>
+</div>
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

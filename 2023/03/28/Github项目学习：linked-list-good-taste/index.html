@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 8.0.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Noto+Serif+SC|Roboto/css?family=Noto Serif SC:300,300italic,400,400italic,700,700italic|Roboto:300,300italic,400,400italic,700,700italic&display=swap&subset=latin,latin-ext">
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"cursorhu.github.io","root":"/","scheme":"Pisces","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="本文转载自 linked-list-good-taste，添加了个人理解的注释 Linked lists, pointer tricks and good taste Introduction The code The CS101 version A more elegant solution   How does it work? Integrating the head pointer Mai">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Github项目学习：linked-list-good-taste">
+<meta property="og:url" content="https://cursorhu.github.io/2023/03/28/Github%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0%EF%BC%9Alinked-list-good-taste/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="本文转载自 linked-list-good-taste，添加了个人理解的注释 Linked lists, pointer tricks and good taste Introduction The code The CS101 version A more elegant solution   How does it work? Integrating the head pointer Mai">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303281032617.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303281919267.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303281920824.png">
+<meta property="article:published_time" content="2023-03-28T02:30:15.000Z">
+<meta property="article:modified_time" content="2024-11-04T03:43:03.173Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="数据结构">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303281032617.png">
+
+<link rel="canonical" href="https://cursorhu.github.io/2023/03/28/Github%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0%EF%BC%9Alinked-list-good-taste/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>Github项目学习：linked-list-good-taste | ThinkNotes</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">ThinkNotes</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Simple is not easy</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于我</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2023/03/28/Github%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0%EF%BC%9Alinked-list-good-taste/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Github项目学习：linked-list-good-taste
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2023-03-28 10:30:15" itemprop="dateCreated datePublished" datetime="2023-03-28T10:30:15+08:00">2023-03-28</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2024-11-04 11:43:03" itemprop="dateModified" datetime="2024-11-04T11:43:03+08:00">2024-11-04</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/github%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/" itemprop="url" rel="index"><span itemprop="name">github项目学习</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>本文转载自 <a target="_blank" rel="noopener" href="https://github.com/mkirchner/linked-list-good-taste">linked-list-good-taste</a>，添加了个人理解的注释</p>
+<h1 id="Linked-lists-pointer-tricks-and-good-taste"><a href="#Linked-lists-pointer-tricks-and-good-taste" class="headerlink" title="Linked lists, pointer tricks and good taste"></a>Linked lists, pointer tricks and good taste</h1><ul>
+<li><a href="#introduction">Introduction</a></li>
+<li><a href="#the-code">The code</a><ul>
+<li><a href="#the-cs101-version">The CS101 version</a></li>
+<li><a href="#a-more-elegant-solution">A more elegant solution</a></li>
+</ul>
+</li>
+<li><a href="#how-does-it-work">How does it work?</a><ul>
+<li><a href="#integrating-the-head-pointer">Integrating the head pointer</a></li>
+<li><a href="#maintaining-a-handle">Maintaining a handle</a></li>
+</ul>
+</li>
+<li><a href="#going-beyond">Going beyond</a><ul>
+<li><a href="#inserting-before-existing-items">Inserting before existing items</a></li>
+<li><a href="#quick-refactor">Quick refactor</a></li>
+<li><a href="#implementing-insert_before">Implementing insert_before()</a></li>
+</ul>
+</li>
+<li><a href="#conclusion">Conclusion</a></li>
+</ul>
+<h2 id="Introduction"><a href="#Introduction" class="headerlink" title="Introduction"></a>Introduction</h2><p>In a 2016 <a target="_blank" rel="noopener" href="https://www.ted.com/talks/linus_torvalds_the_mind_behind_linux">TED interview</a> (14:10) Linus Torvalds speaks about what he considers <em>good taste</em> in coding. As an example, he presents two implementations of item removal in singly linked lists (reproduced below).  In order to remove the first item from a list, one of the implementations requires a special case, the other one does not.  Linus, obviously, prefers the latter.</p>
+<p>His comment is:</p>
+<blockquote>
+<p>[…] I don’t want you to understand why it doesn’t have the if statement.<br>But I want you to understand that sometimes you can see a problem in a<br>different way and rewrite it so that a special case goes away and becomes the<br>normal case, and that’s <em>good code</em>. […] – L. Torvalds</p>
+</blockquote>
+<p>The code snippets he presents are C-style pseudocode and are simple enough to follow. However, as Linus mentions in the comment, the snippets lack a conceptual explanation and it is not immediately evident how the more elegant solution actually works.</p>
+<p>The next two sections look at the technical approach in detail and demonstrate how and why the indirect addressing approach is so neat. The last section extends the solution from item deletion to insertion.</p>
+<h2 id="The-code"><a href="#The-code" class="headerlink" title="The code"></a>The code</h2><p>The basic data structure for a singly linked list of integers is shown in Figure 1.</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303281032617.png" alt="linked list"></p>
+<p>Numbers are arbitrarily chosen integer values and arrows indicate pointers. <code>head</code> is a pointer of type <code>list_item *</code> and each of the boxes is an instance of an <code>list_item</code> struct, each with a member variable (called <code>next</code> in the code) of type <code>list_item *</code> that points to the next item.</p>
+<p>The C implementation of the data structure is:</p>
+<p><strong>注释：list的item包含两个成员：值和指针变量；list本身是用head指针表示</strong></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">list_item</span> &#123;</span></span><br><span class="line">        <span class="type">int</span> value;</span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">list_item</span> *<span class="title">next</span>;</span></span><br><span class="line">&#125;;</span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> <span class="title">list_item</span> <span class="title">list_item</span>;</span></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">list</span> &#123;</span></span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">list_item</span> *<span class="title">head</span>;</span></span><br><span class="line">&#125;;</span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> <span class="title">list</span> <span class="title">list</span>;</span></span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<p>We also include a (minimal) API:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* The textbook version */</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">remove_cs101</span><span class="params">(<span class="built_in">list</span> *l, list_item *target)</span>;</span><br><span class="line"><span class="comment">/* A more elegant solution */</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">remove_elegant</span><span class="params">(<span class="built_in">list</span> *l, list_item *target)</span>;</span><br></pre></td></tr></table></figure>
+
+<p>With that in place, let’s have a look at the implementations of <code>remove_cs101()</code> and <code>remove_elegant()</code>. The code of these examples is true to the pseudocode from Linus’ example and also compiles and runs.</p>
+<h3 id="The-CS101-version"><a href="#The-CS101-version" class="headerlink" title="The CS101 version"></a>The CS101 version</h3><p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303281919267.png" alt="image-20230328191958119"></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> <span class="title function_">remove_cs101</span><span class="params">(<span class="built_in">list</span> *l, list_item *target)</span></span><br><span class="line">&#123;</span><br><span class="line">        list_item *cur = l-&gt;head, *prev = <span class="literal">NULL</span>;</span><br><span class="line">        <span class="keyword">while</span> (cur != target) &#123;</span><br><span class="line">                prev = cur;</span><br><span class="line">                cur = cur-&gt;next;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> (prev)</span><br><span class="line">                prev-&gt;next = cur-&gt;next;</span><br><span class="line">        <span class="keyword">else</span></span><br><span class="line">                l-&gt;head = cur-&gt;next;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>注释：如果将list理解为(值+指针变量)成员组成的一串数据，那么访问一个成员的前置成员就得用经典的双指针法，因为单链表没有”记忆性”，要额外的前置指针保存前置位置。</strong></p>
+<p><strong>考虑边界条件：1.遍历完了都找不到目标成员；2.前置指针在使用前要判空，如果为空，表明第一个节点就是目标节点，这两种情况都属于上述代码的else case处理</strong></p>
+<p>The standard CS101 approach makes use of two traversal pointers <code>cur</code> and <code>prev</code>, marking the current and previous traversal position in the list, respectively.  <code>cur</code> starts at the list head <code>head</code>, and advances until the target is found.  <code>prev</code> starts at <code>NULL</code> and is subsequently updated with the previous value of <code>cur</code> every time <code>cur</code> advances. After the target is found, the algorithm tests if <code>prev</code> is non-<code>NULL</code>. If yes, the item is not at the beginning of the list and the removal consists of re-routing the linked list around <code>cur</code>. If <code>prev</code> is <code>NULL</code>, <code>cur</code> is pointing to the first element in the list, in which case, removal means moving the list head forward.</p>
+<h3 id="A-more-elegant-solution"><a href="#A-more-elegant-solution" class="headerlink" title="A more elegant solution"></a>A more elegant solution</h3><p>The more elegant version has less code and does not require a separate branch to deal with deletion of the first element in a list.</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> <span class="title function_">remove_elegant</span><span class="params">(<span class="built_in">list</span> *l, list_item *target)</span></span><br><span class="line">&#123;</span><br><span class="line">        list_item **p = &amp;l-&gt;head;</span><br><span class="line">        <span class="keyword">while</span> (*p != target)</span><br><span class="line">                p = &amp;(*p)-&gt;next;</span><br><span class="line">        *p = target-&gt;next;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>The code uses an indirect pointer <code>p</code> that holds the address of a pointer to a list item, starting with the address of <code>head</code>.  In every iteration, that pointer is advanced to hold the address of the pointer to the next list item, i.e. the address of the <code>next</code> element in the current <code>list_item</code>.<br>When the pointer to the list item <code>*p</code> equals <code>target</code>, we exit the search loop and remove the item from the list.</p>
+<h2 id="How-does-it-work"><a href="#How-does-it-work" class="headerlink" title="How does it work?"></a>How does it work?</h2><p>The key insight is that using an indirect pointer <code>p</code> has two conceptual benefits:</p>
+<ol>
+<li>It allows us to interpret the linked list in a way that makes the <code>head</code> pointer an integral part the data structure. This eliminates the need for a special case to remove the first item.</li>
+<li>It also allows us to evaluate the condition of the <code>while</code> loop without having to let go of the pointer that points to <code>target</code>. This allows us to modify the pointer that points to <code>target</code> and to get away with a single iterator as opposed to <code>prev</code> and <code>cur</code>.</li>
+</ol>
+<p>Let’s look each of these points in turn.</p>
+<h3 id="Integrating-the-head-pointer"><a href="#Integrating-the-head-pointer" class="headerlink" title="Integrating the head pointer"></a>Integrating the <code>head</code> pointer</h3><p>The standard model interprets the linked list as a sequence of <code>list_item</code> instances. The beginning of the sequence can be accessed through a <code>head</code> pointer. This leads to the conceptual model illustrated in Figure 2 above. The <code>head</code> pointer is merely considered as a handle to access the start of the list. <code>prev</code> and <code>cur</code> are pointers of type <code>list_item *</code> and always point to an item or <code>NULL</code>.</p>
+<p>The elegant implementation uses indirect addressing scheme that yields a different view on the data structure:</p>
+<p><strong>注释：核心就是改变对链表数据结构的理解，将链表的最小单元理解为：前置指针 + (值+指针变量)成员，这样需要一个二级指针指向成员内的指针变量，链表也没有特殊性，每个成员一定有非空的前置指针和(值+指针变量)，如下图的蓝色框。</strong></p>
+<p><strong>这个方法本质上是双指针的优化，只用一个二级指针就可以同时访问目标节点和前置的节点的指针变量，解决了单链表遍历过程中，找到目标节点后无法反向获得前置节点的指针变量的问题。</strong></p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303281920824.png" alt="image-20230328192017690"></p>
+<p>Here, <code>p</code> is of type <code>list_item **</code> and holds the address of the pointer to the current list item. When we advance the pointer, we forward to the address of the pointer to the next list item.</p>
+<p>In code, this translates to <code>p = &amp;(*p)-&gt;next</code>, meaning we</p>
+<ol>
+<li><code>(*p)</code>: dereference the address to the pointer to the current list item</li>
+<li><code>-&gt;next</code>: dereference that pointer again and select the field that holds the address of the next list item</li>
+<li><code>&amp;</code>: take the address of that address field (i.e. get a pointer to it)</li>
+</ol>
+<p>This corresponds to an interpretation of the data structure where the list is a a sequence of pointers to <code>list_item</code>s (cf. Figure 3).</p>
+<h3 id="Maintaining-a-handle"><a href="#Maintaining-a-handle" class="headerlink" title="Maintaining a handle"></a>Maintaining a handle</h3><p>An additional benefit of that particular interpretation is that it supports editing the <code>next</code> pointer of the predecessor of the current item throughout the entire traversal.</p>
+<p>With <code>p</code> holding the address of a pointer to a list item, the comparison in the search loop becomes</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">while</span> (*p != target)</span><br></pre></td></tr></table></figure>
+
+<p>The search loop will exit if <code>*p</code> equals <code>target</code>, and once it does, we are still able to modify <code>*p</code> since we hold its address <code>p</code>. Thus, despite iterating the loop until we hit <code>target</code>, we still maintain a handle (the address of the <code>next</code> field or the <code>head</code> pointer) that can be used to directly modify the pointer that points <em>to</em> the item.</p>
+<p>This is the reason why we can modify the incoming pointer to an item to point to a different location using <code>*p = target-&gt;next</code> and why we do not need <code>prev</code> and <code>cur</code> pointers to traverse the list for item removal.</p>
+<h2 id="Going-beyond"><a href="#Going-beyond" class="headerlink" title="Going beyond"></a>Going beyond</h2><p>It turns out that the idea behind <code>remove_elegant()</code> can be applied to yield a particularly concise implementation of another function in the list API:<code>insert_before()</code>, i.e. inserting a given item before another one.</p>
+<h3 id="Inserting-before-existing-items"><a href="#Inserting-before-existing-items" class="headerlink" title="Inserting before existing items"></a>Inserting before existing items</h3><p>First, let’s add the following declaration to the list API in <code>list.h</code>:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> <span class="title function_">insert_before</span><span class="params">(<span class="built_in">list</span> *l, list_item *before, list_item *item)</span>;</span><br></pre></td></tr></table></figure>
+
+<p>The function will take a pointer to a list <code>l</code>, a pointer <code>before</code> to an item in that list and a pointer to a new list item <code>item</code> that the function will insert before <code>before</code>.</p>
+<h3 id="Quick-refactor"><a href="#Quick-refactor" class="headerlink" title="Quick refactor"></a>Quick refactor</h3><p><strong>注释：单链表的删除节点和前向插入节点有共同的痛点：找到目标节点后无法反向获得前置节点的指针变量，此二级指针方法完美解决这类问题。</strong></p>
+<p>Before we move on, we refactor the search loop into a separate function</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> list_item **<span class="title function_">find_indirect</span><span class="params">(<span class="built_in">list</span> *l, list_item *target)</span></span><br><span class="line">&#123;</span><br><span class="line">        list_item **p = &amp;l-&gt;head;</span><br><span class="line">        <span class="keyword">while</span> (*p != target)</span><br><span class="line">                p = &amp;(*p)-&gt;next;</span><br><span class="line">        <span class="keyword">return</span> p;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>and use that function in <code>remove_elegant()</code> like so</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> <span class="title function_">remove_elegant</span><span class="params">(<span class="built_in">list</span> *l, list_item *target)</span></span><br><span class="line">&#123;</span><br><span class="line">        list_item **p = find_indirect(l, target);</span><br><span class="line">        *p = target-&gt;next;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="Implementing-insert-before"><a href="#Implementing-insert-before" class="headerlink" title="Implementing insert_before()"></a>Implementing <code>insert_before()</code></h3><p>Using <code>find_indirect()</code>, it is straightforward to implement <code>insert_before()</code>:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> <span class="title function_">insert_before</span><span class="params">(<span class="built_in">list</span> *l, list_item *before, list_item *item)</span></span><br><span class="line">&#123;</span><br><span class="line">        list_item **p = find_indirect(l, before);</span><br><span class="line">        *p = item;</span><br><span class="line">        item-&gt;next = before;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>A particularly beautiful outcome is that the implementation has consistent semantics for the edge cases: if <code>before</code> points to the list head, the new item will be inserted at the beginning of the list, if <code>before</code> is <code>NULL</code> or invalid (i.e. the item does not exist in <code>l</code>), the new item will be appended at the end.</p>
+<h2 id="Conclusion"><a href="#Conclusion" class="headerlink" title="Conclusion"></a>Conclusion</h2><p>The premise of the more elegant solution for item deletion is a single, simple change: using an indirect <code>list_item **</code> pointer to iterate over the pointers to the list items.  Everything else flows from there: there is no need for a special case or branching and a single iterator is sufficient to find and remove the target item.<br>It also turns out that the same approach provides an elegant solution for item insertion in general and for insertion <em>before</em> an existing item in particular.</p>
+<p>So, going back to Linus’ initial comment: is it good taste? Hard to say, but it’s certainly a different, creative and very elegant solution to a well-known CS task.</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" rel="tag"># 数据结构</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2023/03/15/hexo%E5%92%8Cnext%E4%B8%BB%E9%A2%98%E7%9A%84%E9%85%8D%E7%BD%AE%E7%AC%94%E8%AE%B0/" rel="prev" title="hexo和next主题的配置笔记">
+      <i class="fa fa-chevron-left"></i> hexo和next主题的配置笔记
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2023/04/10/%E6%B5%85%E8%B0%88%E4%BF%A1%E5%8F%B7%E5%AE%8C%E6%95%B4%E6%80%A7%E5%92%8CReDriver/" rel="next" title="浅谈信号完整性和ReDriver">
+      浅谈信号完整性和ReDriver <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Linked-lists-pointer-tricks-and-good-taste"><span class="nav-number">1.</span> <span class="nav-text">Linked lists, pointer tricks and good taste</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Introduction"><span class="nav-number">1.1.</span> <span class="nav-text">Introduction</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#The-code"><span class="nav-number">1.2.</span> <span class="nav-text">The code</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#The-CS101-version"><span class="nav-number">1.2.1.</span> <span class="nav-text">The CS101 version</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#A-more-elegant-solution"><span class="nav-number">1.2.2.</span> <span class="nav-text">A more elegant solution</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#How-does-it-work"><span class="nav-number">1.3.</span> <span class="nav-text">How does it work?</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Integrating-the-head-pointer"><span class="nav-number">1.3.1.</span> <span class="nav-text">Integrating the head pointer</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Maintaining-a-handle"><span class="nav-number">1.3.2.</span> <span class="nav-text">Maintaining a handle</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Going-beyond"><span class="nav-number">1.4.</span> <span class="nav-text">Going beyond</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Inserting-before-existing-items"><span class="nav-number">1.4.1.</span> <span class="nav-text">Inserting before existing items</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Quick-refactor"><span class="nav-number">1.4.2.</span> <span class="nav-text">Quick refactor</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Implementing-insert-before"><span class="nav-number">1.4.3.</span> <span class="nav-text">Implementing insert_before()</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Conclusion"><span class="nav-number">1.5.</span> <span class="nav-text">Conclusion</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="cursorhu"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">cursorhu</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">113</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">41</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">55</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/cursorhu" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;cursorhu" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:2449055512@qq.com" title="E-Mail → mailto:2449055512@qq.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2025</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">cursorhu</span>
+</div>
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

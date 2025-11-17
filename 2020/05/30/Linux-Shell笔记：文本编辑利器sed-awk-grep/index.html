@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 8.0.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Noto+Serif+SC|Roboto/css?family=Noto Serif SC:300,300italic,400,400italic,700,700italic|Roboto:300,300italic,400,400italic,700,700italic&display=swap&subset=latin,latin-ext">
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"cursorhu.github.io","root":"/","scheme":"Pisces","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="shell增删改查概述Linux Shell环境对文本增删改查，可以通过sed，awk和grep命令完成。  sed: 支持特定模式匹配的增加、插入、删除、替换、提取等操作 awk: 支持特定模式匹配的过滤查找，如提取某行列的字符串 grep: 支持包含特定字符串的结果提取，可配合find和awk实现过滤查找  这几种命令都支持流输入和文本输入，支持管道传递参数，也可以命令行传参。对于多个步骤的处">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux Shell笔记：文本编辑利器sed+awk+grep">
+<meta property="og:url" content="https://cursorhu.github.io/2020/05/30/Linux-Shell%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%96%87%E6%9C%AC%E7%BC%96%E8%BE%91%E5%88%A9%E5%99%A8sed-awk-grep/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="shell增删改查概述Linux Shell环境对文本增删改查，可以通过sed，awk和grep命令完成。  sed: 支持特定模式匹配的增加、插入、删除、替换、提取等操作 awk: 支持特定模式匹配的过滤查找，如提取某行列的字符串 grep: 支持包含特定字符串的结果提取，可配合find和awk实现过滤查找  这几种命令都支持流输入和文本输入，支持管道传递参数，也可以命令行传参。对于多个步骤的处">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051452182.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051452191.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051453765.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051453942.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051453983.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051453414.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051454928.png">
+<meta property="article:published_time" content="2020-05-30T06:50:22.000Z">
+<meta property="article:modified_time" content="2024-11-04T03:43:03.173Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="shell">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051452182.png">
+
+<link rel="canonical" href="https://cursorhu.github.io/2020/05/30/Linux-Shell%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%96%87%E6%9C%AC%E7%BC%96%E8%BE%91%E5%88%A9%E5%99%A8sed-awk-grep/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>Linux Shell笔记：文本编辑利器sed+awk+grep | ThinkNotes</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">ThinkNotes</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Simple is not easy</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于我</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/05/30/Linux-Shell%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%96%87%E6%9C%AC%E7%BC%96%E8%BE%91%E5%88%A9%E5%99%A8sed-awk-grep/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Linux Shell笔记：文本编辑利器sed+awk+grep
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-05-30 14:50:22" itemprop="dateCreated datePublished" datetime="2020-05-30T14:50:22+08:00">2020-05-30</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2024-11-04 11:43:03" itemprop="dateModified" datetime="2024-11-04T11:43:03+08:00">2024-11-04</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/linux/" itemprop="url" rel="index"><span itemprop="name">linux</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="shell增删改查概述"><a href="#shell增删改查概述" class="headerlink" title="shell增删改查概述"></a>shell增删改查概述</h1><p>Linux Shell环境对文本增删改查，可以通过sed，awk和grep命令完成。</p>
+<ul>
+<li>sed: 支持特定模式匹配的增加、插入、删除、替换、提取等操作</li>
+<li>awk: 支持特定模式匹配的过滤查找，如提取某行列的字符串</li>
+<li>grep: 支持包含特定字符串的结果提取，可配合find和awk实现过滤查找</li>
+</ul>
+<p>这几种命令都支持流输入和文本输入，支持管道传递参数，也可以命令行传参。对于多个步骤的处理，可以几个命令串行使用。</p>
+<h1 id="shell的输入参数概述"><a href="#shell的输入参数概述" class="headerlink" title="shell的输入参数概述"></a>shell的输入参数概述</h1><p>Shell的命令，如<code>cat, echo, sed, awk, grep</code>, 管道命令<code>|</code>等，都要有输入参数，即待处理的数据。<br>输入参数有两种类型：</p>
+<ul>
+<li>标准输入：本质是stdin文件，即读取该文件的内容作为命令的输入参数，该文件内容可由其他命令的输出，或者用户输入来产生</li>
+<li>命令行输入：直接接受用户在命令行输入的字符串，一次性使用,不存储在stdin</li>
+</ul>
+<p>支持标准输入作为参数的命令：<code>cat, sed, awk, grep, |</code> 等<br>只支持命令行输入字符串的命令：<code>echo, ls</code>等<br>标准输入示例：</p>
+<pre><code>cat /etc/passwd | grep root
+</code></pre>
+<p>上面的代码使用了管道命令<code>|</code>，管道命令的作用是将左侧命令<code>cat /etc/passwd</code>的标准输出转换为标准输入，提供给右侧命令<code>grep root</code>作为参数。<br>以上命令也可以写成命令行输入形式：</p>
+<pre><code>grep root /etc/passwd
+</code></pre>
+<p>不支持标准输入的示例：</p>
+<pre><code>echo &quot;hello world&quot; | echo
+</code></pre>
+<p>输出为空，管道右侧的echo不接受管道传来的标准输入作为参数。<br>xargs的作用：将标准输入转为命令行参数</p>
+<pre><code>echo &quot;hello world&quot; | xargs echo
+</code></pre>
+<p>输出“hello world”，xargs和管道配合使用，能使管道也支持非标准输入命令。<br>xargs支持一些选项做进一步细化处理，如-p(打印), -d(分割) 等。</p>
+<h1 id="sed命令"><a href="#sed命令" class="headerlink" title="sed命令"></a>sed命令</h1><h2 id="sed命令概述"><a href="#sed命令概述" class="headerlink" title="sed命令概述"></a>sed命令概述</h2><p>sed支持文本编辑，实现增、删、改的功能。<br>sed命令格式：</p>
+<pre><code>sed [options] &#39;command&#39; filename
+</code></pre>
+<p>sed的输入参数可以用命令行，管道和xargs传入：</p>
+<pre><code>//命令行传入文件名参数
+sed [options] &#39;command&#39; filename 
+//管道传入文件名参数
+cat filename | sed [options] &#39;command&#39;
+//xargs传入文件名参数
+cat filename | xargs sed [options] &#39;command&#39;
+</code></pre>
+<p>sed对文件的编辑在缓冲区，不直接修改文本。要直接修改文本有以下方法：</p>
+<ul>
+<li>重定向覆盖文本， <code>sed - x &#39;XXX&#39; file.txt &gt; file.txt</code></li>
+<li>特定的sed命令支持直接修改文本，如<code>sed -i &#39;XXX&#39; file.txt</code></li>
+</ul>
+<p>sed的常用选项：</p>
+<pre><code>-n ：关闭默认输出,只显示匹配的行
+-i ：直接修改读取的文件内容，而不是输出到终端。
+-e ：直接在命令列模式上进行sed的动作编辑；
+-f ：直接将sed的动作写在一个文件内，-f filename 则可以运行filename内的sed动作；
+-r ：启用扩展的正则表达式
+</code></pre>
+<p>sed的常用命令：</p>
+<pre><code>a ：新增行，在指定行的后面附加一行，[address]a\新文本内容
+i ：插入行，在指定行的前面插入一行，[address]i\新文本内容
+s ：替换特定模式匹配的字符串, [address]s/pattern/replacement/flags
+c ：将指定行中的所有内容，替换成该选项后面的字符串, [address]c\用于替换的新文本
+d ：删除行，[address]d
+p ：打印， 通常与参数 -n 一起用，[address]p
+w : 将文本中指定行的内容写入文件, [address]w filename
+</code></pre>
+<h2 id="sed命令详解"><a href="#sed命令详解" class="headerlink" title="sed命令详解"></a>sed命令详解</h2><p>本节从sed文本操作的“增删改查”举例说明其具体命令用法</p>
+<h3 id="新增和插入：a和i"><a href="#新增和插入：a和i" class="headerlink" title="新增和插入：a和i"></a>新增和插入：a和i</h3><p>sed的命令a和i都能实现新增行，其区别在于：</p>
+<ul>
+<li>a ：append, 指定行后面新增一行</li>
+<li>i : insert, 表示在指定行前面插入一行</li>
+</ul>
+<p>注意区分i命令和i选项<br>a和i命令的基本格式完全相同：</p>
+<pre><code>[address]a（或 i）\新文本内容
+</code></pre>
+<p>将一个新行插入到数据流第三行前：</p>
+<pre><code>sed &#39;3i\This is an inserted line.&#39; data6.txt
+
+This is line number 1.
+This is line number 2.
+This is an inserted line.
+This is line number 3.
+This is line number 4.
+</code></pre>
+<p>将一个新行附加到数据流中第三行后:</p>
+<pre><code>sed &#39;3a\This is an appended line.&#39; data6.txt
+
+This is line number 1.
+This is line number 2.
+This is line number 3.
+This is an appended line.
+This is line number 4.
+</code></pre>
+<p>将一个多行数据添加到数据流中，只需对要行末尾添加反斜线即可，类似C语言的代码换行</p>
+<pre><code>sed &#39;1i\
+This is one line of new text.\
+This is another line of new text.&#39; data6.txt
+
+This is one line of new text.
+This is another line of new text.
+This is line number 1.
+This is line number 2.
+This is line number 3.
+This is line number 4.
+</code></pre>
+<h3 id="删除：d"><a href="#删除：d" class="headerlink" title="删除：d"></a>删除：d</h3><ul>
+<li>d: delete, 删除行</li>
+</ul>
+<p>格式：</p>
+<pre><code>[address]d
+</code></pre>
+<p>删除第三行：</p>
+<pre><code>[root@localhost ~]# cat data6.txt
+This is line number 1.
+This is line number 2.
+This is line number 3.
+This is line number 4.
+[root@localhost ~]# sed &#39;3d&#39; data6.txt
+This is line number 1.
+This is line number 2.
+This is line number 4.
+</code></pre>
+<p>删除二、三行：</p>
+<pre><code>sed &#39;2,3d&#39; data6.txt
+This is line number 1.
+This is line number 4.
+</code></pre>
+<p>删除第三行开始的后续所有行：</p>
+<pre><code>[root@localhost ~]# sed &#39;3,$d&#39; data6.txt
+This is line number 1.
+This is line number 2.
+</code></pre>
+<p>注意：sed d 命令并不会修改原始文件，这里被删除的行只是从 sed 的缓冲区中消失了，原始文件没做任何改变，若要修改源文件，可重定向sed的输出到源文件，覆盖原内容使修改生效。</p>
+<h3 id="匹配定位：-pattern"><a href="#匹配定位：-pattern" class="headerlink" title="匹配定位：&#x2F;pattern&#x2F;"></a>匹配定位：&#x2F;pattern&#x2F;</h3><p>sed的增删操作，可以针对包含匹配字符串的行进行操作，其原理是活用[address], 支持匹配字符串的定位，以插入命令’i’为例，匹配格式如下：</p>
+<pre><code>sed [option] &#39;/匹配字符串/i \插入字符串&#39;
+[option] 通常为 -i, 修改直接在源文件生效
+</code></pre>
+<p>原文件：</p>
+<pre><code>cat testfile 
+hello
+</code></pre>
+<p>在包含”hello”的一行的上一行，插入”upline”:</p>
+<pre><code>sed -i &#39;/hello/i\upline&#39; testfile
+</code></pre>
+<p>“hello”下一行插入”upline”:</p>
+<pre><code>sed -i &#39;/hello/a\down&#39; testfile
+</code></pre>
+<p>修改后的文件：</p>
+<pre><code>cat testfile 
+up
+hello
+down
+</code></pre>
+<p>删除匹配到”hello”的行：</p>
+<pre><code>sed -i &#39;/hello/d&#39; testfile
+</code></pre>
+<p>如果匹配字符串有“&#x2F;”，为了和sed命令的分隔符“&#x2F;”，使用“\”转义。<br>例如删除匹配某个路径字符串的行：</p>
+<pre><code>匹配&quot;\etc\install.sh&quot;
+set -i &#39;/\/etc\/install.sh/d&#39; test.txt
+</code></pre>
+<p>sed 命令包含一些预定义特殊符号，代表行尾，行首等。<br>删除以A开头的行：</p>
+<pre><code>sed -i &#39;/^A.*/d&#39; test.txt
+^A表示开头是A, .*表示后跟任意字符串
+</code></pre>
+<p>在行尾追加一行内容:</p>
+<pre><code>sed -i &#39;$a\added-content&#39; test.txt
+$表示定位到行尾，a是追加命令，added-content是追加内容
+</code></pre>
+<h3 id="替换修改-s"><a href="#替换修改-s" class="headerlink" title="替换修改: s"></a>替换修改: s</h3><p>s替换命令内部格式为：</p>
+<pre><code>[address]s/pattern/replacement/flags
+</code></pre>
+<ul>
+<li>address 指定要操作的具体行</li>
+<li>pattern 指定需要替换的内容</li>
+<li>replacement 指定替换的新内容</li>
+<li>flags 指定特殊功能</li>
+</ul>
+<p>常用的flags:</p>
+<ul>
+<li>n	1~512 之间的数字，表示指定要替换的字符串出现第几次时才进行替换</li>
+<li>g	对数据中所有匹配到的内容进行替换，否则只会在第一次匹配成功时做替换操作</li>
+<li>p	会打印与替换命令中指定的模式匹配的行。此标记通常与 -n    选项一起使用</li>
+<li>\	转义（转义替换部分包含：&amp;、\ 等）。</li>
+</ul>
+<p>替换每行第二个匹配字符串：</p>
+<pre><code>sed &#39;s/test/trial/2&#39; data.txt
+原文本：
+This is first test of the test script
+This is second test of the test script
+输出：
+This is first test of the trial script
+This is second test of the trial script
+</code></pre>
+<p>只替换第二行的匹配字符串：</p>
+<pre><code>sed &#39;2s/test/trial/&#39; data.txt
+原文本：
+This is first test of the test script
+This is second test of the test script
+输出：
+This is first test of the test script
+This is second test of the trial script
+</code></pre>
+<p>全局替换所有匹配字符串：</p>
+<pre><code>sed &#39;s/test/trial/g&#39; data.txt
+原文本：
+This is first test of the test script
+This is second test of the test script
+输出：
+This is first trial of the trial script
+This is second trial of the trial script
+</code></pre>
+<h3 id="提取：p"><a href="#提取：p" class="headerlink" title="提取：p"></a>提取：p</h3><p>sed p命令配合字符串匹配，可以输出包含指定字符串的行内容。</p>
+<pre><code>sed -n &#39;/string/p&#39; filename
+提取filename文件中,所有包含string的行的内容，并打印到标准输出
+-n是只打印匹配命中的内容
+</code></pre>
+<p>sed p和grep都能提取内容，其区别在于：</p>
+<ul>
+<li><code>sed &#39;/string/p&#39;</code>是提取指定文件的行内容，重点在内容提取</li>
+<li><code>grep &quot;string&quot; path</code>是输出包含指定内容的所有文件路径，重点在查找文件位置</li>
+</ul>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051452182.png" alt="image-20221205145238133"></p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051452191.png" alt="image-20221205145248149"></p>
+<h2 id="sed进阶与实战"><a href="#sed进阶与实战" class="headerlink" title="sed进阶与实战"></a>sed进阶与实战</h2><h3 id="多文件批量追加和删除"><a href="#多文件批量追加和删除" class="headerlink" title="多文件批量追加和删除"></a>多文件批量追加和删除</h3><p>背景介绍：<br>底层固件代码有一些功能由宏定义控制，不同功能需要不同的宏定义组合，因此有不同的宏定义文件，命名为.def后缀。批量编译不同版本，编译脚本依次提取def文件夹内的.def文件和源代码一起编译。单个def内容如下：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051453765.png" alt="image-20221205145321718"></p>
+<p>每一个宏都有多个取值，因此组合起来，需要生成一堆.def文件，批量编译才能覆盖各自功能。<br>每新增一个宏，都要修改所有.def文件，如果这个宏有两个取值，.def文件数量将翻倍。</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051453942.png" alt="image-20221205145327892"></p>
+<p>人工修改过于低效，使用sed可解决此问题。</p>
+<p>查找指定文件，并批量追加一行内容：</p>
+<pre><code>find . -name &#39;*.def*&#39; | xargs sed -i &#39;$a\added-content&#39;
+</code></pre>
+<p>各命令含义：</p>
+<pre><code>find [path] -name &quot;*.def&quot;
+查找path路径下，以.def结尾的所有文件，结果存储在stdout
+|
+管道，将查找结果转存到标准输入stdin
+xargs
+查找结果有很多个，用xargs转成命令行输入，sed才能批量处理
+sed -i &#39;$a\added-content&#39;
+    -i 直接修改文件，&#39;$a\added-content&#39; 最后一行追加added-content
+</code></pre>
+<p>查找指定文件，并批量删除匹配某字符串的行：</p>
+<pre><code>find ./defs -name &#39;*.def&#39; | xargs sed -i &quot;/deleteString/d&quot;
+</code></pre>
+<p>查找指定文件，并批量替换匹配某字符串：</p>
+<pre><code>find ./defs -name &#39;*.def&#39; | xargs sed -i &quot;s/oldString/newString/&quot;
+</code></pre>
+<p>在实际shell脚本中，通常由用户输入变量，<code>$1, $2, $@</code> 解析变量。a、i、d和s能否在命令中使用双引号解析变量，实现动态编辑？<br>实验如下：</p>
+<pre><code>ARGS=&quot;AA BB&quot;
+find ./defs -name &#39;*.def&#39; | xargs sed -i &quot;$a\${ARGS}&quot;
+find ./defs -name &#39;*.def&#39; | xargs sed -i &quot;$i\${ARGS}&quot;
+find ./defs -name &#39;*.def&#39; | xargs sed -i &quot;/${ARGS}/d&quot;
+find ./defs -name &#39;*.def&#39; | xargs sed -i &quot;s/aabb/$ARGS/&quot;
+</code></pre>
+<ul>
+<li>i 和 a 命令不能解析变量，实际追加的就是是${ARGS}</li>
+<li>d命令可以解析变量，实际删除的是有”AA BB”的行</li>
+<li>s命令可以解析变量，实际替换后的结果是”AA BB”</li>
+</ul>
+<p>结论：将命令中的单引号改成双引号，理论上可以解析$包含的变量，实际上有的命令支持，有的命令不支持。</p>
+<h3 id="提取文件中的关键内容"><a href="#提取文件中的关键内容" class="headerlink" title="提取文件中的关键内容"></a>提取文件中的关键内容</h3><p>背景介绍：<br>底层固件需要将代码段、数据段等关键信息存储在固件头部，编译过程中用编译器的size命令可以获取这些信息，并存储到文本，但是固件头部需要按自己的格式存储起始地址和大小信息，因此需要用sed提取并编辑该文本。</p>
+<p>原文本：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051453983.png" alt="image-20221205145348933"></p>
+<p>提取后文本：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051453414.png"></p>
+<p>sed命令：</p>
+<pre><code>sed -n &#39;/string/p&#39; oldFile | awk &#39;{print $3}&#39; &gt;&gt; newFile
+提取oldFile内包含string的行，并用awk提取第三列，再写入newFile
+</code></pre>
+<p>该命令在Makefile实现，需要根据Makefile和shell特性做修改：</p>
+<ul>
+<li>@：编译过程隐藏命令输出，类似于后台执行</li>
+<li>$(shell xxxx): Makefile执行shell命令</li>
+<li>$$: Makefile不能直接用shell的“$”解析变量，用“$$”</li>
+</ul>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051454928.png" alt="image-20221205145409877"></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/shell/" rel="tag"># shell</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/05/20/NodeJs%E7%AC%94%E8%AE%B0%EF%BC%9A%E4%BD%BF%E7%94%A8pm2%E9%83%A8%E7%BD%B2%E9%A1%B9%E7%9B%AE/" rel="prev" title="NodeJs笔记：使用pm2部署项目">
+      <i class="fa fa-chevron-left"></i> NodeJs笔记：使用pm2部署项目
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2020/06/10/Makefile%E4%BD%BF%E7%94%A8%E7%AC%94%E8%AE%B0/" rel="next" title="Makefile使用笔记">
+      Makefile使用笔记 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#shell%E5%A2%9E%E5%88%A0%E6%94%B9%E6%9F%A5%E6%A6%82%E8%BF%B0"><span class="nav-number">1.</span> <span class="nav-text">shell增删改查概述</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#shell%E7%9A%84%E8%BE%93%E5%85%A5%E5%8F%82%E6%95%B0%E6%A6%82%E8%BF%B0"><span class="nav-number">2.</span> <span class="nav-text">shell的输入参数概述</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#sed%E5%91%BD%E4%BB%A4"><span class="nav-number">3.</span> <span class="nav-text">sed命令</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#sed%E5%91%BD%E4%BB%A4%E6%A6%82%E8%BF%B0"><span class="nav-number">3.1.</span> <span class="nav-text">sed命令概述</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#sed%E5%91%BD%E4%BB%A4%E8%AF%A6%E8%A7%A3"><span class="nav-number">3.2.</span> <span class="nav-text">sed命令详解</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%96%B0%E5%A2%9E%E5%92%8C%E6%8F%92%E5%85%A5%EF%BC%9Aa%E5%92%8Ci"><span class="nav-number">3.2.1.</span> <span class="nav-text">新增和插入：a和i</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%88%A0%E9%99%A4%EF%BC%9Ad"><span class="nav-number">3.2.2.</span> <span class="nav-text">删除：d</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8C%B9%E9%85%8D%E5%AE%9A%E4%BD%8D%EF%BC%9A-pattern"><span class="nav-number">3.2.3.</span> <span class="nav-text">匹配定位：&#x2F;pattern&#x2F;</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%9B%BF%E6%8D%A2%E4%BF%AE%E6%94%B9-s"><span class="nav-number">3.2.4.</span> <span class="nav-text">替换修改: s</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8F%90%E5%8F%96%EF%BC%9Ap"><span class="nav-number">3.2.5.</span> <span class="nav-text">提取：p</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#sed%E8%BF%9B%E9%98%B6%E4%B8%8E%E5%AE%9E%E6%88%98"><span class="nav-number">3.3.</span> <span class="nav-text">sed进阶与实战</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%A4%9A%E6%96%87%E4%BB%B6%E6%89%B9%E9%87%8F%E8%BF%BD%E5%8A%A0%E5%92%8C%E5%88%A0%E9%99%A4"><span class="nav-number">3.3.1.</span> <span class="nav-text">多文件批量追加和删除</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8F%90%E5%8F%96%E6%96%87%E4%BB%B6%E4%B8%AD%E7%9A%84%E5%85%B3%E9%94%AE%E5%86%85%E5%AE%B9"><span class="nav-number">3.3.2.</span> <span class="nav-text">提取文件中的关键内容</span></a></li></ol></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="cursorhu"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">cursorhu</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">113</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">41</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">55</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/cursorhu" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;cursorhu" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:2449055512@qq.com" title="E-Mail → mailto:2449055512@qq.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2025</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">cursorhu</span>
+</div>
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
