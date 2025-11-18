@@ -252,330 +252,15 @@
 <p>S3:<br>1、将系统当前的运行状态等数据保存在内存中，此时仍需要向RAM供电，以保证后续快速恢复至工作状态<br>2、冻结用户态的进程和内核态的任务（进入内核态的进程或内核自己的task）<br>3、关闭外围设备，如显示屏、鼠标等,中断唤醒外设不会关闭，如电源键<br>4、CPU停止工作</p>
 <p>S4：<br>挂起到硬盘，俗称休眠（Hibernation）将系统当前的运行状态等数据保存到硬盘上，并自动关机。下次开机时便从硬盘上读取之前保存的数据，恢复到休眠关机之前的状态。<br>譬如在休眠关机时，桌面打开了一个应用，那么下一次开机启动时，该应用也处于打开状态。而正常的关机-开机流程，该应用是不会打开的</p>
 <p>S5:<br>关机并断电，实际上，S5在不同场景下，可以指代关机和重启两种操作，关机是彻底power off的，而重启不是彻底断电，只是重新启动了系统，（当然基本所有设备都被reset），重启！&#x3D;关机再启动。</p>
-<h1 id="测试工具设计"><a href="#测试工具设计" class="headerlink" title="测试工具设计"></a>测试工具设计</h1><p>需求：设计工具使系统从S0(working)进入S3&#x2F;S4&#x2F;S5状态，维持一段时间，然后退出该状态，在S0维持一段时间，再次进入S3&#x2F;S4&#x2F;S5状态，如此反复循环。用户输入工作模式（S3&#x2F;S4&#x2F;S5）和循环次数，工具输出运行日志，包含已运行次数和时间戳。</p>
-<h2 id="Linux测试脚本实现"><a href="#Linux测试脚本实现" class="headerlink" title="Linux测试脚本实现"></a>Linux测试脚本实现</h2><p>Linux环境有现成的工具：rtcwake，参看其man page：</p>
-<pre><code>NAME
-       rtcwake - enter a system sleep state until specified wakeup time
-SYNOPSIS
-       rtcwake [options] [-d device] [-m standby_mode] {-s seconds|-t time_t}
-DESCRIPTION
-       This program is used to enter a system sleep state and to automatically wake from it at a specified time.
-       This uses cross-platform Linux interfaces to enter a system sleep state, and leave it no later than a specified time.  It uses any RTC framework driver that supports standard driver model wakeup flags.
-       This is normally used like the old apmsleep utility, to wake from a suspend state like ACPI S1 (standby) or S3 (suspend-to-RAM).  Most platforms can implement those without analogues of BIOS, APM, or ACPI.
-       On some systems, this can also be used like nvram-wakeup, waking from states like ACPI S4 (suspend to disk).  Not all systems have persistent media that are appropriate for such suspend modes.
-       Note that alarm functionality depends on hardware; not every RTC is able to setup an alarm up to 24 hours in the future.
-       The suspend setup may be interrupted by active hardware; for example wireless USB input devices that continue to send events for some fraction of a second after the return key is pressed.  rtcwake tries to avoid this problem and it waits to terminal to settle down before entering a system sleep.
-</code></pre>
-<p>其重要option如下：</p>
-<pre><code>      -m, --mode mode
-              Go into the given standby state.  Valid values for mode are:
-
-              standby
-                     ACPI state S1.  This state offers minimal, though real,
-                     power savings, while providing a very low-latency
-                     transition back to a working system.  This is the
-                     default mode.
-
-              freeze The processes are frozen, all the devices are suspended
-                     and all the processors idled.  This state is a general
-                     state that does not need any platform-specific support,
-                     but it saves less power than Suspend-to-RAM, because
-                     the system is still in a running state.  (Available
-                     since Linux 3.9.)
-
-              mem    ACPI state S3 (Suspend-to-RAM).  This state offers
-                     significant power savings as everything in the system
-                     is put into a low-power state, except for memory, which
-                     is placed in self-refresh mode to retain its contents.
-
-              disk   ACPI state S4 (Suspend-to-disk).  This state offers the
-                     greatest power savings, and can be used even in the
-                     absence of low-level platform support for power
-                     management.  This state operates similarly to Suspend-
-                     to-RAM, but includes a final step of writing memory
-                     contents to disk.
-
-              off    ACPI state S5 (Poweroff).  This is done by calling
-                     &#39;/sbin/shutdown&#39;.  Not officially supported by ACPI,
-                     but it usually works.
-
-              no     Don&#39;t suspend, only set the RTC wakeup time.
-
-              on     Don&#39;t suspend, but read the RTC device until an alarm
-                     time appears.  This mode is useful for debugging.
-
-              disable
-                     Disable a previously set alarm.
-
-              show   Print alarm information in format: &quot;alarm: off|on
-                     &lt;time&gt;&quot;.  The time is in ctime() output format, e.g.,
-                     &quot;alarm: on  Tue Nov 16 04:48:45 2010&quot;.
-                     
-       -s, --seconds seconds
-              Set the wakeup time to seconds in the future from now.
-
-       -t, --time time_t
-              Set the wakeup time to the absolute time time_t.  time_t is
-              the time in seconds since 1970-01-01, 00:00 UTC.  Use the
-              date(1) tool to convert between human-readable time and
-              time_t.
-</code></pre>
-<p>只需要写shell script调用rtcwake即可<br>注意要求跨状态记录日志，S3&#x2F;S4很容易，运行信息只是被挪到内存、硬盘，不会丢失，但S5会shutdown, 因此循环次数和时间只能记录在掉电不丢失的硬盘里。<br>S3S4可以用一个脚本完成，而S5需要单独设计<br>S3S4.sh如下：<br>接受用户输入：<br>opt: S3或S4模式；COUNT：循环次数<br>每次执行rtcwake，日志写入LOG</p>
-<pre><code>opt=$1
-COUNT=$2
-interval=30
-s3timer=120
-s4timer=120
-
-mkdir -p log
-DATE=$(date +%Y-%m-%d)
-LOG=log/${opt}_${DATE}.log
-cat /dev/null &gt; ${LOG}
-
-echo &quot;=============================== $opt test start ===============================&quot; |tee -a ${LOG}
-
-for (( i=1; i&lt;=$COUNT; i++ ))
-do 
-	if [ $opt == &quot;s3&quot; ];then
-		echo &quot;************************* S3 Cycle: $i start *************************&quot; |tee -a ${LOG}
-		echo `date +%Y-%m-%d&#39; &#39;%H:%M:%S` &quot;Going to S3, Duration &quot;$s3timer&quot; sec&quot; |tee -a ${LOG}
-		sudo rtcwake -m mem -s $s3timer &gt;&gt; ${LOG} 2&gt;&amp;1
-		echo `date +%Y-%m-%d&#39; &#39;%H:%M:%S`&quot; Waitable timer triggered.&quot; |tee -a ${LOG}
-		echo `date +%Y-%m-%d&#39; &#39;%H:%M:%S`&quot; Wake up from S3, Cycle &quot;$i&quot;&quot; |tee -a ${LOG}
-		echo `date +%Y-%m-%d&#39; &#39;%H:%M:%S`&quot; Successfully left sleep state S3...&quot; |tee -a ${LOG}
-	elif [ $opt == &quot;s4&quot; ];then
-		echo &quot;************************* S4 Cycle: $i start *************************&quot; |tee -a ${LOG}
-		echo `date +%Y-%m-%d&#39; &#39;%H:%M:%S` &quot;Going to S4, Duration &quot;$s4timer&quot; sec&quot; |tee -a ${LOG}
-		sudo rtcwake -m disk -s $s4timer &gt;&gt; ${LOG} 2&gt;&amp;1
-		echo `date +%Y-%m-%d&#39; &#39;%H:%M:%S`&quot; Waitable timer triggered.&quot; |tee -a ${LOG}
-		echo `date +%Y-%m-%d&#39; &#39;%H:%M:%S`&quot; Wake up from S4, Cycle &quot;$i&quot;&quot; |tee -a ${LOG}
-		echo `date +%Y-%m-%d&#39; &#39;%H:%M:%S`&quot; Successfully left sleep state S4...&quot; |tee -a ${LOG}
-	else
-		echo &quot;error input, use s3 or s4 as input&quot;
-	fi
-	echo `date +%Y-%m-%d&#39; &#39;%H:%M:%S` &quot;wake up for $interval seconds&quot; |tee -a ${LOG}
-	echo &quot;************************* $opt Cycle: $i finish *************************&quot; |tee -a ${LOG}
-	#keep wake up time
-	sleep $interval
-done
-
-echo &quot;=============================== $opt test finished =============================== &quot; |tee -a ${LOG}
-</code></pre>
-<p>S5必须要解决两个问题：<br>1.每次测试的信息如何跨越重启<br>2.如何使系统自动不断的重启</p>
-<p>对于1，可以将日志写入固定文件，每次重启后读该文件并追加，知道S5循环结束<br>对于2，Linux有开机自动启动某些桌面程序、shellscript的机制</p>
-<p>S5测试脚本分为三部分：<br>配置自启动并执行首次重启的脚本：s5_start.sh<br>执行单次S5的脚本，即自启动调用的脚本：s5.sh<br>停止S5，清楚自启动配置的脚本：s5_stop.sh</p>
-<p>s5_start.sh</p>
-<pre><code>#!/bin/bash
-USER=$(users)
-opt=s5
-interval=30
-s5timer=180
-
-#config autostart
-mkdir -p /home/$USER/.config/autostart
-touch /home/$USER/.config/autostart/s5.desktop
-echo &quot;
-[Desktop Entry]
-Type=Application
-Exec=gnome-terminal -e /home/$USER/s5.sh
-Terminal=true
-X-GNOME-Autostart-enabled=true
-&quot; &gt; /home/$USER/.config/autostart/s5.desktop
-chmod 777 /home/$USER/.config/autostart/s5.desktop
-echo &quot;config autostart finished&quot;
-
-#config sudo
-echo &quot;$USER ALL=(ALL) NOPASSWD:ALL&quot; &gt;&gt; /etc/sudoers
-
-#config s5 log and temp file 
-mkdir -p log
-DATE=$(date +%Y-%m-%d)
-LOG=log/${opt}_${DATE}.log
-cat /dev/null &gt; ${LOG}
-echo &quot;1&quot; &gt; ${opt}_cycle.txt
-echo &quot;$LOG&quot; &gt; ${opt}_log.txt
-chmod 777 -R ./*.sh ./log/*.log ./*.txt
-
-echo &quot;System will shutdown after &quot;$interval&quot; sec, then restart after &quot;$s5timer&quot; sec&quot;
-echo &quot;*********************** S5 Cycle: 1 *************************&quot; |tee -a ${LOG}
-echo `date +%Y-%m-%d&#39; &#39;%H:%M:%S` &quot;Going to S5 after &quot;$interval&quot; sec&quot; |tee -a ${LOG}
-sleep $interval
-
-rtcwake -m off -s $s5timer &gt;&gt; ${LOG} 2&gt;&amp;1
-</code></pre>
-<p>s5.sh</p>
-<pre><code>#!/bin/bash
-COUNT=&quot;999&quot;
-opt=s5
-interval=30
-s5timer=180
-cycle=$(&lt;${opt}_cycle.txt)
-LOG=$(&lt;${opt}_log.txt)
-
-#update cycle
-((cycle++))
-echo &quot;$cycle&quot; &gt; ${opt}_cycle.txt 
-
-#keep wake
-echo &quot;*********************** S5 Cycle: $cycle *************************&quot; |tee -a ${LOG}
-echo `date +%Y-%m-%d&#39; &#39;%H:%M:%S` &quot;Going to S5 after &quot;$interval&quot; sec&quot; |tee -a ${LOG}
-sleep $interval
-
-sudo rtcwake -m off -s $s5timer &gt;&gt; ${LOG} 2&gt;&amp;1
-</code></pre>
-<p>s5_stop.sh</p>
-<pre><code>#!/bin/bash
-USER=$(users)
-opt=s5
-rm -f /home/$USER/.config/autostart/s5.desktop
-rm -f ${opt}_cycle.txt ${opt}_log.txt
-sed -i &#39;/NOPASSWD/d&#39; /etc/sudoers
-</code></pre>
-<h2 id="测试脚本使用"><a href="#测试脚本使用" class="headerlink" title="测试脚本使用"></a>测试脚本使用</h2><h3 id="S3"><a href="#S3" class="headerlink" title="S3"></a>S3</h3><pre><code>./s3s4.sh s3 999      启动s3测试,运行999次
-</code></pre>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051554212.png" alt="image-20221205155429129"></p>
-<h3 id="S4"><a href="#S4" class="headerlink" title="S4"></a>S4</h3><p>S4在内存和硬盘直接读写运行时映像，硬盘需要指定那一块区域用于和内存交换，即交换分区。Linux一切皆文件，交换分区也可以用swapfile配置。以下配置swapfile</p>
-<ol>
-<li><p>df –h 查看挂载点为&#x2F;对应的文件系统是&#x2F;dev&#x2F;nvme0n1p2,根据你具体情况记录<img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051554816.png"></p>
-</li>
-<li><p><code>blkid</code>查看UUID值，根据1对应的nvme文件系统记录UUID<img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051554581.png"></p>
-</li>
-<li><p><code>filefrag –v /swapfile</code>查看swapfile的物理起始地址，记录physical_offset左侧值<img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051554581.png"></p>
-</li>
-<li><p>将UUID和physical_offset值写入grub：<br>终端输入gedit &#x2F;etc&#x2F;default&#x2F;grub ，修改以下参数并保存<br><code>GRUB_CMDLINE_LINUX_DEFAULT=&quot;quiet splash resume=UUID=你的UUID值 resume_offset=你的physical_offset值</code>“</p>
-<p> <img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051555015.png" alt="image-20221205155518922"></p>
-</li>
-<li><p>   重新生成grub: 终端输入 <code>update-grub</code> 回车并重启电脑。</p>
-</li>
-</ol>
-<p>启动S4脚本</p>
-<pre><code>./s3s4.sh s4 999
-</code></pre>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051557197.png" alt="image-20221205155749113"></p>
-<h3 id="S5"><a href="#S5" class="headerlink" title="S5"></a>S5</h3><p>自动重启需要先解决账户密码问题<br>设置普通账户自动登录：<br>普通账户为装系统时设置的账户，重启后默认以普通账户登录<br>1.终端输入<code>gedit /usr/share/lightdm/lightdm.conf.d/50-ubuntu.conf</code>弹出编辑界面<br>设置以下参数，ctrl+s保存后关闭</p>
-<pre><code>[Seat:*]
-user-session=ubuntu
-autologin-user=你的账户名
-</code></pre>
-<p>2.终端输入<code>gedit /etc/gdm3/custom.conf</code>，设置以下几行的值为如下</p>
-<pre><code># Enabling automatic login
-AutomaticLoginEnable = true
-AutomaticLogin =你的账户名
-</code></pre>
-<p>重启，确认可免密码登录桌面。</p>
-<pre><code>./s5_start.sh 启动s5
-./s5_stop.sh 结束S5
-</code></pre>
-<h1 id="Dmesg分析和调试"><a href="#Dmesg分析和调试" class="headerlink" title="Dmesg分析和调试"></a>Dmesg分析和调试</h1><h2 id="dmesg简介"><a href="#dmesg简介" class="headerlink" title="dmesg简介"></a>dmesg简介</h2><p>dmesg命令显示linux内核的环形缓冲区信息，我们可以从中获得诸如系统架构、cpu、挂载的硬件，RAM等多个运行级别的大量的系统信息。当计算机启动时，系统内核（操作系统的核心部分）将会被加载到内存中。在加载的过程中会显示很多的信息，在这些信息中我们可以看到内核检测硬件设备<br>注意：<br>dmesg只记录从启动到当前时间的信息，掉电丢失</p>
-<p>使用示例：</p>
-<pre><code>dmesg //默认输出
-dmesg | less //从头分页显示
-dmesg | tail -100 //显示最后100行
-dmesg | head  -100 //显示最早100行
-dmesg | grep -i usb //包含usb的信息，忽略大小写
-dmesg -C //清除log
-</code></pre>
-<p>输出示例：</p>
-<pre><code>[root]# dmesg | grep sda
- 
-[    1.280971] sd 2:0:0:0: [sda] 488281250 512-byte logical blocks: (250 GB/232 GiB)
-[    1.281014] sd 2:0:0:0: [sda] Write Protect is off
-[    1.281016] sd 2:0:0:0: [sda] Mode Sense: 00 3a 00 00
-[    1.281039] sd 2:0:0:0: [sda] Write cache: enabled, read cache: enabled, doesn&#39;t support DPO or FUA
-[    1.359585]  sda: sda1 sda2 &lt; sda5 sda6 sda7 sda8 &gt;
-[    1.360052] sd 2:0:0:0: [sda] Attached SCSI disk
-[    2.347887] EXT4-fs (sda1): mounted filesystem with ordered data mode. Opts: (null)
-[   22.928440] Adding 3905532k swap on /dev/sda6.  Priority:-1 extents:1 across:3905532k FS
-[   23.950543] EXT4-fs (sda1): re-mounted. Opts: errors=remount-ro
-[   24.134016] EXT4-fs (sda5): mounted filesystem with ordered data mode. Opts: (null)
-[   24.330762] EXT4-fs (sda7): mounted filesystem with ordered data mode. Opts: (null)
-[   24.561015] EXT4-fs (sda8): mounted filesystem with ordered data mode. Opts: (null)
-</code></pre>
-<p>输出时间戳是从上电开始，到当前的时间，以秒为单位。</p>
-<h2 id="调试S4-hang"><a href="#调试S4-hang" class="headerlink" title="调试S4 hang"></a>调试S4 hang</h2><p>在测试中发现，nvme存储设备，首次进入S4的时间较长，约30s, 且系统处于hang状态，鼠标无法移动。<br>dmesg查看单次S4 enter &amp; resume的过程，log如下</p>
-<pre><code>[   43.090180] PM: hibernation entry          //开机43秒进s4流程
-[   43.090579] PM: Syncing filesystems ...   
-[   43.090682] PM: done.
-[   43.090684] Freezing user space processes ... (elapsed 0.003 seconds) done.   //冻结用户进程，这个时候会hang
-[   43.093699] OOM killer disabled.
-[   43.093876] PM: Marking nosave pages: [mem 0x00000000-0x00000fff]       //准备哪些内存要转存到disk
-[   43.093878] PM: Marking nosave pages: [mem 0x0005f000-0x0005ffff]
-[   43.093880] PM: Marking nosave pages: [mem 0x000a0000-0x000fffff]
-[   43.093887] PM: Marking nosave pages: [mem 0x80185000-0x80186fff]
-[   43.093889] PM: Marking nosave pages: [mem 0x88c4f000-0x890acfff]
-[   43.093944] PM: Marking nosave pages: [mem 0x89214000-0x89efefff]
-[   43.094102] PM: Marking nosave pages: [mem 0x89f00000-0xffffffff]
-[   43.098151] PM: Basic memory bitmaps created
-[   43.098541] PM: Preallocating image memory... 
-[   43.143802] hpet_rtc_timer_reinit: 29 callbacks suppressed
-[   43.143803] hpet1: lost 2 rtc interrupts
-[   43.197779] hpet1: lost 2 rtc interrupts
-[   43.251708] done (allocated 333315 pages)               //分配内存侧的交换页
-[   43.251709] PM: Allocated 1333260 kbytes in 0.15 seconds (8888.40 MB/s)
-[   43.251710] Freezing remaining freezable tasks ... (elapsed 0.126 seconds) done.
-[   43.379023] printk: Suspending console(s) (use no_console_suspend to debug)
-[   43.381268] serial 00:02: disabled
-[   43.382187] parport_pc 00:01: disabled
-[   43.701432] ACPI: Preparing to enter system sleep state S4  //准备进S4, 关CPU, 中断，
-[   44.400195] PM: Saving platform NVS memory
-[   44.404308] Disabling non-boot CPUs ...
-[   44.404935] IRQ 123: no longer affine to CPU1
-[   44.404942] IRQ 132: no longer affine to CPU1
-[   44.405979] smpboot: CPU 1 is now offline
-[   44.410695] smpboot: CPU 2 is now offline
-[   44.414738] IRQ 122: no longer affine to CPU3
-[   44.415784] smpboot: CPU 3 is now offline
-[   44.422078] PM: Creating hibernation image:           //准备创建disk映像
-[   44.503241] PM: Need to copy 330336 pages
-[   44.503242] PM: Normal pages needed: 330336 + 1024, available pages: 1731140
-                                                                                       //磁盘写入操作和时间没有记录
-[   44.901845] PM: free pages cleared after restore    //S4已被唤醒，这里不是绝对时间，S4休眠时间未记入
-[   44.901889] PM: Restoring platform NVS memory  
-[   44.903440] Enabling non-boot CPUs ...
-[   44.903474] x86: Booting SMP configuration:
-[   44.903474] smpboot: Booting Node 0 Processor 1 APIC 0x2
-[   44.904974]  cache: parent cpu1 should not be sleeping
-[   44.905085] CPU1 is up
-[   44.905101] smpboot: Booting Node 0 Processor 2 APIC 0x4
-[   44.905478]  cache: parent cpu2 should not be sleeping
-[   44.905602] CPU2 is up
-[   44.905618] smpboot: Booting Node 0 Processor 3 APIC 0x6
-[   44.905995]  cache: parent cpu3 should not be sleeping
-[   44.906125] CPU3 is up
-[   44.908816] ACPI: Waking up from system sleep state S4
-[   45.003392] usb usb1: root hub lost power or was reset
-[   45.003393] usb usb2: root hub lost power or was reset
-[   45.006573] sd 0:0:0:0: [sda] Starting disk
-[   45.006732] parport_pc 00:01: activated
-[   45.008262] serial 00:02: activated
-[   45.384656] ata1: SATA link up 3.0 Gbps (SStatus 123 SControl 300)
-[   45.384717] ata2: SATA link down (SStatus 4 SControl 300)
-[   45.384741] ata3: SATA link down (SStatus 4 SControl 300)
-[   45.384758] ata6: SATA link down (SStatus 4 SControl 300)
-[   45.384779] ata5: SATA link down (SStatus 4 SControl 300)
-[   45.384798] ata4: SATA link down (SStatus 4 SControl 300)
-[   45.387712] ata1.00: configured for UDMA/100
-[   45.500662] usb 1-9: reset low-speed USB device number 2 using xhci_hcd
-[   46.056539] usb 1-10: reset low-speed USB device number 3 using xhci_hcd
-[   46.318112] nvme nvme0: 4/0/0 default/read/poll queues
-[   46.336791] nvme nvme0: ctrl returned bogus length: 2 for NVME_NIDT_EUI64
-[   46.363904] acpi LNXPOWER:07: Turning OFF
-[   46.363916] acpi LNXPOWER:06: Turning OFF
-[   46.364472] PM: Basic memory bitmaps freed
-[   46.364474] OOM killer enabled.
-[   46.364475] Restarting tasks ... done.   //恢复进程
-[   47.098831] e1000e: eno1 NIC Link is Up 100 Mbps Full Duplex, Flow Control: None
-[   47.098837] e1000e 0000:00:1f.6 eno1: 10/100 speed: disabling TSO
-[   49.489104] video LNXVIDEO:00: Restoring backlight state
-[   49.489109] PM: hibernation exit    //S4退出完成
-</code></pre>
-<p>比较奇怪的是，dmesg没记录写磁盘的操作,时间戳上也反映不出来。可能这时候IO交给DMA了，kernel就挂起了，所以dmesg无法工作，包括时间戳记录？？<br>为了验证S4 hang原因在于写磁盘，对不同SSD做读写测速：</p>
-<pre><code>DISK               :         R/W speed MB/s   :       S4 hang time
-Samsung SATA SSD   :         567/529          :       4s
-Our SSD            :         170.1/104.7      :       25s
-</code></pre>
-<p>基本验证读写速度和S4 hang是线性关系。</p>
-
+<h1 id="测试工具设计"><a href="#测试工具设计" class="headerlink" title="测试工具设计"></a>测试工具设计</h1>
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2020/09/05/Linux-Shell%E7%AC%94%E8%AE%B0%EF%BC%9ASSD%E7%9A%84S3-S4-S5%E5%8E%8B%E5%8A%9B%E6%B5%8B%E8%AF%95%E8%84%9A%E6%9C%AC/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
       
     </div>
 
@@ -659,59 +344,15 @@ Our SSD            :         170.1/104.7      :       25s
 
 
 
-<h2 id="初始化git和github仓库"><a href="#初始化git和github仓库" class="headerlink" title="初始化git和github仓库"></a>初始化git和github仓库</h2><p>1.安装git</p>
-<p>2.进入本地源码目录</p>
-<pre><code>git init
-</code></pre>
-<p>会出现.git目录<br>首次需要配置github账户和邮箱</p>
-<pre><code>git config --global user.name &quot;github注册的用户名&quot;
-git config --global user.mail &quot;github注册的邮箱&quot;
-</code></pre>
-<p>3.添加远程仓库</p>
-<p>在github网页新建仓库</p>
-<pre><code>git remote add origin git@github.com:github用户名/仓库名.git
-</code></pre>
-<p>.git&#x2F;config文件内容会出现remote等内容，ssh方式的url是git开头，http(s)方式是http(s)开头<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051116187.png" alt="image-20221205111653141"><br>如果是从别人拉过来的仓库，修改后新建仓库，上传遇到<code>fatal: remote origin already exists</code>问题，解决方法:</p>
-<pre><code>git remote rm origin
-git remote add origin git@github.com:github用户名/仓库名.git
-</code></pre>
-<p>4.git add, commit, push三连</p>
-<pre><code>git add -A
-git commit -m &#39;first commit&#39;
-git push -f --set-upstream origin master //首次提交
-</code></pre>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051117987.png" alt="image-20221205111703940"><br>完成以后远程可以看得到仓库的文件   </p>
-<p>5.创建分支</p>
-<p>如果已经有主线，在本地<code>git checkout branchname</code>, 远程创建分支，记录.git链接， 然后关联远程分支即可：</p>
-<pre><code>git remote add origin https://github.com/*/*.git
-</code></pre>
-<p>然后推送</p>
-<pre><code>git push origin branchname
-</code></pre>
-<h2 id="首次配置可能的问题："><a href="#首次配置可能的问题：" class="headerlink" title="首次配置可能的问题："></a>首次配置可能的问题：</h2><h3 id="push时有RSA-key错误"><a href="#push时有RSA-key错误" class="headerlink" title="push时有RSA key错误"></a>push时有RSA key错误</h3><p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051117281.png" alt="image-20221205111713234"><br>因为Git使用SSH连接，而SSH第一次连接需要验证GitHub服务器的Key。确认GitHub的Key的指纹信息是否真的来自GitHub的服务器。解决办法是在本地生成key，配置到github服务器<br>（1)创建ssh key</p>
-<pre><code>ls -al ~/.ssh
-ssh-keygen -t rsa -C &quot;github用户名&quot;
-全部回车默认，生成key
-cat ~/.ssh/id_rsa.pub
-</code></pre>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051117255.png" alt="image-20221205111721197"><br>在push三连过程可以设置global全局配置，以后默认push到github<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051117055.png" alt="image-20221205111728996"></p>
-<p>（2）配置ssh key到github<br>登陆github,头像-settings-new SSH,复制新生成的SSH配置到服务器<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051117386.png" alt="image-20221205111737339"><br>（3）需要重新add origin新建仓库（或者网页上新建仓库)，再push，<code>git status</code>和<code>git log</code>查看分支和日志</p>
-<h3 id="push时不能使用密码登陆"><a href="#push时不能使用密码登陆" class="headerlink" title="push时不能使用密码登陆"></a>push时不能使用密码登陆</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Support for password authentication was removed on August 13, 2021.</span><br></pre></td></tr></table></figure>
-
-<p>使用personal token替代密码登陆：</p>
-<p>Github setting -&gt; Developer setting -&gt; Personal access token -&gt; Generate a New Token (classic) -&gt; 设置不过时，所有权限勾上 -&gt; 首次会显示token字符，下次不会显示，记得备份token！-&gt; 再次输入账号密码时用token代替密码即可push</p>
-<h3 id="git-clone有HTTP2错误"><a href="#git-clone有HTTP2错误" class="headerlink" title="git clone有HTTP2错误"></a>git clone有HTTP2错误</h3><p>错误码：RPC failed; curl 16 Error in the HTTP2 framing layer</p>
-<p>解决办法：Git使用HTTP1.1</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git config --global http.version HTTP/1.1</span><br></pre></td></tr></table></figure>
-
-<h2 id="Github-clone使用国内镜像"><a href="#Github-clone使用国内镜像" class="headerlink" title="Github clone使用国内镜像"></a>Github clone使用国内镜像</h2><p>国内搞开发最痛苦的就是限速+断开连接，github clone经常失败。推荐国内镜像服务作为代理进行git clone，将原git地址的github.com替换成代理地址即可。参考 <a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/463954956">无需代理直接加速各种 GitHub 资源拉取</a></p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">#git clone原地址</span><br><span class="line">$ git clone https://github.com/kubernetes/kubernetes.git</span><br><span class="line"></span><br><span class="line">#手动配置代理地址，任选其一能clone成功即可</span><br><span class="line">$ git clone https://github.com.cnpmjs.org/kubernetes/kubernetes.git</span><br><span class="line">$ git clone https://hub.fastgit.org/kubernetes/kubernetes.git</span><br><span class="line">$ git clone https://gitclone.com/github.com/kubernetes/kubernetes.git</span><br><span class="line"></span><br><span class="line">#配置git自动使用代理，配置以后可以用git clone原地址，自动走代理</span><br><span class="line">git config --global url.&quot;https://hub.fastgit.org&quot;.insteadOf https://github.com</span><br><span class="line">#取消自动代理</span><br><span class="line">$ git config --global --unset url.https://github.com/.insteadof</span><br></pre></td></tr></table></figure>
-
-<p>使用国内镜像并不一定能解决所有clone问题，有的recursive clone对依赖包有版本要求，国内镜像版本不匹配导致clone fail，此时不能使用国内镜像。</p>
-<p>解决版本：下载release版本的zip包，绕开git clone操作。</p>
-<h2 id="Github连接报错问题"><a href="#Github连接报错问题" class="headerlink" title="Github连接报错问题"></a>Github连接报错问题</h2><h3 id="OpenSSL-errno-10054"><a href="#OpenSSL-errno-10054" class="headerlink" title="OpenSSL errno 10054"></a>OpenSSL errno 10054</h3><p>一劳永逸的解决办法：git bash -&gt; git config –global http.sslVerify “false”</p>
-<p>参考：<a target="_blank" rel="noopener" href="https://blog.csdn.net/qq_29493173/article/details/114534057">OpenSSL SSL_read: Connection was reset, errno 10054</a></p>
-
+<h2 id="初始化git和github仓库"><a href="#初始化git和github仓库" class="headerlink" title="初始化git和github仓库"></a>初始化git和github仓库</h2>
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2020/08/27/Github%E5%B8%B8%E7%94%A8%E9%85%8D%E7%BD%AE%E7%AC%94%E8%AE%B0/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
       
     </div>
 
@@ -832,160 +473,14 @@ mv ./config/build.def.bak ./config/build.def
 <p>def文件内的.def文件即各种参数配置文件，.def文件名即参数功能的别名组合<br>例如：</p>
 <pre><code>CQ_emmc_two_card_enhance_hs400_always_l0_MSIx_dllphase14_tuning_on.def
 </code></pre>
-<p>对应的内容是：</p>
-<pre><code>/*0: Non-CQ mode 1:CQ mode enable*/
-#define BB_CQ_MODE_ENABLE 1
-/*the card number support emmc#0:0 emmc#1:1 two card:2*/
-#define BB_CARD_NUMBER 2
-/*0:legacy 1:High Speed 50MHz 2:HS200 3:HS400 4:Enhance HS400*/
-#define BB_MAX_TRANSFER_MODE 4
-/* power mode management: 0: Low Power 1:Balance 2:High Performance 3:Direct HP 4:Always L0*/
-#define POWER_MANAGEMENT_MODE 4
-/* INT_MODE: 0:MSI_X 1:INTx 2:MSI_MULTIPLE 3:MSI_SINGLE */
-#define INT_MODE 0
-/* The selection of DLL PHASE COUNT is 11 or 14 */
-#define DLL_phase_cnt 14
-/* 0: fixed output phase  1: auto output tuning */
-#define AUTO_OUTPUT_TUNING 1
-</code></pre>
-<h2 id="批量编辑配置文件"><a href="#批量编辑配置文件" class="headerlink" title="批量编辑配置文件"></a>批量编辑配置文件</h2><p>配置文件def有两个属性<br>1.文件名每个词代表一个功能，各词用下划线“_”分隔<br>2.内部用宏定义实现功能配置，宏定义的值要和外部文件名匹配</p>
-<p>基于以上属性，编辑脚本需求为：<br>1.新增：增加一个宏定义，并增加对应的功能缩写到文件名<br>2.修改：修改一个已存在的宏定义，并修改对应的功能缩写到文件名<br>3.删除：删除一个已存在的宏定义，并删除对应的功能缩写到文件名<br>4.其他功能，如直接删除含某缩写的文件，备份原配置文件</p>
-<p>shell实现为update.sh,如下:</p>
-<pre><code>#!/bin/bash
-
-DEFS_PATH=&quot;./config/defs&quot;
-DEFS_BACKUP_PATH=&quot;./config/defs_backup&quot;
-DEFS_TEMP_PATH=&quot;./config/defs_temp&quot;
-
-if [ $# -lt 1 ];then
-		echo &quot;usage: ./update.sh [option] [args]&quot;
-
-		echo &quot;example 0:&quot;
-		echo &quot;		backup defs files:&quot;
-		echo &quot;		./update.sh -bf&quot;
-		echo &quot;&quot;
-
-		echo &quot;example 1:&quot;
-		echo &quot;		add a macro name and macro value to defs, and add file postfix:&quot;
-		echo &quot;		./update.sh -b&quot;
-		echo &quot;		./update.sh -a balance POWER_MANAGEMENT_MODE 1 &quot;
-		echo &quot;		./update.sh -a high_performance POWER_MANAGEMENT_MODE 2 &quot;
-		echo &quot;		add other values...&quot;
-		echo &quot;&quot;
-
-		echo &quot;example 2:&quot;
-		echo &quot;		update a macro name and macro value to defs, and update file postfix:&quot;
-		echo &quot;		./update.sh -u balance lowpower POWER_MANAGEMENT_MODE 1 &quot;
-		echo &quot;&quot;
-
-		echo &quot;example 3:&quot;
-		echo &quot;		delete a macro name and macro value of defs, and delete file postfix:&quot;
-		echo &quot;		./update.sh -d lowpower POWER_MANAGEMENT_MODE&quot;
-		echo &quot;&quot;
-
-		echo &quot;example 4:&quot;
-		echo &quot;		delete target files:&quot;
-		echo &quot;		./update.sh -df lowpower&quot;
-		echo &quot;&quot;
-
-		echo &quot;example 5:&quot;
-		echo &quot;		clean backup defs files:&quot;
-		echo &quot;		./update.sh -cf&quot;
-		echo &quot;&quot;
-
-		exit;
-	fi
-
-if [ $1 = &quot;-bf&quot; ];then #backup defs
-	mkdir -p $DEFS_BACKUP_PATH
-	mv $DEFS_PATH/*.def $DEFS_BACKUP_PATH
-
-elif [ $1 = &quot;-cf&quot; ];then #clear backup defs
-	rm -rf $DEFS_BACKUP_PATH
-</code></pre>
-<p>​<br>​    #add a macro name and macro value to defs, and add file postfix<br>​    elif [ $1 &#x3D; “-a” ];then<br>​<br>​    	if [ $# !&#x3D; 4 ];then<br>​    		echo “usage: .&#x2F;update.sh -a FILE_POSTFIX MACRO_NAME MACRO_VALUE”<br>​    		exit;<br>​    	fi<br>​<br>    	mkdir -p $DEFS_TEMP_PATH &amp;&amp; cp -rf $DEFS_BACKUP_PATH&#x2F;<em>.def $DEFS_TEMP_PATH<br>    	<br>    	FILE_POSTFIX&#x3D;$2<br>    	MACRO_NAME&#x3D;$3<br>    	MACRO_VALUE&#x3D;$4<br>    	# sed -i makes change on original file, otherwise on stream<br>    	# xargs transfer multiple output from stream to multiple args to sed<br>    	find ${DEFS_TEMP_PATH} -name ‘</em>.def’ | xargs sed -i ‘$a#define\ ‘“$MACRO_NAME”‘\ ‘“$MACRO_VALUE”‘’<br>    	<br>    	for file in <code>ls ${DEFS_TEMP_PATH}/*.def</code><br>    	do<br>    	 mv $file <code>echo $file | sed &#39;s/\(.*\)\(\..*\)/\1_&#39;&quot;$FILE_POSTFIX&quot;&#39;\2/g&#39;</code><br>    	done<br>    	<br>    	cp -rf $DEFS_TEMP_PATH&#x2F;*.def $DEFS_PATH<br>    	rm -rf $DEFS_TEMP_PATH</p>
-<pre><code>#update a macro name and macro value to defs, and update file postfix
-elif [ $1 = &quot;-u&quot; ];then
-
-	if [ $# != 5 ];then
-		echo &quot;usage: ./update.sh -u ORIGIN_POSTFIX UPDATED_POSTFIX MACRO_NAME MACRO_UPDATED_VALUE&quot;
-		exit;
-	fi
-
-	ORIGIN_POSTFIX=$2
-	UPDATED_POSTFIX=$3
-	MACRO_NAME=$4
-	MACRO_UPDATED_VALUE=$5
-
-	#replace all lines that pattern matches $MACRO_NAME
-	find ${DEFS_PATH} -name &#39;*.def&#39; | grep $ORIGIN_POSTFIX | xargs sed -i &#39;s/.*&#39;&quot;$MACRO_NAME&quot;&#39;.*/#define\ &#39;&quot;$MACRO_NAME&quot;&#39;\ &#39;&quot;$MACRO_UPDATED_VALUE&quot;&#39;/g&#39;
-	#update file postfix
-	for file in `ls ${DEFS_PATH}/*$ORIGIN_POSTFIX*.def`
-	do
-	 	mv $file `echo $file | sed &#39;s/&#39;&quot;$ORIGIN_POSTFIX&quot;&#39;/&#39;&quot;$UPDATED_POSTFIX&quot;&#39;/g&#39;`
-	done
-</code></pre>
-<p>​<br>​    #delete a macro name and macro value of defs, and delete file postfix<br>​    elif [ $1 &#x3D; “-d” ];then<br>​    	<br>​    	if [ $# !&#x3D; 3 ];then<br>​    		echo “usage: .&#x2F;update.sh -d DELETE_POSTFIX MACRO_NAME”<br>​    		exit;<br>​    	fi<br>​<br>    	DELETE_POSTFIX&#x3D;$2<br>    	MACRO_NAME&#x3D;$3<br>    	#delete all lines that contain $MACRO_NAME<br>    	find ${DEFS_PATH} -name ‘*.def’ | grep $DELETE_POSTFIX | xargs sed -i ‘&#x2F;‘“$MACRO_NAME”‘&#x2F;d’<br>    	#delete file postfix<br>    	for file in <code>ls ${DEFS_PATH}/*.def</code><br>    	do<br>    	 	mv $file <code>echo $file | sed &#39;s/_&#39;&quot;$DELETE_POSTFIX&quot;&#39;//g&#39;</code><br>    	done</p>
-<pre><code>#delete target file by postfix
-elif [ $1 = &quot;-df&quot; ];then
-	
-	if [ $# != 2 ];then
-		echo &quot;usage: ./update.sh -df DELETE_POSTFIX&quot;
-		exit;
-	fi
-
-	DELETE_POSTFIX=$2
-	rm -f ${DEFS_PATH}/*$DELETE_POSTFIX*.def
-
-fi
-</code></pre>
-<p><strong>重点讲下其中的几个sed和文件操作</strong><br>1.多个文件，每个文件最后一行追加内容</p>
-<pre><code>find ${DEFS_TEMP_PATH} -name &#39;*.def&#39; | xargs sed -i &#39;$a\#define\ &#39;&quot;$MACRO_NAME&quot;&#39;\ &#39;&quot;$MACRO_VALUE&quot;&#39;&#39;
-</code></pre>
-<ul>
-<li>xargs的作用： find <path> -name <string> 输出的是多个文件名，不能直接传给sed， <strong>xargs将多个文件名转化成多个参数</strong>，每个参数是一个文件名，sed可以接收</li>
-<li>-i的作用：sed本身是在文件的拷贝上操作，不直接在文件本身修改，-i（insert）使sed的操作在文件上生效，<strong>如果不加-i，源文件不会被修改</strong></li>
-<li>$：表示最后一行，sed ‘a\string’是基础格式</li>
-<li>注意sed怎么用带空格和变量的字符串：<strong>空格用转义’\ ‘表示，变量是单引号内加双引号</strong>，即’”$ARG”‘</li>
-</ul>
-<p>2.找到包含字符串A的所有文件，替换内容：将字符串B替换为C</p>
-<pre><code>#replace all lines that pattern matches $MACRO_NAME
-find ${DEFS_PATH} -name &#39;*.def&#39; | grep $ORIGIN_POSTFIX | xargs sed -i &#39;s/.*&#39;&quot;$MACRO_NAME&quot;&#39;.*/#define\ &#39;&quot;$MACRO_NAME&quot;&#39;\ &#39;&quot;$MACRO_UPDATED_VALUE&quot;&#39;/g&#39;
-</code></pre>
-<ul>
-<li>find | grep 是常用套路，先找在过滤，注意find -name 可以使用*， grep不要用*，否则grep会把它当成要匹配的字符</li>
-<li>sed ‘s&#x2F;stringB&#x2F;stringC’是基础格式，g表示全局，注意要-i</li>
-</ul>
-<p>3.找到包含字符串A的所有文件，删除内容：包含字符串B的行</p>
-<pre><code>#delete all lines that contain $MACRO_NAME
-find ${DEFS_PATH} -name &#39;*.def&#39; | grep $DELETE_POSTFIX | xargs sed -i &#39;/&#39;&quot;$MACRO_NAME&quot;&#39;/d&#39;
-</code></pre>
-<p>4.对多个文件的文件名，增加，修改，删除特定字符串</p>
-<pre><code>#在原文件名最后，后缀之前，增加字符串“_$FILE_POSTFIX”
-for file in `ls ${DEFS_TEMP_PATH}/*.def`
-	do
-	 mv $file `echo $file | sed &#39;s/\(.*\)\(\..*\)/\1_&#39;&quot;$FILE_POSTFIX&quot;&#39;\2/g&#39;`
-	done
-
-#替换文件名中匹配的字符
-for file in `ls ${DEFS_PATH}/*$ORIGIN_POSTFIX*.def`
-do
- 	mv $file `echo $file | sed &#39;s/&#39;&quot;$ORIGIN_POSTFIX&quot;&#39;/&#39;&quot;$UPDATED_POSTFIX&quot;&#39;/g&#39;`
-done
-
-#删除文件名指定字符
-for file in `ls ${DEFS_PATH}/*.def`
-do
- 	mv $file `echo $file | sed &#39;s/_&#39;&quot;$DELETE_POSTFIX&quot;&#39;//g&#39;`
-done
-</code></pre>
-<ul>
-<li>for &lt; args &gt; in `ls &lt; path &gt;`是把多个文件名依次写入变量args的常用操作，类似于xargs，不过是用循环每次处理一个文件名变量</li>
-<li>mv $file `echo $file | sed ‘s&#x2F;stringA&#x2F;stringB&#x2F;g’&#96;实际是两个步骤：先用echo把当前处理的文件名传给sed, sed处理完的输出文件名，作为mv的目标文件名，覆盖了原文件</li>
-<li>注意，文件名xargs传给sed,处理的是文件内容，for-in-do一个个mv，才是处理文件名本身</li>
-</ul>
-<h1 id="相关文章"><a href="#相关文章" class="headerlink" title="相关文章"></a>相关文章</h1><p><a target="_blank" rel="noopener" href="https://linux.cn/article-11367-1.html">使用 sed 命令查找和替换文件中的字符串的 16 个示例</a><br><a target="_blank" rel="noopener" href="https://blog.csdn.net/weixin_40572607/article/details/90812959">sed引入变量的几种方法</a><br><a target="_blank" rel="noopener" href="https://blog.csdn.net/elong490/article/details/52587171">sed 批量替换文件内容</a></p>
-
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2020/08/12/Linux-Shell%E7%AC%94%E8%AE%B0%EF%BC%9A%E5%AE%9E%E7%8E%B0%E8%8A%AF%E7%89%87%E5%9B%BA%E4%BB%B6%E7%9A%84%E6%89%B9%E9%87%8F%E7%BC%96%E8%AF%91/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
       
     </div>
 
@@ -1114,40 +609,14 @@ disable-optimization:当不能执行指定的优化时.(需要太多时间或系
    -ftree-fre -ftree-sra -ftree-ter -funit-at-a-time
 </code></pre>
 <p>以下所有的优化选项需要在名字前加上-f,如果不需要此选项可以使用-fno-前缀</p>
-<pre><code>defer-pop:延迟到只在必要时从函数参数栈中pop参数;
-thread- jumps:使用跳转线程优化,避免跳转到另一个跳转;
-branch-probabilities:分支优化;
-cprop- registers:使用寄存器之间copy-propagation传值;
-guess-branch-probability:分支预测;
-omit- frame-pointer:可能的情况下不产生栈帧;
-</code></pre>
-<p>-O2:以下是-O2在-O1基础上增加的优化选项:</p>
-<pre><code>    -falign-functions  -falign-jumps -falign-loops  -falign-labels
-   -fcaller-saves -fcrossjumping -fcse-follow-jumps  -fcse-skip-blocks
-   -fdelete-null-pointer-checks -fexpensive-optimizations -fgcse
-   -fgcse-lm -foptimize-sibling-calls -fpeephole2 -fregmove
-   -freorder-blocks  -freorder-functions -frerun-cse-after-loop
-   -fsched-interblock  -fsched-spec -fschedule-insns
-   -fschedule-insns2 -fstrict-aliasing -fstrict-overflow -ftree-pre
-   -ftree-vrp
-</code></pre>
-<p>cpu架构的优化选项,通常是-mcpu(将被取消);-march,-mtune</p>
-<p>Debug选项:</p>
-<pre><code>在 gcc编译源代码时指定-g选项可以产生带有调试信息的目标代码,gcc可以为多个不同平台上帝不同调试器提供调试信息,默认gcc产生的调试信息是为 gdb使用的,可以使用-gformat 指定要生成的调试信息的格式以提供给其他平台的其他调试器使用.常用的格式有
--ggdb:生成gdb专用的调试信息,使用最适合的格式(DWARF 2,stabs等)会有一些gdb专用的扩展,可能造成其他调试器无法运行.
--gstabs:使用 stabs格式,不包含gdb扩展,stabs常用于BSD系统的DBX调试器.
--gcoff:产生COFF格式的调试信息,常用于System V下的SDB调试器;
--gxcoff:产生XCOFF格式的调试信息,用于IBM的RS/6000下的DBX调试器;
--gdwarf- 2:产生DWARF version2 的格式的调试信息,常用于IRIXX6上的DBX调试器.GCC会使用DWARF version3的一些特性.
-</code></pre>
-<p>可以指定调试信息的等级:在指定的调试格式后面加上等级:<br>如: -ggdb2 等,0代表不产生调试信息.在使用-gdwarf-2时因为最早的格式为-gdwarf2会造成混乱,所以要额外使用一个-glevel来指定调试信息的等级,其他格式选项也可以另外指定等级.<br>gcc可以使用-p选项指定生成信息以供porf使用.</p>
-<h1 id="gcc配置选项"><a href="#gcc配置选项" class="headerlink" title="gcc配置选项"></a>gcc配置选项</h1><p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081727329.png" alt="6"></p>
-<h1 id="gcc常用选项"><a href="#gcc常用选项" class="headerlink" title="gcc常用选项"></a>gcc常用选项</h1><p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081725642.png" alt="1"></p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081726685.png" alt="2"></p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081726022.png" alt="3"></p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081726272.png" alt="4"></p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081727091.png" alt="5"></p>
-
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2020/06/22/linux%E5%9F%BA%E7%A1%80%20--%20GCC%E4%BD%BF%E7%94%A8%E7%AC%94%E8%AE%B0/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
       
     </div>
 
@@ -1233,87 +702,14 @@ omit- frame-pointer:可能的情况下不产生栈帧;
 <p>3.替换引用<br>patsubst的示例等价于：</p>
 <pre><code>obj=$(dir:%.c=%.o)
 </code></pre>
-<p>引用替换：</p>
-<pre><code>$(var:a=b) 或 ${var:a=b}
-</code></pre>
-<p>含义是把变量var中的每一个值，用b替换掉a</p>
-<h1 id="PHONY"><a href="#PHONY" class="headerlink" title="PHONY"></a>PHONY</h1><p>Makefile执行的规则是A:B，表示A依赖于B</p>
-<ul>
-<li>有B才能执行A对应的编译操</li>
-<li>B有更新(检测文件时间)，则A会执行，若B没有更新，不执行A</li>
-</ul>
-<p>问题来了，clean: 不需要依赖任何对象，如何执行<br>PHONY定义伪目标,可以解决源文件不是最终目标直接依赖（即间接依赖）带来的不能自动检查更新规则, 示例如下</p>
-<pre><code>.PHONY: clean
-clean:
-    rm -f *.o
-</code></pre>
-<p>PHONY不仅用于clean，对于间接依赖也有用，例如A:B， B:C ，有时C为空，就需要把B定义为PHONY</p>
-<pre><code>OBJS = *.o
-program:  $(OBJS)
-        gcc *.o -o program
- 
-.PHONY : $(OBJS)
-$(OBJS):
-        make -C $(dir $@)
-</code></pre>
-<p>不过一般情况，obj依赖于%.c，总之，对于没有依赖项的对象，需要定义为PHONY</p>
-<h1 id="通配符"><a href="#通配符" class="headerlink" title="通配符"></a>通配符</h1><p>常见通配符</p>
-<pre><code>$@, $^, $&lt;, $?
-
-$@  表示目标文件
-$^  表示所有的依赖文件
-$&lt;  表示第一个依赖文件
-$?  表示比目标还要新的依赖文件列表
-</code></pre>
-<p>示例：<br>编译Test目录下的.cpp文件，输出test可执行程序<br>直接指定依赖文件名的makefile写法：</p>
-<pre><code>test: $(wildcard Test/*.cpp)
-	$(CXX) $(CFLAGS) -o test $(wildcard Test/*.cpp) 
-</code></pre>
-<p>虽然wildcard实现了所有依赖的.cpp的通配，编译语句再用wildcard写一次依赖文件不优雅，而且test在依赖中已经写了，编译语句又写一遍 -o test。<br>编译语句使用通配, 称为通用格式：</p>
-<pre><code>test: $(wildcard Test/*.cpp)
-	$(CXX) $(CFLAGS) -o $@ $^
-</code></pre>
-<h1 id="多个源文件分别编译"><a href="#多个源文件分别编译" class="headerlink" title="多个源文件分别编译"></a>多个源文件分别编译</h1><p>目录下有很多源文件，每个单独编译和执行的，将每一个文件编译成可执行文件，不用单独命名如：gcc -c xxx.c -o xxx<br>(1)Makefile实现</p>
-<pre><code>SRC=$(wildcard *.c)
-OBJ=$(SRC:%.c=%.o)
-BIN=$(OBJ:%.o=%)
- 
-CC=gcc
-CFLAGS=-Wall -g -c
- 
-all:$(BIN)
-
-$(BIN):%:%.o
-        $(CC) $^ -o $@
-$(OBJ):%.o:%.c
-        $(CC) $(CFLAGS) $^ -o $@
-
-.PHONY: clean
-clean:
-        rm -rf $(OBJ) $(BIN)
-</code></pre>
-<p>(2)Shell实现</p>
-<pre><code>#! /bin/bash
-for file in ./*.c
-do
-if [ -f $file ]
-then
-file=${file#./}
-target=${file%.c}
-gcc -o $target $file
-echo $target
-fi
-if [ -d $file ]
-then
-echo $file is mu lu
-fi
-done
-</code></pre>
-<p>(2)Makefile编译指定目录<br>Makefile可以输入参数，直接在make命令的后面加上参数，如:</p>
-<pre><code>make BUILD_DIR=./foldername/
-</code></pre>
-<p>传入的变量将会覆盖相应Makefile中的<code>BUILD_DIR</code></p>
-
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2020/06/10/linux%E5%9F%BA%E7%A1%80%20--%20Makefile%E4%BD%BF%E7%94%A8%E7%AC%94%E8%AE%B0/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
       
     </div>
 
@@ -1402,256 +798,14 @@ done
 <pre><code>cat /etc/passwd | grep root
 </code></pre>
 <p>上面的代码使用了管道命令<code>|</code>，管道命令的作用是将左侧命令<code>cat /etc/passwd</code>的标准输出转换为标准输入，提供给右侧命令<code>grep root</code>作为参数。<br>以上命令也可以写成命令行输入形式：</p>
-<pre><code>grep root /etc/passwd
-</code></pre>
-<p>不支持标准输入的示例：</p>
-<pre><code>echo &quot;hello world&quot; | echo
-</code></pre>
-<p>输出为空，管道右侧的echo不接受管道传来的标准输入作为参数。<br>xargs的作用：将标准输入转为命令行参数</p>
-<pre><code>echo &quot;hello world&quot; | xargs echo
-</code></pre>
-<p>输出“hello world”，xargs和管道配合使用，能使管道也支持非标准输入命令。<br>xargs支持一些选项做进一步细化处理，如-p(打印), -d(分割) 等。</p>
-<h1 id="sed命令"><a href="#sed命令" class="headerlink" title="sed命令"></a>sed命令</h1><h2 id="sed命令概述"><a href="#sed命令概述" class="headerlink" title="sed命令概述"></a>sed命令概述</h2><p>sed支持文本编辑，实现增、删、改的功能。<br>sed命令格式：</p>
-<pre><code>sed [options] &#39;command&#39; filename
-</code></pre>
-<p>sed的输入参数可以用命令行，管道和xargs传入：</p>
-<pre><code>//命令行传入文件名参数
-sed [options] &#39;command&#39; filename 
-//管道传入文件名参数
-cat filename | sed [options] &#39;command&#39;
-//xargs传入文件名参数
-cat filename | xargs sed [options] &#39;command&#39;
-</code></pre>
-<p>sed对文件的编辑在缓冲区，不直接修改文本。要直接修改文本有以下方法：</p>
-<ul>
-<li>重定向覆盖文本， <code>sed - x &#39;XXX&#39; file.txt &gt; file.txt</code></li>
-<li>特定的sed命令支持直接修改文本，如<code>sed -i &#39;XXX&#39; file.txt</code></li>
-</ul>
-<p>sed的常用选项：</p>
-<pre><code>-n ：关闭默认输出,只显示匹配的行
--i ：直接修改读取的文件内容，而不是输出到终端。
--e ：直接在命令列模式上进行sed的动作编辑；
--f ：直接将sed的动作写在一个文件内，-f filename 则可以运行filename内的sed动作；
--r ：启用扩展的正则表达式
-</code></pre>
-<p>sed的常用命令：</p>
-<pre><code>a ：新增行，在指定行的后面附加一行，[address]a\新文本内容
-i ：插入行，在指定行的前面插入一行，[address]i\新文本内容
-s ：替换特定模式匹配的字符串, [address]s/pattern/replacement/flags
-c ：将指定行中的所有内容，替换成该选项后面的字符串, [address]c\用于替换的新文本
-d ：删除行，[address]d
-p ：打印， 通常与参数 -n 一起用，[address]p
-w : 将文本中指定行的内容写入文件, [address]w filename
-</code></pre>
-<h2 id="sed命令详解"><a href="#sed命令详解" class="headerlink" title="sed命令详解"></a>sed命令详解</h2><p>本节从sed文本操作的“增删改查”举例说明其具体命令用法</p>
-<h3 id="新增和插入：a和i"><a href="#新增和插入：a和i" class="headerlink" title="新增和插入：a和i"></a>新增和插入：a和i</h3><p>sed的命令a和i都能实现新增行，其区别在于：</p>
-<ul>
-<li>a ：append, 指定行后面新增一行</li>
-<li>i : insert, 表示在指定行前面插入一行</li>
-</ul>
-<p>注意区分i命令和i选项<br>a和i命令的基本格式完全相同：</p>
-<pre><code>[address]a（或 i）\新文本内容
-</code></pre>
-<p>将一个新行插入到数据流第三行前：</p>
-<pre><code>sed &#39;3i\This is an inserted line.&#39; data6.txt
-
-This is line number 1.
-This is line number 2.
-This is an inserted line.
-This is line number 3.
-This is line number 4.
-</code></pre>
-<p>将一个新行附加到数据流中第三行后:</p>
-<pre><code>sed &#39;3a\This is an appended line.&#39; data6.txt
-
-This is line number 1.
-This is line number 2.
-This is line number 3.
-This is an appended line.
-This is line number 4.
-</code></pre>
-<p>将一个多行数据添加到数据流中，只需对要行末尾添加反斜线即可，类似C语言的代码换行</p>
-<pre><code>sed &#39;1i\
-This is one line of new text.\
-This is another line of new text.&#39; data6.txt
-
-This is one line of new text.
-This is another line of new text.
-This is line number 1.
-This is line number 2.
-This is line number 3.
-This is line number 4.
-</code></pre>
-<h3 id="删除：d"><a href="#删除：d" class="headerlink" title="删除：d"></a>删除：d</h3><ul>
-<li>d: delete, 删除行</li>
-</ul>
-<p>格式：</p>
-<pre><code>[address]d
-</code></pre>
-<p>删除第三行：</p>
-<pre><code>[root@localhost ~]# cat data6.txt
-This is line number 1.
-This is line number 2.
-This is line number 3.
-This is line number 4.
-[root@localhost ~]# sed &#39;3d&#39; data6.txt
-This is line number 1.
-This is line number 2.
-This is line number 4.
-</code></pre>
-<p>删除二、三行：</p>
-<pre><code>sed &#39;2,3d&#39; data6.txt
-This is line number 1.
-This is line number 4.
-</code></pre>
-<p>删除第三行开始的后续所有行：</p>
-<pre><code>[root@localhost ~]# sed &#39;3,$d&#39; data6.txt
-This is line number 1.
-This is line number 2.
-</code></pre>
-<p>注意：sed d 命令并不会修改原始文件，这里被删除的行只是从 sed 的缓冲区中消失了，原始文件没做任何改变，若要修改源文件，可重定向sed的输出到源文件，覆盖原内容使修改生效。</p>
-<h3 id="匹配定位：-pattern"><a href="#匹配定位：-pattern" class="headerlink" title="匹配定位：&#x2F;pattern&#x2F;"></a>匹配定位：&#x2F;pattern&#x2F;</h3><p>sed的增删操作，可以针对包含匹配字符串的行进行操作，其原理是活用[address], 支持匹配字符串的定位，以插入命令’i’为例，匹配格式如下：</p>
-<pre><code>sed [option] &#39;/匹配字符串/i \插入字符串&#39;
-[option] 通常为 -i, 修改直接在源文件生效
-</code></pre>
-<p>原文件：</p>
-<pre><code>cat testfile 
-hello
-</code></pre>
-<p>在包含”hello”的一行的上一行，插入”upline”:</p>
-<pre><code>sed -i &#39;/hello/i\upline&#39; testfile
-</code></pre>
-<p>“hello”下一行插入”upline”:</p>
-<pre><code>sed -i &#39;/hello/a\down&#39; testfile
-</code></pre>
-<p>修改后的文件：</p>
-<pre><code>cat testfile 
-up
-hello
-down
-</code></pre>
-<p>删除匹配到”hello”的行：</p>
-<pre><code>sed -i &#39;/hello/d&#39; testfile
-</code></pre>
-<p>如果匹配字符串有“&#x2F;”，为了和sed命令的分隔符“&#x2F;”，使用“\”转义。<br>例如删除匹配某个路径字符串的行：</p>
-<pre><code>匹配&quot;\etc\install.sh&quot;
-set -i &#39;/\/etc\/install.sh/d&#39; test.txt
-</code></pre>
-<p>sed 命令包含一些预定义特殊符号，代表行尾，行首等。<br>删除以A开头的行：</p>
-<pre><code>sed -i &#39;/^A.*/d&#39; test.txt
-^A表示开头是A, .*表示后跟任意字符串
-</code></pre>
-<p>在行尾追加一行内容:</p>
-<pre><code>sed -i &#39;$a\added-content&#39; test.txt
-$表示定位到行尾，a是追加命令，added-content是追加内容
-</code></pre>
-<h3 id="替换修改-s"><a href="#替换修改-s" class="headerlink" title="替换修改: s"></a>替换修改: s</h3><p>s替换命令内部格式为：</p>
-<pre><code>[address]s/pattern/replacement/flags
-</code></pre>
-<ul>
-<li>address 指定要操作的具体行</li>
-<li>pattern 指定需要替换的内容</li>
-<li>replacement 指定替换的新内容</li>
-<li>flags 指定特殊功能</li>
-</ul>
-<p>常用的flags:</p>
-<ul>
-<li>n	1~512 之间的数字，表示指定要替换的字符串出现第几次时才进行替换</li>
-<li>g	对数据中所有匹配到的内容进行替换，否则只会在第一次匹配成功时做替换操作</li>
-<li>p	会打印与替换命令中指定的模式匹配的行。此标记通常与 -n    选项一起使用</li>
-<li>\	转义（转义替换部分包含：&amp;、\ 等）。</li>
-</ul>
-<p>替换每行第二个匹配字符串：</p>
-<pre><code>sed &#39;s/test/trial/2&#39; data.txt
-原文本：
-This is first test of the test script
-This is second test of the test script
-输出：
-This is first test of the trial script
-This is second test of the trial script
-</code></pre>
-<p>只替换第二行的匹配字符串：</p>
-<pre><code>sed &#39;2s/test/trial/&#39; data.txt
-原文本：
-This is first test of the test script
-This is second test of the test script
-输出：
-This is first test of the test script
-This is second test of the trial script
-</code></pre>
-<p>全局替换所有匹配字符串：</p>
-<pre><code>sed &#39;s/test/trial/g&#39; data.txt
-原文本：
-This is first test of the test script
-This is second test of the test script
-输出：
-This is first trial of the trial script
-This is second trial of the trial script
-</code></pre>
-<h3 id="提取：p"><a href="#提取：p" class="headerlink" title="提取：p"></a>提取：p</h3><p>sed p命令配合字符串匹配，可以输出包含指定字符串的行内容。</p>
-<pre><code>sed -n &#39;/string/p&#39; filename
-提取filename文件中,所有包含string的行的内容，并打印到标准输出
--n是只打印匹配命中的内容
-</code></pre>
-<p>sed p和grep都能提取内容，其区别在于：</p>
-<ul>
-<li><code>sed &#39;/string/p&#39;</code>是提取指定文件的行内容，重点在内容提取</li>
-<li><code>grep &quot;string&quot; path</code>是输出包含指定内容的所有文件路径，重点在查找文件位置</li>
-</ul>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051452182.png" alt="image-20221205145238133"></p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051452191.png" alt="image-20221205145248149"></p>
-<h2 id="sed进阶与实战"><a href="#sed进阶与实战" class="headerlink" title="sed进阶与实战"></a>sed进阶与实战</h2><h3 id="多文件批量追加和删除"><a href="#多文件批量追加和删除" class="headerlink" title="多文件批量追加和删除"></a>多文件批量追加和删除</h3><p>背景介绍：<br>底层固件代码有一些功能由宏定义控制，不同功能需要不同的宏定义组合，因此有不同的宏定义文件，命名为.def后缀。批量编译不同版本，编译脚本依次提取def文件夹内的.def文件和源代码一起编译。单个def内容如下：</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051453765.png" alt="image-20221205145321718"></p>
-<p>每一个宏都有多个取值，因此组合起来，需要生成一堆.def文件，批量编译才能覆盖各自功能。<br>每新增一个宏，都要修改所有.def文件，如果这个宏有两个取值，.def文件数量将翻倍。</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051453942.png" alt="image-20221205145327892"></p>
-<p>人工修改过于低效，使用sed可解决此问题。</p>
-<p>查找指定文件，并批量追加一行内容：</p>
-<pre><code>find . -name &#39;*.def*&#39; | xargs sed -i &#39;$a\added-content&#39;
-</code></pre>
-<p>各命令含义：</p>
-<pre><code>find [path] -name &quot;*.def&quot;
-查找path路径下，以.def结尾的所有文件，结果存储在stdout
-|
-管道，将查找结果转存到标准输入stdin
-xargs
-查找结果有很多个，用xargs转成命令行输入，sed才能批量处理
-sed -i &#39;$a\added-content&#39;
-    -i 直接修改文件，&#39;$a\added-content&#39; 最后一行追加added-content
-</code></pre>
-<p>查找指定文件，并批量删除匹配某字符串的行：</p>
-<pre><code>find ./defs -name &#39;*.def&#39; | xargs sed -i &quot;/deleteString/d&quot;
-</code></pre>
-<p>查找指定文件，并批量替换匹配某字符串：</p>
-<pre><code>find ./defs -name &#39;*.def&#39; | xargs sed -i &quot;s/oldString/newString/&quot;
-</code></pre>
-<p>在实际shell脚本中，通常由用户输入变量，<code>$1, $2, $@</code> 解析变量。a、i、d和s能否在命令中使用双引号解析变量，实现动态编辑？<br>实验如下：</p>
-<pre><code>ARGS=&quot;AA BB&quot;
-find ./defs -name &#39;*.def&#39; | xargs sed -i &quot;$a\${ARGS}&quot;
-find ./defs -name &#39;*.def&#39; | xargs sed -i &quot;$i\${ARGS}&quot;
-find ./defs -name &#39;*.def&#39; | xargs sed -i &quot;/${ARGS}/d&quot;
-find ./defs -name &#39;*.def&#39; | xargs sed -i &quot;s/aabb/$ARGS/&quot;
-</code></pre>
-<ul>
-<li>i 和 a 命令不能解析变量，实际追加的就是是${ARGS}</li>
-<li>d命令可以解析变量，实际删除的是有”AA BB”的行</li>
-<li>s命令可以解析变量，实际替换后的结果是”AA BB”</li>
-</ul>
-<p>结论：将命令中的单引号改成双引号，理论上可以解析$包含的变量，实际上有的命令支持，有的命令不支持。</p>
-<h3 id="提取文件中的关键内容"><a href="#提取文件中的关键内容" class="headerlink" title="提取文件中的关键内容"></a>提取文件中的关键内容</h3><p>背景介绍：<br>底层固件需要将代码段、数据段等关键信息存储在固件头部，编译过程中用编译器的size命令可以获取这些信息，并存储到文本，但是固件头部需要按自己的格式存储起始地址和大小信息，因此需要用sed提取并编辑该文本。</p>
-<p>原文本：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051453983.png" alt="image-20221205145348933"></p>
-<p>提取后文本：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051453414.png"></p>
-<p>sed命令：</p>
-<pre><code>sed -n &#39;/string/p&#39; oldFile | awk &#39;{print $3}&#39; &gt;&gt; newFile
-提取oldFile内包含string的行，并用awk提取第三列，再写入newFile
-</code></pre>
-<p>该命令在Makefile实现，需要根据Makefile和shell特性做修改：</p>
-<ul>
-<li>@：编译过程隐藏命令输出，类似于后台执行</li>
-<li>$(shell xxxx): Makefile执行shell命令</li>
-<li>$$: Makefile不能直接用shell的“$”解析变量，用“$$”</li>
-</ul>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051454928.png" alt="image-20221205145409877"></p>
-
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2020/05/30/Linux-Shell%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%96%87%E6%9C%AC%E7%BC%96%E8%BE%91%E5%88%A9%E5%99%A8sed-awk-grep/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
       
     </div>
 
@@ -1746,12 +900,14 @@ pm2 delete 0           // 杀死指定的进程
 pm2 delete all         // 杀死全部进程
 </code></pre>
 <h1 id="使用示例"><a href="#使用示例" class="headerlink" title="使用示例"></a>使用示例</h1><p>部署Github项目NodeMail，每天给指定邮箱发邮件。</p>
-<p>后台启动main.js并监测状态：</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061427417.png" alt="image-20221206142729375"></p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061427110.png" alt="image-20221206142743066"></p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061427682.png" alt="image-20221206142752627"></p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061428280.png" alt="image-20221206142800236"></p>
-
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2020/05/20/%E5%BC%80%E6%BA%90%E5%AD%A6%E4%B9%A0%20--%20nodejs%E4%BD%BF%E7%94%A8pm2%E9%83%A8%E7%BD%B2%E9%A1%B9%E7%9B%AE/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
       
     </div>
 
@@ -1845,226 +1001,14 @@ fi
 <h1 id="不同类型的判断语句"><a href="#不同类型的判断语句" class="headerlink" title="不同类型的判断语句"></a>不同类型的判断语句</h1><h2 id="关系运算符判断"><a href="#关系运算符判断" class="headerlink" title="关系运算符判断"></a>关系运算符判断</h2><p>-eq	检测两个数是否相等，相等返回 true。	[ $a -eq $b ] 返回 false。</p>
 <p>-ne	检测两个数是否不相等，不相等返回 true。	[ $a -ne $b ] 返回 true。</p>
 <p>-gt	检测左边的数是否大于右边的，如果是，则返回 true。	[ $a -gt $b ] 返回 false。</p>
-<p>-lt	检测左边的数是否小于右边的，如果是，则返回 true。	[ $a -lt $b ] 返回 true。</p>
-<p>-ge	检测左边的数是否大于等于右边的，如果是，则返回 true。	[ $a -ge $b ] 返回 false。</p>
-<p>-le	检测左边的数是否小于等于右边的，如果是，则返回 true。	[ $a -le $b ] 返回 true。</p>
-<pre><code>#!/bin/bash
-
-a=10
-b=20
-
-if [ $a -eq $b ]
-then
-   echo &quot;$a -eq $b : a 等于 b&quot;
-else
-   echo &quot;$a -eq $b: a 不等于 b&quot;
-fi
-if [ $a -ne $b ]
-then
-   echo &quot;$a -ne $b: a 不等于 b&quot;
-else
-   echo &quot;$a -ne $b : a 等于 b&quot;
-fi
-if [ $a -gt $b ]
-then
-   echo &quot;$a -gt $b: a 大于 b&quot;
-else
-   echo &quot;$a -gt $b: a 不大于 b&quot;
-fi
-if [ $a -lt $b ]
-then
-   echo &quot;$a -lt $b: a 小于 b&quot;
-else
-   echo &quot;$a -lt $b: a 不小于 b&quot;
-fi
-if [ $a -ge $b ]
-then
-   echo &quot;$a -ge $b: a 大于或等于 b&quot;
-else
-   echo &quot;$a -ge $b: a 小于 b&quot;
-fi
-if [ $a -le $b ]
-then
-   echo &quot;$a -le $b: a 小于或等于 b&quot;
-else
-   echo &quot;$a -le $b: a 大于 b&quot;
-fi
-</code></pre>
-<h2 id="布尔和逻辑运算符判断"><a href="#布尔和逻辑运算符判断" class="headerlink" title="布尔和逻辑运算符判断"></a>布尔和逻辑运算符判断</h2><p>!	非运算，表达式为 true 则返回 false，否则返回 true。	[ ! false ] 返回 true。</p>
-<p>-o	或运算，有一个表达式为 true 则返回 true。	[ $a -lt 20 -o $b -gt 100 ] 返回 true。</p>
-<p>-a	与运算，两个表达式都为 true 才返回 true。	[ $a -lt 20 -a $b -gt 100 ] 返回 false。</p>
-<pre><code>#!/bin/bash
-
-a=10
-b=20
-
-if [ $a != $b ]
-then
-   echo &quot;$a != $b : a 不等于 b&quot;
-else
-   echo &quot;$a == $b: a 等于 b&quot;
-fi
-if [ $a -lt 100 -a $b -gt 15 ]
-then
-   echo &quot;$a 小于 100 且 $b 大于 15 : 返回 true&quot;
-else
-   echo &quot;$a 小于 100 且 $b 大于 15 : 返回 false&quot;
-fi
-if [ $a -lt 100 -o $b -gt 100 ]
-then
-   echo &quot;$a 小于 100 或 $b 大于 100 : 返回 true&quot;
-else
-   echo &quot;$a 小于 100 或 $b 大于 100 : 返回 false&quot;
-fi
-if [ $a -lt 5 -o $b -gt 100 ]
-then
-   echo &quot;$a 小于 5 或 $b 大于 100 : 返回 true&quot;
-else
-   echo &quot;$a 小于 5 或 $b 大于 100 : 返回 false&quot;
-fi
-</code></pre>
-<p>&amp;&amp;	逻辑的 AND	[[ $a -lt 100 &amp;&amp; $b -gt 100 ]] 返回 false</p>
-<p>||	逻辑的 OR	[[ $a -lt 100 || $b -gt 100 ]] 返回 true</p>
-<pre><code>#!/bin/bash
-
-a=10
-b=20
-
-if [[ $a -lt 100 &amp;&amp; $b -gt 100 ]]
-then
-   echo &quot;返回 true&quot;
-else
-   echo &quot;返回 false&quot;
-fi
-
-if [[ $a -lt 100 || $b -gt 100 ]]
-then
-   echo &quot;返回 true&quot;
-else
-   echo &quot;返回 false&quot;
-fi
-</code></pre>
-<h2 id="字符串运算符判断"><a href="#字符串运算符判断" class="headerlink" title="字符串运算符判断"></a>字符串运算符判断</h2><p>&#x3D;	检测两个字符串是否相等，相等返回 true。	[ $a &#x3D; $b ] 返回 false。</p>
-<p>!&#x3D;	检测两个字符串是否相等，不相等返回 true。	[ $a !&#x3D; $b ] 返回 true。</p>
-<p>-z	检测字符串长度是否为0，为0返回 true。	[ -z $a ] 返回 false。  </p>
-<p>-n	检测字符串长度是否不为 0，不为 0 返回 true。	[ -n “$a” ] 返回 true。</p>
-<p><code>$</code> 检测字符串是否为空，不为空返回 true。	[ $a ] 返回 true。</p>
-<pre><code>#!/bin/bash
-
-a=&quot;abc&quot;
-b=&quot;efg&quot;
-
-if [ $a = $b ]
-then
-   echo &quot;$a = $b : a 等于 b&quot;
-else
-   echo &quot;$a != $b: a 不等于 b&quot;
-fi
-if [ $a != $b ]
-then
-   echo &quot;$a != $b : a 不等于 b&quot;
-else
-   echo &quot;$a = $b: a 等于 b&quot;
-fi
-if [ -z $a ]
-then
-   echo &quot;-z $a : 字符串长度为 0&quot;
-else
-   echo &quot;-z $a : 字符串长度不为 0&quot;
-fi
-if [ -n &quot;$a&quot; ]
-then
-   echo &quot;-n $a : 字符串长度不为 0&quot;
-else
-   echo &quot;-n $a : 字符串长度为 0&quot;
-fi
-if [ $a ]
-then
-   echo &quot;$a : 字符串不为空&quot;
-else
-   echo &quot;$a : 字符串为空&quot;
-fi
-</code></pre>
-<h2 id="文件检查运算符判断"><a href="#文件检查运算符判断" class="headerlink" title="文件检查运算符判断"></a>文件检查运算符判断</h2><p>b file	检测文件是否是块设备文件，如果是，则返回 true。	[ -b $file ] 返回 false。</p>
-<p>-c file	检测文件是否是字符设备文件，如果是，则返回 true。	[ -c $file ] 返回 false。</p>
-<p>-d file	检测文件是否是目录，如果是，则返回 true。	[ -d $file ] 返回 false。</p>
-<p>-f file	检测文件是否是普通文件（既不是目录，也不是设备文件），如果是，则返回 true。	[ -f $file ] 返回 true。</p>
-<p>-g file	检测文件是否设置了 SGID 位，如果是，则返回 true。	[ -g $file ] 返回 false。</p>
-<p>-k file	检测文件是否设置了粘着位(Sticky Bit)，如果是，则返回 true。	[ -k $file ] 返回 false。</p>
-<p>-p file	检测文件是否是有名管道，如果是，则返回 true。	[ -p $file ] 返回 false。</p>
-<p>-u file	检测文件是否设置了 SUID 位，如果是，则返回 true。	[ -u $file ] 返回 false。</p>
-<p>-r file	检测文件是否可读，如果是，则返回 true。	[ -r $file ] 返回 true。</p>
-<p>-w file	检测文件是否可写，如果是，则返回 true。	[ -w $file ] 返回 true。</p>
-<p>-x file	检测文件是否可执行，如果是，则返回 true。	[ -x $file ] 返回 true。</p>
-<p>-s file	检测文件是否为空（文件大小是否大于0），不为空返回 true。	[ -s $file ] 返回 true。</p>
-<p>-e file	检测文件（包括目录）是否存在，如果是，则返回 true。	[ -e $file ] 返回 true。</p>
-<p>-S: 判断某文件是否 socket。<br>-L: 检测文件是否存在并且是一个符号链接。</p>
-<pre><code>#!/bin/bash
-
-file=&quot;/root/test.sh&quot;
-
-if [ -r $file ]
-then
-   echo &quot;文件可读&quot;
-else
-   echo &quot;文件不可读&quot;
-fi
-if [ -w $file ]
-then
-   echo &quot;文件可写&quot;
-else
-   echo &quot;文件不可写&quot;
-fi
-if [ -x $file ]
-then
-   echo &quot;文件可执行&quot;
-else
-   echo &quot;文件不可执行&quot;
-fi
-if [ -f $file ]
-then
-   echo &quot;文件为普通文件&quot;
-else
-   echo &quot;文件为特殊文件&quot;
-fi
-if [ -d $file ]
-then
-   echo &quot;文件是个目录&quot;
-else
-   echo &quot;文件不是个目录&quot;
-fi
-if [ -s $file ]
-then
-   echo &quot;文件不为空&quot;
-else
-   echo &quot;文件为空&quot;
-fi
-if [ -e $file ]
-then
-   echo &quot;文件存在&quot;
-else
-   echo &quot;文件不存在&quot;
-fi
-</code></pre>
-<h1 id="判断语句报错：”unary-operator-expected”"><a href="#判断语句报错：”unary-operator-expected”" class="headerlink" title="判断语句报错：”unary operator expected”"></a>判断语句报错：”unary operator expected”</h1><p>在匹配字符串相等时，用了类似这样的语句：</p>
-<pre><code>if [ $STATUS == &quot;OK&quot; ]; then     
-echo &quot;OK&quot;
-fi
-</code></pre>
-<p>在运行时出现了 <code>[: =: unary operator expected</code> 的错误</p>
-<pre><code>if [[ $STATUS == &quot;OK&quot; ]]; 
-then     
-echo &quot;OK&quot;
-fi
-</code></pre>
-<p>究其原因，是因为如果变量STATUS值为空，那么就成了 [ &#x3D; “OK”] ，显然 [ 和 “OK” 不相等并且缺少了 [ 符号，所以报了这样的错误。当然不总是出错，如果变量STATUS值不为空，程序就正常了，所以这样的错误还是很隐蔽的。<br>或者用下面的方法也能避免这种错误：</p>
-<pre><code>if [ &quot;$STATUS&quot;x == &quot;OK&quot;x ]; 
-then     
-echo &quot;OK&quot;
-fi
-</code></pre>
-<p>当然，x也可以是其他字符。shell中有没有双引号在很多情况下是一致的,因此x可以不加引号。</p>
-
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2020/05/05/Linux-Shell%E7%AC%94%E8%AE%B0%EF%BC%9A%E5%88%A4%E6%96%AD%E8%AF%AD%E5%8F%A5if-then-else-fi/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
       
     </div>
 
@@ -2161,100 +1105,14 @@ curl https://packages.gitlab.com/install/repositories/gitlab/gitlab-ee/script.rp
 yum install -y gitlab-ee
 </code></pre>
 <p>4.配置gitlab</p>
-<pre><code>#gitlab配置文件
-vim /etc/gitlab/gitlab.rb
-#修改以下内容为主机ip和未使用的端口，否则使用默认端口8080
-external_url &#39;http://47.100.221.149:9030&#39;
-</code></pre>
-<p>5.配置生效并重启gitlab</p>
-<pre><code>#配置生效，改了配置需要运行
-gitlab-ctl reconfigure
-#重启服务，没改配置直接重启
-gitlab-ctl restart
-</code></pre>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061444445.png" alt="image-20221206144455394"><br>似乎服务都正常启动了，实际上可能有各种问题，参考问题记录</p>
-<h1 id="问题Debug记录"><a href="#问题Debug记录" class="headerlink" title="问题Debug记录"></a>问题Debug记录</h1><p>按以上步骤配置好后，访问主机ip:端口，直接弹出502服务端错误<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061445877.png" alt="image-20221206144542817"></p>
-<h2 id="配置文件权限问题"><a href="#配置文件权限问题" class="headerlink" title="配置文件权限问题?"></a>配置文件权限问题?</h2><p>配置文件生效命令<code>gitlab-ctl reconfigure</code>做了以下事情：</p>
-<ul>
-<li>配置设置写到gitlab服务直接调用的文件</li>
-</ul>
-<p>实际生效的配置文件：</p>
-<pre><code>vim /var/opt/gitlab/gitlab-rails/etc/gitlab.yml
-vim /opt/gitlab/embedded/service/gitlab-rails/config/gitlab.yml
-</code></pre>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061446719.png" alt="image-20221206144606669"><br>可见配置被自动拷贝到此处，gitlab相关服务读取的是这里的配置项</p>
-<ul>
-<li>生成服务相关临时文件</li>
-</ul>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061446110.png" alt="image-20221206144619066"></p>
-<p>原因：gitlab服务的配置文件在reconfigure时生成于&#x2F;var&#x2F;log&#x2F;gitlab，这个文件目录默认权限不够，有些子服务不能正常运行。</p>
-<p>解决方法：</p>
-<pre><code>chmod -R 777 /var/log/gitlab
-</code></pre>
-<p>restart服务，网页即可正常访问gitlab，如果恢复该目录755权限，重启服务会502</p>
-<p>每次重新配置，<code>gitlab-ctl reconfigure</code>似乎会删除该目录再重新写入<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061446151.png" alt="image-20221206144636079"></p>
-<p>因此每次gitlab-ctl reconfigure之后都要<code>chmod 777</code>改此目录权限</p>
-<h2 id="还有502问题"><a href="#还有502问题" class="headerlink" title="还有502问题?"></a>还有502问题?</h2><h3 id="检查阿里云端口"><a href="#检查阿里云端口" class="headerlink" title="检查阿里云端口"></a>检查阿里云端口</h3><p>首先确保主机ip是公网能访问的，不是内网ip<br>其次看端口是否禁用。在阿里云ECS的安全组策略中查看端口是否允许TCP输入输出<br>我把所有端口（1~65535）全部打开了<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061446454.png" alt="image-20221206144656411"></p>
-<h3 id="检查前向端口冲突"><a href="#检查前向端口冲突" class="headerlink" title="检查前向端口冲突"></a>检查前向端口冲突</h3><p>gitlab配置文件的external_url就包含前向端口</p>
-<pre><code>netstat -nlp | grep 9030 (我的gitlab前向端口)
-</code></pre>
-<p>显示的是nginx服务端口，因为gitlab默认被nginx反向代理了，说明gitlab的代理服务确实占用9030。</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061449545.png" alt="image-20221206144927508"></p>
-<h3 id="检查子服务的端口"><a href="#检查子服务的端口" class="headerlink" title="检查子服务的端口"></a>检查子服务的端口</h3><p>注意gitlab不只有一个服务，默认配置只设置了前向端口（nginx代理端口），而子服务都没配置端口，默认用了8080，如果有其他服务已经占用8080，可能子服务起不来<br>例如unicorn子服务：</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061449220.png" alt="image-20221206144946178"></p>
-<p>查看子服务状态</p>
-<pre><code>gitlab-ctl status
-</code></pre>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061449573.png" alt="image-20221206144958510"></p>
-<p>如果本地已有8080的服务，最好杀掉或换其他端口，否则要手动配置gitlab子服务端口</p>
-<pre><code>unicorn[&#39;port&#39;] = 9032 （随便一个未使用端口）
-gitlab_workhorse[&#39;auth_backend&#39;] = &quot;http://localhost:9032&quot;
-</code></pre>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061450285.png" alt="image-20221206145014236"></p>
-<h3 id="检查内存资源不足"><a href="#检查内存资源不足" class="headerlink" title="检查内存资源不足"></a>检查内存资源不足</h3><p>阿里云2G以下RAM可能会有因内存不足，导致服务不能正常启动。<br>使用swap交换分区，避免内存不足的可能性。swap分区可以把部分内存分页存储到磁盘，变相“扩大”内存</p>
-<pre><code>#查看现有swap分区，若未分配大小为0
-cat /proc/swaps
-#创建swap文件，大小4G，挂载到/mnt。交换分区可以使用真正的分区，或者以文件形式的分区
-dd if=/dev/zero of=/mnt/swap bs=512 count=8388616
-#使之成为swap分区
-mkswap /mnt/swap
-#修改swap分区配置
-cat /proc/sys/vm/swappiness
-sysctl -w vm.swappiness=60
-#swap分区配置永久生效
-vim /etc/sysctl.conf
-修改vm.swappiness=60
-#启动分区
-swapon /mnt/swap
-echo “/mnt/swap swap swap defaults 0 0” &gt;&gt; /etc/fstab
-#停用分区
-swapoff /mnt/swap
-swapoff -a &gt; /dev/null
-</code></pre>
-<p>启用分区后运行gitlab，发现已经有一部分数据转移到了swap文件<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061450437.png" alt="image-20221206145023389"></p>
-<h1 id="ssh访问配置"><a href="#ssh访问配置" class="headerlink" title="ssh访问配置"></a>ssh访问配置</h1><p>通过ssh上传下载，需要建立ssh key</p>
-<pre><code>ssh-keygen   #一路回车
-</code></pre>
-<p>若创建成功，查看生成的公钥：</p>
-<pre><code>cat ~/.ssh/id_rsa.pub
-ssh-rsa AAAAB3NzaC1yXXXXXXXX
-</code></pre>
-<p>添加公钥至gitlab</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061450049.png" alt="image-20221206145031977"></p>
-<h1 id="初始化git项目"><a href="#初始化git项目" class="headerlink" title="初始化git项目"></a>初始化git项目</h1><p>配置git全局用户名，邮箱</p>
-<pre><code>git config --global user.name &quot;YOUR NAME&quot;
-git config --global user.email &quot;YOUR EMAIL@xxx.com&quot;
-</code></pre>
-<p>初始化git仓库<br>可以通过xftp上传项目文件夹到gitlab服务器，再到目录内初始化.git仓库。</p>
-<pre><code>cd project_folder (项目文件夹)
-git init
-git remote add origin git@YOUR_IP:YOUR_NAME/project_folder.git
-git add .
-git commit -m &quot;Initial commit&quot;
-git push -u origin master
-</code></pre>
-<p>这样在网页上可看到gitlab有首次commit的文件，后续也可以顺利提交和下载。</p>
-
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2020/04/30/Gitlab%E7%AC%94%E8%AE%B0%EF%BC%9ACentOS7%E9%83%A8%E7%BD%B2Gitlab%E6%9C%8D%E5%8A%A1/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
       
     </div>
 
@@ -2341,54 +1199,14 @@ char* str = Conn(&quot;asdf&quot;, &quot;adf&quot;);
 <pre><code>#define ToString(x) #x
 </code></pre>
 <p>符号 # 表示字符串化操作符（stringification）。<br>其作用是：将宏定义中的传入参数名转换成用一对双引号括起来参数名字符串。<br>其只能用于有传入参数的宏定义中，且必须置于宏定义体中的参数名前。</p>
-<p>示例：</p>
-<pre><code> char* str = ToString(123132);
- ==&gt; char* str=&quot;123132&quot;;
-</code></pre>
-<p>如果要对展开后的宏参数进行字符串化，则需要使用两层宏。</p>
-<pre><code>#define xstr(s) str(s)
-#define str(s) #s
-#define foo 4
-
-str (foo)
-     ==&gt; &quot;foo&quot;
-xstr (foo)
-     ==&gt; xstr (4)
-     ==&gt; str (4)
-     ==&gt; &quot;4&quot;
-</code></pre>
-<p>(2) #@ 把任意类型的宏入参转化成单字符：</p>
-<pre><code>#define ToChar(x) #@x
-</code></pre>
-<p>示例：</p>
-<pre><code>char a = ToChar(1);
-     ==&gt; char a=&#39;1&#39;
-</code></pre>
-<h1 id="3-不定参数宏-VA-ARGS"><a href="#3-不定参数宏-VA-ARGS" class="headerlink" title="3. 不定参数宏: __VA_ARGS__"></a>3. 不定参数宏: <code>__VA_ARGS__</code></h1><p><code>__VA_ARGS__</code>宏用来接受不定数量的参数。例如：</p>
-<pre><code>#define eprintf(...) fprintf (stderr, __VA_ARGS__)
-
-eprintf (&quot;%s:%d: &quot;, input_file, lineno)
-==&gt;  fprintf (stderr, &quot;%s:%d: &quot;, input_file, lineno)
-</code></pre>
-<p>当<code>__VA_ARGS__</code>宏前面加 <code>##</code> 时，可以省略参数输入。<br>例如：</p>
-<pre><code>#define eprintf(format, ...) fprintf (stderr, format, ##__VA_ARGS__)
-
-eprintf (&quot;success!\n&quot;)
-==&gt; fprintf(stderr, &quot;success!\n&quot;);
-</code></pre>
-<h1 id="4-宏函数定义-do-while-0-与换行"><a href="#4-宏函数定义-do-while-0-与换行" class="headerlink" title="4. 宏函数定义: do-while(0)与换行"></a>4. 宏函数定义: do-while(0)与换行</h1><p>(1) 用 do{}while(0) 定义宏函数</p>
-<pre><code>#define foo() do{...}while(0)
-</code></pre>
-<p>宏函数可能在任意地方被调用，如果在if-else语句中，为了确保宏函数作为整体单元被编译器替换后不产生歧义，一般用do-while(0)包起来定义<br>这种定义有点像其他语言的“闭包函数”，纯粹是C语言中为了避免语法歧义的可靠性定义。</p>
-<p>(2) 用显式换行符</p>
-<p>宏函数定义不能直接回车换行，需要在回车换行前，用\（反斜线）表示下一行继续此宏的定义<br>预处理器在编译之前会自动将\与换行回车去掉。</p>
-<p>例如：</p>
-<pre><code>#define PRINT_INT(a)    \
-do{                     \
-    printf(&quot;%d \n&quot;, a); \
-}while(0)
-</code></pre>
-
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2020/04/16/%E6%B5%85%E8%B0%88C%E7%9A%84%E5%AE%8F%E5%87%BD%E6%95%B0/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
       
     </div>
 
@@ -2481,13 +1299,13 @@ do{                     \
       <div class="site-state-item site-state-categories">
             <a href="/categories/">
           
-        <span class="site-state-item-count">33</span>
+        <span class="site-state-item-count">32</span>
         <span class="site-state-item-name">分类</span></a>
       </div>
       <div class="site-state-item site-state-tags">
             <a href="/tags/">
           
-        <span class="site-state-item-count">53</span>
+        <span class="site-state-item-count">52</span>
         <span class="site-state-item-name">标签</span></a>
       </div>
   </nav>
@@ -2606,5 +1424,6 @@ do{                     \
 
   
 
+  
 </body>
 </html>

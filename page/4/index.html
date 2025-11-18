@@ -264,595 +264,14 @@
 <li>The general piece, called the Framework, is written by Microsoft.</li>
 <li>The specific piece, called the KMDF driver, may be written by Microsoft or an independent hardware vendor.</li>
 </ul>
-<p> KMDF as a generic driver pair model: <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/gettingstarted/kmdf-as-a-generic-pair-model">https://learn.microsoft.com/en-us/windows-hardware/drivers/gettingstarted/kmdf-as-a-generic-pair-model</a></p>
-<h3 id="Device-Driver-Interface-DDI"><a href="#Device-Driver-Interface-DDI" class="headerlink" title="Device Driver Interface(DDI)"></a>Device Driver Interface(DDI)</h3><p>The DDI Compliance rules define requirements for the proper interaction between a driver and the kernel interface of the operating system</p>
-<p><a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/devtest/static-driver-verifier-rules">https://learn.microsoft.com/en-us/windows-hardware/drivers/devtest/static-driver-verifier-rules</a></p>
-<p>DDI相当于应用层的API规范，对于每种类型的Driver Pair Mode，都有对应的DDI要求：</p>
-<p><a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/devtest/rules-for-audio-drivers">Rules for Audio Drivers</a><br><a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/devtest/rules-for-avstream-drivers">Rules for AVStream Drivers</a><br><a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/devtest/sdv-rules-for-wdm-drivers">Rules for WDM Drivers</a><br><a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/devtest/sdv-rules-for-kmdf-drivers">Rules for KMDF Drivers</a><br><a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/devtest/sdv-rules-for-ndis-drivers">Rules for NDIS Drivers</a><br><a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/devtest/sdv-rules-for-storport-drivers">Rules for Storport Drivers</a></p>
-<p>重点对比以下KMDF（Kernel Mode WDF）的DDI和Storport的DDI：</p>
-<p>KMDF DDI rules：只说明了一些WDF函数接口的调用条件和先后顺序要求，没有禁用任何WDF函数接口。</p>
-<p>Storport DDI rules: 专门定义了禁用的WDM函数列表HwStorPortProhibitedDDIs: a list of WDM DDIs that should not be called in physical StorPort miniport drivers</p>
-<p><a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/devtest/ddi-usage-rule-set--storport-">https://learn.microsoft.com/en-us/windows-hardware/drivers/devtest/ddi-usage-rule-set--storport-</a></p>
-<h3 id="几个关键问题"><a href="#几个关键问题" class="headerlink" title="几个关键问题"></a>几个关键问题</h3><p>（1）Driver Pair Model和Dirver接口函数DDI是什么关系？</p>
-<p>Driver Pair Model是Diver接口函数DDI的集合，独立的功能例如创建设备，处理中断，处理IO请求，这些都是Diver接口函数去实现；这些Diver接口函数的集合使用分层设计（部分是Microsoft实现，部分是设备厂商实现）就是Driver Pair Model。</p>
-<p>举个例子：Storport-miniport的Driver Pair Model中，默认使用WDM DDI去实现port driver部分和miniport driver部分。</p>
-<p>（2）为什么Storport Driver Pair Model会禁用很多WDM接口函数(WDM DDI)，尤其是从Win11开始？</p>
-<p>原因：微软定义的Storport driver pair model本身也是基于WDM和WDF函数(DDI)上实现，即用WDM或者WDF Model去实现Storage设备（例如SCSI, NVMe）的数据结构和特殊流程函数，封装成Storport的DDI。而微软的Driver开发趋势是弃用WDM逐步过渡到WDF，因此Storport为了适配Win11系统，可能有很多Storport DDI用WDF DDI重写了，因此Storport禁用了设备厂商去直接调用很多WDM DDI，避免造成同一个功能用WDM和WDF都去实现了而产生冲突。</p>
-<h2 id="SD-host的Driver-Model选型"><a href="#SD-host的Driver-Model选型" class="headerlink" title="SD host的Driver Model选型"></a>SD host的Driver Model选型</h2><h3 id="支持SD-host驱动开发的Driver-Model"><a href="#支持SD-host驱动开发的Driver-Model" class="headerlink" title="支持SD host驱动开发的Driver Model"></a>支持SD host驱动开发的Driver Model</h3><p>对于SD设备生态可用的Driver Pair Model有：</p>
-<ul>
-<li><p>KMDF Framework + KMDF driver：通用框架，任意厂商可用KMDF去实现任意类型设备的host&#x2F;slave驱动；微软也在KMDF去升级已有的特定设备框架，例如微软定义的usbport驱动框架：USB 1.0&#x2F;2.0使用WDM（usbport.sys），USB 3.0使用WDF（Wdf01000.sys）</p>
-</li>
-<li><p>Storport + storage miniport：<a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/storage/storport-miniport-drivers">https://learn.microsoft.com/en-us/windows-hardware/drivers/storage/storport-miniport-drivers</a></p>
-<p>这个Driver Model支持厂商实现SD host驱动，但其数据和流程定义很多是针对SCSI&#x2F;NVMe等大容量Disk设备，对于SD host&#x2F;device没有专门的定义；此外Storport从Win11开始禁用了很多WDM DDI，代码开发限制多。</p>
-</li>
-<li><p>sdport + sdhci-miniport：<a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/samples/microsoft/windows-driver-samples/standard-sd-host-controller-miniport/">https://learn.microsoft.com/en-us/samples/microsoft/windows-driver-samples/standard-sd-host-controller-miniport/</a></p>
-<p>实现SD protocol的port driver框架，支持厂商实现vendor SD host驱动，但API文档已停止维护, sample code有维护（win11）。</p>
-</li>
-<li><p>sdbus + sddisk: <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/sd/sd-card-driver-stack">https://learn.microsoft.com/en-us/windows-hardware/drivers/sd/sd-card-driver-stack</a></p>
-<p>微软的Inbox SD驱动使用此框架；只支持SD&#x2F;SDIO device厂商去写device driver，不支持厂商实现SD host驱动。</p>
-</li>
-</ul>
-<h3 id="微软的Driver-Model选型的参考文档"><a href="#微软的Driver-Model选型的参考文档" class="headerlink" title="微软的Driver Model选型的参考文档"></a>微软的Driver Model选型的参考文档</h3><p><a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/develop/creating-a-new-driver">https://learn.microsoft.com/en-us/windows-hardware/drivers/develop/creating-a-new-driver</a></p>
-<p>其中分为两种选项：</p>
-<p>（1）KMDF框架</p>
-<p>（2）miniport框架</p>
-<p>微软推荐miniport框架都用WDM DDI开发；不推荐miniport + WDF DDI的混合开发方式（尽管可行），参考：</p>
-<p>If your device technology has a minidriver model, and you aren’t able to find a specific template for your type of minidriver, the Windows Driver Model (WDM) template is most likely going to be your starting point. Refer to your technology-specific documentation for guidance. In rare cases, you can use KMDF to write a minidriver, but usually the starting point is WDM.</p>
-<p>微软开发论坛（OSR）也提出过storport的WDM不够灵活，又不能兼容WDF DDI的问题：</p>
-<p><a target="_blank" rel="noopener" href="https://www.osr.com/nt-insider/2014-issue4/win7-vs-win8-storport-miniports/">https://www.osr.com/nt-insider/2014-issue4/win7-vs-win8-storport-miniports/</a></p>
-<p><a target="_blank" rel="noopener" href="https://community.osr.com/t/wdfdeviceminiportcreate-and-virtual-storport/46617/8">https://community.osr.com/t/wdfdeviceminiportcreate-and-virtual-storport/46617/8</a></p>
-<p>结论：KMDF框架是万能方案</p>
-<h2 id="从Storport-miniport框架过渡到KMDF框架"><a href="#从Storport-miniport框架过渡到KMDF框架" class="headerlink" title="从Storport-miniport框架过渡到KMDF框架"></a>从Storport-miniport框架过渡到KMDF框架</h2><p>（1）问题：Storport-miniport框架一定能porting到KMDF框架吗？</p>
-<p>参考：<a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/wdf/which-drivers-can-be-ported">https://learn.microsoft.com/en-us/windows-hardware/drivers/wdf/which-drivers-can-be-ported</a></p>
-<p>Which WDM drivers can I port to WDF?</p>
-<p>For some device types, system-supplied device class and port drivers provide driver dispatch functions and call a vendor-supplied miniport driver to handle specific I&#x2F;O details. These miniport drivers are essentially callback libraries and are not supported by WDF.</p>
-<p>结论1：如果该Storage设备驱动依赖于Storport框架定义的流程，例如SCSI， NVMe设备依赖于Storport定义的SCSI和NVMe初始化和I&#x2F;O流程。那么就不能直接porting到WDF，因为WDF没有定义特定设备的请求流程。</p>
-<p>结论2：对于SD设备，Storport框架本身就没有实现SD协议的初始化和I&#x2F;O流程。SD host设备的Storport-miniport驱动完全可以porting到WDF框架，<strong>唯一可能有问题的是SD disk相关的Storport请求对应WDF的哪些请求？移植到WDF必须要求SD host和Disk整个生态都能顺利过渡</strong>。</p>
-<p>（2）问题：Storport代码如何porting到KMDF</p>
-<p>主要工作是将Storport-miniport中的DDI函数，映射到KMDF的DDI函数。</p>
-<p>Storport-miniport的DDI列表：<a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/storage/storport-driver-support-routines">https://learn.microsoft.com/en-us/windows-hardware/drivers/storage/storport-driver-support-routines</a></p>
-<p>KMDF的DDI列表：<a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/_wdf/">https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/_wdf/</a></p>
-<p>基于此方法，后面两章分为两部分：</p>
-<ul>
-<li><p>Storport DDI在SD host miniport driver中的使用（第4章）：SD host miniport driver用到了哪些DDI，实现什么功能。</p>
-</li>
-<li><p>从Storport DDI到KMDF DDI（第5章）：SD host miniport driver用到的Storport DDI应该用哪些KMDF DDI去重写功能。</p>
-</li>
-</ul>
-<h2 id="Storport-DDI在SD-host-miniport-driver中的使用"><a href="#Storport-DDI在SD-host-miniport-driver中的使用" class="headerlink" title="Storport DDI在SD host miniport driver中的使用"></a>Storport DDI在SD host miniport driver中的使用</h2><p>Storport DDI routine分为两大类：</p>
-<p>（1）callback routine：是Storport定义函数形式，miniport实现函数内容</p>
-<p>（2）normal routine：是Storport定义函数形式和内容，miniport只调用</p>
-<table>
-<thead>
-<tr>
-<th>Storport Callback Routine</th>
-<th>sub-function parameter</th>
-<th>Function Description</th>
-<th>SD miniport driver’s implementation for this callback</th>
-</tr>
-</thead>
-<tbody><tr>
-<td><strong>HwStorInitialize</strong></td>
-<td><strong>HwStorPassiveInitializeRoutine</strong></td>
-<td>The <strong>HwStorInitialize</strong> routine initializes the miniport driver after a system reboot or power failure occurs. It is called by StorPort after <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nc-storport-hw_find_adapter"><strong>HwStorFindAdapter</strong></a> successfully returns. <strong>HwStorInitialize</strong> initializes the HBA and finds all devices that are of interest to the miniport driver.<br/>The following responsibilities are shared between HwStorInitialize and HwStorPassiveInitializeRoutine:<br/>Initialize hardware for the HBA registers and buffers.<br/>Initialize and allocate all DeviceExtension fields.<br/>Set up and initialize all events and DPCs that are used by the miniport driver.<br/><a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nc-storport-hw_initialize">https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nc-storport-hw_initialize</a>  <br/> <br/><a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nc-storport-hw_passive_initialize_routine">https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nc-storport-hw_passive_initialize_routine</a></td>
-<td>Support. <br/>HwStorPassiveInitializeRoutine中注册了Adapter的POFX数据（StorPortInitializePoFxPower）</td>
-</tr>
-<tr>
-<td><strong>HwStorInterrupt</strong></td>
-<td>N&#x2F;A</td>
-<td>The Storport driver calls the <strong>HwStorInterrupt</strong> routine after the HBA generates an interrupt request. The <strong>HwStorInterrupt</strong> routine should return within 50 microseconds, ideally as short a time as possible. Therefore, all activity does not have to occur at high IRQL should be deferred to the [<strong>HwStorDpcRoutine</strong>]</td>
-<td>Support. <br/>用于SD card的插拔卡中断和数据传输完成或错误中断的处理入口</td>
-</tr>
-<tr>
-<td><strong>HwStorFindAdapter</strong></td>
-<td><strong>PORT_CONFIGURATION_INFORMATION</strong> contains configuration information for a host bus adapter (HBA). <br/><a target="_blank" rel="noopener" href="https://learn.microsoft.com/zh-cn/windows-hardware/drivers/ddi/storport/ns-storport-_port_configuration_information">https://learn.microsoft.com/zh-cn/windows-hardware/drivers/ddi/storport/ns-storport-_port_configuration_information</a></td>
-<td>The <strong>HwStorFindAdapter</strong> routine uses the supplied configuration to determine whether a specific HBA is supported and, if it is, to return configuration information about that adapter.<br/><br/><a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nc-storport-hw_find_adapter">https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nc-storport-hw_find_adapter</a><br/><br/><a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/ns-storport-_port_configuration_information">https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/ns-storport-_port_configuration_information</a></td>
-<td>Support. <br/>Main tasks:<br/>1. Zero the device extention<br/>2. Get the memory base, the vendor ID and the device ID<br/>3. Port Configuration Information initialization<br/>4. Driver used memory allocation<br/>5. Initialize the timer, tag queue, host capability, vendor register settings, host software structure<br/></td>
-</tr>
-<tr>
-<td><strong>HwStorAdapterControl</strong></td>
-<td><strong>SCSI_ADAPTER_CONTROL_TYPE</strong> <br/> <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/ne-storport-scsi_adapter_control_type">https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/ne-storport-scsi_adapter_control_type</a></td>
-<td>A miniport driver’s <strong>HwStorAdapterControl</strong> routine is called to perform synchronous operations to control the state or behavior of an adapter, such as stopping or restarting the host bus adapter (HBA) for power management. <br/><a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nc-storport-hw_adapter_control">https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nc-storport-hw_adapter_control</a></td>
-<td>支持部分ControlTypes：<br/>ScsiQuerySupportedControlTypes, ScsiStopAdapter, ScsiRestartAdapter, ScsiSetBootConfig, ScsiSetRunningConfig, ScsiPowerSettingNotification, ScsiAdapterPoFxPowerActive, ScsiAdapterPower, ScsiAdapterPrepareForBusReScan, ScsiAdapterSystemPowerHints,</td>
-</tr>
-<tr>
-<td></td>
-<td>ScsiQuerySupportedControlTypes</td>
-<td>Reports the adapter-control operations implemented by the miniport driver. A miniport must support this control type. Using <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/ns-storport-scsi_supported_control_type_list"><strong>SCSI_SUPPORTED_CONTROL_TYPE_LIST</strong></a> structure</td>
-<td>support.</td>
-</tr>
-<tr>
-<td></td>
-<td>ScsiStopAdapter</td>
-<td>Shuts down the HBA. A miniport must support this control type.</td>
-<td>support. <br/>但什么都没干</td>
-</tr>
-<tr>
-<td></td>
-<td>ScsiRestartAdapter</td>
-<td>Reinitializes an HBA. A miniport must support this control type.</td>
-<td>support. <br/>调用req_enter_d0()函数，做host reset &amp; init，然后判断卡在位，发起card-change event去处理Adapter Stop期间的card insert or card remove操作。</td>
-</tr>
-<tr>
-<td></td>
-<td>ScsiSetBootConfig</td>
-<td>Restores any settings on an HBA that the BIOS might need to reboot. A miniport driver must implement <strong>ScsiSetBootConfig</strong> if it must call <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nf-storport-storportgetbusdata"><strong>StorPortGetBusData</strong></a> or <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nf-storport-storportsetbusdatabyoffset"><strong>StorPortSetBusDataByOffset</strong></a> before the system will be able to reboot.</td>
-<td>support. <br/>但什么都没干</td>
-</tr>
-<tr>
-<td></td>
-<td>ScsiSetRunningConfig</td>
-<td>Restores any settings on an HBA that the miniport driver might need to control the HBA while the system is running. A miniport driver must implement <strong>ScsiSetRunningConfig</strong> if it must call <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nf-storport-storportgetbusdata"><strong>StorPortGetBusData</strong></a> or <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nf-storport-storportsetbusdatabyoffset"><strong>StorPortSetBusDataByOffset</strong></a> to restore the appropriate running configuration to the HBA before it can be restarted.</td>
-<td>support. <br/>调用pcr_part_a_restore和pcr_part_b_restore函数去配置SD host PCR register的一些默认值</td>
-</tr>
-<tr>
-<td></td>
-<td>ScsiPowerSettingNotification</td>
-<td>Notification for a registered power setting change. Using <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/ns-storport-stor_power_setting_info"><strong>STOR_POWER_SETTING_INFO</strong></a> structure</td>
-<td>support. <br/>但什么都没干</td>
-</tr>
-<tr>
-<td></td>
-<td>ScsiAdapterPower</td>
-<td>Reports the adapter power on or power off states. Using <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/ns-storport-stor_adapter_control_power"><strong>STOR_ADAPTER_CONTROL_POWER</strong></a> structure. 其中包括<strong>STOR_POWER_ACTION</strong>和<strong>STOR_DEVICE_POWER_STATE</strong> 两个子参数</td>
-<td>support. <br/>实现STOR_DEVICE_POWER_STATE &#x3D; D0~D3和STOR_POWER_ACTION &#x3D; Sleep&#x2F;Hibernate&#x2F;Shutdown&#x2F;ShutdownReset&#x2F;ShutdownOff&#x2F;StorPowerActionNone的设备、系统的电源状态请求</td>
-</tr>
-<tr>
-<td></td>
-<td>ScsiAdapterPoFxPowerRequired</td>
-<td>Notifies the miniport whether power is required or not for the adapter component.</td>
-<td>Not support</td>
-</tr>
-<tr>
-<td></td>
-<td>ScsiAdapterPoFxPowerActive</td>
-<td>Notifies the miniport whether the adapter component is active or idle.using <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/ns-storport-stor_pofx_active_context"><strong>STOR_POFX_ACTIVE_CONTEXT</strong></a> structure</td>
-<td>support<br/>只读了Storport下发的STOR_POFX_ACTIVE_CONTEXT，而没使用。相当于什么都没干</td>
-</tr>
-<tr>
-<td></td>
-<td>ScsiAdapterPoFxPowerSetFState</td>
-<td>Notifies the miniport to set the adapter component to the given F-state. using <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/ns-storport-stor_pofx_fstate_context"><strong>STOR_POFX_FSTATE_CONTEXT</strong></a> structure</td>
-<td>Not support</td>
-</tr>
-<tr>
-<td></td>
-<td>ScsiAdapterPoFxPowerControl</td>
-<td>Requests that the miniport execute a private power control operation that was initiated for the adapter by a power engine plug-in (PEP). using <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/ns-storport-stor_pofx_power_control"><strong>STOR_POFX_POWER_CONTROL</strong></a> structure.</td>
-<td>support. <br/>但什么都没干</td>
-</tr>
-<tr>
-<td></td>
-<td>ScsiAdapterPrepareForBusReScan</td>
-<td>Notifies the miniport to prepare the adapter for bus enumeration.</td>
-<td>support. <br/>但什么都没干</td>
-</tr>
-<tr>
-<td></td>
-<td>ScsiAdapterSystemPowerHints</td>
-<td>Provides system power hints to the miniport. using <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/ns-storport-stor_system_power_hints"><strong>STOR_SYSTEM_POWER_HINTS</strong></a> structure</td>
-<td>support. <br/>但什么都没干</td>
-</tr>
-<tr>
-<td></td>
-<td>ScsiAdapterFilterResourceRequirements</td>
-<td>Filters the required resources for the adapter. Using <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/ns-storport-stor_filter_resource_requirements"><strong>STOR_FILTER_RESOURCE_REQUIREMENTS</strong></a> structure.</td>
-<td>Not support</td>
-</tr>
-<tr>
-<td></td>
-<td>ScsiAdapterPoFxMaxOperationalPower</td>
-<td>Communicates a maximum operational power value to the miniport. Using <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/ns-storport-stor_max_operational_power"><strong>STOR_MAX_OPERATIONAL_POWER</strong></a> structure</td>
-<td>Not support</td>
-</tr>
-<tr>
-<td></td>
-<td>ScsiAdapterPoFxSetPerfState</td>
-<td>Informs the miniport of the status of a P-State transition requested by a call to <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nf-storport-storportpofxsetperfstate"><strong>StorPortPoFxSetPerfState</strong></a>. Using STOR_POFX_PERF_STATE_CONTEXT**](<a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/ns-storport-stor_pofx_perf_state_context">https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/ns-storport-stor_pofx_perf_state_context</a>) structure</td>
-<td>Not support</td>
-</tr>
-<tr>
-<td></td>
-<td>ScsiAdapterSurpriseRemoval</td>
-<td>Notifies the miniport that the unit has been surprise-removed.</td>
-<td>Not support</td>
-</tr>
-<tr>
-<td></td>
-<td>ScsiAdapterSerialNumber</td>
-<td>Requests that the miniport retrieve the adapter’s serial number.</td>
-<td>Not support</td>
-</tr>
-<tr>
-<td></td>
-<td>ScsiAdapterQueryFruId</td>
-<td>Available starting in Windows 10 version 21H1. Queries the ID of a fault replacement unit (FRU) of the adapter. Storport sends this control only if a miniport has also previously called <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nf-storport-storportsetfeaturelist"><strong>StorPortSetFeatureList</strong></a> in its <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nc-storport-hw_find_adapter"><strong>HwFindAdapter</strong></a> routine with <strong>StorportFeatureFruIdAdapterControl</strong> specified.</td>
-<td>Not support</td>
-</tr>
-<tr>
-<td></td>
-<td>ScsiAdapterSetEventLogging</td>
-<td>Available starting in Windows 10 version 21H1. Notifies the miniport about whether a specific event channel is enabled or disabled for an adapter. Storport sends this control only if a miniport has also previously called <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nf-storport-storportsetfeaturelist"><strong>StorPortSetFeatureList</strong></a> in its <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nc-storport-hw_find_adapter"><strong>HwFindAdapter</strong></a> routine with <strong>StorportFeatureFruIdAdapterControl</strong> specified.</td>
-<td>Not support</td>
-</tr>
-<tr>
-<td></td>
-<td>ScsiAdapterResetBusSynchronous</td>
-<td>Available starting in Windows 11, version 22H2. Storport sends this control during the handling of an IOCTL_STORAGE_DEVICE_RESET. The miniport driver should handle this control similar to what it does in its <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nc-storport-hw_reset_bus"><strong>HwResetBus</strong></a> callback routine. Storport sends this control only if a miniport has also previously called <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nf-storport-storportsetfeaturelist"><strong>StorPortSetFeatureList</strong></a> in its <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nc-storport-hw_find_adapter"><strong>HwFindAdapter</strong></a> routine with <strong>StorportFeatureResetBusSynchronous</strong> specified.</td>
-<td>Not support</td>
-</tr>
-<tr>
-<td></td>
-<td>ScsiAdapterPreparePLDR</td>
-<td>Storport sends this control to notify miniport to do necessary work before invoking PLDR. Available starting in Windows 11, version 24H2</td>
-<td>Not support</td>
-</tr>
-<tr>
-<td></td>
-<td>ScsiNvmeofAdapterOperation</td>
-<td>Indicates whether ScsiNvmeofAdapterOperation is supported. Available starting in Windows 11, version 24H2.</td>
-<td>Not support</td>
-</tr>
-<tr>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-</tr>
-<tr>
-<td><strong>HwStorStartIo</strong> and <strong>HwStorBuildIo</strong></td>
-<td><strong>HwStorBuildIo</strong> and <strong>HwStorStartIo</strong> receive the following Srb function types:</td>
-<td>The Storport driver calls the <strong>HwStorStartIo</strong> routine one time for each incoming I&#x2F;O request.<br/><strong>HwStorStartIo</strong> initiates an I&#x2F;O operation. StorPort is designed to use a miniport’s private data that is prepared in <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nc-storport-hw_buildio"><strong>HwStorBuildIo</strong></a> and stored in either <strong>DeviceExtension</strong> or <strong>Srb-&gt;SrbExtension</strong>. Because <strong>HwStorBuildIo</strong> is called without spin locks, the best driver performance is achieved by preparing as much data as possible in <strong>HwStorBuildIo</strong>. <br/><br/><a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nc-storport-hw_startio">https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nc-storport-hw_startio</a></td>
-<td></td>
-</tr>
-<tr>
-<td></td>
-<td></td>
-<td>The <strong>HwStorBuildIo</strong> routine processes the SRB with unsynchronized access to shared system data structures before passing it to <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nc-storport-hw_startio"><strong>HwStorStartIo</strong></a>.</td>
-<td></td>
-</tr>
-<tr>
-<td></td>
-<td>SRB_FUNCTION_EXECUTE_SCSI</td>
-<td>Sends a CDB to the specified bus&#x2F;target&#x2F;lun.</td>
-<td>根据如下SCSI operation code分别处理：<br/>SCSIOP_TEST_UNIT_READY, SCSIOP_REQUEST_SENSE, SCSIOP_INQUIRY, SCSIOP_READ_CAPACITY, SCSIOP_READ, SCSIOP_WRITE, SCSIOP_MODE_SENSE, SCSIOP_VERIFY, SCSIOP_LOAD_UNLOAD, SCSIOP_MEDIUM_REMOVAL<br/>注：这部分代码有多存疑的地方，代码本身是从老的SCSI驱动移植过来，SD设备不属于SCSI disk类型，这些SCSI请求哪些应该在SD disk上用哪些不该用，没有微软文档说明</td>
-</tr>
-<tr>
-<td></td>
-<td>SRB_FUNCTION_IO_CONTROL</td>
-<td>Miniport defined.</td>
-<td>直接返回SRB_STATUS_SUCCESS</td>
-</tr>
-<tr>
-<td></td>
-<td>SRB_FUNCTION_RESET_LOGICAL_UNIT</td>
-<td>Reset the specified logical unit (if the device is capable).</td>
-<td>Not support</td>
-</tr>
-<tr>
-<td></td>
-<td>SRB_FUNCTION_RESET_DEVICE</td>
-<td>Reset the specified Scsi Target.</td>
-<td></td>
-</tr>
-<tr>
-<td></td>
-<td>SRB_FUNCTION_RESET_BUS</td>
-<td>Reset all of the targets on the specified SCSI bus.</td>
-<td>直接返回SRB_STATUS_SUCCESS</td>
-</tr>
-<tr>
-<td></td>
-<td>SRB_FUNCTION_FLUSH</td>
-<td>Instructs the miniport driver to flush all cached data.</td>
-<td>Not support</td>
-</tr>
-<tr>
-<td></td>
-<td>SRB_FUNCTION_SHUTDOWN</td>
-<td>Instructs the miniport driver to flush all cached data preparatory to shut down.</td>
-<td>Not support</td>
-</tr>
-<tr>
-<td></td>
-<td>SRB_FUNCTION_DUMP_POINTERS</td>
-<td>Supplies information needed for the miniport driver to support crash dump and hibernation. This request is sent to a Storport virtual miniport driver that is used to control the disk that holds the crash dump data. Starting with Windows 8, non-virtual miniport drivers can optionally receive this request.</td>
-<td>Not support</td>
-</tr>
-<tr>
-<td></td>
-<td>SRB_FUNCTION_FREE_DUMP_POINTERS</td>
-<td>Starting with Windows 8, this request is sent to the miniport to free resources allocated during the SRB_FUNCTION_DUMP_POINTERS request.</td>
-<td>Not support</td>
-</tr>
-<tr>
-<td></td>
-<td>SRB_FUNCTION_PNP</td>
-<td><a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/srb/ns-srb-_stor_device_capabilities_ex">https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/srb/ns-srb-_stor_device_capabilities_ex</a></td>
-<td>只处理STOR_DEVICE_CAPABILITIES_EX定义的StorQueryCapability请求类型去上报Removable，EjectSupported等能力<br/>The <strong>STOR_DEVICE_CAPABILITIES_EX</strong> structure reports device capabilities to the SCSI port driver in response to a capabilities query in a SCSI request block (SRB) with a function of SRB_FUNCTION_PNP<br/>注：此请求是否兼容Storport存疑，因为是作为SCSI port driver定义的结构</td>
-</tr>
-<tr>
-<td><strong>HwStorResetBus</strong></td>
-<td>N&#x2F;A</td>
-<td>The <strong>HwStorResetBus</strong> routine is called by the port driver to clear error conditions.</td>
-<td>support. <br/>其中实现card关电，host reset，cancel所有IO的操作</td>
-</tr>
-<tr>
-<td><strong>HwStorUnitControl</strong></td>
-<td><strong>SCSI_UNIT_CONTROL_TYPE</strong> enumeration contains unit control operations, where each control type initiates an action on a unit by the miniport driver. <br/><a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/ne-storport-scsi_unit_control_type">https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/ne-storport-scsi_unit_control_type</a></td>
-<td>A miniport driver’s <strong>HwStorUnitControl</strong> routine is called to perform synchronous operations to control the state of storage unit device. <br/><a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nc-storport-hw_unit_control">https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nc-storport-hw_unit_control</a></td>
-<td>Support.</td>
-</tr>
-<tr>
-<td></td>
-<td>ScsiQuerySupportedUnitControlTypes</td>
-<td>Reports the unit-control operations implemented by the miniport driver. A miniport must support this control type.</td>
-<td>Support ScsiQuerySupportedUnitControlTypes, ScsiUnitStart, ScsiUnitPower, ScsiUnitPoFxPowerInfo, ScsiUnitPoFxPowerActive, ScsiUnitPoFxPowerSetFState</td>
-</tr>
-<tr>
-<td></td>
-<td>ScsiUnitUsage</td>
-<td>Notifies the miniport whether the logical unit is used for any supported usage types.</td>
-<td>Not support</td>
-</tr>
-<tr>
-<td></td>
-<td>ScsiUnitStart</td>
-<td>Notifies the miniport to start a unit device.</td>
-<td>support. 但实际什么都没干</td>
-</tr>
-<tr>
-<td></td>
-<td>ScsiUnitPower</td>
-<td>Reports the unit power on or power off states.If the miniport supports this control type, it will not receive a storage request block with SRB_FUNCTION_POWER.</td>
-<td>support. 但实际什么都没干</td>
-</tr>
-<tr>
-<td></td>
-<td>ScsiUnitPoFxPowerInfo</td>
-<td>Notifies the miniport if idle power management is enabled or disabled on the unit component. The miniport should call <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nf-storport-storportinitializepofxpower"><strong>StorPortInitializePoFxPower</strong></a> within this unit control if idle power management was enabled and if it supports runtime power management for the unit device.</td>
-<td>support. 对Disk注册了Pofx(StorPortInitializePoFxPower). <br/>注：这里合理性存疑：Host Driver需要给Disk注册Pofx吗？</td>
-</tr>
-<tr>
-<td></td>
-<td>ScsiUnitPoFxPowerRequired</td>
-<td>Notifies the miniport whether power is required for the unit component. Using <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/ns-storport-stor_pofx_power_required_context"><strong>STOR_POFX_POWER_REQUIRED_CONTEXT</strong></a> structure</td>
-<td>Not support</td>
-</tr>
-<tr>
-<td></td>
-<td>ScsiUnitPoFxPowerActive</td>
-<td>Notifies the miniport that the unit component is either active or idle. Using <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/ns-storport-stor_pofx_active_context"><strong>STOR_POFX_ACTIVE_CONTEXT</strong></a> structure</td>
-<td>support. 但实际什么都没干</td>
-</tr>
-<tr>
-<td></td>
-<td>ScsiUnitPoFxPowerSetFState</td>
-<td>Notifies the miniport to set the unit component to the given functional power state (F-state). Using <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/ns-storport-stor_pofx_fstate_context"><strong>STOR_POFX_FSTATE_CONTEXT</strong></a> structure</td>
-<td>support. 但实际什么都没干</td>
-</tr>
-<tr>
-<td></td>
-<td>ScsiUnitPoFxPowerControl</td>
-<td>Requests that the miniport execute a private power control operation that was initiated for the unit by a power engine plug-in (PEP). Using <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/ns-storport-stor_pofx_power_control"><strong>STOR_POFX_POWER_CONTROL</strong></a> structure</td>
-<td>Not support</td>
-</tr>
-<tr>
-<td></td>
-<td>ScsiUnitRemove</td>
-<td>Notifies the miniport that the unit has been removed.</td>
-<td>Not support</td>
-</tr>
-<tr>
-<td></td>
-<td>ScsiUnitSurpriseRemoval</td>
-<td>Notifies the miniport that the unit has been surprise-removed.</td>
-<td>Not support</td>
-</tr>
-<tr>
-<td></td>
-<td>ScsiUnitRichDescription</td>
-<td>The miniport can choose to support this if the device reports a longer vendor ID, model number, or firmware revision than is defined in the SCSI spec</td>
-<td>Not support</td>
-</tr>
-<tr>
-<td></td>
-<td>ScsiUnitQueryBusType</td>
-<td>Queries whether the miniport wants to specify a bus type for a given logical unit (LUN). Using <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/ns-storport-stor_unit_control_query_bus_type"><strong>STOR_UNIT_CONTROL_QUERY_BUS_TYPE</strong></a> structure. In Windows 10 version 21H1 and later, Storport sends this control only if a miniport has also previously called <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nf-storport-storportsetfeaturelist"><strong>StorPortSetFeatureList</strong></a> in its <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nc-storport-hw_find_adapter"><strong>HwFindAdapter</strong></a> routine with <strong>StorportFeatureBusTypeUnitControl</strong> specified.</td>
-<td>Not support</td>
-</tr>
-<tr>
-<td></td>
-<td>ScsiUnitQueryFruId</td>
-<td>Queries the ID of a fault replacement unit (FRU). Available in Windows 10 version 21H1 and later.</td>
-<td></td>
-</tr>
-</tbody></table>
-<table>
-<thead>
-<tr>
-<th>Storport Normal Routine that used by SD miniport driver.</th>
-<th>Function Description</th>
-<th>SD miniport driver’s purpose to use the routine</th>
-</tr>
-</thead>
-<tbody><tr>
-<td></td>
-<td></td>
-<td></td>
-</tr>
-<tr>
-<td>StorPortWaitForSingleObject</td>
-<td>A miniport can call <strong>StorPortWaitForSingleObject</strong> function to put the current thread into a wait state until the given dispatcher object is set to signaled state or optionally times out. dispatcher object (event, mutex, semaphore, thread, or timer)<br/><a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nf-storport-storportwaitforsingleobject">https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nf-storport-storportwaitforsingleobject</a></td>
-<td>用于Storport routine和miniport thread的同步：storport routine发起dispatcher object(event), miniport thread使用StorPortWaitForSingleObject等待event信号产生后进入处理流程此时开始占用CPU；如果没有event，miniport thread将sleep，不会占用CPU.</td>
-</tr>
-<tr>
-<td>StorPortInitializeEvent</td>
-<td><strong>StorPortInitializeEvent</strong> initializes an event object as a synchronization or notification type event, and sets it to a signaled or not-signaled state.<br/><a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nf-storport-storportinitializeevent">https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nf-storport-storportinitializeevent</a></td>
-<td>初始化event事件对象，但不设置事件产生的信号。注意：如果没有初始化event就使用会产生空指针访问，系统会BSOD.</td>
-</tr>
-<tr>
-<td>StorPortSetEvent</td>
-<td>A miniport can call <strong>StorPortSetEvent</strong> to set an event object to the signaled state.<br/><a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nf-storport-storportsetevent">https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nf-storport-storportsetevent</a></td>
-<td>设置事件产生的信号</td>
-</tr>
-<tr>
-<td>StorPortInitializeDpc</td>
-<td>The <strong>StorPortInitializeDpc</strong> routine initializes a StorPort DPC.<br/><a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nf-storport-storportinitializedpc">https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nf-storport-storportinitializedpc</a></td>
-<td>创建DPC对象：用于在高IRQL的Storport routine(IRQL &gt;&#x3D;中断级别)中设置延迟处理任务，目的是减少CPU处在高IRQL的时间，将不紧急的任务放到低IRQL(IRQL &lt;&#x3D; DPC)执行。这是Driver设计的基本要求。</td>
-</tr>
-<tr>
-<td>StorPortIssueDpc</td>
-<td>The <strong>StorPortIssueDpc</strong> routine issues a deferred procedure call (DPC).<br/><a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nf-storport-storportissuedpc">https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nf-storport-storportissuedpc</a></td>
-<td>发起DPC任务：将延迟处理的任务加到DPC队列</td>
-</tr>
-<tr>
-<td>StorPortCancelDpc</td>
-<td><strong>StorPortCancelDpc</strong> attempts to cancel the execution of a StorPort deferred procedure call (DPC).</td>
-<td>销毁DPC对象：Driver卸载时清理资源</td>
-</tr>
-<tr>
-<td>StorPortRequestTimer</td>
-<td>Schedules a callback event for a Storport timer context object.</td>
-<td>启动Timer：OS提供的定时器模块，miniport driver用于定时任务，例如设置指定disk idle时间后进入runtime D3.</td>
-</tr>
-<tr>
-<td>StorPortFreeTimer</td>
-<td>Frees a Storport timer context object previously created by the <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nf-storport-storportinitializetimer">StorPortInitializeTimer</a> routine.</td>
-<td>销毁Timer：Driver卸载时清理资源</td>
-</tr>
-<tr>
-<td>StorPortStallExecution</td>
-<td>The <strong>StorPortStallExecution</strong> routine stalls the miniport driver. This call ties up a processor, doing no useful work while stalling in the driver. <br/> 参考：<a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/srb/nf-srb-scsiportstallexecution">https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/srb/nf-srb-scsiportstallexecution</a></td>
-<td>使当前storport routine忙等待：miniport driver用于卸载driver时，等待miniport thread退出；如果不等待miniport thread退出就完成storport卸载routine，miniport创建的thread将会在卸载后继续运行，应用层会卸载报错。</td>
-</tr>
-<tr>
-<td>StorPortDelayExecution</td>
-<td>The <strong>StorPortDelayExecution</strong> function delays the current thread by the given amount of time, in microseconds. If the current IRQL is lower than DISPATCH_LEVEL then the current thread is simply put in the wait state and other threads are allowed to run. Otherwise, this routine performs a busy-wait.</td>
-<td>miniport driver用于将当前miniport thread放到Sleep状态，释放CPU的占用，使其它thread（不管是storport还是miniport）可以运行。</td>
-</tr>
-<tr>
-<td>StorPortGetCurrentIrql</td>
-<td><strong>StorPortGetCurrentIrql</strong> retrieves the current interrupt request level (IRQL).</td>
-<td>miniport driver用于配合StorPortDelayExecution使用：如果当前IRQL高，Sleep实际是忙等.</td>
-</tr>
-<tr>
-<td>StorPortAllocateRegistryBuffer</td>
-<td>The <strong>StorPortAllocateRegistryBuffer</strong> routine is called by the miniport driver to allocate a buffer that can be used to read and write registry data.</td>
-<td>以下几个Registry Routine都是Windows Registry的访问操作，INF里面配置的Registry默认值通过这些Registry Routine去写入注册表，Driver动态功能开关是通过Registry Routine去读取注册表</td>
-</tr>
-<tr>
-<td>StorPortRegistryRead</td>
-<td>The <strong>StorPortRegistryRead</strong> routine reads the registry data for the indicated device and value.</td>
-<td></td>
-</tr>
-<tr>
-<td>StorPortRegistryWrite</td>
-<td>The <strong>StorPortRegistryWrite</strong> routine is called by the miniport driver to convert the registry data contained in a specified buffer from ASCII to Unicode and to then write the data to the miniport driver’s per-HBA storage area.</td>
-<td></td>
-</tr>
-<tr>
-<td>StorPortFreeRegistryBuffer</td>
-<td>The <strong>StorPortFreeRegistryBuffer</strong> routine frees the buffer that was allocated for storing registry data.</td>
-<td></td>
-</tr>
-<tr>
-<td>StorPortNotification</td>
-<td>The miniport driver uses the <strong>StorPortNotification</strong> routine to notify the Storport driver of certain events and conditions. <strong>StorPortNotification</strong> takes a variable number of parameters depending on the notification type specified. <br/>NotificationType：<a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nf-storport-storportnotification">https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nf-storport-storportnotification</a></td>
-<td>miniport对storport的反向通知机制</td>
-</tr>
-<tr>
-<td></td>
-<td>BusChangeDetected: Indicates that a target device might have been added or removed from a dynamic bus.</td>
-<td>miniport driver用于：当disk有插拔或者card模式切换，都会发BusChangeDetected去通知OS</td>
-</tr>
-<tr>
-<td></td>
-<td>RequestComplete: Indicates that the given SRB has finished. After this notification is sent, the port driver owns the request.</td>
-<td>miniport driver用于返回Storport的每一个SRB请求，包括inquiry查询和i&#x2F;O读写等各类收到的SRB请求。</td>
-</tr>
-<tr>
-<td></td>
-<td>ResetDetected: Indicates that the HBA has detected a reset on the bus. After this notification is sent, the miniport driver is still responsible for completing any active requests. The port driver will manage all required bus-reset delays.</td>
-<td>miniport driver没使用此notification类型</td>
-</tr>
-<tr>
-<td></td>
-<td>RequestTimerCall: Indicates that the miniport driver requires the port driver to call the miniport driver’s <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nc-storport-hw_timer">HwStorTimer</a> routine in the requested number of microseconds.</td>
-<td>miniport driver用于在Storport routine里面，将一部分任务放到指定时间后开始执行，相当于一种不精确的DPC.</td>
-</tr>
-<tr>
-<td></td>
-<td>IoTargetRequestServiceTime: Indicates to Storport the amount of time that was required to process a specified request.</td>
-<td>miniport driver用于指定tagIO任务的完成时间，让Storport driver有个预期不要误判请求完成超时。</td>
-</tr>
-<tr>
-<td>StorPortGetBusData</td>
-<td>The <strong>StorPortGetBusData</strong> routine retrieves the bus-specific configuration information necessary to initialize the HBA.</td>
-<td>miniport driver用于获取Bus(PCIe Bus)的数据，拿到SD host device在PCIe Bus的信息。例如VendorID，DeviceID，区分SD host类型。</td>
-</tr>
-<tr>
-<td>StorPortGetUncachedExtension</td>
-<td>The <strong>StorPortGetUncachedExtension</strong> routine allocates an uncached common buffer to be shared by the CPU and the device.</td>
-<td>在HwStorFindAdapter Callback创建DMA Buffer时使用</td>
-</tr>
-<tr>
-<td>StorPortGetPhysicalAddress</td>
-<td>The <strong>StorPortGetPhysicalAddress</strong> routine converts a given virtual address range to a physical address range for a DMA operation.</td>
-<td>在HwStorFindAdapter Callback创建DMA Buffer时使用</td>
-</tr>
-<tr>
-<td>StorPortInitialize</td>
-<td>The <strong>StorPortInitialize</strong> routine initializes the port driver parameters and extension data. <strong>StorPortInitialize</strong> also saves the adapter information provided from the <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/storage/storage-miniport-drivers">miniport driver</a> <strong>DriverEntry</strong> routine.</td>
-<td>miniport driver将Storport指定的HW_INITIALIZATION_DATA全部初始化完成后调用，上报miniport的所有能力配置和回调函数。</td>
-</tr>
-<tr>
-<td>StorPortReadRegisterBuffer</td>
-<td>reads a value from a specified register address.</td>
-<td>miniport driver用于register读（包括SD host register和PCIe Config register，register address由PCIe bar address + offset指定）</td>
-</tr>
-<tr>
-<td>StorPortWriteRegisterBuffer</td>
-<td>transfers a given number of unsigned bytes from a buffer to the HBA.</td>
-<td>miniport driver用于register写（包括SD host register和PCIe Config register，register address由PCIe bar address + offset指定）</td>
-</tr>
-<tr>
-<td>StorPortWritePort</td>
-<td>transfers an unsigned byte to the HBA</td>
-<td>miniport driver没有使用，只遗留历史代码</td>
-</tr>
-<tr>
-<td>StorPortReadPort</td>
-<td>reads a value from a specified port address</td>
-<td>miniport driver没有使用，只遗留历史代码</td>
-</tr>
-<tr>
-<td>StorPortInitializePoFxPower</td>
-<td>A miniport driver calls <strong>StorPortInitializePoFxPower</strong> to register a storage device with the power management framework (PoFx). Using <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/ns-storport-_stor_pofx_device">STOR_POFX_DEVICE</a>, <strong>STOR_POFX_DEVICE_V2</strong>, or <strong>STOR_POFX_DEVICE_V3</strong></td>
-<td>miniport driver用于注册Adapter和Disk Unit的pofx</td>
-</tr>
-<tr>
-<td>StorPortPoFxIdleComponent</td>
-<td>The <strong>StorPortPoFxIdleComponent</strong> routine decrements the activation reference count of a specified component of a storage device.</td>
-<td>在remove card， auto power off时调用</td>
-</tr>
-<tr>
-<td>StorPortPoFxActivateComponent</td>
-<td>The <strong>StorPortPoFxActivateComponent</strong> routine increments the activation reference count on the specified component of a storage device.</td>
-<td>在insert card调用</td>
-</tr>
-<tr>
-<td>StorPortGetD3ColdSupport</td>
-<td>Get D3Cold support or not by this HBA</td>
-<td>StorPortInitializePoFxPower其中一个参数是D3Cold enable or not</td>
-</tr>
-<tr>
-<td>StorPortGetDeviceObjects</td>
-<td>Returns the device objects that are associated with the adapter device stack</td>
-<td>处理PNP请求用到，根据SD host extension获取<em>AdapterDeviceObject</em>和<em>PhysicalDeviceObject</em>和LowerDeviceObject</td>
-</tr>
-</tbody></table>
-
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2024/08/30/Windows%20Driver%20Model%20Architecture%20for%20SD%20Host%20projects/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
       
     </div>
 
@@ -931,69 +350,14 @@
 <p>注意：安装PicGo AppImage，不要使用snap包，否则typora配置上传功能有问题</p>
 <h3 id="安装PicGo-AppImage"><a href="#安装PicGo-AppImage" class="headerlink" title="安装PicGo AppImage"></a>安装PicGo AppImage</h3><p>AppImage是可以直接运行而不需要安装的包：Unlike other applications, AppImages do not need to be installed before they can be used. However, they need to be marked as executable before they can be run. This is a Linux security feature.</p>
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">chmod +x PicGo-2.3.1.AppImage </span><br><span class="line"> ./PicGo-2.3.1.AppImage</span><br></pre></td></tr></table></figure>
-
-<p>运行picgo有个小图标，需要右键打开主窗口。</p>
-<h2 id="Picgo配置Github图床"><a href="#Picgo配置Github图床" class="headerlink" title="Picgo配置Github图床"></a>Picgo配置Github图床</h2><p>建议使用Jsdelivr加速配置github图床。参考：<a target="_blank" rel="noopener" href="https://blog.csdn.net/yefcion/article/details/88412025">PicGo + GitHub 搭建个人图床工具</a></p>
-<p>我个人的github图床配置如下（见picgo配置文件）：</p>
-<pre><code>&quot;github&quot;: {
-  &quot;repo&quot;: &quot;cursorhu/blog-images-on-picgo&quot;,
-  &quot;branch&quot;: &quot;master&quot;,
-  &quot;token&quot;: &quot;ghp_xxxxxxxxxxxxxxxxx&quot;,
-  &quot;path&quot;: &quot;images/&quot;,
-  &quot;customUrl&quot;: &quot;https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master&quot;
-}
-</code></pre>
-<p>如果Jsdelivr挂了就用github raw url： </p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">&quot;customUrl&quot;: &quot;https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master&quot;</span><br></pre></td></tr></table></figure>
-
-<p>Picgo其他配置如下：</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202404181738880.png" alt="image-20240418173835825"></p>
-<p>Picgo配置完需要测试在GUI上传图片OK.</p>
-<p>注意：如果已经传了很多文章和图片，jsdelivr突然挂了，如何修复图床链接：</p>
-<p>全局替换已写文章中的图片链接：将<code>https://cdn.jsdelivr.net/gh/账户名/图床仓库名@master</code> 改为： <code>https://raw.githubusercontent.com/账户名/图床仓库名/master</code></p>
-<h2 id="Typora使用Picgo-Appimage上传图片"><a href="#Typora使用Picgo-Appimage上传图片" class="headerlink" title="Typora使用Picgo Appimage上传图片"></a>Typora使用Picgo Appimage上传图片</h2><p>Picgo测试OK之后，直接配置Typora的粘贴图片 &#x3D;&#x3D; 使用PicGo AppImage上传图片。</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202404181717983.png" alt="image-20240418171743929"></p>
-<p>注意：使用剪贴板图片上传，需要<code>apt install xclip</code>，一般系统自带。</p>
-<h2 id="附录（配置Picgo桌面图标）"><a href="#附录（配置Picgo桌面图标）" class="headerlink" title="附录（配置Picgo桌面图标）"></a>附录（配置Picgo桌面图标）</h2><p>可解压AppImage去配置Picgo桌面图标：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">./PicGo-2.3.1.AppImage --appimage-extract</span><br><span class="line"></span><br><span class="line">cd squashfs-root</span><br><span class="line"></span><br><span class="line">#设置图标</span><br><span class="line"></span><br><span class="line">vim picgo.desktop </span><br><span class="line"></span><br><span class="line">#设置以下Exec和Icon为绝对路径：</span><br><span class="line"></span><br><span class="line">Exec=/home/xxx/Download/squashfs-root/AppRun</span><br><span class="line"></span><br><span class="line">Icon=/home/xxx/Download/squashfs-root/picgo.png</span><br><span class="line"></span><br><span class="line">#加权限</span><br><span class="line"></span><br><span class="line">chmod +x picgo.desktop</span><br><span class="line"></span><br><span class="line">将 picgo.desktop 复制到 `/usr/share/applications/`，应用程序列表就有Picgo图标</span><br></pre></td></tr></table></figure>
-
-<h2 id=""><a href="#" class="headerlink" title=""></a></h2><h2 id="附录（废弃方案记录）"><a href="#附录（废弃方案记录）" class="headerlink" title="附录（废弃方案记录）"></a>附录（废弃方案记录）</h2><p>最开始打算用smms图床或者gitee图床+picgo+typora， 配置没有成功，换github就OK了。这里只记录不成功过程。</p>
-<h3 id="本地安装-snap包：picgo-snap包不能正常上传，这里只记录安装方式"><a href="#本地安装-snap包：picgo-snap包不能正常上传，这里只记录安装方式" class="headerlink" title="本地安装.snap包：picgo snap包不能正常上传，这里只记录安装方式"></a>本地安装.snap包：picgo snap包不能正常上传，这里只记录安装方式</h3><p>直接snap install xxx.snap会报错：</p>
-<p>cannot find signatures with metadata for snap “picgo_2.3.1_amd64.snap</p>
-<p>.snap本地离线安装的标准流程是snap download xxx + snap ack xxx + snap install xxx：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">$ snap download hello-world</span><br><span class="line">Fetching snap &quot;hello-world&quot;</span><br><span class="line">Fetching assertions for &quot;hello-world&quot;</span><br><span class="line"></span><br><span class="line">$ sudo snap ack hello-world_27.assert </span><br><span class="line"></span><br><span class="line">$ sudo snap install hello-world_27.snap</span><br><span class="line">hello-world 6.3 from &#x27;canonical&#x27; installed</span><br><span class="line"></span><br><span class="line">$ snap list</span><br><span class="line">Name                   Version                   Rev   Developer      Notes</span><br><span class="line">&lt;snip&gt;</span><br><span class="line">hello-world            6.3                       27    canonical      -</span><br></pre></td></tr></table></figure>
-
-<p><a target="_blank" rel="noopener" href="https://askubuntu.com/questions/1266894/how-can-i-install-a-snap-package-from-a-local-file">https://askubuntu.com/questions/1266894/how-can-i-install-a-snap-package-from-a-local-file</a></p>
-<p>但gicgo包没有assert，只能用另外的dangerous模式安装：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo snap install /path/to/my-snap.snap --dangerous</span><br></pre></td></tr></table></figure>
-
-
-
-<h3 id="安装Node-js环境：为了安装picgo-core，这里只记录node安装方式"><a href="#安装Node-js环境：为了安装picgo-core，这里只记录node安装方式" class="headerlink" title="安装Node.js环境：为了安装picgo-core，这里只记录node安装方式"></a>安装Node.js环境：为了安装picgo-core，这里只记录node安装方式</h3><p>安装nodejs（包括npm包管理工具）：<code>sudo apt install nodejs npm</code> 这种方式能用，但nodejs版本可能太低，因此建议指定nodejs版本 &gt;&#x3D;16 再apt install：</p>
-<p><a target="_blank" rel="noopener" href="https://www.linode.com/docs/guides/install-nodejs-on-ubuntu-22-04/">https://www.linode.com/docs/guides/install-nodejs-on-ubuntu-22-04/</a></p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">curl -sL https://deb.nodesource.com/setup_20.x | sudo -E bash -</span><br><span class="line">sudo apt-get install -y nodejs</span><br><span class="line">sudo npm install -g npm@latest</span><br></pre></td></tr></table></figure>
-
-<p>如果已经安装低版本，需要apt remove nodejs + apt autoremove彻底清除再装。</p>
-<h3 id="typora使用picgo-core上传（失败）"><a href="#typora使用picgo-core上传（失败）" class="headerlink" title="typora使用picgo core上传（失败）"></a>typora使用picgo core上传（失败）</h3><p>1.安装picgo core配置文件</p>
-<p>参考：</p>
-<p><a target="_blank" rel="noopener" href="https://picgo.github.io/PicGo-Core-Doc/zh/guide/getting-started.html#%E4%B8%B4%E6%97%B6%E5%B0%9D%E9%B2%9C">https://picgo.github.io/PicGo-Core-Doc/zh/guide/getting-started.html#%E4%B8%B4%E6%97%B6%E5%B0%9D%E9%B2%9C</a></p>
-<p><a target="_blank" rel="noopener" href="https://picgo.github.io/PicGo-Core-Doc/zh/guide/config.html#%E9%BB%98%E8%AE%A4%E9%85%8D%E7%BD%AE%E6%96%87%E4%BB%B6">https://picgo.github.io/PicGo-Core-Doc/zh/guide/config.html#%E9%BB%98%E8%AE%A4%E9%85%8D%E7%BD%AE%E6%96%87%E4%BB%B6</a></p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">#安装picgo-core</span><br><span class="line">cursorhu@ubuntu-PC:~/Downloads$ sudo npm install picgo -g</span><br><span class="line"></span><br><span class="line">#配置picgo-core</span><br><span class="line">cursorhu@ubuntu-PC:~/Downloads$ picgo set uploader</span><br><span class="line">? Choose a(n) uploader </span><br><span class="line">  aliyun </span><br><span class="line">  tcyun </span><br><span class="line">❯ smms </span><br><span class="line">  github </span><br><span class="line"></span><br><span class="line">配置完毕的输出：</span><br><span class="line">cursorhu@ubuntu-PC:~/Downloads$ picgo set uploader</span><br><span class="line">? Choose a(n) uploader smms</span><br><span class="line">? api token [hidden]</span><br><span class="line">备用上传域名 例如 smms.app smms.app</span><br><span class="line">[PicGo SUCCESS]: Configure config successfully!</span><br></pre></td></tr></table></figure>
-
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202404181714768.png" alt="image-20240416171654570"></p>
-<h3 id="typora使用自定义命令上传（成功但不适用）"><a href="#typora使用自定义命令上传（成功但不适用）" class="headerlink" title="typora使用自定义命令上传（成功但不适用）"></a>typora使用自定义命令上传（成功但不适用）</h3><p>参考：<a target="_blank" rel="noopener" href="https://picgo.github.io/PicGo-Doc/en/guide/advance.html#upload-using-command-line">https://picgo.github.io/PicGo-Doc/en/guide/advance.html#upload-using-command-line</a></p>
-<p>命令行验证是可以上传已复制到剪贴板的图片：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">./PicGo-2.3.1.AppImage upload</span><br></pre></td></tr></table></figure>
-
-<p>配置Typora使用该自定义命令：</p>
-<p>效果：不方便，粘贴图片后的上传完成链接在剪贴板上，需要再粘贴一遍才是上传到服务器的图片链接。</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202404181714278.png" alt="image-20240416170333787"></p>
-<h2 id="参考文章"><a href="#参考文章" class="headerlink" title="参考文章"></a>参考文章</h2><p><a target="_blank" rel="noopener" href="https://blog.csdn.net/yefcion/article/details/88412025">https://blog.csdn.net/yefcion/article/details/88412025</a></p>
-<p><a target="_blank" rel="noopener" href="https://blog.csdn.net/weixin_45636061/article/details/124335243">https://blog.csdn.net/weixin_45636061/article/details/124335243</a></p>
-<p><a target="_blank" rel="noopener" href="https://www.cnblogs.com/usmile/p/14842233.html">https://www.cnblogs.com/usmile/p/14842233.html</a></p>
-<p><a target="_blank" rel="noopener" href="https://blog.csdn.net/qq_42584874/article/details/116534328">https://blog.csdn.net/qq_42584874/article/details/116534328</a></p>
-<p><a target="_blank" rel="noopener" href="https://blog.csdn.net/qq_39974578/article/details/122117699">https://blog.csdn.net/qq_39974578/article/details/122117699</a></p>
-
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2024/08/30/ubuntu%E6%90%AD%E5%BB%BA%E8%B7%A8%E5%B9%B3%E5%8F%B0markdown%E5%86%99%E4%BD%9C%E7%8E%AF%E5%A2%83/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
       
     </div>
 
@@ -1073,29 +437,14 @@
 <p>refer to guide: <a target="_blank" rel="noopener" href="https://www.bilibili.com/video/BV1YAtReqEkH?spm_id_from=333.788.videopod.sections">https://www.bilibili.com/video/BV1YAtReqEkH?spm_id_from=333.788.videopod.sections</a></p>
 <p>(2) After several times re-register account, Cursor record your PC’s MAC and refuse to re-register, use below tool to re-fresh MAC. </p>
 <p><a target="_blank" rel="noopener" href="https://github.com/yuaotian/go-cursor-help">https://github.com/yuaotian/go-cursor-help</a></p>
-<h3 id="禁用更新"><a href="#禁用更新" class="headerlink" title="禁用更新"></a>禁用更新</h3><p>目前go-cursor-help可以适配到cursor4.7，需要禁用cursor自动更新到4.8以上版本</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202504091022177.png" alt="image-20250409102242119"></p>
-<h2 id="Cursor使用方式"><a href="#Cursor使用方式" class="headerlink" title="Cursor使用方式"></a>Cursor使用方式</h2><h3 id="Chat"><a href="#Chat" class="headerlink" title="Chat"></a>Chat</h3><p>Chat is most used to analysis whole project code or partly code.</p>
-<p>Use @codebase is better to make the AI engine think based on current code. otherwise it may give suggestions without context.</p>
-<p>below is two examples:</p>
-<p>(1)Analysis the project based on codebase.</p>
-<p>Use CTRL+L to open chat, select AI model to claude-3.5 or 3.7(newer), write prompt based on codebase.</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202502261504728.png" alt="image-20250226150407616"></p>
-<p>(2)Modifying partly function</p>
-<p>Select some code to Chat, and ask what to do, you can apply the generated code. </p>
-<p>If the code is wrong after test, you can reject the change like git diff GUI.</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202502261509413.png" alt="image-20250226150927338"></p>
-<h3 id="Composer"><a href="#Composer" class="headerlink" title="Composer"></a>Composer</h3><p>Composer适用于创建新项目，不适用于对已有的项目局部修改，因为composer改动是跨文件的，composer模式经常会把已有项目写好的功能又改坏，建议多用git管理composer代码，调试现有项目使用Chat。</p>
-<p>以下是composer创建WDF项目过程中的示例，对于AI给出的不靠谱的回答，需要用 @Web或者给定Specification document让AI反复确认。对于编译和调试问题也能让AI给出建议，但是尤其要注意AI对于windows driver这种开源资料较少的领域，给出的方案和建议有一定概率是错得离谱而且迷惑性很强。</p>
-<p>（1）让AI根据Web资料修正设计</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202502261520937.png" alt="image-20250226152037888"></p>
-<p>（2）让AI根据报错信息给出调试建议</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202502261521572.png" alt="image-20250226152110538"></p>
-<h2 id="20250718模型禁用问题"><a href="#20250718模型禁用问题" class="headerlink" title="20250718模型禁用问题"></a>20250718模型禁用问题</h2><p>TB买学生pro一年账户登录后才有高级model，账户每月有最大请求限额约几百次，下月1号复位</p>
-<p>model region限制解决：curor setting中 +梯子端口 +禁用HTTP2后可用。</p>
-<p>梯子使用github free-proxy免费配clash端口，每天最多4小数</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202507181431265.png" alt="image-20250718143130155"></p>
-
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2024/08/30/AI%E7%BC%96%E7%A8%8B%20--%20Cursor%20%E7%8E%AF%E5%A2%83%E9%85%8D%E7%BD%AE%E5%92%8C%E7%AE%80%E5%8D%95%E4%BD%BF%E7%94%A8/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
       
     </div>
 
@@ -1184,14 +533,101 @@
 </ol>
 <p>代码改动：</p>
 <p>设备进入D3&#x2F;D0以前Complete所有I&#x2F;O请求（SRB），使用Storport miniport要求的API RequestComplete ： We do not recommend that writers of Storport miniport drivers use this particular Storport interface routine. Instead, the miniport driver should call StorPortNotification( RequestComplete ) for each outstanding request.</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202411052017667.png" alt="image-20241105201725563"></p>
-<p>附录1：BSOD 0xCA的相关文档</p>
-<p><a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/bug-check-0xca--pnp-detected-fatal-error?redirectedfrom=MSDN">https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/bug-check-0xca--pnp-detected-fatal-error?redirectedfrom=MSDN</a></p>
-<p><a target="_blank" rel="noopener" href="https://www.sysnative.com/forums/threads/debugging-stop-0xca-dddriver-sys-dddriver64dcsa-sys.35039/">https://www.sysnative.com/forums/threads/debugging-stop-0xca-dddriver-sys-dddriver64dcsa-sys.35039/</a></p>
-<p>附录2：BSOD 0xCA的Windbg分析log</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br><span class="line">162</span><br><span class="line">163</span><br><span class="line">164</span><br><span class="line">165</span><br><span class="line">166</span><br><span class="line">167</span><br><span class="line">168</span><br><span class="line">169</span><br><span class="line">170</span><br><span class="line">171</span><br><span class="line">172</span><br><span class="line">173</span><br><span class="line">174</span><br><span class="line">175</span><br><span class="line">176</span><br><span class="line">177</span><br><span class="line">178</span><br><span class="line">179</span><br><span class="line">180</span><br><span class="line">181</span><br><span class="line">182</span><br><span class="line">183</span><br><span class="line">184</span><br><span class="line">185</span><br><span class="line">186</span><br><span class="line">187</span><br><span class="line">188</span><br><span class="line">189</span><br><span class="line">190</span><br><span class="line">191</span><br><span class="line">192</span><br><span class="line">193</span><br><span class="line">194</span><br><span class="line">195</span><br><span class="line">196</span><br><span class="line">197</span><br><span class="line">198</span><br><span class="line">199</span><br><span class="line">200</span><br><span class="line">201</span><br><span class="line">202</span><br><span class="line">203</span><br><span class="line">204</span><br><span class="line">205</span><br><span class="line">206</span><br><span class="line">207</span><br><span class="line">208</span><br><span class="line">209</span><br><span class="line">210</span><br><span class="line">211</span><br><span class="line">212</span><br><span class="line">213</span><br><span class="line">214</span><br><span class="line">215</span><br><span class="line">216</span><br><span class="line">217</span><br><span class="line">218</span><br><span class="line">219</span><br><span class="line">220</span><br><span class="line">221</span><br><span class="line">222</span><br><span class="line">223</span><br><span class="line">224</span><br><span class="line">225</span><br><span class="line">226</span><br><span class="line">227</span><br><span class="line">228</span><br><span class="line">229</span><br><span class="line">230</span><br><span class="line">231</span><br><span class="line">232</span><br><span class="line">233</span><br><span class="line">234</span><br><span class="line">235</span><br><span class="line">236</span><br><span class="line">237</span><br><span class="line">238</span><br><span class="line">239</span><br><span class="line">240</span><br><span class="line">241</span><br><span class="line">242</span><br><span class="line">243</span><br><span class="line">244</span><br><span class="line">245</span><br><span class="line">246</span><br><span class="line">247</span><br><span class="line">248</span><br><span class="line">249</span><br><span class="line">250</span><br><span class="line">251</span><br><span class="line">252</span><br><span class="line">253</span><br><span class="line">254</span><br><span class="line">255</span><br><span class="line">256</span><br><span class="line">257</span><br><span class="line">258</span><br><span class="line">259</span><br><span class="line">260</span><br><span class="line">261</span><br><span class="line">262</span><br><span class="line">263</span><br><span class="line">264</span><br><span class="line">265</span><br><span class="line">266</span><br><span class="line">267</span><br><span class="line">268</span><br><span class="line">269</span><br><span class="line">270</span><br><span class="line">271</span><br><span class="line">272</span><br><span class="line">273</span><br><span class="line">274</span><br><span class="line">275</span><br><span class="line">276</span><br><span class="line">277</span><br><span class="line">278</span><br><span class="line">279</span><br><span class="line">280</span><br><span class="line">281</span><br><span class="line">282</span><br><span class="line">283</span><br><span class="line">284</span><br><span class="line">285</span><br><span class="line">286</span><br><span class="line">287</span><br><span class="line">288</span><br><span class="line">289</span><br><span class="line">290</span><br><span class="line">291</span><br><span class="line">292</span><br><span class="line">293</span><br><span class="line">294</span><br><span class="line">295</span><br><span class="line">296</span><br><span class="line">297</span><br><span class="line">298</span><br><span class="line">299</span><br><span class="line">300</span><br><span class="line">301</span><br><span class="line">302</span><br><span class="line">303</span><br><span class="line">304</span><br><span class="line">305</span><br><span class="line">306</span><br><span class="line">307</span><br><span class="line">308</span><br><span class="line">309</span><br><span class="line">310</span><br><span class="line">311</span><br><span class="line">312</span><br><span class="line">313</span><br><span class="line">314</span><br><span class="line">315</span><br><span class="line">316</span><br><span class="line">317</span><br><span class="line">318</span><br><span class="line">319</span><br><span class="line">320</span><br><span class="line">321</span><br><span class="line">322</span><br><span class="line">323</span><br><span class="line">324</span><br><span class="line">325</span><br><span class="line">326</span><br><span class="line">327</span><br><span class="line">328</span><br><span class="line">329</span><br><span class="line">330</span><br><span class="line">331</span><br><span class="line">332</span><br></pre></td><td class="code"><pre><span class="line">!analyze -v</span><br><span class="line">*******************************************************************************</span><br><span class="line">*                                                                             *</span><br><span class="line">*                        Bugcheck Analysis                                    *</span><br><span class="line">*                                                                             *</span><br><span class="line">*******************************************************************************</span><br><span class="line"></span><br><span class="line">PNP_DETECTED_FATAL_ERROR (ca)</span><br><span class="line">PnP encountered a severe error, either as a result of a problem in a driver or</span><br><span class="line">a problem in PnP itself.  The first argument describes the nature of the</span><br><span class="line">problem, the second argument is the address of the PDO.  The other arguments</span><br><span class="line">vary depending on argument 1.</span><br><span class="line">Arguments:</span><br><span class="line">Arg1: 0000000000000013, IOMMU operation failure</span><br><span class="line">	A critical IOMMU operation has failed.</span><br><span class="line">Arg2: 0000000000001000, Unblock operation</span><br><span class="line">Arg3: ffffffffc0350066, NT status code.</span><br><span class="line">Arg4: ffffb986629afc40, DevNode of the device.</span><br><span class="line"></span><br><span class="line">Debugging Details:</span><br><span class="line">------------------</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">KEY_VALUES_STRING: 1</span><br><span class="line"></span><br><span class="line">    Key  : Analysis.CPU.mSec</span><br><span class="line">    Value: 4546</span><br><span class="line"></span><br><span class="line">    Key  : Analysis.Elapsed.mSec</span><br><span class="line">    Value: 4604</span><br><span class="line"></span><br><span class="line">    Key  : Analysis.IO.Other.Mb</span><br><span class="line">    Value: 17</span><br><span class="line"></span><br><span class="line">    Key  : Analysis.IO.Read.Mb</span><br><span class="line">    Value: 2</span><br><span class="line"></span><br><span class="line">    Key  : Analysis.IO.Write.Mb</span><br><span class="line">    Value: 24</span><br><span class="line"></span><br><span class="line">    Key  : Analysis.Init.CPU.mSec</span><br><span class="line">    Value: 968</span><br><span class="line"></span><br><span class="line">    Key  : Analysis.Init.Elapsed.mSec</span><br><span class="line">    Value: 4411983</span><br><span class="line"></span><br><span class="line">    Key  : Analysis.Memory.CommitPeak.Mb</span><br><span class="line">    Value: 92</span><br><span class="line"></span><br><span class="line">    Key  : Analysis.Version.DbgEng</span><br><span class="line">    Value: 10.0.27725.1000</span><br><span class="line"></span><br><span class="line">    Key  : Analysis.Version.Description</span><br><span class="line">    Value: 10.2408.27.01 amd64fre</span><br><span class="line"></span><br><span class="line">    Key  : Analysis.Version.Ext</span><br><span class="line">    Value: 1.2408.27.1</span><br><span class="line"></span><br><span class="line">    Key  : Bugcheck.Code.KiBugCheckData</span><br><span class="line">    Value: 0xca</span><br><span class="line"></span><br><span class="line">    Key  : Bugcheck.Code.LegacyAPI</span><br><span class="line">    Value: 0xca</span><br><span class="line"></span><br><span class="line">    Key  : Bugcheck.Code.TargetModel</span><br><span class="line">    Value: 0xca</span><br><span class="line"></span><br><span class="line">    Key  : Dump.Attributes.AsUlong</span><br><span class="line">    Value: 21800</span><br><span class="line"></span><br><span class="line">    Key  : Dump.Attributes.DiagDataWrittenToHeader</span><br><span class="line">    Value: 1</span><br><span class="line"></span><br><span class="line">    Key  : Dump.Attributes.ErrorCode</span><br><span class="line">    Value: 0</span><br><span class="line"></span><br><span class="line">    Key  : Dump.Attributes.LastLine</span><br><span class="line">    Value: Dump completed successfully.</span><br><span class="line"></span><br><span class="line">    Key  : Dump.Attributes.ProgressPercentage</span><br><span class="line">    Value: 100</span><br><span class="line"></span><br><span class="line">    Key  : Failure.Bucket</span><br><span class="line">    Value: 0xCA_13_nt!PiDmaGuardProcessPreStart</span><br><span class="line"></span><br><span class="line">    Key  : Failure.Hash</span><br><span class="line">    Value: &#123;b367b2d8-0cc5-f3e0-e733-3787841dcdd2&#125;</span><br><span class="line"></span><br><span class="line">    Key  : Hypervisor.Enlightenments.ValueHex</span><br><span class="line">    Value: 7497cf94</span><br><span class="line"></span><br><span class="line">    Key  : Hypervisor.Flags.AnyHypervisorPresent</span><br><span class="line">    Value: 1</span><br><span class="line"></span><br><span class="line">    Key  : Hypervisor.Flags.ApicEnlightened</span><br><span class="line">    Value: 1</span><br><span class="line"></span><br><span class="line">    Key  : Hypervisor.Flags.ApicVirtualizationAvailable</span><br><span class="line">    Value: 0</span><br><span class="line"></span><br><span class="line">    Key  : Hypervisor.Flags.AsyncMemoryHint</span><br><span class="line">    Value: 0</span><br><span class="line"></span><br><span class="line">    Key  : Hypervisor.Flags.CoreSchedulerRequested</span><br><span class="line">    Value: 0</span><br><span class="line"></span><br><span class="line">    Key  : Hypervisor.Flags.CpuManager</span><br><span class="line">    Value: 1</span><br><span class="line"></span><br><span class="line">    Key  : Hypervisor.Flags.DeprecateAutoEoi</span><br><span class="line">    Value: 0</span><br><span class="line"></span><br><span class="line">    Key  : Hypervisor.Flags.DynamicCpuDisabled</span><br><span class="line">    Value: 1</span><br><span class="line"></span><br><span class="line">    Key  : Hypervisor.Flags.Epf</span><br><span class="line">    Value: 0</span><br><span class="line"></span><br><span class="line">    Key  : Hypervisor.Flags.ExtendedProcessorMasks</span><br><span class="line">    Value: 1</span><br><span class="line"></span><br><span class="line">    Key  : Hypervisor.Flags.HardwareMbecAvailable</span><br><span class="line">    Value: 1</span><br><span class="line"></span><br><span class="line">    Key  : Hypervisor.Flags.MaxBankNumber</span><br><span class="line">    Value: 0</span><br><span class="line"></span><br><span class="line">    Key  : Hypervisor.Flags.MemoryZeroingControl</span><br><span class="line">    Value: 0</span><br><span class="line"></span><br><span class="line">    Key  : Hypervisor.Flags.NoExtendedRangeFlush</span><br><span class="line">    Value: 0</span><br><span class="line"></span><br><span class="line">    Key  : Hypervisor.Flags.NoNonArchCoreSharing</span><br><span class="line">    Value: 1</span><br><span class="line"></span><br><span class="line">    Key  : Hypervisor.Flags.Phase0InitDone</span><br><span class="line">    Value: 1</span><br><span class="line"></span><br><span class="line">    Key  : Hypervisor.Flags.PowerSchedulerQos</span><br><span class="line">    Value: 0</span><br><span class="line"></span><br><span class="line">    Key  : Hypervisor.Flags.RootScheduler</span><br><span class="line">    Value: 0</span><br><span class="line"></span><br><span class="line">    Key  : Hypervisor.Flags.SynicAvailable</span><br><span class="line">    Value: 1</span><br><span class="line"></span><br><span class="line">    Key  : Hypervisor.Flags.UseQpcBias</span><br><span class="line">    Value: 0</span><br><span class="line"></span><br><span class="line">    Key  : Hypervisor.Flags.Value</span><br><span class="line">    Value: 38408431</span><br><span class="line"></span><br><span class="line">    Key  : Hypervisor.Flags.ValueHex</span><br><span class="line">    Value: 24a10ef</span><br><span class="line"></span><br><span class="line">    Key  : Hypervisor.Flags.VpAssistPage</span><br><span class="line">    Value: 1</span><br><span class="line"></span><br><span class="line">    Key  : Hypervisor.Flags.VsmAvailable</span><br><span class="line">    Value: 1</span><br><span class="line"></span><br><span class="line">    Key  : Hypervisor.RootFlags.AccessStats</span><br><span class="line">    Value: 1</span><br><span class="line"></span><br><span class="line">    Key  : Hypervisor.RootFlags.CrashdumpEnlightened</span><br><span class="line">    Value: 1</span><br><span class="line"></span><br><span class="line">    Key  : Hypervisor.RootFlags.CreateVirtualProcessor</span><br><span class="line">    Value: 1</span><br><span class="line"></span><br><span class="line">    Key  : Hypervisor.RootFlags.DisableHyperthreading</span><br><span class="line">    Value: 0</span><br><span class="line"></span><br><span class="line">    Key  : Hypervisor.RootFlags.HostTimelineSync</span><br><span class="line">    Value: 1</span><br><span class="line"></span><br><span class="line">    Key  : Hypervisor.RootFlags.HypervisorDebuggingEnabled</span><br><span class="line">    Value: 0</span><br><span class="line"></span><br><span class="line">    Key  : Hypervisor.RootFlags.IsHyperV</span><br><span class="line">    Value: 1</span><br><span class="line"></span><br><span class="line">    Key  : Hypervisor.RootFlags.LivedumpEnlightened</span><br><span class="line">    Value: 1</span><br><span class="line"></span><br><span class="line">    Key  : Hypervisor.RootFlags.MapDeviceInterrupt</span><br><span class="line">    Value: 1</span><br><span class="line"></span><br><span class="line">    Key  : Hypervisor.RootFlags.MceEnlightened</span><br><span class="line">    Value: 1</span><br><span class="line"></span><br><span class="line">    Key  : Hypervisor.RootFlags.Nested</span><br><span class="line">    Value: 0</span><br><span class="line"></span><br><span class="line">    Key  : Hypervisor.RootFlags.StartLogicalProcessor</span><br><span class="line">    Value: 1</span><br><span class="line"></span><br><span class="line">    Key  : Hypervisor.RootFlags.Value</span><br><span class="line">    Value: 1015</span><br><span class="line"></span><br><span class="line">    Key  : Hypervisor.RootFlags.ValueHex</span><br><span class="line">    Value: 3f7</span><br><span class="line"></span><br><span class="line">    Key  : SecureKernel.HalpHvciEnabled</span><br><span class="line">    Value: 1</span><br><span class="line"></span><br><span class="line">    Key  : WER.OS.Branch</span><br><span class="line">    Value: ge_release</span><br><span class="line"></span><br><span class="line">    Key  : WER.OS.Version</span><br><span class="line">    Value: 10.0.26100.1</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">BUGCHECK_CODE:  ca</span><br><span class="line"></span><br><span class="line">BUGCHECK_P1: 13</span><br><span class="line"></span><br><span class="line">BUGCHECK_P2: 1000</span><br><span class="line"></span><br><span class="line">BUGCHECK_P3: ffffffffc0350066</span><br><span class="line"></span><br><span class="line">BUGCHECK_P4: ffffb986629afc40</span><br><span class="line"></span><br><span class="line">FILE_IN_CAB:  MEMORY.DMP</span><br><span class="line"></span><br><span class="line">TAG_NOT_DEFINED_202b:  *** Unknown TAG in analysis list 202b</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">DUMP_FILE_ATTRIBUTES: 0x21800</span><br><span class="line"></span><br><span class="line">FAULTING_THREAD:  ffffb986625ef040</span><br><span class="line"></span><br><span class="line">DEVICE_OBJECT: 0000000000001000</span><br><span class="line"></span><br><span class="line">BLACKBOXBSD: 1 (!blackboxbsd)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">BLACKBOXNTFS: 1 (!blackboxntfs)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">BLACKBOXPNP: 1 (!blackboxpnp)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">BLACKBOXWINLOGON: 1</span><br><span class="line"></span><br><span class="line">PROCESS_NAME:  System</span><br><span class="line"></span><br><span class="line">LOCK_ADDRESS:  fffff8019cd8a380 -- (!locks fffff8019cd8a380)</span><br><span class="line">KD: Scanning for held locks........................................................</span><br><span class="line"></span><br><span class="line">Resource @ nt!PiEngineLock (0xfffff8019cd8a380)    Exclusively owned</span><br><span class="line">    Contention Count = 23</span><br><span class="line">     Threads: ffffb986625ef040-01&lt;*&gt; </span><br><span class="line">1 total locks</span><br><span class="line"></span><br><span class="line">PNP_TRIAGE_DATA: </span><br><span class="line">	Lock address  : 0xfffff8019cd8a380</span><br><span class="line">	Thread Count  : 1</span><br><span class="line">	Thread address: 0xffffb986625ef040</span><br><span class="line">	Thread wait   : 0x281e98</span><br><span class="line"></span><br><span class="line">STACK_TEXT:  </span><br><span class="line">ffffdf84`8a6b7158 fffff801`9c8e5bca     : 00000000`000000ca 00000000`00000013 00000000`00001000 ffffffff`c0350066 : nt!KeBugCheckEx</span><br><span class="line">ffffdf84`8a6b7160 fffff801`9c7db310     : ffffb986`629afc40 00000000`00000000 00000000`00000001 ffffb986`629afc40 : nt!PiDmaGuardProcessPreStart+0x10a7f6</span><br><span class="line">ffffdf84`8a6b71a0 fffff801`9c697621     : ffffb986`629afc40 ffffdf84`8a6b7261 00000000`00000000 00000000`00000001 : nt!PipProcessStartPhase1+0x4c</span><br><span class="line">ffffdf84`8a6b71e0 fffff801`9c8187a7     : ffffb986`36694b20 ffffb986`626da790 ffffdf84`8a6b7300 fffff801`00000002 : nt!PipProcessDevNodeTree+0x645</span><br><span class="line">ffffdf84`8a6b72b0 fffff801`9c2404bd     : 00000001`00000003 ffffb986`36694b20 ffffb986`626da790 00000000`00000000 : nt!PiProcessReenumeration+0x9f</span><br><span class="line">ffffdf84`8a6b7300 fffff801`9c1249d2     : ffffb986`625ef040 ffffb986`366b6cb0 fffff801`9c23fe80 ffffb986`00000000 : nt!PnpDeviceActionWorker+0x63d</span><br><span class="line">ffffdf84`8a6b73c0 fffff801`9c25a9ea     : ffffb986`625ef040 ffffb986`625ef040 fffff801`9c124820 ffffb986`366b6cb0 : nt!ExpWorkerThread+0x1b2</span><br><span class="line">ffffdf84`8a6b7570 fffff801`9c4736f4     : ffffce81`b4759180 ffffb986`625ef040 fffff801`9c25a990 00320033`006d0065 : nt!PspSystemThreadStartup+0x5a</span><br><span class="line">ffffdf84`8a6b75c0 00000000`00000000     : ffffdf84`8a6b8000 ffffdf84`8a6b1000 00000000`00000000 00000000`00000000 : nt!KiStartSystemThread+0x34</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">SYMBOL_NAME:  nt!PiDmaGuardProcessPreStart+10a7f6</span><br><span class="line"></span><br><span class="line">MODULE_NAME: nt</span><br><span class="line"></span><br><span class="line">IMAGE_NAME:  ntkrnlmp.exe</span><br><span class="line"></span><br><span class="line">STACK_COMMAND:  .process /r /p 0xffffb98636697040; .thread 0xffffb986625ef040 ; kb</span><br><span class="line"></span><br><span class="line">BUCKET_ID_FUNC_OFFSET:  10a7f6</span><br><span class="line"></span><br><span class="line">FAILURE_BUCKET_ID:  0xCA_13_nt!PiDmaGuardProcessPreStart</span><br><span class="line"></span><br><span class="line">OS_VERSION:  10.0.26100.1</span><br><span class="line"></span><br><span class="line">BUILDLAB_STR:  ge_release</span><br><span class="line"></span><br><span class="line">OSPLATFORM_TYPE:  x64</span><br><span class="line"></span><br><span class="line">OSNAME:  Windows 10</span><br><span class="line"></span><br><span class="line">FAILURE_ID_HASH:  &#123;b367b2d8-0cc5-f3e0-e733-3787841dcdd2&#125;</span><br><span class="line"></span><br><span class="line">Followup:     MachineOwner</span><br><span class="line">---------</span><br><span class="line"></span><br><span class="line">1: kd&gt; !devnode ffffb986629afc40</span><br><span class="line">DevNode 0xffffb986629afc40 for PDO 0xffffb98665085060</span><br><span class="line">  Parent 0xffffb986629adc40   Sibling 0000000000   Child 0000000000   </span><br><span class="line">  InstancePath is &quot;PCI\VEN_1217&amp;DEV_8621&amp;SUBSYS_00021217&amp;REV_01\4&amp;32cd076f&amp;0&amp;0013&quot;</span><br><span class="line">  ServiceName is &quot;bhtsddr&quot;</span><br><span class="line">  State = DeviceNodeResourcesAssigned (0x306) @ 2024 Oct 24 21:26:21.411</span><br><span class="line">  Previous State = DeviceNodeDriversAdded (0x305) @ 2024 Oct 24 21:26:21.411</span><br><span class="line">  StateHistory[02] = DeviceNodeDriversAdded (0x305)</span><br><span class="line">  StateHistory[01] = DeviceNodeInitialized (0x304)</span><br><span class="line">  StateHistory[00] = DeviceNodeUninitialized (0x301)</span><br><span class="line">  StateHistory[19] = Unknown State (0x0)</span><br><span class="line">  StateHistory[18] = Unknown State (0x0)</span><br><span class="line">  StateHistory[17] = Unknown State (0x0)</span><br><span class="line">  StateHistory[16] = Unknown State (0x0)</span><br><span class="line">  StateHistory[15] = Unknown State (0x0)</span><br><span class="line">  StateHistory[14] = Unknown State (0x0)</span><br><span class="line">  StateHistory[13] = Unknown State (0x0)</span><br><span class="line">  StateHistory[12] = Unknown State (0x0)</span><br><span class="line">  StateHistory[11] = Unknown State (0x0)</span><br><span class="line">  StateHistory[10] = Unknown State (0x0)</span><br><span class="line">  StateHistory[09] = Unknown State (0x0)</span><br><span class="line">  StateHistory[08] = Unknown State (0x0)</span><br><span class="line">  StateHistory[07] = Unknown State (0x0)</span><br><span class="line">  StateHistory[06] = Unknown State (0x0)</span><br><span class="line">  StateHistory[05] = Unknown State (0x0)</span><br><span class="line">  StateHistory[04] = Unknown State (0x0)</span><br><span class="line">  StateHistory[03] = Unknown State (0x0)</span><br><span class="line">  Flags (0x6c0000f0)  DNF_ENUMERATED, DNF_IDS_QUERIED, </span><br><span class="line">                      DNF_HAS_BOOT_CONFIG, DNF_BOOT_CONFIG_RESERVED, </span><br><span class="line">                      DNF_NO_LOWER_DEVICE_FILTERS, DNF_NO_LOWER_CLASS_FILTERS, </span><br><span class="line">                      DNF_NO_UPPER_DEVICE_FILTERS, DNF_NO_UPPER_CLASS_FILTERS</span><br><span class="line">  CapabilityFlags (0x00002000)  WakeFromD3</span><br></pre></td></tr></table></figure>
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2024/07/30/Windbg%20--%20%E8%93%9D%E5%B1%8FBSOD%200xCA%E5%88%86%E6%9E%90/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
+      
+    </div>
 
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
 
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2024/07/30/%E9%AB%98%E9%80%9A%E5%B9%B3%E5%8F%B0%20--%20BH202%E9%97%AE%E9%A2%98%E8%AE%B0%E5%BD%95/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2024/07/30/%E9%AB%98%E9%80%9A%E5%B9%B3%E5%8F%B0%20--%20BH202%E9%97%AE%E9%A2%98%E8%AE%B0%E5%BD%95/" class="post-title-link" itemprop="url">高通平台 -- BH20X问题记录</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2024-07-30 15:50:54" itemprop="dateCreated datePublished" datetime="2024-07-30T15:50:54+08:00">2024-07-30</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2025-11-18 11:38:33" itemprop="dateModified" datetime="2025-11-18T11:38:33+08:00">2025-11-18</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E9%AB%98%E9%80%9A%E5%B9%B3%E5%8F%B0/" itemprop="url" rel="index"><span itemprop="name">高通平台</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h1 id="BH20x问题记录"><a href="#BH20x问题记录" class="headerlink" title="BH20x问题记录"></a>BH20x问题记录</h1><h2 id="Balur项目-Qcom-Android-14-bazel编译系统"><a href="#Balur项目-Qcom-Android-14-bazel编译系统" class="headerlink" title="Balur项目 - Qcom Android 14 bazel编译系统"></a>Balur项目 - Qcom Android 14 bazel编译系统</h2><p>关于GKI和KMI的概念(需要clash梯子)：GKI划分common kernel和platform module，是platform能使用bazel的根本原因</p>
+<p><a target="_blank" rel="noopener" href="https://source.android.com/docs/core/architecture/kernel/generic-kernel-image">https://source.android.com/docs/core/architecture/kernel/generic-kernel-image</a></p>
+<p>bazel用于安卓14以上的platform kernel module编译：</p>
+<p><a target="_blank" rel="noopener" href="https://android.googlesource.com/kernel/build/+/refs/heads/main-kernel/kleaf/docs/impl.md#Step-2_Define-targets-to-build-external-kernel-modules">https://android.googlesource.com/kernel/build/+/refs/heads/main-kernel/kleaf/docs/impl.md#Step-2_Define-targets-to-build-external-kernel-modules</a></p>
+<p>bazel语法（CN）</p>
+<p><a target="_blank" rel="noopener" href="https://bazel.google.cn/versions/7.4.0/reference/be/c-cpp?hl=zh-cn">https://bazel.google.cn/versions/7.4.0/reference/be/c-cpp?hl=zh-cn</a></p>
+<h3 id="编译问题和方案"><a href="#编译问题和方案" class="headerlink" title="编译问题和方案"></a>编译问题和方案</h3><p>Bazel编译sdhci-msm.c中的#include语句时，找不到bayhub.c和bayhub.c</p>
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2024/07/30/%E9%AB%98%E9%80%9A%E5%B9%B3%E5%8F%B0%20--%20BH202%E9%97%AE%E9%A2%98%E8%AE%B0%E5%BD%95/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
       
     </div>
 
@@ -1272,162 +708,14 @@
 <p>Driver问题分析和优化点：</p>
 <p>1.快速插拔卡后设备不能进D3（power off），原因是BH202 driver的pofx-&gt; D3\pofx-&gt; D0流程有问题，按driver issue fix architecture修改后问题解决。</p>
 <p>3.BH202 driver的card change -&gt; pofx request流程需要优化，确保pofx-&gt;D state时序正确</p>
-<p>4.BH202 driver的card change event触发条件需要优化，避免快速插拔卡事件过多的问题</p>
-<h2 id="Driver-Issue-Fix-Architecture"><a href="#Driver-Issue-Fix-Architecture" class="headerlink" title="Driver Issue Fix Architecture"></a>Driver Issue Fix Architecture</h2><h3 id="Power-cycle-diagram"><a href="#Power-cycle-diagram" class="headerlink" title="Power cycle diagram"></a>Power cycle diagram</h3><p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202501141351408.png" alt="image-20250114135103318"></p>
-<p>上图描述Issue fix的Driver Architecture，其中card handle和pofx handle属于BH202 miniport driver的模块，Storport AdapterControl属于miniport driver和Storport driver（and windows OS）的接口模块。</p>
-<p>Note1：vdd1_power_cycle函数实现，内部调用pofx_request_d3和pofx_request_d0去实现power cycle（BH202 power off 再power on）。vdd1_power_cycle在以下情况被调用：</p>
-<p>a.首次插卡，首次是指BH202没做过tuning</p>
-<p>b.异常恢复流程，异常是卡初始化过程失败后的retry初始化</p>
-<p>Note2：wait D3 response设置了超时时间5s，最大不能超过~8s，否则会触发SCSI BUS reset</p>
-<p>Note3 and Note4：Storport返回的AdapterPowerControl D3只有一次，BH202 driver用作两个用途：</p>
-<p>a.pofx handle认为系统响应了D3，即pofx-&gt;D3流程成功</p>
-<p>b.card handle执行enter D3之前的准备流程，包括card stop transfer，card thread pending，card power off等函数，涉及到card一些标志的清理。</p>
-<p>Note5: Storport driver收到D3请求的ACK（即请求返回）后，认为Adapter Idle；根据miniport注册的Adapter Pofx idle time 10ms，通知PMIC对BH202执行power off。</p>
-<p>Note6：准备从D3返回D0，因为D3状态下没有任务或者中断插入执行，此处等待D0设置为2s</p>
-<p>Note7：理论上应该是PMIC先上电后，Storport再通知miniport执行enter D0流程</p>
-<p>Note8：进D0会发两次请求，首先是AdapterPowerControl - D0，BH202 driver由于实现了RestartAdapter，不需要在此请求做什么操作；之后是RestartAdapter，BH202 driver执行：</p>
-<p>a.pofx handle认为pofx-&gt;D0流程成功</p>
-<p>b.card handle执行enter D0的流程，包括host register reset，check card present，set card change event。</p>
-<h3 id="pofx-D0-D3-diagram"><a href="#pofx-D0-D3-diagram" class="headerlink" title="pofx-&gt;D0&#x2F;D3 diagram"></a>pofx-&gt;D0&#x2F;D3 diagram</h3><p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202501141423340.png" alt="image-20250114142323274"> </p>
-<h3 id="Card-Event-change优化"><a href="#Card-Event-change优化" class="headerlink" title="Card Event change优化"></a>Card Event change优化</h3><p>快速插拔卡时，有两个问题：</p>
-<ol>
-<li>Driver对各种事件的处理是FIFO形式，当某次插拔卡事件（card change event）的处理流程遇到错误耗时较长，插拔卡事件会越积越多，但插拔卡实际是无记忆行为，driver只要能正确处理最终状态就可以，最终状态包括卡在位和卡不在位两种情况。</li>
-<li>有多种应用场景会设置card change event，driver需要减少不必要的event设置</li>
-</ol>
-<p>Card event过滤如下：设置最多两个event的event FIFO：</p>
-<ol>
-<li><p>如果当前没有card change事件待处理，或者只有一个card change事件正在处理，此时shared task count &#x3D; 0，可以排队新增一个card change event待处理，并设置shared task count &#x3D; 1；</p>
-</li>
-<li><p>如果shared task count &#x3D; 1，不允许继续发起card change事件</p>
-</li>
-<li><p>每个card change event事件处理完毕后会shared task count - 1，直到为0.</p>
-</li>
-</ol>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202501141442768.png" alt="bh202-event"></p>
-<h2 id="Bugfix状况"><a href="#Bugfix状况" class="headerlink" title="Bugfix状况"></a>Bugfix状况</h2><p>1.BH202 D0、D3问题：</p>
-<p>原issue：快速插拔卡后拔卡，不能进D3，持续保持在D0。</p>
-<p>现状：快速插拔卡后拔卡，能进D3（BH202能被power off），下次插卡能弹卡。</p>
-<p>2.卡不识别问题：</p>
-<p>原issue：快速插拔卡后，有时不识别卡，且不识别卡之后再插拔卡也不识别，除非Disable&#x2F;Enable驱动或者重启，会对用户造成困扰。</p>
-<p>现状：快速插拔卡后，有时不识别卡，但再插拔一次可以识别；原因是快速插拔卡影响了驱动的卡识别正常流程，只需要再插拔一次就可以识别，不会对用户造成困扰。</p>
-<p>结论：</p>
-<p>当前版本可以release</p>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2024/07/30/%E9%AB%98%E9%80%9A%E5%B9%B3%E5%8F%B0%20--%20BH202%E9%97%AE%E9%A2%98%E8%AE%B0%E5%BD%95/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.jpg">
-      <meta itemprop="name" content="cursorhu">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="ThinkNotes">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2024/07/30/%E9%AB%98%E9%80%9A%E5%B9%B3%E5%8F%B0%20--%20BH202%E9%97%AE%E9%A2%98%E8%AE%B0%E5%BD%95/" class="post-title-link" itemprop="url">高通平台 -- BH20X问题记录</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2024-07-30 15:50:54" itemprop="dateCreated datePublished" datetime="2024-07-30T15:50:54+08:00">2024-07-30</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2025-11-18 11:38:33" itemprop="dateModified" datetime="2025-11-18T11:38:33+08:00">2025-11-18</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/%E9%AB%98%E9%80%9A%E5%B9%B3%E5%8F%B0/" itemprop="url" rel="index"><span itemprop="name">高通平台</span></a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h1 id="BH20x问题记录"><a href="#BH20x问题记录" class="headerlink" title="BH20x问题记录"></a>BH20x问题记录</h1><h2 id="Balur项目-Qcom-Android-14-bazel编译系统"><a href="#Balur项目-Qcom-Android-14-bazel编译系统" class="headerlink" title="Balur项目 - Qcom Android 14 bazel编译系统"></a>Balur项目 - Qcom Android 14 bazel编译系统</h2><p>关于GKI和KMI的概念(需要clash梯子)：GKI划分common kernel和platform module，是platform能使用bazel的根本原因</p>
-<p><a target="_blank" rel="noopener" href="https://source.android.com/docs/core/architecture/kernel/generic-kernel-image">https://source.android.com/docs/core/architecture/kernel/generic-kernel-image</a></p>
-<p>bazel用于安卓14以上的platform kernel module编译：</p>
-<p><a target="_blank" rel="noopener" href="https://android.googlesource.com/kernel/build/+/refs/heads/main-kernel/kleaf/docs/impl.md#Step-2_Define-targets-to-build-external-kernel-modules">https://android.googlesource.com/kernel/build/+/refs/heads/main-kernel/kleaf/docs/impl.md#Step-2_Define-targets-to-build-external-kernel-modules</a></p>
-<p>bazel语法（CN）</p>
-<p><a target="_blank" rel="noopener" href="https://bazel.google.cn/versions/7.4.0/reference/be/c-cpp?hl=zh-cn">https://bazel.google.cn/versions/7.4.0/reference/be/c-cpp?hl=zh-cn</a></p>
-<h3 id="编译问题和方案"><a href="#编译问题和方案" class="headerlink" title="编译问题和方案"></a>编译问题和方案</h3><p>Bazel编译sdhci-msm.c中的#include语句时，找不到bayhub.c和bayhub.c</p>
-<p>尝试按bazel语法，直接在host下的module.bzl里面的sdhci-msm模块的srcs的deps添加bayhub.c&#x2F;.h，但并没有成功</p>
-<p>临时办法：</p>
-<p>platform kernel下的根编译文件BUILD.bazel里面定义了linux&#x2F;mmc&#x2F;*.h, 将bayhub.h放到这个路径再引用</p>
-<p>不#include bayhub.c，直接将内容展开到sdhci-msm.c</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202509051417452.png" alt="image-20250905141723250"></p>
-<h3 id="ADB的环境搭建和使用"><a href="#ADB的环境搭建和使用" class="headerlink" title="ADB的环境搭建和使用"></a>ADB的环境搭建和使用</h3><p>ADB用于抓取soc板子的kernel log打印。使用ADB可以登录开发板root文件目录操作rootfs</p>
-<h4 id="Windows装ADB环境"><a href="#Windows装ADB环境" class="headerlink" title="Windows装ADB环境"></a>Windows装ADB环境</h4><ol>
-<li><p>安装ADB exe包</p>
-<p><a target="_blank" rel="noopener" href="https://www.thecustomdroid.com/google-android-usb-drivers/">https://www.thecustomdroid.com/google-android-usb-drivers/</a></p>
-<p>下载platform-tools-latest，并且环境变量PATH添加adb.exe所在的目录，重启生效</p>
-</li>
-<li><p>安装USB-ADB驱动</p>
-<p>没装USB驱动，连接soc板子（板子启动成功情况下），板子会被显示为yellow-bang设备，需要安装USB ADB驱动</p>
-<p>驱动安装过程：</p>
-<p>（1）右键yellow-bang的soc板子设备，选择更新驱动 -&gt; “通用串行总线”驱动类 -&gt; 找到WinUSB的ADB设备类驱动，不用管警告，安装。</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202509051452516.png" alt="image-20250905145254487"></p>
-<p>（2） 安装正常，soc设备会归为USB类，没有yellow bang</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202509051453172.png" alt="image-20250905145328150"></p>
-</li>
-</ol>
-<h4 id="ADB抓kernel-log"><a href="#ADB抓kernel-log" class="headerlink" title="ADB抓kernel log"></a>ADB抓kernel log</h4><p>Win+R cmd进入命令行，用管理员启动</p>
-<p>第一种方式：dmesg。输入如下命令开启mmc&#x2F;core的dev_dbg打印，dmesg输出到soc板子根目录&#x2F;sdcard的mmc.log，最后adb pull到windows PC查看log</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202509051455706.png" alt="图片2"></p>
-<p>另一种方式：adb logcat，可以持续抓kprint的log，配合第一种打开dev_dbg打印后，可以同时抓pr_info和mmc的命令</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202509051456890.png" alt="图片3"></p>
-<h3 id="调试SI参数"><a href="#调试SI参数" class="headerlink" title="调试SI参数"></a>调试SI参数</h3><p>两种方式：</p>
-<p>1.直接改bayhub.h里面的GGC_CFG最后DWORD，包含drive strength值。需要编译整个系统，比较慢</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202509051503051.png" alt="image-20250905150355023"></p>
-<p>2.使用debug sysfs接口，方便用户I&#x2F;O直接配置参数到驱动的对象，不需要编译系统。原理如下</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"># 读取当前值</span><br><span class="line">cat /sys/devices/platform/soc/8804000.sdhci/bh201_drive_strength</span><br><span class="line"># 写入新值(drive strength)</span><br><span class="line">echo 0x4A417777 &gt; /sys/devices/platform/soc/8804000.sdhci/bh201_drive_strength</span><br></pre></td></tr></table></figure>
-
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202509051503321.png" alt="image-20250905150308232"></p>
-<h3 id="SD流程问题划分"><a href="#SD流程问题划分" class="headerlink" title="SD流程问题划分"></a>SD流程问题划分</h3><p>流程如下图，代码见core&#x2F;sd.c流程，以调用到.init_card()为划分：init_card前面属于平台Host测问题（调试需要看 host侧 VDD上电和CMD&#x2F;DATA&#x2F;CLK line信号）；.init_card()之后BH201驱动介入，根据ADB kprint和mmc log分析tuning等问题。</p>
-<p>CMD0 -&gt; CMD8(check 2.0 card) -&gt; ACMD41 -&gt; CMD11(3.0 only) -&gt; CMD2 and 3 -&gt; .card_init (bht_load开始)</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202509051507611.png" alt="image-20250905150708572"></p>
-
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2024/07/30/%E9%AB%98%E9%80%9A%E5%B9%B3%E5%8F%B0%20--%20BH202%20ARM%20windows%E7%9A%84Pofx-D3%20&%20Fast%20removalinsert%20issue/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
       
     </div>
 
@@ -1508,99 +796,15 @@
 <p>注释2：这里可能执行多次，从SD接口最低频率开始初始化，一般是400KHz，代码如下。 注意host-&gt;f_min是host driver设置。	</p>
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">static const unsigned freqs[] = &#123; 400000, 300000, 200000, 100000 &#125;;</span><br><span class="line"></span><br><span class="line">for (i = 0; i &lt; ARRAY_SIZE(freqs); i++) &#123;</span><br><span class="line">    if (!mmc_rescan_try_freq(host, max(freqs[i], host-&gt;f_min)))</span><br><span class="line">        break;</span><br><span class="line">    if (freqs[i] &lt;= host-&gt;f_min)</span><br><span class="line">        break;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
-<h3 id="SD初始化的过程"><a href="#SD初始化的过程" class="headerlink" title="SD初始化的过程"></a>SD初始化的过程</h3><p>以下具体分析mmc_rescan_try_freq流程，并用飞腾SD卡的初始化log对照理解。</p>
-<h4 id="第一阶段：mmc通用初始化："><a href="#第一阶段：mmc通用初始化：" class="headerlink" title="第一阶段：mmc通用初始化："></a>第一阶段：mmc通用初始化：</h4><p>此时的host还没有指定卡是SD还是eMMC还是SDIO，这个阶段主要做卡power up和host reset，然后对卡reset（go_idle + send_if_cond）</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202404191529248.png" alt="image-20240419152855006"></p>
-<p>对应log如下，以下CMD8 fail属于正常，因为此时还没指定是SD type</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202404191555610.png" alt="image-20240419155547556"></p>
-<h4 id="第二阶段：SD卡的初始化入口："><a href="#第二阶段：SD卡的初始化入口：" class="headerlink" title="第二阶段：SD卡的初始化入口："></a>第二阶段：SD卡的初始化入口：</h4><p>SD模式的初始化入口：</p>
-<p>根据host的能力(caps)，依次尝试初始化SDIO, then SD, then MMC，如果host能力指定了不支持SDIO或SD或MMC，将进入host支持的初始化入口</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">/* Order&#x27;s important: probe SDIO, then SD, then MMC */</span><br><span class="line">if (!(host-&gt;caps2 &amp; MMC_CAP2_NO_SDIO))</span><br><span class="line">    if (!mmc_attach_sdio(host))</span><br><span class="line">        return 0;</span><br><span class="line"></span><br><span class="line">if (!(host-&gt;caps2 &amp; MMC_CAP2_NO_SD))</span><br><span class="line">    if (!mmc_attach_sd(host))</span><br><span class="line">        return 0;</span><br><span class="line"></span><br><span class="line">if (!(host-&gt;caps2 &amp; MMC_CAP2_NO_MMC))</span><br><span class="line">    if (!mmc_attach_mmc(host))</span><br><span class="line">        return 0;</span><br></pre></td></tr></table></figure>
-
-<p>怎么配置host能力：</p>
-<p>host能力是指该SD&#x2F;MMC&#x2F;SDIO接口具体用作哪种类型，这个和平台外设的设计相关。例如飞腾Pi平台的SOC有两个SD&#x2F;MMC&#x2F;SDIO控制器接口：</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202404191611726.png" alt="Image 14"></p>
-<p>对于SD0控制器, 只作为SD&#x2F;eMMC接口使用，因此host driver对SD0可以设置host-cap能力如下：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">host-&gt;caps2 |= MMC_CAP2_NO_SDIO | MMC_CAP2_NO_MMC;</span><br></pre></td></tr></table></figure>
-
-<p>这样在mmc_rescan_try_freq就可以跳过mmc_attach_sdio和mmc_attach_mmc， 只执行mmc_attach_sd去启动SD初始化流程。</p>
-<h4 id="SD卡初始化的基本概念"><a href="#SD卡初始化的基本概念" class="headerlink" title="SD卡初始化的基本概念"></a>SD卡初始化的基本概念</h4><h5 id="SD卡初始化的流程总览"><a href="#SD卡初始化的流程总览" class="headerlink" title="SD卡初始化的流程总览"></a>SD卡初始化的流程总览</h5><p>SD spec的UHS-I流程总览：几个关键节点1～9。</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202404191701745.png" alt="image-20240419170130663"></p>
-<p>以上UHS-I流程兼容SD3.0的SDR50, SDR25, SDR12等UHS模式，以及SD2.0的HS模式, DS模式：</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202404191627573.png" alt="image-20240419162710488"></p>
-<h5 id="SD卡初始化的接口概念"><a href="#SD卡初始化的接口概念" class="headerlink" title="SD卡初始化的接口概念"></a>SD卡初始化的接口概念</h5><p>如下图SD host和card接口，卡初始化过程最核心的工作就是协商host侧和card侧的能力，最终以双方都能支持的最高速度通信，即完成卡初始化。</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202404192014746.png" alt="image-20240419201436682"></p>
-<p>所谓高速通信，无外乎以下几点：</p>
-<p>更高的比特率：可以提高时钟频率和增加带宽。其中时钟CLK是host和card能力决定上限，host通过配置分频去控制接口频率（ios clock）；带宽是指SD接口有DATA[3:0] 4根数据线，但默认1bit模式只用了1根，切换到4bit模式后用4根线可同时传输4个bit。 </p>
-<p>更低的信号电平：由于逻辑电平是梯形有建立时间，更低的电平信号能减少建立时间，达到更快的波特率；所以UHS模式一定要1.8V通信电平。</p>
-<h4 id="第四阶段：SD卡初始化"><a href="#第四阶段：SD卡初始化" class="headerlink" title="第四阶段：SD卡初始化"></a>第四阶段：SD卡初始化</h4><p>在正式卡初始化之前， 有一个状态清理和协商工作</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">mmc_attach_sd： </span><br><span class="line"></span><br><span class="line">mmc_send_app_op_cond （这里是为了确认卡left busy state，有时候刚reset需要等状态恢复到IDLE）</span><br><span class="line"></span><br><span class="line">host-&gt;ocr_avail = host-&gt;ocr_avail_sd; （这里拿到host支持的sd ocr电压值，例如3.3V）</span><br><span class="line"></span><br><span class="line">mmc_select_voltage （这里查询卡支持的ocr电压值，以协商一致电压，一般而言这里是3.3V）</span><br></pre></td></tr></table></figure>
-
-<h5 id="SD卡初始化（上半部分）：-卡能力查询"><a href="#SD卡初始化（上半部分）：-卡能力查询" class="headerlink" title="**SD卡初始化（上半部分）：**卡能力查询"></a>**SD卡初始化（上半部分）：**卡能力查询</h5><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">mmc_sd_init_card：</span><br><span class="line"></span><br><span class="line">	mmc_sd_get_cid：</span><br><span class="line"></span><br><span class="line">		mmc_go_idle (节点1，CMD0使卡进入IDLE state)</span><br><span class="line"></span><br><span class="line">		mmc_send_if_cond（节点2，CMD8使卡配置OCR电压）</span><br><span class="line"></span><br><span class="line">		mmc_send_app_op_cond（节点3，CMD41查询卡容量，是否支持1.8V信号电）</span><br><span class="line"></span><br><span class="line">		mmc_set_uhs_voltage（节点4，CMD11切换卡到1.8V信号电）</span><br><span class="line"></span><br><span class="line">			mmc_host_set_uhs_voltage （调用host-&gt;ops-&gt;start_signal_voltage_switch切host侧到1.8V信号电，使两端通信电平一致）	</span><br><span class="line">		</span><br><span class="line">		mmc_send_cid（节点5，CMD2获取卡CID）</span><br></pre></td></tr></table></figure>
-
-<h6 id="关键节点描述："><a href="#关键节点描述：" class="headerlink" title="关键节点描述："></a>关键节点描述：</h6><p>节点2：CMD8应该设置arg[19:8] &#x3D; 1aa,  1 来自前面host ocr &#x3D; 2.7-3.6V support.</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202404191656210.png" alt="image-20240419165618097"></p>
-<p>有时候CMD41没设置arg bit24&#x3D;1, 可能是host cap没有正确配置：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">phytium_mci_common_probe：</span><br><span class="line">mmc-&gt;ocr_avail_sd = MMC_VDD_32_33 | MMC_VDD_33_34;</span><br></pre></td></tr></table></figure>
-
-<p>节点3：CMD41应该设置arg bit24  &#x3D; 1去查询卡是否支持S18R，去切换信号电到1.8V， 这个切换能力决定是否启动后面的UHS模式的初始化。这个CMD41有一定retry次数。</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202404191706848.png" alt="image-20240419170626765"></p>
-<p>有时候CMD41没设置arg bit24&#x3D;1, 可能是host cap没有使能UHS模式和4bit bus width</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">mmc_sd_get_cid：</span><br><span class="line">/*</span><br><span class="line"> * If the host supports one of UHS-I modes, request the card</span><br><span class="line"> * to switch to 1.8V signaling level. If the card has failed</span><br><span class="line"> * repeatedly to switch however, skip this.</span><br><span class="line"> */</span><br><span class="line">if (retries &amp;&amp; mmc_host_uhs(host))&#123;</span><br><span class="line">    ocr |= SD_OCR_S18R;</span><br><span class="line">    pr_info(&quot;%s: %s: set SD_OCR_S18R \n&quot;, mmc_hostname(host), __func__);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">mmc_host_uhs：</span><br><span class="line">static inline int mmc_host_uhs(struct mmc_host *host)</span><br><span class="line">&#123;</span><br><span class="line">	pr_info(&quot;%s: %s: host-&gt;caps = 0x%X \n&quot;, mmc_hostname(host), __func__, host-&gt;caps);</span><br><span class="line">	return host-&gt;caps &amp;</span><br><span class="line">		(MMC_CAP_UHS_SDR12 | MMC_CAP_UHS_SDR25 |</span><br><span class="line">		 MMC_CAP_UHS_SDR50 | MMC_CAP_UHS_SDR104 |</span><br><span class="line">		 MMC_CAP_UHS_DDR50) &amp;&amp;</span><br><span class="line">	       host-&gt;caps &amp; MMC_CAP_4_BIT_DATA;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h6 id="host设置caps的两种方式：probe赋值，使用DTS"><a href="#host设置caps的两种方式：probe赋值，使用DTS" class="headerlink" title="host设置caps的两种方式：probe赋值，使用DTS"></a><strong>host设置caps的两种方式：probe赋值，使用DTS</strong></h6><p>一种方式是在host probe中对某个已知地址空间的mmc device直接设置：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">phytium_mci_probe：</span><br><span class="line"></span><br><span class="line">host-&gt;sd0 = (0 == strcmp(dev_name(dev), &quot;28000000.mmc&quot;));</span><br><span class="line">if(host-&gt;sd0)&#123;</span><br><span class="line">	host-&gt;caps |= MMC_CAP_UHS_SDR12 | MMC_CAP_UHS_SDR25 | MMC_CAP_UHS_SDR50 | MMC_CAP_4_BIT_DATA;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>另外的方式是设备树中添加property描述，通过mmc_of_parse解析能力，参考：<a target="_blank" rel="noopener" href="https://gitee.com/phytium_embedded/phytium-linux-kernel/issues/I9H1ZS?from=project-issue">https://gitee.com/phytium_embedded/phytium-linux-kernel/issues/I9H1ZS?from=project-issue</a></p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202404221108662.png" alt="image-20240422110810589"></p>
-<p>DTS位于arch&#x2F;arm&#x2F;boot&#x2F;dts, 用于描述某个开发板的设备信息；DTS是.dts或.dtsi后缀，dtsi是共性的dts配置，相当于头文件可被dts include。</p>
-<p>搜索sd-uhs-sdrxx相关的dts，一个示例如下（rk3288-veyron-sdmmc.dtsi）</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">&amp;sdmmc &#123;					//该SD/MMC/SDIO控制器是用于SD/MMC模式，不是SDIO模式</span><br><span class="line">	status = &quot;okay&quot;;		//用于enable或者disable此dts项，一般probe调用of_device_is_available检测此status.</span><br><span class="line">	bus-width = &lt;4&gt;;		//SD支持4bit线宽</span><br><span class="line">	cap-mmc-highspeed;		//支持eMMC HS</span><br><span class="line">	cap-sd-highspeed;		//支持SD HS（SD2.0）</span><br><span class="line">	card-detect-delay = &lt;200&gt;;</span><br><span class="line">	cd-gpios = &lt;&amp;gpio7 RK_PA5 GPIO_ACTIVE_LOW&gt;;		//卡检测（CD#）用的是GPIO7，低有效</span><br><span class="line">	rockchip,default-sample-phase = &lt;90&gt;;</span><br><span class="line">	sd-uhs-sdr12;			//支持UHS SDR12速率（SD3.0），时钟频率不超过24M</span><br><span class="line">	sd-uhs-sdr25;			//支持UHS SDR25速率（SD3.0），时钟频率不超过50M</span><br><span class="line">	sd-uhs-sdr50;			//支持UHS SDR50速率（SD3.0），时钟频率不超过100M</span><br><span class="line">	sd-uhs-sdr104;			//支持UHS SDR104速率（SD3.0），时钟频率不超过208M</span><br><span class="line">	vmmc-supply = &lt;&amp;vcc33_sd&gt;;	//卡供电VCC = 3.3V</span><br><span class="line">	vqmmc-supply = &lt;&amp;vccio_sd&gt;;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
-
-
-
-<h5 id="SD卡初始化（下半部分-part1）：UHS高速模式（SD3-0）配置"><a href="#SD卡初始化（下半部分-part1）：UHS高速模式（SD3-0）配置" class="headerlink" title="SD卡初始化（下半部分-part1）：UHS高速模式（SD3.0）配置"></a><strong>SD卡初始化（下半部分-part1）：UHS高速模式（SD3.0）配置</strong></h5><p>在UHS下半部分初始化之前：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">host-&gt;ops-&gt;init_card：如果host有什么自定义寄存器配置，在此完成</span><br></pre></td></tr></table></figure>
-
-<p>开始UHS下半部分：</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202404191701745.png" alt="image-20240419170130663"></p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">mmc_sd_init_card：</span><br><span class="line"></span><br><span class="line">	mmc_set_relative_addr (节点6，CMD3获取卡地址：bus-device相对地址)</span><br><span class="line">	mmc_select_card (节点7，CMD7选中bus上的某card)</span><br><span class="line">                    （节点8，CMD42 unlock card，只有在CMD7的response显示card处于lock状态才发，此处一般不会lock，不发CMD42）</span><br><span class="line">                    </span><br><span class="line">	mmc_sd_setup_card：针对该card进行UHS初始化</span><br><span class="line">		step1：一些信息准备工作</span><br><span class="line">    	mmc_app_send_scr &amp; mmc_decode_scr（ACMD51,读卡的SCR register，见注释1）</span><br><span class="line">    	mmc_read_ssr（ACMD13,读卡的status register SSR，见注释2）</span><br><span class="line">		mmc_read_switch（ACMD6读卡能支持的driver strength和bus_width，下一步切换要用）</span><br><span class="line">	mmc_sd_init_uhs_card：切换到UHS模式的初始化（见注释3：需要host和card前面的协商结果是支持1.8V电平 &amp;&amp; UHS模式支持 &amp;&amp; bus width 4bit支持）</span><br><span class="line">		step2：执行切换：</span><br><span class="line">		一个ACMD6：</span><br><span class="line">            mmc_app_set_bus_width（节点9，ACMD6执行bus width切换4bit）</span><br><span class="line">            mmc_set_bus_width（host-ops也执行bus width切换到4bit）</span><br><span class="line">		几个CMD6如下（见注释4）</span><br><span class="line">            sd_select_driver_type（CMD6,设置卡侧driver strength并调用host ops也设置host侧register）</span><br><span class="line">            sd_set_current_limit（CMD6, 根据vdd设置最大电流）</span><br><span class="line">            sd_set_bus_speed_mode（CMD6，卡切换bus-speed到UHS中的SDRXX模式，并mmc_set_ios也设置host侧bus-speed）</span><br><span class="line">		step3：切完后调频：tuning</span><br><span class="line">			mmc_execute_tuning（节点10,CMD19，注释5）</span><br><span class="line"></span><br><span class="line">mmc_sd_init_card end.</span><br></pre></td></tr></table></figure>
-
-<p>注释1：SCR register包含卡支持SD3.0以上版本与否，支持3.0以上则卡bus_width支持4BIT</p>
-<p>注释2：SSR register包含卡的bus width，secured mode，card type等卡功能的配置</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202404191807768.png" alt="image-20240419180712652"></p>
-<p>注释3：切换到UHS模式的条件：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">/* Initialization sequence for UHS-I cards */</span><br><span class="line">if (rocr &amp; SD_ROCR_S18A &amp;&amp; mmc_host_uhs(host)) &#123;</span><br><span class="line">		err = mmc_sd_init_uhs_card(card);</span><br></pre></td></tr></table></figure>
-
-<p>注释4：CMD6配合Function Function Group配置不同功能，注意和ACMD6区分.</p>
-<p><img src="/home/cursorhu/.config/Typora/typora-user-images/image-20240419194003739.png" alt="image-20240419194003739"></p>
-<p>注释5：tuning是高速模式下利用特定模式的数据（tuning block pattern）去模拟测试数据读写的CRC错误率，来反馈微调SD host和card接口的时钟频率，数据采样相位等，以适配不同PCB环境对高速信号干扰；如下图。</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202404192040132.png" alt="image-20240419204049080"></p>
-<p>注意：UHS较低速的SDR12～SDR25 &lt; SDR50 &lt; 100MHz的，不需要tuning, SDR50可以tuning也可以不tuning。</p>
-<p>注意：tuning需要SD host硬件支持，有的host时钟分频能支持UHS SDR104但不支持tuning，如下图的SDR fixed-delay， 此时SD UHS卡最高只能工作在SDR50 &lt;100MHz的速度，即这种host最高只能支持UHS SDR50模式。</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202404192034201.png" alt="image-20240419203428136"></p>
-<h5 id="SD卡初始化（下半部分-part2）：HS模式（SD2-0）配置"><a href="#SD卡初始化（下半部分-part2）：HS模式（SD2-0）配置" class="headerlink" title="SD卡初始化（下半部分-part2）：HS模式（SD2.0）配置"></a><strong>SD卡初始化（下半部分-part2）：HS模式（SD2.0）配置</strong></h5><p>如果卡不支持UHS模式，即不调用mmc_sd_init_uhs_card流程，或者该流程失败，会进入mmc_sd_switch_hs初始化流程，该模式指非UHS的低速模式，不需要切换信号电平，通信线宽，tuning等操作。</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">mmc_sd_switch_hs：</span><br><span class="line">	mmc_sd_switch（CMD6 switch to high speed）</span><br><span class="line">	mmc_set_clock（设置host ios clock）</span><br><span class="line">	mmc_app_set_bus_width（如果支持4bit bus-width，就CMD6切换）</span><br></pre></td></tr></table></figure>
-
-<h2 id="附录：SD性能测试"><a href="#附录：SD性能测试" class="headerlink" title="附录：SD性能测试"></a>附录：SD性能测试</h2><p>在飞腾Pi上SD是作为系统盘启动，读写性能测试一般用fio或者dd。</p>
-<p>如果没联外网下载fio，用系统自带的dd即可：</p>
-<p>dd参数注释：</p>
-<ol>
-<li>if&#x3D;文件名：输入文件名，缺省为标准输入。即指定源文件。&lt; if&#x3D;input file &gt;</li>
-<li>of&#x3D;文件名：输出文件名，缺省为标准输出。即指定目的文件。&lt; of&#x3D;output file &gt;</li>
-<li>bs&#x3D;bytes：同时设置读入&#x2F;输出的块大小为bytes个字节。</li>
-<li>count&#x3D;blocks：仅拷贝blocks个块，块大小等于ibs指定的字节数。</li>
-</ol>
-<p>dd测试写和读的用例如下：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">#测试写</span><br><span class="line">root@phytiumpi:~# dd if=/dev/zero of=/dd-test.bin bs=1M count=256 conv=fdatasync</span><br><span class="line">256+0 records in</span><br><span class="line">256+0 records out</span><br><span class="line">268435456 bytes (268 MB, 256 MiB) copied, 19.6135 s, 13.7 MB/s</span><br><span class="line"></span><br><span class="line">#测试读</span><br><span class="line">root@phytiumpi:~# dd if=/dd-test.bin of=/dev/zero bs=1M count=256 iflag=direct</span><br><span class="line">256+0 records in</span><br><span class="line">256+0 records out</span><br><span class="line">268435456 bytes (268 MB, 256 MiB) copied, 11.3607 s, 23.6 MB/s</span><br><span class="line"></span><br><span class="line"></span><br></pre></td></tr></table></figure>
-
-<p>注意两个参数很重要，是为了绕开写缓存直接写硬盘：</p>
-<p>‘fdatasync’：Synchronize output data just before finishing. This forces a physical write of output data. 写数据测试包括写入物理盘，而不是写到buffer就算完。dd命令执行到最后会真正执行一次“同步(sync)”操作。</p>
-<p>iflag&#x3D;direct：读数据测试，直接读不经过读缓存。</p>
-<p>这样测试也可以：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">root@phytiumpi:~# dd if=/dev/zero of=/dd-test.bin bs=256M count=1 conv=fdatasync1+0 records in</span><br><span class="line">1+0 records out</span><br><span class="line">268435456 bytes (268 MB, 256 MiB) copied, 19.4769 s, 13.8 MB/s</span><br><span class="line"></span><br><span class="line">root@phytiumpi:~# dd if=/dd-test.bin of=/dev/zero bs=256M count=1 iflag=direct</span><br><span class="line">1+0 records in</span><br><span class="line">1+0 records out</span><br><span class="line">268435456 bytes (268 MB, 256 MiB) copied, 11.327 s, 23.7 MB/s</span><br></pre></td></tr></table></figure>
-
-
+<h3 id="SD初始化的过程"><a href="#SD初始化的过程" class="headerlink" title="SD初始化的过程"></a>SD初始化的过程</h3>
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2024/05/18/%E9%A3%9E%E8%85%BE%E6%B4%BELinux%20SD%E9%A9%B1%E5%8A%A8%E5%88%86%E6%9E%90%E5%92%8C%E8%B0%83%E8%AF%95/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
       
     </div>
 
@@ -1681,94 +885,14 @@
 <p>飞腾派接线只用了3根线，没用VCC。注意RX是接到TX， TX是接到RX。</p>
 <p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202404241428560.png" alt="image-20240424142831480"></p>
 <p>验证串口连接正常：查找到ttyUSB设备即USB转串口设备连接正常。</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ls /dev/ttyUSB0</span><br></pre></td></tr></table></figure>
-
-<p>注：Ubuntu有时串口线找不到ttyUSB0设备，可能跟线的质量或者芯片驱动相关。在Ubuntu下FT232不需要安装驱动能稳定连接。Windows下串口转接芯片一定需要装对应的CH340或FT232驱动才能在设备管理器COM口看到USB设备。</p>
-<h2 id="Putty-配置串口调试环境"><a href="#Putty-配置串口调试环境" class="headerlink" title="Putty 配置串口调试环境"></a>Putty 配置串口调试环境</h2><p>Putty连接串口需要以root用户启动。非root用户启动putty无法设置端口号，波特率等参数。</p>
-<p>以root启动putty有两种方式：</p>
-<ul>
-<li>以root启动putty GUI，在GUI中配置端口号，波特率等参数。</li>
-<li>以命令行sudo启动putty，在启动参数中配置端口号，波特率等参数。</li>
-</ul>
-<p>以root启动putty GUI：对于Ubuntu 22.04 Wayland桌面，使用<code>sudo -E putty</code>启动putty GUI。</p>
-<p>参考：<a target="_blank" rel="noopener" href="https://wiki.archlinux.org/title/Running_GUI_applications_as_root">https://wiki.archlinux.org/title/Running_GUI_applications_as_root</a></p>
-<p>以命令行sudo启动putty：</p>
-<p>参考：<a target="_blank" rel="noopener" href="https://readypinaple.com/using-putty-serial-terminal">https://readypinaple.com/using-putty-serial-terminal</a></p>
-<p>对于我的调试环境（飞腾派），参数如下：</p>
-<p><code>sudo putty -serial /dev/ttyUSB0 -sercfg 115200,8,n,1,N</code></p>
-<h2 id="Putty串口环境的复制和粘贴"><a href="#Putty串口环境的复制和粘贴" class="headerlink" title="Putty串口环境的复制和粘贴"></a>Putty串口环境的复制和粘贴</h2><p>Ubuntu22.04环境上有两种方法：</p>
-<p>1.使用鼠标中键在terminal和putty之间复制和粘贴；此方法不能在选中之后再选中，否则内容被覆盖；</p>
-<p>2.启动putty GUI后在selection设置ctrl+shift +C&#x2F;V 复制粘贴。记得保存设置到session的default配置。terminal默认支持ctrl+shift+C&#x2F;V操作。这种方式更稳定。</p>
-<p>以上的ctrl+shift+C&#x2F;V和中键操作属于两套剪贴板buffer，不会相互覆盖。即ctrl+shift+C复制的数据必须用ctrl+shift+V粘贴，中键选中的数据必须用中键粘贴。</p>
-<h2 id="Putty记录和查看log"><a href="#Putty记录和查看log" class="headerlink" title="Putty记录和查看log"></a>Putty记录和查看log</h2><h3 id="记录log"><a href="#记录log" class="headerlink" title="记录log"></a>记录log</h3><p>在启动GUI后在session-&gt;logging设置记录all output，记得保存设置到session的default配置。</p>
-<h3 id="查看log"><a href="#查看log" class="headerlink" title="查看log"></a>查看log</h3><p>查看log可以使用less显示 + grep过滤；</p>
-<p><strong>关于less：</strong> 类似vim快捷键.</p>
-<p>匹配查找：在less中查找可以使用 &#x2F;或者？查找，参考以下less的help：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">/pattern          *  Search forward for (N-th) matching line.</span><br><span class="line">?pattern          *  Search backward for (N-th) matching line.</span><br><span class="line">n                 *  Repeat previous search (for N-th occurrence).</span><br><span class="line">N                 *  Repeat previous search in reverse direction.</span><br><span class="line"></span><br><span class="line">#对于有空格的匹配查找，用反斜杠转义空格，例如：</span><br><span class="line">/this\ is\ pattern</span><br></pre></td></tr></table></figure>
-
-<p>跳转到头尾：大G（跳到末尾）和 gg（重来到开头）.</p>
-<p><strong>关于grep</strong>，有几点很常用：</p>
-<p>a.有时log中有乱码导致被grep设别为binary导致grep无法显示，需要<code>grep --text</code>参数指定以文本打开：</p>
-<p>例如要查看putty.log中mmc0模块的打印：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">cursorhu@ubuntu-PC:~/phytium/phytium-linux-kernel-v1.0.1$ less ~/putty.log | grep mmc0 --text</span><br><span class="line"></span><br><span class="line">[    2.208568] mmc0: mmc_sd_setup_card:</span><br><span class="line">[    2.208571] mmc0: phytium_mci_ops_request: cmd:55 arg:0x400000</span><br><span class="line">[    2.209331] mmc0: phytium_mci_irq: events:100,mask:0x1547,dmac_events:0,dmac_mask:0x0,cmd:55</span><br><span class="line">[    2.209335] mmc0: phytium_mci_err_irq:</span><br><span class="line">[    2.209348] mmc0: error -110 whilst initialising SD card</span><br></pre></td></tr></table></figure>
-
-<p>b.有时需要grep多个关键字，使用<code>grep -E “A|B”</code>，注意一定要用引号扩起来</p>
-<p>例如要同时查看mmc0和BHT的打印：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">less ~/putty.log | grep -E &quot;mmc0|BHT&quot; --text</span><br><span class="line"></span><br><span class="line">[    6.816021] BHT MSG:sdr50_notuning_sela_rx_inject:463</span><br><span class="line">[    6.821067] BHT MSG:exit:_ggc_output_tuning  0</span><br><span class="line">[    6.825505] BHT MSG: finit is 400000Hz</span><br><span class="line">[    6.829248] mmc0: tuning execution failed: 1</span><br><span class="line">[    6.833513] mmc0: phytium_mci_ops_set_ios:</span><br><span class="line">[    6.841521] mmc0: phytium_mci_set_buswidth: width = 0, set value:0x0</span><br></pre></td></tr></table></figure>
-
-<p>c.有时需要排除某关键字，例如飞腾的SD host有mmc0, mmc1两个，我只关注mmc0, 使用 grep -v KEYWORD去排除， v：invert match</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">less ~/putty.log | grep --text -v mmc1</span><br></pre></td></tr></table></figure>
-
-<p><strong>less+grep+less：</strong></p>
-<p>用less+grep过滤出log另存为新log， 再用less查看</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">less ~/putty.log | grep --text -E &quot;mmc0|BHT&quot; &gt; putty-bh201-tuning-error.log </span><br><span class="line">less putty-bh201-tuning-error2.log</span><br></pre></td></tr></table></figure>
-
-<h1 id="交叉编译"><a href="#交叉编译" class="headerlink" title="交叉编译"></a>交叉编译</h1><h2 id="交叉编译方法"><a href="#交叉编译方法" class="headerlink" title="交叉编译方法"></a>交叉编译方法</h2><p>设置工具链环境变量+交叉编译命令如下：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">set_env.sh: 注意要用source执行才是export配置到当前环境变量，用sh或者./sh都是配置到子shell进程环境</span><br><span class="line"></span><br><span class="line">export PATH=$PATH:&quot;/opt/toolchains/gcc-linaro-7.5.0-2019.12-x86_64_aarch64-linux-gnu/bin&quot;</span><br><span class="line">export CROSS_COMPILE=aarch64-linux-gnu-</span><br><span class="line">export ARCH=arm64</span><br><span class="line"></span><br><span class="line">build_kernel.sh:</span><br><span class="line"></span><br><span class="line">make ARCH=arm64 e2000_defconfig all -j4 INSTALL_MOD_PATH=modules modules_install</span><br></pre></td></tr></table></figure>
-
-<p>安装编译的系统镜像和设备树：把编译机的输出image和dtb拷贝到SD卡系统盘的rootfs&#x2F;boot&#x2F;里，</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">cp_image.sh：</span><br><span class="line"></span><br><span class="line">sudo cp arch/arm64/boot/Image /media/cursorhu/rootfs/boot/</span><br><span class="line">sudo cp arch/arm64/boot/dts/phytium/phytium-pi-board.dtb /media/cursorhu/rootfs/boot/</span><br></pre></td></tr></table></figure>
-
-<p>SD卡放回开发板启动，putty串口回车进入uboot，指定从SD卡系统盘的rootfs&#x2F;boot&#x2F;启动内核</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">uboot.sh：（并不能直接在uboot运行）</span><br><span class="line"></span><br><span class="line">setenv bootargs console=ttyAMA1,115200 earlycon=pl011,0x2800d000 root=/dev/mmcblk0p1 rootwait rw;</span><br><span class="line">ext4load mmc 0:1 0x90100000 boot/Image;</span><br><span class="line">ext4load mmc 0:1 0x90000000 boot/phytium-pi-board.dtb;</span><br><span class="line">booti 0x90100000 – 0x90000000;</span><br></pre></td></tr></table></figure>
-
-<h1 id="uboot配置"><a href="#uboot配置" class="headerlink" title="uboot配置"></a>uboot配置</h1><h2 id="uboot自动选择指定kernel启动"><a href="#uboot自动选择指定kernel启动" class="headerlink" title="uboot自动选择指定kernel启动"></a>uboot自动选择指定kernel启动</h2><p>背景：如下图，飞腾派启动指定内核需要设置uboot参数，由于飞腾派的uboot源码没有开放，不能用脚本（boot.scr）。调试新编译的内核，每次飞腾派启动都需要在putty粘贴uboot命令。开发效率低。</p>
-<p>![Screenshot from 2024-04-08 15-40-55](&#x2F;home&#x2F;cursorhu&#x2F;Pictures&#x2F;Screenshot from 2024-04-08 15-40-55.png)</p>
-<p>解决方案：将uboot命令配置到uboot环境变量，并保存到系统盘中使断电重启后uboot环境变量也生效。</p>
-<p>参考mastering embeded linux programming， 使用bootcmd参数可以配置uboot script去执行一连串命令，实现类似shell script功能并保存，每次启动uboot不用复制粘贴一条条命令去启动。 </p>
-<p>以飞腾派为例，每次编译kernel后要从新编译的kernel启动，需要每次手动设置以下uboot命令&#x2F;环境：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">#启动参数环境变量</span><br><span class="line">setenv bootargs console=ttyAMA1,115200 earlycon=pl011,0x2800d000 root=/dev/mmcblk0p1 rootwait rw;</span><br><span class="line">#命令语句（非环境变量）</span><br><span class="line">ext4load mmc 0:1 0x90100000 boot/Image;</span><br><span class="line">ext4load mmc 0:1 0x90000000 boot/phytium-pi-board.dtb;</span><br><span class="line">booti 0x90100000 – 0x90000000;</span><br></pre></td></tr></table></figure>
-
-<p>目标：使uboot自动从以上命令语句指定的kernel启动：</p>
-<p>对于环境变量bootargs不需要改动，我们只需要将命令语句设置到bootcmd环境变量。最后再一起saveenv使两个环境变量都保存到硬盘，重启后能自动生效即可。</p>
-<ol>
-<li>如何设置bootcmd到uboot环境变量：</li>
-</ol>
-<p>将以上uboot命令语句合成为一条语句设置到bootcmd：uboot命令的结束标志是分号，设置bootcmd时在内容语句的每个分号前需要加转移字符 , 这样setenv才会判断这个分号是要输入到bootcmd的字符，而不散表明setenv命令本身的结束。 </p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">setenv bootcmd ext4load mmc 0:1 0x90100000 boot/Image\;ext4load mmc 0:1 0x90000000 boot/phytium-pi-board.dtb\;booti 0x90100000 – 0x90000000\;</span><br></pre></td></tr></table></figure>
-
-<p>注意：上面指令拷贝到putty串口时时符号 <code>-</code>会消失，需要手动添加</p>
-<ol start="2">
-<li>如何使bootargs和bootcmd环境变量重启后也自动生效：保存（所有）环境变量</li>
-</ol>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">saveenv</span><br></pre></td></tr></table></figure>
-
-<ol start="3">
-<li>重启后可以printenv查看配置生效，根据kernel打印可确认确实从指定kernel启动。</li>
-</ol>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">Phytium-Pi#printenv</span><br><span class="line">arch=arm</span><br><span class="line">baudrate=115200</span><br><span class="line">board=e2000</span><br><span class="line">board_name=e2000</span><br><span class="line">boot_os=bootm $kernel_addr -:- $ft_fdt_addr</span><br><span class="line">bootargs=console=ttyAMA1,115200 earlycon=pl011,0x2800d000 root=/dev/mmcblk0p1 rootwait rw;</span><br><span class="line">bootcmd=ext4load mmc 0:1 0x90100000 boot/Image;ext4load mmc 0:1 0x90000000 boot/phytium-pi-board.dtb;booti 0x90100000 - 0x90000000;</span><br><span class="line">bootdelay=2</span><br><span class="line">cpu=armv8</span><br></pre></td></tr></table></figure>
-
-<p>5.如何删除env：变量设置为空即为删除：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">setenv bootargs</span><br><span class="line">setenv bootcmd</span><br><span class="line">saveenv</span><br></pre></td></tr></table></figure>
-
-<h1 id="附录：问题记录"><a href="#附录：问题记录" class="headerlink" title="附录：问题记录"></a>附录：问题记录</h1><h2 id="ARM工具链报错问题"><a href="#ARM工具链报错问题" class="headerlink" title="ARM工具链报错问题"></a>ARM工具链报错问题</h2><p>编译飞腾kernel有时会报错：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">cursorhu@ubuntu-PC:~/phytium/phytium-linux-kernel-v1.0.1$ ./build_kernel.sh </span><br><span class="line">#</span><br><span class="line"># configuration written to .config</span><br><span class="line">#</span><br><span class="line">arch/arm64/Makefile:27: ld does not support --fix-cortex-a53-843419; kernel may be susceptible to erratum</span><br><span class="line">arch/arm64/Makefile:40: LSE atomics not supported by binutils</span><br><span class="line">arch/arm64/Makefile:48: Detected assembler with broken .inst; disassembly will be unreliable</span><br><span class="line">scripts/kconfig/conf  --syncconfig Kconfig</span><br><span class="line">arch/arm64/Makefile:27: ld does not support --fix-cortex-a53-843419; kernel may be susceptible to erratum</span><br><span class="line">arch/arm64/Makefile:40: LSE atomics not supported by binutils</span><br><span class="line">arch/arm64/Makefile:48: Detected assembler with broken .inst; disassembly will be unreliable</span><br><span class="line">  CC      scripts/mod/empty.o</span><br><span class="line">gcc: error: unrecognized command-line option ‘-mlittle-endian’</span><br><span class="line">make[3]: *** [scripts/Makefile.build:304: scripts/mod/empty.o] Error 1</span><br><span class="line">make[2]: *** [scripts/Makefile.build:544: scripts/mod] Error 2</span><br><span class="line">make[1]: *** [Makefile:1085: scripts] Error 2</span><br><span class="line">make[1]: *** Waiting for unfinished jobs....</span><br><span class="line">make: *** [Makefile:286: __build_one_by_one] Error 2</span><br><span class="line"></span><br></pre></td></tr></table></figure>
-
-<p>报错内容指向以下patch：</p>
-<p><a target="_blank" rel="noopener" href="https://patchwork.kernel.org/project/linux-arm-kernel/patch/1471873737-7614-1-git-send-email-will.deacon@arm.com/">https://patchwork.kernel.org/project/linux-arm-kernel/patch/1471873737-7614-1-git-send-email-will.deacon@arm.com/</a></p>
-<p>可能原因：没有运行set_env.sh就直接build，生成的.confg有问题, ARCH&#x3D;arm CROSS_COMPILE&#x3D;XXX XXX_defconfig都没被写入到.confg文件</p>
-<p>解决方法：删除kernel源码目录的.config文件：rm .config和.config.old，需要重启机器，再source set_env.sh重新设置环境变量, source build_kernel.sh, 编译就OK了</p>
-
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2024/05/18/%E9%A3%9E%E8%85%BE%E6%B4%BELinux%E8%B0%83%E8%AF%95%E7%8E%AF%E5%A2%83%EF%BC%9A%E4%B8%B2%E5%8F%A3%E8%B0%83%E8%AF%95%E4%BA%A4%E5%8F%89%E7%BC%96%E8%AF%91uboot%E9%85%8D%E7%BD%AE/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
       
     </div>
 
@@ -1849,14 +973,14 @@
 <p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202405292031748.png" alt="image-20240529203142664"></p>
 <p>3.配置完毕后，点generate code生成代码</p>
 <p>4.理解代码和工程配置的对应关系：</p>
-<p>一般自动生成的代码都在Core里面：</p>
-<p>（1）main查看该外设的初始化代码</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202405292032897.png" alt="image-20240529203258870"></p>
-<p>（2）中断查看中断配置相关的代码：it.c实现回调</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202405292034688.png" alt="image-20240529203407652"></p>
-<p>（2）msp是该外设的最底层配置，main的初始化和中断回调都以此配置为前提生效。</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202405292034549.png" alt="image-20240529203455499"></p>
-
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2024/03/12/STM32%20--%20%E5%A6%82%E4%BD%95%E4%BD%BF%E7%94%A8CubeMX%E7%94%9F%E6%88%90STM32%E4%BB%A3%E7%A0%81/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
       
     </div>
 
@@ -1936,22 +1060,14 @@
 <p>如何在Keil community &gt;&#x3D; 5.37版本上安装ARM compiler v5：</p>
 <p>参考：<a target="_blank" rel="noopener" href="https://community.arm.com/support-forums/f/keil-forum/52719/how-can-i-install-compiler-version-5-for-keil-vision-5">https://community.arm.com/support-forums/f/keil-forum/52719/how-can-i-install-compiler-version-5-for-keil-vision-5</a></p>
 <p>1.下载ARM compiler v5</p>
-<p><a target="_blank" rel="noopener" href="https://developer.arm.com/documentation/ka005198/latest">https://developer.arm.com/documentation/ka005198/latest</a></p>
-<p>登录ARM账户后，下载win32或者linux32版本</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202412231526350.png" alt="image-20241223152607237"></p>
-<p>2.安装ARM compiler v5</p>
-<p>注意：安装路径必须是Keil路径下的ARM文件夹</p>
-<p>For example, if your Keil MDK installation is in <code>C:\Keil_v5</code> the recommended installation path is <code>C:\Keil_v5\ARM\ARM_Compiler_5.06u7</code></p>
-<p>如果不这样安装，Keil会找不到ARM compiler v5的license，编译会缺license报错；在Keil路径下安装会使用Keil已有的community license，不会报错。</p>
-<p>3.配置Keil项目，添加v5选项</p>
-<p><a target="_blank" rel="noopener" href="https://developer.arm.com/documentation/101407/0541/Creating-Applications/Tips-and-Tricks/Manage-Arm-Compiler-Versions">https://developer.arm.com/documentation/101407/0541/Creating-Applications/Tips-and-Tricks/Manage-Arm-Compiler-Versions</a></p>
-<p>如何知道项目是基于ARM compiler v5还是v6创建：</p>
-<p>查看项目文件uvprojx，如果是 “礦ision5 Project (.uvprojx)”则是基于ARM compiler v5</p>
-<h2 id="破解ARMCC-ARM-compiler-v5"><a href="#破解ARMCC-ARM-compiler-v5" class="headerlink" title="破解ARMCC(ARM compiler v5)"></a>破解ARMCC(ARM compiler v5)</h2><p>community的Keil license并不能支持ARMCC(ARM compiler v5)编译32K以上的项目，而一些老的严重依赖ARM v5项目移植到ARM v6不是很容易，还得用破解版ARMCC编译。</p>
-<p>（1）下载ARM keygen2032注册机</p>
-<p>（2）在File-&gt;License Management中deactive当前的community license，然后以管理员启动Keil，复制CID (Computer ID)到keygen，产生LIC</p>
-<p>（3）禁用Keil联网：禁用UV4.exe出站规则 <a target="_blank" rel="noopener" href="https://blog.csdn.net/weixin_41623723/article/details/105765273">https://blog.csdn.net/weixin_41623723/article/details/105765273</a></p>
-
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2024/03/02/STM32%20--%20Keil%20ARM%E9%85%8D%E7%BD%AE%E7%AC%94%E8%AE%B0/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
       
     </div>
 
@@ -2044,13 +1160,13 @@
       <div class="site-state-item site-state-categories">
             <a href="/categories/">
           
-        <span class="site-state-item-count">33</span>
+        <span class="site-state-item-count">32</span>
         <span class="site-state-item-name">分类</span></a>
       </div>
       <div class="site-state-item site-state-tags">
             <a href="/tags/">
           
-        <span class="site-state-item-count">53</span>
+        <span class="site-state-item-count">52</span>
         <span class="site-state-item-name">标签</span></a>
       </div>
   </nav>
@@ -2169,5 +1285,6 @@
 
   
 
+  
 </body>
 </html>
