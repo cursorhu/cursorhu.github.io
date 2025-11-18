@@ -30,7 +30,7 @@
 <meta property="og:description" content="背景某软件有不同的配置参数，实现不同功能版本的编译批量测试需要批量编译各种版本，实现方式为：1.将编译参数组合，生成大量配置文件2.编译过程遍历这些配置文件，依次编译对应版本3.有参数加入，修改，删除，只需要更新这些配置文件如何实现这些配置文件的更新？ 实例某芯片的Firmware批量编译实现：Firmware代码为C, 配置参数用宏实现，后缀为.def目录结构如下 |–project_folde">
 <meta property="og:locale" content="zh_CN">
 <meta property="article:published_time" content="2020-08-12T06:58:37.000Z">
-<meta property="article:modified_time" content="2024-04-26T08:13:35.966Z">
+<meta property="article:modified_time" content="2025-11-18T03:09:13.000Z">
 <meta property="article:author" content="cursorhu">
 <meta property="article:tag" content="shell">
 <meta name="twitter:card" content="summary">
@@ -227,7 +227,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2024-04-26 16:13:35" itemprop="dateModified" datetime="2024-04-26T16:13:35+08:00">2024-04-26</time>
+                <time title="修改时间：2025-11-18 11:09:13" itemprop="dateModified" datetime="2025-11-18T11:09:13+08:00">2025-11-18</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -235,7 +235,7 @@
               </span>
               <span class="post-meta-item-text">分类于</span>
                 <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/linux/" itemprop="url" rel="index"><span itemprop="name">linux</span></a>
+                  <a href="/categories/linux%E5%9F%BA%E7%A1%80/" itemprop="url" rel="index"><span itemprop="name">linux基础</span></a>
                 </span>
             </span>
 
@@ -376,25 +376,8 @@ if [ $1 = &quot;-bf&quot; ];then #backup defs
 elif [ $1 = &quot;-cf&quot; ];then #clear backup defs
 	rm -rf $DEFS_BACKUP_PATH
 </code></pre>
-<p>​<br>​    #add a macro name and macro value to defs, and add file postfix<br>​    elif [ $1 &#x3D; “-a” ];then<br>​<br>    	if [ $# !&#x3D; 4 ];then<br>    		echo “usage: .&#x2F;update.sh -a FILE_POSTFIX MACRO_NAME MACRO_VALUE”<br>    		exit;<br>    	fi</p>
-<pre><code>	mkdir -p $DEFS_TEMP_PATH &amp;&amp; cp -rf $DEFS_BACKUP_PATH/*.def $DEFS_TEMP_PATH
-	
-	FILE_POSTFIX=$2
-	MACRO_NAME=$3
-	MACRO_VALUE=$4
-	# sed -i makes change on original file, otherwise on stream
-	# xargs transfer multiple output from stream to multiple args to sed
-	find ${DEFS_TEMP_PATH} -name &#39;*.def&#39; | xargs sed -i &#39;$a\#define\ &#39;&quot;$MACRO_NAME&quot;&#39;\ &#39;&quot;$MACRO_VALUE&quot;&#39;&#39;
-	
-	for file in `ls ${DEFS_TEMP_PATH}/*.def`
-	do
-	 mv $file `echo $file | sed &#39;s/\(.*\)\(\..*\)/\1_&#39;&quot;$FILE_POSTFIX&quot;&#39;\2/g&#39;`
-	done
-	
-	cp -rf $DEFS_TEMP_PATH/*.def $DEFS_PATH
-	rm -rf $DEFS_TEMP_PATH
-
-#update a macro name and macro value to defs, and update file postfix
+<p>​<br>​    #add a macro name and macro value to defs, and add file postfix<br>​    elif [ $1 &#x3D; “-a” ];then<br>​<br>​    	if [ $# !&#x3D; 4 ];then<br>​    		echo “usage: .&#x2F;update.sh -a FILE_POSTFIX MACRO_NAME MACRO_VALUE”<br>​    		exit;<br>​    	fi<br>​<br>    	mkdir -p $DEFS_TEMP_PATH &amp;&amp; cp -rf $DEFS_BACKUP_PATH&#x2F;<em>.def $DEFS_TEMP_PATH<br>    	<br>    	FILE_POSTFIX&#x3D;$2<br>    	MACRO_NAME&#x3D;$3<br>    	MACRO_VALUE&#x3D;$4<br>    	# sed -i makes change on original file, otherwise on stream<br>    	# xargs transfer multiple output from stream to multiple args to sed<br>    	find ${DEFS_TEMP_PATH} -name ‘</em>.def’ | xargs sed -i ‘$a#define\ ‘“$MACRO_NAME”‘\ ‘“$MACRO_VALUE”‘’<br>    	<br>    	for file in <code>ls ${DEFS_TEMP_PATH}/*.def</code><br>    	do<br>    	 mv $file <code>echo $file | sed &#39;s/\(.*\)\(\..*\)/\1_&#39;&quot;$FILE_POSTFIX&quot;&#39;\2/g&#39;</code><br>    	done<br>    	<br>    	cp -rf $DEFS_TEMP_PATH&#x2F;*.def $DEFS_PATH<br>    	rm -rf $DEFS_TEMP_PATH</p>
+<pre><code>#update a macro name and macro value to defs, and update file postfix
 elif [ $1 = &quot;-u&quot; ];then
 
 	if [ $# != 5 ];then
@@ -415,18 +398,8 @@ elif [ $1 = &quot;-u&quot; ];then
 	 	mv $file `echo $file | sed &#39;s/&#39;&quot;$ORIGIN_POSTFIX&quot;&#39;/&#39;&quot;$UPDATED_POSTFIX&quot;&#39;/g&#39;`
 	done
 </code></pre>
-<p>​<br>​    #delete a macro name and macro value of defs, and delete file postfix<br>​    elif [ $1 &#x3D; “-d” ];then<br>​    	<br>    	if [ $# !&#x3D; 3 ];then<br>    		echo “usage: .&#x2F;update.sh -d DELETE_POSTFIX MACRO_NAME”<br>    		exit;<br>    	fi</p>
-<pre><code>	DELETE_POSTFIX=$2
-	MACRO_NAME=$3
-	#delete all lines that contain $MACRO_NAME
-	find ${DEFS_PATH} -name &#39;*.def&#39; | grep $DELETE_POSTFIX | xargs sed -i &#39;/&#39;&quot;$MACRO_NAME&quot;&#39;/d&#39;
-	#delete file postfix
-	for file in `ls ${DEFS_PATH}/*.def`
-	do
-	 	mv $file `echo $file | sed &#39;s/_&#39;&quot;$DELETE_POSTFIX&quot;&#39;//g&#39;`
-	done
-
-#delete target file by postfix
+<p>​<br>​    #delete a macro name and macro value of defs, and delete file postfix<br>​    elif [ $1 &#x3D; “-d” ];then<br>​    	<br>​    	if [ $# !&#x3D; 3 ];then<br>​    		echo “usage: .&#x2F;update.sh -d DELETE_POSTFIX MACRO_NAME”<br>​    		exit;<br>​    	fi<br>​<br>    	DELETE_POSTFIX&#x3D;$2<br>    	MACRO_NAME&#x3D;$3<br>    	#delete all lines that contain $MACRO_NAME<br>    	find ${DEFS_PATH} -name ‘*.def’ | grep $DELETE_POSTFIX | xargs sed -i ‘&#x2F;‘“$MACRO_NAME”‘&#x2F;d’<br>    	#delete file postfix<br>    	for file in <code>ls ${DEFS_PATH}/*.def</code><br>    	do<br>    	 	mv $file <code>echo $file | sed &#39;s/_&#39;&quot;$DELETE_POSTFIX&quot;&#39;//g&#39;</code><br>    	done</p>
+<pre><code>#delete target file by postfix
 elif [ $1 = &quot;-df&quot; ];then
 	
 	if [ $# != 2 ];then
@@ -503,8 +476,8 @@ done
         
     <div class="post-nav">
       <div class="post-nav-item">
-    <a href="/2020/06/22/GCC%E4%BD%BF%E7%94%A8%E7%AC%94%E8%AE%B0/" rel="prev" title="GCC使用笔记">
-      <i class="fa fa-chevron-left"></i> GCC使用笔记
+    <a href="/2020/06/22/linux%E5%9F%BA%E7%A1%80%20--%20GCC%E4%BD%BF%E7%94%A8%E7%AC%94%E8%AE%B0/" rel="prev" title="linux基础 -- GCC使用笔记">
+      <i class="fa fa-chevron-left"></i> linux基础 -- GCC使用笔记
     </a></div>
       <div class="post-nav-item">
     <a href="/2020/08/27/Github%E5%B8%B8%E7%94%A8%E9%85%8D%E7%BD%AE%E7%AC%94%E8%AE%B0/" rel="next" title="Github常用配置笔记">
@@ -584,20 +557,20 @@ done
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">114</span>
+          <span class="site-state-item-count">110</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
       <div class="site-state-item site-state-categories">
             <a href="/categories/">
           
-        <span class="site-state-item-count">41</span>
+        <span class="site-state-item-count">33</span>
         <span class="site-state-item-name">分类</span></a>
       </div>
       <div class="site-state-item site-state-tags">
             <a href="/tags/">
           
-        <span class="site-state-item-count">56</span>
+        <span class="site-state-item-count">54</span>
         <span class="site-state-item-name">标签</span></a>
       </div>
   </nav>

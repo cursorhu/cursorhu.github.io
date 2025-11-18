@@ -191,1457 +191,6 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/11/08/%E6%B5%85%E8%B0%88Linux%E7%9A%84Signal%E4%BF%A1%E5%8F%B7/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.jpg">
-      <meta itemprop="name" content="cursorhu">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="ThinkNotes">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2020/11/08/%E6%B5%85%E8%B0%88Linux%E7%9A%84Signal%E4%BF%A1%E5%8F%B7/" class="post-title-link" itemprop="url">浅谈Linux的Signal信号</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2020-11-08 18:53:03" itemprop="dateCreated datePublished" datetime="2020-11-08T18:53:03+08:00">2020-11-08</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2024-04-26 16:13:35" itemprop="dateModified" datetime="2024-04-26T16:13:35+08:00">2024-04-26</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/linux/" itemprop="url" rel="index"><span itemprop="name">linux</span></a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <p>本文将从以下几个方面来阐述信号:</p>
-<p>(1) 信号的基本知识<br>(2) 信号生命周期与处理过程分析<br>(3) 基本的信号处理函数<br>(4) 保护临界区不被中断<br>(5) 信号的继承与执行<br>(6) 实时信号中锁的研究</p>
-<h1 id="第一部分-信号的基本知识"><a href="#第一部分-信号的基本知识" class="headerlink" title="第一部分: 信号的基本知识"></a>第一部分: 信号的基本知识</h1><h2 id="1-信号本质"><a href="#1-信号本质" class="headerlink" title="1.信号本质:"></a>1.信号本质:</h2><p>信号的本质是软件层次上对中断的一种模拟。它是一种异步通信的处理机制，事实上，进程并不知道信号何时到来。</p>
-<h2 id="2-信号来源"><a href="#2-信号来源" class="headerlink" title="2.信号来源"></a>2.信号来源</h2><p>(1)程序错误，如非法访问内存<br>(2)外部信号，如按下了CTRL+C<br>(3)通过kill或sigqueue向另外一个进程发送信号</p>
-<h2 id="3-信号种类"><a href="#3-信号种类" class="headerlink" title="3.信号种类"></a>3.信号种类</h2><p>信号分为可靠信号与不可靠信号,可靠信号又称为实时信号，非可靠信号又称为非实时信号。<br>信号代码从1到32是不可靠信号,不可靠信号主要有以下问题:<br>(1)每次信号处理完之后，就会恢复成默认处理，这可能是调用者不希望看到的<br>(2)存在信号丢失的问题<br>现在的Linux对信号机制进行了改进，因此，不可靠信号主要是指信号丢失<br>信号代码从SIGRTMIN到SIGRTMAX之间的信号是可靠信号。可靠信号不存在丢失，由sigqueue发送，可靠信号支持排队。</p>
-<p>可靠信号注册机制:<br>内核每收到一个可靠信号都会去注册这个信号，在信号的未决信号链中分配sigqueue结构，因此，不会存在信号丢失的问题。</p>
-<p>不可靠信号的注册机制:<br>而对于不可靠的信号，如果内核已经注册了这个信号，那么便不会再去注册，对于进程来说，便不会知道本次信号的发生。<br>可靠信号与不可靠信号与发送函数没有关系，取决于信号代码，前面的32种信号就是不可靠信号，而后面的32种信号就是可靠信号。</p>
-<h2 id="4-信号响应的方式"><a href="#4-信号响应的方式" class="headerlink" title="4.信号响应的方式"></a>4.信号响应的方式</h2><p>(1)采用系统默认处理SIG_DFL,执行缺省操作<br>(2)捕捉信号处理，即用户自定义的信号处理函数来处理<br>(3)忽略信号SIG_IGN ,但有两种信号不能被忽略SIGKILL，SIGSTOP</p>
-<h1 id="第二部分-信号的生命周期与处理过程分析"><a href="#第二部分-信号的生命周期与处理过程分析" class="headerlink" title="第二部分: 信号的生命周期与处理过程分析"></a>第二部分: 信号的生命周期与处理过程分析</h1><h2 id="1-信号的生命周期"><a href="#1-信号的生命周期" class="headerlink" title="1. 信号的生命周期"></a>1. 信号的生命周期</h2><p>信号产生-&gt;信号注册－&gt;信号在进程中注销-&gt;信号处理函数执行完毕</p>
-<p>(1)信号的产生是指触发信号的事件的发生</p>
-<p>(2)信号注册<br>指的是在目标进程中注册，该目标进程中有未决信号的信息:</p>
-<pre><code>struct sigpending pending：
-struct sigpending{
-struct sigqueue *head, **tail;
-sigset_t signal;
-};
-
-struct sigqueue{
-struct sigqueue *next;
-siginfo_t info;
-}
-</code></pre>
-<p>其中 sigqueue结构组成的链称之为未决信号链，sigset_t称之为未决信号集。<br>*head,**tail分别指向未决信号链的头部与尾部。<br>siginfo_t info是信号所携带的信息。<br>信号注册的过程就是将信号值加入到未决信号集siginfo_t中，将信号所携带的信息加入到未决信号链的某一个sigqueue中去。<br> 因此，对于可靠的信号，可能存在多个未决信号的sigqueue结构，对于每次信号到来都会注册。而不可靠信号只注册一次，只有一个sigqueue结构。<br>只要信号在进程的未决信号集中，表明进程已经知道这些信号了，还没来得及处理，或者是这些信号被阻塞。</p>
-<p>(3)信号在目标进程中注销<br> 在进程的执行过程中，每次从系统调用或中断返回用户空间的时候，都会检查是否有信号没有被处理。如果这些信号没有被阻塞，那么就调用相应的信号处理函数来处理这些信号。则调用信号处理函数之前，进程会把信号在未决信号链中的sigqueue结构卸掉。是否从未决信号集中把信号删除掉，对于实时信号与非实时信号是不相同的。<br>非实时信号:由于非实时信号在未决信号链中只有一个sigqueue结构，因此将它删除的同时将信号从未决信号集中删除。<br>实时信号:由于实时信号在未决信号链中可能有多个sigqueue结构，如果只有一个，也将信号从未决信号集中删除掉。如果有多个那么不从未决信号集中删除信号，注销完毕。</p>
-<p>(4)信号处理函数执行完毕<br>执行处理函数，本次信号在进程中响应完毕。<br>在第4步，只简单的描述了信号处理函数执行完毕，就完成了本次信号的响应，但这个信号处理函数空间是怎么处理的呢? 内核栈与用户栈是怎么工作的呢? 这就涉及到了信号处理函数的过程。</p>
-<h2 id="2-信号处理函数的过程"><a href="#2-信号处理函数的过程" class="headerlink" title="2. 信号处理函数的过程:"></a>2. 信号处理函数的过程:</h2><p>(1)注册信号处理函数<br>信号的处理是由内核来代理的，首先程序通过sigal或sigaction函数为每个信号注册处理函数，而内核中维护一张信号向量表，对应信号处理机制。这样，在信号在进程中注销完毕之后，会调用相应的处理函数进行处理。</p>
-<p>(2)信号的检测与响应时机<br>在系统调用或中断返回用户态的前夕，内核会检查未决信号集，进行相应的信号处理。</p>
-<p>(3)处理过程:<br>程序运行在用户态时-&gt;进程由于系统调用或中断进入内核-&gt;转向用户态执行信号处理函数-&gt;信号处理函数完毕后进入内核-&gt;返回用户态继续执行程序<br>首先程序执行在用户态，在进程陷入内核并从内核返回的前夕，会去检查有没有信号没有被处理，如果有且没有被阻塞就会调用相应的信号处理程序去处理。首先，内核在用户栈上创建一个层，该层中将返回地址设置成信号处理函数的地址，这样，从内核返回用户态时，就会执行这个信号处理函数。当信号处理函数执行完，会再次进入内核，主要是检测有没有信号没有处理，以及恢复原先程序中断执行点，恢复内核栈等工作，这样，当从内核返回后便返回到原先程序执行的地方了。<br>信号处理函数的过程大概是这样了。<br>具体的可参考<a target="_blank" rel="noopener" href="http://www.spongeliu.com/linux/linux%E5%86%85%E6%A0%B8%E4%BF%A1%E5%8F%B7%E5%A4%84%E7%90%86%E6%9C%BA%E5%88%B6%E4%BB%8B%E7%BB%8D/">http://www.spongeliu.com/linux/linux内核信号处理机制介绍/</a></p>
-<h1 id="第三部分-基本的信号处理函数"><a href="#第三部分-基本的信号处理函数" class="headerlink" title="第三部分: 基本的信号处理函数"></a>第三部分: 基本的信号处理函数</h1><p>首先看一个两个概念: 信号未决与信号阻塞<br>信号未决: 指的是信号的产生到信号处理之前所处的一种状态。确切的说，是信号的产生到信号注销之间的状态。<br>信号阻塞: 指的是阻塞信号被处理，是一种信号处理方式。</p>
-<h2 id="1-信号操作"><a href="#1-信号操作" class="headerlink" title="1. 信号操作"></a>1. 信号操作</h2><p> 信号操作最常用的方法是信号的屏蔽，信号屏蔽主要用到以下几个函数:</p>
-<pre><code>int sigemptyset(sigset_t *set);
-int sigfillset(sigset_t *set);
-int sigaddset(sigset_t *set,int signo);
-int sigdelset(sigset_t *set,int signo);
-int sigismemeber(sigset_t* set,int signo);
-int sigprocmask(int how,const sigset_t*set,sigset_t *oset);
-</code></pre>
-<p>信号集，信号掩码，未决集<br>信号集: 所有的信号阻塞函数都使用一个称之为信号集的结构表明其所受到的影响。<br>信号掩码:当前正在被阻塞的信号集。<br>未决集: 进程在收到信号时到信号在未被处理之前信号所处的集合称为未决集。<br>可以看出，这三个概念没有必然的联系，信号集指的是一个泛泛的概念，而未决集与信号掩码指的是具体的信号状态。</p>
-<p>对于信号集的初始化有两种方法: 一种是用sigemptyset使信号集中不包含任何信号，然后用sigaddset把信号加入到信号集中去。<br>另一种是用sigfillset让信号集中包含所有信号，然后用sigdelset删除信号来初始化。<br>sigemptyset()函数初始化信号集set并将set设置为空。<br>sigfillset()函数初始化信号集，但将信号集set设置为所有信号的集合。<br>sigaddset()将信号signo加入到信号集中去。<br>sigdelset()从信号集中删除signo信号。<br>sigprocmask()将指定的信号集合加入到进程的信号阻塞集合中去。如果提供了oset,那么当前的信号阻塞集合将会保存到oset集全中去。<br>参数how决定了操作的方式:<br>SIG_BLOCK 增加一个信号集合到当前进程的阻塞集合中去<br>SIG_UNBLOCK 从当前的阻塞集合中删除一个信号集合<br>SIG_SETMASK 将当前的信号集合设置为信号阻塞集合</p>
-<p>下面看一个例子:</p>
-<pre><code>int main(){
-    sigset_t initset;
-    int i;
-    sigemptyset(&amp;initset);//初始化信号集合为空集合
-    sigaddset(&amp;initset,SIGINT);//将SIGINT信号加入到此集合中去
-    while(1){
-        sigprocmask(SIG_BLOCK,&amp;initset,NULL);//将信号集合加入到进程的阻塞集合中去
-        fprintf(stdout,&quot;SIGINT singal blocked/n&quot;);
-        for(i=0;i&lt;10;i++){
-        
-            sleep(1);//每1秒输出
-            fprintf(stdout,&quot;block %d/n&quot;,i);
-        }
-        //在这时按一下Ctrl+C不会终止
-        sigprocmask(SIG_UNBLOCK,&amp;initset,NULL);//从进程的阻塞集合中去删除信号集合
-        fprintf(stdout,&quot;SIGINT SINGAL unblokced/n&quot;);
-        for(i=0;i&lt;10;i++){
-            sleep(1);
-            fprintf(stdout,&quot;unblock %d/n&quot;,i);
-        }
-    }
-    exit(0);
-}
-</code></pre>
-<p>执行结果:</p>
-<pre><code>SIGINT singal blocked
-block 0
-block 1
-block 2
-block 3
-block 4
-block 5
-block 6
-block 7
-block 8
-block 9
-</code></pre>
-<p>在执行到block 3时按下了CTRL+C并不会终止，直到执行到block9后将集合从阻塞集合中移除。</p>
-<pre><code>[root@localhost C]# ./s1
-SIGINT singal blocked
-block 0
-block 1
-block 2
-block 3
-block 4
-block 5
-block 6
-block 7
-block 8
-block 9
-SIGINT SINGAL unblokced
-unblock 0
-unblock 1
-</code></pre>
-<p>由于此时已经解除了阻塞，在unblock1后按下CTRL+C则立即终止。</p>
-<h2 id="2-信号处理函数"><a href="#2-信号处理函数" class="headerlink" title="2. 信号处理函数"></a>2. 信号处理函数</h2><p>sigaction</p>
-<pre><code>int sigaction(
-    int signo,
-    const struct sigaction *act,
-    struct sigaction *oldact
-);
-</code></pre>
-<p>这个函数主要是用于改变或检测信号的行为。<br>第一个参数是变更signo指定的信号，它可以指向任何值，SIGKILL,SIGSTOP除外<br>第二个参数,第三个参数是对信号进行细粒度的控制。<br>如果*act不为空，*oldact不为空，那么oldact将会存储信号以前的行为。如果act为空，*oldact不为空，那么oldact将会存储信号现在的行为。</p>
-<pre><code>struct sigaction {
-    void (*sa_handler)(int);
-    void (*sa_sigaction)(int,siginfo_t*,void*);
-    sigset_t sa_mask;
-    int sa_flags;
-    void (*sa_restorer)(void);
-}
-</code></pre>
-<p>参数含义:<br>sa_handler是一个函数指针，主要是表示接收到信号时所要采取的行动。此字段的值可以是SIG_DFL,SIG_IGN.分别代表默认操作与内核将忽略进程的信号。这个函数只传递一个参数那就是信号代码。<br>当SA_SIGINFO被设定在sa_flags中，那么则会使用sa_sigaction来指示信号处理函数，而非sa_handler.<br>sa_mask设置了掩码集，在程序执行期间会阻挡掩码集中的信号。<br>sa_flags设置了一些标志， SA_RESETHAND当该函数处理完成之后，设定为为系统默认的处理模式。SA_NODEFER 在处理函数中，如果再次到达此信号时，将不会阻塞。默认情况下，同一信号两次到达时，如果此时处于信号处理程序中，那么此信号将会阻塞。<br>SA_SIGINFO表示用sa_sigaction指示的函数。<br>sa_restorer已经被废弃。</p>
-<p>sa_sigaction所指向的函数原型:</p>
-<pre><code>void my_handler(int signo,siginfo_t *si,void *ucontext);
-</code></pre>
-<p>第一个参数: 信号编号<br>第二个参数:指向一个siginfo_t结构。<br>第三个参数是一个ucontext_t结构。<br>其中siginfo_t结构体中包含了大量的信号携带信息，可以看出，这个函数比sa_handler要强大，因为前者只能传递一个信号代码，而后者可以传递siginfo_t信息。</p>
-<pre><code>typedef struct siginfo_t{
-    int si_signo;//信号编号
-    int si_errno;//如果为非零值则错误代码与之关联
-    int si_code;//说明进程如何接收信号以及从何处收到
-    pid_t si_pid;//适用于SIGCHLD，代表被终止进程的PID
-    pid_t si_uid;//适用于SIGCHLD,代表被终止进程所拥有进程的UID
-    int si_status;//适用于SIGCHLD，代表被终止进程的状态
-    clock_t si_utime;//适用于SIGCHLD，代表被终止进程所消耗的用户时间
-    clock_t si_stime;//适用于SIGCHLD，代表被终止进程所消耗系统的时间
-    sigval_t si_value;
-    int si_int;
-    void * si_ptr;
-    void* si_addr;
-    int si_band;
-    int si_fd;
-};
-</code></pre>
-<p>sigqueue</p>
-<pre><code>sigqueue(pid_t pid,int signo,const union sigval value)
-</code></pre>
-<p>sigqueue函数类似于kill,也是一个进程向另外一个进程发送信号的。<br>但它比kill函数强大。<br>第一个参数指定目标进程的pid.<br>第二个参数是一个信号代码。<br>第三个参数是一个共用体，每次只能使用一个，用来进程发送信号传递的数据。<br>或者传递整形数据，或者是传递指针。<br>发送的数据被sa_sigaction所指示的函数的siginfo_t结构体中的si_ptr或者是si_int所接收。</p>
-<p>sigpending</p>
-<pre><code>sigpending(sigset_t set);
-</code></pre>
-<p>这个函数的作用是返回未决的信号到信号集set中。即未决信号集，未决信号集不仅包括被阻塞的信号，也可能包括已经到达但没有被处理的信号。</p>
-<h2 id="示例1-sigaction函数的用法"><a href="#示例1-sigaction函数的用法" class="headerlink" title="示例1: sigaction函数的用法"></a>示例1: sigaction函数的用法</h2><pre><code>void signal_set(struct sigaction *act)
-{
-switch(act-&gt;sa_flags){
-    case (int)SIG_DFL:
-        printf(&quot;using default hander/n&quot;);
-        break;
-    case (int)SIG_IGN:
-        printf(&quot;ignore the signal/n&quot;);
-        break;
-    default:
-        printf(&quot;%0x/n&quot;,act-&gt;sa_handler);
-    }
-}
-void signal_set1(int x){//信号处理函数
-    printf(&quot;xxxxx/n&quot;);
-    while(1){}
-}
-
-int main(int argc,char** argv)
-{
-    int i;
-    struct sigaction act,oldact;
-    act.sa_handler = signal_set1;
-    act.sa_flags = SA_RESETHAND;
-    //SA_RESETHANDD 在处理完信号之后，将信号恢复成默认处理
-    //SA_NODEFER在信号处理程序执行期间仍然可以接收信号
-    sigaction (SIGINT,&amp;act,&amp;oldact) ;//改变信号的处理模式
-    for (i=1; i&lt;12; i++)
-    {
-        printf(&quot;signal %d handler is : &quot;,i);
-        sigaction (i,NULL,&amp;oldact) ;
-        signal_set(&amp;oldact);//如果act为NULL，oldact会存储信号当前的行为
-        //act不为空，oldact不为空，则oldact会存储信号以前的处理模式
-    }
-    while(1){
-        //等待信号的到来
-    }
-    return 0;
-}
-</code></pre>
-<p>运行结果:</p>
-<pre><code>[root@localhost C]# ./s2
-signal 1 handler is : using default hander
-signal 2 handler is : 8048437
-signal 3 handler is : using default hander
-signal 4 handler is : using default hander
-signal 5 handler is : using default hander
-signal 6 handler is : using default hander
-signal 7 handler is : using default hander
-signal 8 handler is : using default hander
-signal 9 handler is : using default hander
-signal 10 handler is : using default hander
-signal 11 handler is : using default hander
-xxxxx
-</code></pre>
-<p>解释:</p>
-<pre><code>sigaction(i,NULL,&amp;oldact);
-signal_set(&amp;oldact);
-</code></pre>
-<p>由于act为NULL,那么oldact保存的是当前信号的行为，当前的第二个信号的行为是执行自定义的处理程序。<br>当按下CTRL＋C时会执行信号处理程序，输出xxxxxx，再按一下CTRL＋C会停止,是由于SA_RESETHAND恢复成默认的处理模式，即终止程序。<br>如果没有设置SA_NODEFER,那么在处理函数执行过程中按一下CTRL＋C将会被阻塞，那么程序会停在那里。</p>
-<h2 id="示例2-sigqueue向本进程发送数据的信号"><a href="#示例2-sigqueue向本进程发送数据的信号" class="headerlink" title="示例2: sigqueue向本进程发送数据的信号"></a>示例2: sigqueue向本进程发送数据的信号</h2><pre><code>int main(){
-    union sigval val;//定义一个携带数据的共用体
-    struct sigaction oldact,act;
-    act.sa_sigaction=myhandler;
-    act.sa_flags=SA_SIGINFO;//表示使用sa_sigaction指示的函数，处理完恢复默认，不阻塞处理过程中到达下在被处理的信号
-    //注册信号处理函数
-    sigaction(SIGUSR1,&amp;act,&amp;oldact);
-    char data[100];
-    int num=0;
-    while(num&lt;10){
-        sleep(2);
-        printf(&quot;等待SIGUSR1信号的到来/n&quot;);
-        sprintf(data,&quot;%d&quot;,num++);
-        val.sival_ptr=data;
-        sigqueue(getpid(),SIGUSR1,val);//向本进程发送一个信号
-    }
-}
-
-void myhandler(int signo,siginfo_t *si,void *ucontext){
-    printf(&quot;已经收到SIGUSR1信号/n&quot;);
-    printf(&quot;%s/n&quot;,(char*)(si-&gt;si_ptr));
-}
-</code></pre>
-<p>程序执行的结果是:</p>
-<pre><code>等待SIGUSR1信号的到来
-已经收到SIGUSR1信号
-0
-等待SIGUSR1信号的到来
-已经收到SIGUSR1信号
-1
-等待SIGUSR1信号的到来
-已经收到SIGUSR1信号
-2
-等待SIGUSR1信号的到来
-已经收到SIGUSR1信号
-3
-等待SIGUSR1信号的到来
-已经收到SIGUSR1信号
-4
-等待SIGUSR1信号的到来
-已经收到SIGUSR1信号
-5
-等待SIGUSR1信号的到来
-已经收到SIGUSR1信号
-6
-等待SIGUSR1信号的到来
-已经收到SIGUSR1信号
-7
-等待SIGUSR1信号的到来
-已经收到SIGUSR1信号
-8
-等待SIGUSR1信号的到来
-已经收到SIGUSR1信号
-9
-</code></pre>
-<p>解释: 本程序用sigqueue不停的向自身发送信号,并且携带数据，数据被放到处理函数的第二个参数siginfo_t结构体中的si_ptr指针，当num&lt;10时不再发。</p>
-<p>一般而言，sigqueue与sigaction配合使用，而kill与signal配合使用。</p>
-<h2 id="示例3-一个进程向另外一个进程发送信号，并携带信息"><a href="#示例3-一个进程向另外一个进程发送信号，并携带信息" class="headerlink" title="示例3: 一个进程向另外一个进程发送信号，并携带信息"></a>示例3: 一个进程向另外一个进程发送信号，并携带信息</h2><p>发送端:</p>
-<pre><code>int main(){
-    union sigval value;
-    value.sival_int=10;
-    
-    if(sigqueue(4403,SIGUSR1,value)==-1){//4403是目标进程pid
-        perror(&quot;信号发送失败/n&quot;);
-    }
-    sleep(2);
-}
-</code></pre>
-<p>接收端:</p>
-<pre><code>int main(){
-    struct sigaction oldact,act;
-    act.sa_sigaction=myhandler;
-    act.sa_flags=SA_SIGINFO|SA_NODEFER;
-    //表示执行后恢复，用sa_sigaction指示的处理函数，在执行期间仍然可以接收信号
-    sigaction(SIGUSR1,&amp;act,&amp;oldact);
-    while(1){
-        sleep(2);
-        printf(&quot;等待信号的到来/n&quot;);
-    }
-}
-
-void myhandler(int signo,siginfo_t *si,void *ucontext){
-    printf(&quot;the value is %d/n&quot;,si-&gt;si_int);
-}
-</code></pre>
-<h2 id="示例4-sigpending的用法"><a href="#示例4-sigpending的用法" class="headerlink" title="示例4: sigpending的用法"></a>示例4: sigpending的用法</h2><p>sigpending(sigset_t *set)将未决信号放到指定的set信号集中去，未决信号包括被阻塞的信号和信号到达时但还没来得及处理的信号</p>
-<pre><code>int main(){
-    struct sigaction oldact,act;
-    sigset_t oldmask,newmask,pendingmask;
-    act.sa_sigaction=myhandler;
-    act.sa_flags=SA_SIGINFO;
-    sigemptyset(&amp;act.sa_mask);//首先将阻塞集合设置为空，即不阻塞任何信号
-    //注册信号处理函数
-    sigaction(SIGRTMIN+10,&amp;act,&amp;oldact);
-    //开始阻塞
-    sigemptyset(&amp;newmask);
-    sigaddset(&amp;newmask,SIGRTMIN+10);
-    printf(&quot;SIGRTMIN+10 blocked/n&quot;);
-    sigprocmask(SIG_BLOCK,&amp;newmask,&amp;oldmask);
-    sleep(20);//为了发出信号
-    printf(&quot;now begin to get pending mask/n&quot;);
-    if(sigpending(&amp;pendingmask)&lt;0){
-        perror(&quot;pendingmask error&quot;);
-    }
-    if(sigismember(&amp;pendingmask,SIGRTMIN+10)){
-        printf(&quot;SIGRTMIN+10 is in the pending mask/n&quot;);
-    }
-    
-    sigprocmask(SIG_UNBLOCK,&amp;newmask,&amp;oldmask);
-    printf(&quot;SIGRTMIN+10 unblocked/n&quot;);
-}
-//信号处理函数
-void myhandler(int signo,siginfo_t *si,void *ucontext){
-    printf(&quot;receive signal %d/n&quot;,si-&gt;si_signo);
-}
-</code></pre>
-<p>程序执行,在另一个shell发送信号:</p>
-<pre><code> kill -44 4579
-
-SIGRTMIN+10 blocked
-now begin to get pending mask
-SIGRTMIN+10 is in the pending mask
-receive signal 44
-SIGRTMIN+10 unblocked
-</code></pre>
-<p>可以看到SIGRTMIN由于被阻塞所以处于未决信号集中。<br>关于基本的信号处理函数就介绍到这了。</p>
-<h1 id="第四部分-保护临界区不被中断"><a href="#第四部分-保护临界区不被中断" class="headerlink" title="第四部分: 保护临界区不被中断"></a>第四部分: 保护临界区不被中断</h1><h2 id="1-函数的可重入性"><a href="#1-函数的可重入性" class="headerlink" title="1. 函数的可重入性"></a>1. 函数的可重入性</h2><p>函数的可重入性是指可以多于一个任务并发使用函数，而不必担心数据错误。相反，不可重入性是指不能多于一个任务共享函数，除非能保持函数互斥(或者使用信号量，或者在代码的关键部分禁用中断)。可重入函数可以在任意时刻被中断，稍后继续执行，而不会丢失数据。</p>
-<p>可重入函数：</p>
-<ul>
-<li>不为连续的调用持有静态数据。</li>
-<li>不返回指向静态数据的指针；所有数据都由函数的调用者提供。</li>
-<li>使用本地数据，或者通过制作全局数据的本地拷贝来保护全局数据。</li>
-<li>绝不调用任何不可重入函数。</li>
-</ul>
-<p>不可重入函数可能导致混乱现象，如果当前进程的操作与信号处理程序同时对一个文件进行写操作或者是调用malloc()，那么就可能出现混乱，当从信号处理程序返回时，造成了状态不一致。从而引发错误。<br>因此，信号的处理必须是可重入函数。<br>简单的说，可重入函数是指在一个程序中调用了此函数，在信号处理程序中又调用了此函数，但仍然能够得到正确的结果。<br>printf，malloc函数都是不可重入函数。printf函数如果打印缓冲区一半时，又有一个printf函数，那么此时会造成混乱。而malloc函数使用了系统全局内存分配表。</p>
-<h2 id="2-保护临界区不被中断"><a href="#2-保护临界区不被中断" class="headerlink" title="2. 保护临界区不被中断"></a>2. 保护临界区不被中断</h2><p>由于临界区的代码是关键代码，是非常重要的部分，因此，有必要对临界区进行保护，不希望信号来中断临界区操作。这里通过信号屏蔽字来阻塞信号的发生。</p>
-<p> 下面介绍两个与保护临界区不被信号中断的相关函数。</p>
-<pre><code>int pause(void);
-int sigsuspend(const sigset_t *sigmask);
-</code></pre>
-<p>pause函数挂起一个进程，直到一个信号发生。</p>
-<p>sigsuspend函数的执行过程如下:<br>(1)设置新的mask去阻塞当前进程<br>(2)收到信号，调用信号的处理函数<br>(3)将mask设置为原先的掩码<br>(4)sigsuspend函数返回</p>
-<p>可以看出，sigsuspend函数是等待一个信号发生，当等待的信号发生时，执行完信号处理函数后就会返回。它是一个原子操作。</p>
-<p>保护临界区的中断:<br>(1)首先用sigprocmask去阻塞信号<br>(2)执行后关键代码后,用sigsuspend去捕获信号<br>(3)然后sigprocmask去除阻塞<br>这样信号就不会丢失了，而且不会中断临界区。</p>
-<p>上面的程序是用pause去保护临界区，首先用sigprocmask去阻塞SIGINT信号，执行临界区代码，然后解除阻塞。最后调用pause()函数等待信号的发生。但此时会产生一个问题，如果信号在解除阻塞与pause之间发生的话，信号就可能丢失。这将是一个不可靠的信号机制。<br>因此，采用sigsuspend可以避免上述情况发生。</p>
-<p>sigsuspend函数的用法：<br>sigsuspend函数是等待的信号发生时才会返回。<br>sigsuspend函数遇到结束时不会返回，这一点很重要。</p>
-<p>示例:</p>
-<p>下面的例子能够处理信号SIGUSR1,SIGUSR2,SIGSEGV,其它的信号被屏蔽，该程序输出对应的信号，然后继续等待其它信号的出现。</p>
-<pre><code>void myhandler(int signo);
-int main(){
-    struct sigaction action;
-    sigset_t sigmask;
-    sigemptyset(&amp;sigmask);
-    sigaddset(&amp;sigmask,SIGUSR1);
-    sigaddset(&amp;sigmask,SIGUSR2);
-    sigaddset(&amp;sigmask,SIGSEGV);
-    action.sa_handler=myhandler;
-    action.sa_mask=sigmask;
-    sigaction(SIGUSR1,&amp;action,NULL);
-    sigaction(SIGUSR2,&amp;action,NULL);
-    sigaction(SIGSEGV,&amp;action,NULL);
-    sigfillset(&amp;sigmask);
-    sigdelset(&amp;sigmask,SIGUSR1);
-    sigdelset(&amp;sigmask,SIGUSR2);
-    sigdelset(&amp;sigmask,SIGSEGV);
-    while(1){
-        sigsuspend(&amp;sigmask);//不断的等待信号到来
-    }
-    return 0;
-}
-    
-void myhandler(int signo){
-    switch(signo){
-        case SIGUSR1:
-            printf(&quot;received sigusr1 signal./n&quot;);
-        break ;
-        case SIGUSR2:
-            printf(&quot;received sigusr2 signal./n&quot;);
-        break;
-        case SIGSEGV:
-            printf(&quot;received sigsegv signal/n&quot;);
-        break;
-    }
-}
-</code></pre>
-<p>程序运行结果:</p>
-<pre><code>received sigusr1 signal
-received sigusr2 signal
-received sigsegv signal
-received sigusr1 signal
-已终止
-</code></pre>
-<p>另一个终端用于发送信号:<br>先得到当前进程的pid, ps aux|grep 程序名</p>
-<pre><code>kill -SIGUSR1 4901
-kill -SIGUSR2 4901
-kill -SIGSEGV 4901
-kill -SIGTERM 4901
-kill -SIGUSR1  4901
-</code></pre>
-<p>解释:<br>第一行发送SIGUSR1，则调用信号处理函数，打印出结果。<br>第二，第三行分别打印对应的结果。<br>第四行发送一个默认处理为终止进程的信号。<br>但此时，但不会终止程序，由于sigsuspend遇到终止进程信号并不会返回，此时并不会打印出”已终止”，这个信号被阻塞了。当再次发送SIGURS1信号时，进程的信号阻塞恢复成默认的值，因此，此时将会解除阻塞SIGTERM信号，所以进程被终止。</p>
-<h1 id="第五部分-信号的继承与执行"><a href="#第五部分-信号的继承与执行" class="headerlink" title="第五部分: 信号的继承与执行"></a>第五部分: 信号的继承与执行</h1><p>当使用fork()函数时，子进程会继承父进程完全相同的信号语义，这也是有道理的，因为父子进程共享一个地址空间，所以父进程的信号处理程序也存在于子进程中。</p>
-<p>示例: 子进程继承父进程的信号处理函数</p>
-<pre><code>void myhandler(int signo,siginfo_t *si,void *vcontext);
-int main(){
-    union sigval val;
-    struct sigaction oldact,newact;
-    newact.sa_sigaction=myhandler;
-    newact.sa_flags=SA_SIGINFO|SA_RESETHAND;//表示采用sa_sigaction指示的函数以及执行完处理函数后恢复默认操作
-    //注册信号处理函数
-    sigaction(SIGUSR1,&amp;newact,&amp;oldact);
-    
-    if(fork()==0){
-        val.sival_int=10;
-        printf(&quot;子进程/n&quot;);
-        sigqueue(getpid(),SIGUSR1,val);
-    }
-    else {
-        val.sival_int=20;
-        printf(&quot;父进程/n&quot;);
-        sigqueue(getpid(),SIGUSR1,val);
-    }
-}
-
-void myhandler(int signo,siginfo_t *si,void *vcontext){
-    printf(&quot;信号处理/n&quot;);
-    printf(&quot;%d/n&quot;,(si-&gt;si_int));
-}
-</code></pre>
-<p>输出的结果为:</p>
-<pre><code>子进程
-信号处理
-10
-父进程
-信号处理
-20
-</code></pre>
-<p>可以看出来，子进程继承了父进程的信号处理函数。</p>
-<h1 id="第六部分-实时信号中锁的研究"><a href="#第六部分-实时信号中锁的研究" class="headerlink" title="第六部分: 实时信号中锁的研究"></a>第六部分: 实时信号中锁的研究</h1><h2 id="1-信号处理函数与主函数之间的死锁"><a href="#1-信号处理函数与主函数之间的死锁" class="headerlink" title="1. 信号处理函数与主函数之间的死锁"></a>1. 信号处理函数与主函数之间的死锁</h2><p>当主函数访问临界资源时，通常需要加锁，如果主函数在访问临界区时，给临界资源上锁，此时发生了一个信号，那么转入信号处理函数，如果此时信号处理函数也对临界资源进行访问，那么信号处理函数也会加锁，由于主程序持有锁，信号处理程序等待主程序释放锁。又因为信号处理函数已经抢占了主函数，因此，主函数在信号处理函数结束之前不能运行。因此，必然造成死锁。</p>
-<p>示例1: 主函数与信号处理函数之间的死锁</p>
-<pre><code>int value=0;
-sem_t sem_lock;//定义信号量
-void myhandler(int signo,siginfo_t *si,void *vcontext);//进程处理函数声明
-int main(){
-    union sigval val;
-    val.sival_int=1;
-    struct sigaction oldact,newact;
-    int res;
-    res=sem_init(&amp;sem_lock,0,1);
-    if(res!=0){
-        perror(&quot;信号量初始化失败&quot;);
-    }
-    
-    newact.sa_sigaction=myhandler;
-    newact.sa_flags=SA_SIGINFO;
-    sigaction(SIGUSR1,&amp;newact,&amp;oldact);
-    sem_wait(&amp;sem_lock);
-    printf(&quot;xxxx/n&quot;);
-    value=1;
-    sleep(10);
-    sigqueue(getpid(),SIGUSR1,val);//sigqueue发送带参数的信号
-    sem_post(&amp;sem_lock);
-    sleep(10);
-    exit(0);
-}
-
-void myhandler(int signo,siginfo_t *si,void *vcontext){
-    sem_wait(&amp;sem_lock);
-    value=0;
-    sem_post(&amp;sem_lock);
-}
-</code></pre>
-<p>此程序将一直阻塞在信号处理函数的sem_wait函数处。</p>
-<h2 id="2-利用测试锁解决死锁"><a href="#2-利用测试锁解决死锁" class="headerlink" title="2. 利用测试锁解决死锁"></a>2. 利用测试锁解决死锁</h2><p>sem_trywait(&amp;sem_lock);是非阻塞的sem_wait,如果加锁失败或者是超时，则返回－1。<br>示例2: 用sem_trywait来解决死锁</p>
-<pre><code>int value=0;
-sem_t sem_lock;//定义信号量
-void myhandler(int signo,siginfo_t *si,void *vcontext);//进程处理函数声明
-int main(){
-    union sigval val;
-    val.sival_int=1;
-    struct sigaction oldact,newact;
-    int res;
-    res=sem_init(&amp;sem_lock,0,1);
-    if(res!=0){
-        perror(&quot;信号量初始化失败&quot;);
-    }
-    
-    newact.sa_sigaction=myhandler;
-    newact.sa_flags=SA_SIGINFO;
-    sigaction(SIGUSR1,&amp;newact,&amp;oldact);
-    sem_wait(&amp;sem_lock);
-    printf(&quot;xxxx/n&quot;);
-    value=1;
-    sleep(10);
-    sigqueue(getpid(),SIGUSR1,val);//sigqueue发送带参数的信号
-    sem_post(&amp;sem_lock);
-    sleep(10);
-    sigqueue(getpid(),SIGUSR1,val);
-    exit(0);
-}
-
-void myhandler(int signo,siginfo_t *si,void *vcontext){
-    if(sem_trywait(&amp;sem_lock)==0){
-        value=0;
-        sem_post(&amp;sem_lock);
-    }
-}
-</code></pre>
-<p>第一次发送sigqueue时，由于主函数持有锁，因此，sem_trywait返回－1，当第二次发送sigqueue时，主函数已经释放锁，此时就可以在信号处理函数中对临界资源加锁了。<br>但这种方法明显丢失了一个信号，不是很好的解决方法。</p>
-<h2 id="3-利用双线程来解决主函数与信号处理函数死锁"><a href="#3-利用双线程来解决主函数与信号处理函数死锁" class="headerlink" title="3. 利用双线程来解决主函数与信号处理函数死锁"></a>3. 利用双线程来解决主函数与信号处理函数死锁</h2><p>我们知道，当进程收到一个信号时，会选择其中的某个线程进行处理，前提是这个线程没有屏蔽此信号。因此，可以在主线程中屏蔽信号，另选一个线程去处理这个信号。由于主线程与另外一个线程是平行执行的，因此，等待主线程执行完临界区时，释放锁，这个线程去执行信号处理函数，直到执行完毕释放临界资源。</p>
-<p>这里用到一个线程的信号处理函数: pthread_sigmask</p>
-<pre><code>int pthread_sigmask(int how,const sigset_t *set,sigset_t *oldset);
-</code></pre>
-<p>这个函数与sigprocmask很相似。<br>how的取值:<br>SIG_BLOCK 将信号集加入到线程的阻塞集中去<br>SIG_UNBLOCK 将信号集从阻塞集中删除<br>SIG_SETMASK 将当前集合设置为线程的阻塞集</p>
-<p>示例: 利用双线程来解决主函数与信号处理函数之间的死锁</p>
-<pre><code>void*thread_function(void *arg);//线程处理函数
-void myhandler(int signo,siginfo_t *si,void *vcontext);//信号处理函数
-int value;
-sem_t semlock;
-int main(){
-    int res;
-    pthread_t mythread;
-    void *thread_result;
-    res=pthread_create(&amp;mythread,NULL,thread_function,NULL);//创建一个子线程
-    if(res!=0){
-        perror(&quot;线程创建失败&quot;);
-    }
-
-    //在主线程中将信号屏蔽
-    sigset_t empty;
-    sigemptyset(&amp;empty);
-    sigaddset(&amp;empty,SIGUSR1);
-    pthread_sigmask(SIG_BLOCK,&amp;empty,NULL);
-
-    //主线程中对临界资源的访问
-    if(sem_init(&amp;semlock,0,1)!=0){
-        perror(&quot;信号量创建失败&quot;);
-    }
-    sem_wait(&amp;semlock);
-    printf(&quot;主线程已经执行/n&quot;);
-    value=1;
-    sleep(10);
-    sem_post(&amp;semlock);
-    res=pthread_join(mythread,&amp;thread_result);//等待子线程退出
-    exit(EXIT_SUCCESS);
-}
-
-void *thread_function(void *arg){
-    struct sigaction oldact,newact;
-    newact.sa_sigaction=myhandler;
-    newact.sa_flags=SA_SIGINFO;
-    //注册信号处理函数
-    sigaction(SIGUSR1,&amp;newact,&amp;oldact);
-    union sigval val;
-    val.sival_int=1;
-    printf(&quot;子线程睡眠3秒/n&quot;);
-    sleep(3);
-    sigqueue(getpid(),SIGUSR1,val);
-    pthread_exit(0);//线程结束
-}
-
-void myhandler(int signo,siginfo_t *si,void *vcontext){
-    sem_wait(&amp;semlock);
-    value=0;
-    printf(&quot;信号处理完毕/n&quot;);
-    sem_post(&amp;semlock);
-}
-</code></pre>
-<p>运行结果如下:</p>
-<pre><code>主线程已经执行
-子线程睡眠3秒
-信号处理完毕
-</code></pre>
-<p>解释一下:<br>在主线线程中阻塞了SIGUSR1信号,首先让子线程睡眠3秒，目的让主线程先运行，然后当主线程访问临界资源时，让线程sleep(10),在这期间，子线程发送信号，此时子线程会去处理信号，而主线程依旧平行的运行，子线程被阻止信号处理函数的sem_wait处，等待主线程10后，信号处理函数得到锁，然后进行临界资源的访问。这就解决了主函数与信号处理函数之间的死锁问题。</p>
-<p>扩展: 如果有多个信号到达时，还可以用多线程来处理多个信号，从而达到并行的目的，这个很好实现的，可以尝试一下。</p>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/11/08/%E6%B5%85%E8%B0%88C-%E7%9A%84RAII%E6%9C%BA%E5%88%B6/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.jpg">
-      <meta itemprop="name" content="cursorhu">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="ThinkNotes">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2020/11/08/%E6%B5%85%E8%B0%88C-%E7%9A%84RAII%E6%9C%BA%E5%88%B6/" class="post-title-link" itemprop="url">浅谈C++的RAII机制</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2020-11-08 16:57:03" itemprop="dateCreated datePublished" datetime="2020-11-08T16:57:03+08:00">2020-11-08</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2024-11-04 11:43:03" itemprop="dateModified" datetime="2024-11-04T11:43:03+08:00">2024-11-04</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/C/" itemprop="url" rel="index"><span itemprop="name">C++</span></a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h1 id="1-资源与内存分配"><a href="#1-资源与内存分配" class="headerlink" title="1.资源与内存分配"></a>1.资源与内存分配</h1><p>资源的概念:资源是数量有限且对系统正常运转具有一定作用的元素。比如，内存，文件句柄，网络套接字（network sockets），互斥锁（mutex locks）等等<br>对于进程，这些资源都作为某种数据结构存储在内存中。<br>程序运行需要分配内存来管理以上资源，内存分配可以分为三类：</p>
-<ul>
-<li>静态分配：如创建一个进程执行某段代码，需要加载该代码的代码段，数据段等数据到内存中，其中数据段包含已初始化的全局数据，可以称为是静态的内存分配</li>
-<li>自动分配：进程内函数的调用和返回，以及其内部的局部变量创建和销毁，对应该进程高地址的入栈出栈，这个是操作系统自动处理的，无需应用程序控制</li>
-<li>动态分配：静态数据和堆栈之前的空间（称为堆），可由应用程序动态分配，同时，也必须由应用程序释放。所谓的内存的动态分配与释放，通常讨论的是这种情况</li>
-</ul>
-<p>以32位Linux环境的应用程序为例，每个进程可见的（虚拟）内存分布如下，C&#x2F;C++常用的malloc&#x2F;free, new&#x2F;delete对应的内存分配释放都在.heap段内<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081658341.png" alt="image-20221208165846274"></p>
-<h1 id="2-动态内存管理的缺陷"><a href="#2-动态内存管理的缺陷" class="headerlink" title="2.动态内存管理的缺陷"></a>2.动态内存管理的缺陷</h1><p>我们在使用资源时必须严格遵循的步骤是：</p>
-<ol>
-<li>获取资源</li>
-<li>使用资源</li>
-<li>释放资源</li>
-</ol>
-<p>代码形式：</p>
-<pre><code>void UseResources()    
-{  
-    // 获取资源1  
-    // ...  
-    // 获取资源n  
-     
-    // 使用这些资源  
-     
-    // 释放资源n  
-    // ...  
-    // 释放资源1  
-} 
-</code></pre>
-<p>当代码量和复杂度达到一定程度，这种手动资源管理容易出错，且难以避免<br>例如C++使用new和delete时可能发生的一些错误是：</p>
-<ul>
-<li>内存泄漏：例如，使用new分配对象，而忘记删除该对象，打开文件，忘记关闭文件等等</li>
-<li>过早删除（或悬挂引用）：持有指向对象的另一个指针，删除该对象，但是还有其他指针在引用它。</li>
-<li>双重删除：尝试两次删除一个对象</li>
-</ul>
-<h1 id="3-RAII：将资源管理交给系统"><a href="#3-RAII：将资源管理交给系统" class="headerlink" title="3.RAII：将资源管理交给系统"></a>3.RAII：将资源管理交给系统</h1><ul>
-<li>自动内存管理，局部变量能在调用函数时分配，退出函数时释放</li>
-<li>类是 C++ 中的主要抽象工具，将资源抽象为类，用局部对象来表示资源，把管理资源的任务转化为管理局部对象的任务</li>
-</ul>
-<p>RAII 就是基于以上思想，折中了全手动和全自动的内存管理，手动的选择管理哪些资源，自动的分配和释放资源。有效地实现了 C++ 资源管理的自动化</p>
-<p>RAII（Resource Acquisition Is Initialization, 资源获取即初始化）:<br>是80年代，Bjarne Stroustrup为C++发明了的范例。<br>具体实现方法：将资源的声明周期，绑定到对象的生命周期，即将资源分配和释放操作，包含到指定对象的构造函数和析构函数中，这些构造函数和析构函数在适当的时候由编译器自动调用，资源数据包含到对象的成员中。</p>
-<p>一个简单示例：</p>
-<p>（1）常规内存管理</p>
-<pre><code>#include &lt;iostream&gt; 
-using namespace std; 
-int main() 
-{ 
-    int *testArray = new int [10]; 
-    // Here, you can use the array 
-    delete [] testArray; 
-    testArray = NULL ; 
-    return 0; 
-}
-</code></pre>
-<p>（2）RAII方式</p>
-<pre><code>#include &lt;iostream&gt; 
-using namespace std; 
-
-class ArrayOperation 
-{ 
-public : 
-    ArrayOperation() 
-    { 
-        m_Array = new int [10]; //构造函数包含资源的分配
-    } 
- 
-    void InitArray()  //使用资源
-    { 
-        for (int i = 0; i &lt; 10; ++i) 
-        { 
-            *(m_Array + i) = i; 
-        } 
-    } 
- 
-    void ShowArray() //使用资源
-    { 
-        for (int i = 0; i &lt;10; ++i) 
-        { 
-            cout&lt;&lt;m_Array[i]&lt;&lt;endl; 
-        } 
-    } 
- 
-    ~ArrayOperation()  //析构函数包含资源的释放
-    { 
-        cout&lt;&lt; &quot;~ArrayOperation is called&quot; &lt;&lt;endl; 
-        if (m_Array != NULL ) 
-        { 
-            delete[] m_Array;  
-            m_Array = NULL ; 
-        } 
-    } 
- 
-private : 
-    int *m_Array;  //成员变量包含资源
-}; 
- 
-int main() 
-{ 
-    ArrayOperation arrayOp; //资源自动分配
-    arrayOp.InitArray(); 
-    arrayOp.ShowArray(); 
-    return 0;           //资源自动释放
-}
-</code></pre>
-<p>根据RAII对资源的所有权控制，分为常性类型和外部初始化类型<br>上述示例即为常性类型，也是最纯粹的RAII形式，最容易理解，最容易编码。获取资源的地点是构造函数，释放点是析构函数，并且在这两点之间的一段时间里，任何对该RAII类型实例的操纵都不应该从它手里夺走资源的所有权<br>外部初始化类型是指资源在外部被创建，并被传给RAII实例的构造函数，后者进而接管了其所有权。boost::shared_ptr&lt;&gt;和std::auto_ptr&lt;&gt;都是此类型</p>
-<h1 id="4-RAII的应用场景"><a href="#4-RAII的应用场景" class="headerlink" title="4.RAII的应用场景"></a>4.RAII的应用场景</h1><p>常见的应用有：</p>
-<ul>
-<li>文件操作</li>
-<li>智能指针</li>
-<li>互斥量</li>
-</ul>
-<h2 id="4-1文件操作"><a href="#4-1文件操作" class="headerlink" title="4.1文件操作"></a>4.1文件操作</h2><p>（1）常规形式</p>
-<pre><code>void UseFile(char const* fn)  
-{  
-    FILE* f = fopen(fn, &quot;r&quot;);        // 获取资源  
-    // 在此处使用文件句柄f...代码          // 使用资源  
-    fclose(f);                       // 释放资源  
-}  
-</code></pre>
-<p>（2）RAII<br>文件类：</p>
-<pre><code>class FileHandle {  
-public:  
-    FileHandle(char const* n, char const* a) { p = fopen(n, a); } 
-    ~FileHandle() { fclose(p); }  
-private:   
-    FileHandle(FileHandle const&amp;);  
-    FileHandle&amp; operator= (FileHandle const&amp;); // 禁止拷贝操作  
-    FILE *p;  
-}; 
-</code></pre>
-<p> FileHandle 类的构造函数调用 fopen() 获取资源；FileHandle类的析构函数调用 fclose()释放资源。请注意，考虑到FileHandle对象代表一种资源，它并不具有拷贝语义，因此将拷贝构造函数和赋值运算符声明为私有成员<br> 使用：</p>
-<pre><code>void UseFile(char const* fn)  
-{  
-    FileHandle file(fn, &quot;r&quot;);  
-    // 在此处使用文件句柄  
-    // 超出此作用域时，系统会自动调用file的析构函数，从而释放资源
-}  
-</code></pre>
-<h2 id="4-2互斥量"><a href="#4-2互斥量" class="headerlink" title="4.2互斥量"></a>4.2互斥量</h2><p>C++标准库提供lock_guard类实现mutex分配与释放，其实现就是RAII方式。</p>
-<pre><code>template&lt;class... _Mutexes&gt;
-	class lock_guard
-	{	// class with destructor that unlocks mutexes
-public:
-	explicit lock_guard(_Mutexes&amp;... _Mtxes)
-		: _MyMutexes(_Mtxes...)
-		{	// construct and lock
-		_STD lock(_Mtxes...);
-		}
- 
-	lock_guard(_Mutexes&amp;... _Mtxes, adopt_lock_t)
-		: _MyMutexes(_Mtxes...)
-		{	// construct but don&#39;t lock
-		}
- 
-	~lock_guard() _NOEXCEPT
-		{	// unlock all
-		_For_each_tuple_element(
-			_MyMutexes,
-			[](auto&amp; _Mutex) _NOEXCEPT { _Mutex.unlock(); });
-		}
- 
-	lock_guard(const lock_guard&amp;) = delete;
-	lock_guard&amp; operator=(const lock_guard&amp;) = delete;
-private:
-	tuple&lt;_Mutexes&amp;...&gt; _MyMutexes;
-	};
-</code></pre>
-<p>使用多线程时，经常会涉及到共享数据的问题，C++中通过实例化std::mutex创建互斥量，通过调用成员函数lock()进行上锁，unlock()进行解锁。不过这意味着必须记住在每个函数出口都要去调用unlock()，也包括异常的情况，这非常麻烦，而且不易管理。C++标准库为互斥量提供了一个RAII语法的模板类std::lock_guard，其会在构造函数的时候提供已锁的互斥量，并在析构的时候进行解锁，从而保证了一个已锁的互斥量总是会被正确的解锁。上面的代码属于mutex头文件</p>
-<h2 id="4-3智能指针"><a href="#4-3智能指针" class="headerlink" title="4.3智能指针"></a>4.3智能指针</h2><p>先看一个例子，用RAII管理指针</p>
-<pre><code>#include &lt;iostream&gt;
-#include &lt;mutex&gt;
-#include &lt;fstream&gt;
-using namespace std;
-
-enum class shape_type {
-    circle,
-    rectangle,
-};
-
-class shape {
-public:
-    shape() { cout &lt;&lt; &quot;shape&quot; &lt;&lt; endl; }
-    virtual void print() {
-        cout &lt;&lt; &quot;I am shape&quot; &lt;&lt; endl;
-    }
-    virtual ~shape() {}
-};
-
-class circle : public shape {
-public:
-    circle() { cout &lt;&lt; &quot;circle&quot; &lt;&lt; endl; }
-    void print() {
-        cout &lt;&lt; &quot;I am circle&quot; &lt;&lt; endl;
-    }
-};
-
-class rectangle : public shape {
-public:
-    rectangle() { cout &lt;&lt; &quot;rectangle&quot; &lt;&lt; endl; }
-    void print() {
-        cout &lt;&lt; &quot;I am rectangle&quot; &lt;&lt; endl;
-    }
-};
-
-// 利用多态上转,如果返回值为shape,会存在对象切片问题。
-shape *create_shape(shape_type type) {
-    switch (type) {
-        case shape_type::circle:
-            return new circle();
-        case shape_type::rectangle:
-            return new rectangle();
-    }
-}
-
-class shape_wrapper {
-public:
-    explicit shape_wrapper(shape *ptr = nullptr) : ptr_(ptr) {}
-
-    ~shape_wrapper() {
-        delete ptr_;
-    }
-
-    shape *get() const {
-        return ptr_;
-    }
-
-private:
-    shape *ptr_;
-};
-</code></pre>
-<p>​<br>​<br>    int main() {</p>
-<pre><code>    // 第一种方式, 手动管理指针
-    shape *sp = create_shape(shape_type::circle);
-    sp-&gt;print();
-    delete sp; //显式delete
-
-    // 第二种方式， RAII管理指针，一般封装到函数，更快释放
-    shape_wrapper ptr(create_shape(shape_type::circle));
-    ptr.get()-&gt;print();
-
-    return 0;
-}
-</code></pre>
-<p>C++标准库的智能指针：auto_ptr(C++11弃用), unique_ptr,shared_ptr, weak_ptr<br>可以参考<a target="_blank" rel="noopener" href="https://www.cnblogs.com/WindSun/p/11444429.html">WindSun:详解C++11智能指针</a></p>
-<h2 id="4-4实现自己的RAII类"><a href="#4-4实现自己的RAII类" class="headerlink" title="4.4实现自己的RAII类"></a>4.4实现自己的RAII类</h2><p>一般情况下，RAII临时对象不允许复制和赋值，当然更不允许在heap上创建，所以先写下一个RAII的base类，使子类私有继承Base类来禁用这些操作：</p>
-<pre><code>class RAIIBase  
-{  
-public:  
-    RAIIBase(){}  
-    ~RAIIBase(){}//由于不能使用该类的指针，定义虚函数是完全没有必要的  
-      
-    RAIIBase (const RAIIBase &amp;);  
-    RAIIBase &amp; operator = (const RAIIBase &amp;);  
-    void * operator new(size_t size);   
-    // 不定义任何成员  
-};
-</code></pre>
-<p>要写自己的RAII类时就可以直接继承该类的实现</p>
-<pre><code>template&lt;typename T&gt;  
-class ResourceHandle: private RAIIBase //私有继承 禁用Base的所有继承操作  
-{  
-public:  
-    explicit ResourceHandle(T * aResource):r_(aResource){}//获取资源  
-    ~ResourceHandle() {delete r_;} //释放资源  
-    T *get()    {return r_ ;} //访问资源  
-private:  
-    T * r_;  
-};
-</code></pre>
-<p>将Handle类做成模板类，这样就可以将class类型放入其中。另外，ResourceHandle可以根据不同资源类型的释放形式来定义不同的析构函数。由于不能使用该类的指针，所以不使用虚函数。</p>
-<h1 id="5-GC和RAII"><a href="#5-GC和RAII" class="headerlink" title="5.GC和RAII"></a>5.GC和RAII</h1><p>在没有RAII的时代，GC和非GC语言是水火不容，GC追求开发效率和稳健设计，非GC如C++最求极致性能和绝对控制。RAII的设计机制，兼顾了两者的优点。<br>如果用三个等级代表程序员对系统资源的使用权限，如下：</p>
-<ul>
-<li>动态分配：C++的new&#x2F;delete之类，程序员100%负责内存使用和释放，编译器、操作系统不额外干预</li>
-<li>垃圾回收(GC)：java&#x2F;go语言之类，程序员只负责要内存，而不用管，也管不了内存释放，其由该语言运行环境管理，规则可以描述成：如果一个资源没被任何对象使用(例如没有指针指向它)，运行环境定时或者其他方式检测到后，自动释放该资源，该过程对程序员不可控。可以说程序员有50%的权限，即想要就能要，但想甩却不能甩</li>
-<li>RAII：程序员负责资源编排，运行时的分配与释放由系统自动完成，可以说程序员有90%的权限，放权10%给系统</li>
-</ul>
-<h1 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h1><p>RAII的本质内容是用对象代表资源，把管理资源的任务转化为管理对象的任务，将资源的获取和释放与对象的构造和析构对应起来，从而确保在对象的生存期内资源始终有效，对象销毁时资源必被释放。换句话说，拥有对象就等于拥有资源，对象存在则资源必定存在。<br>具体实现：</p>
-<ul>
-<li>资源在构造函数中获取</li>
-<li>资源在析构函数中释放</li>
-<li>资源是类的成员变量</li>
-<li>类的实例是堆栈分配的</li>
-</ul>
-<p>相关文章<br><a target="_blank" rel="noopener" href="https://light-city.club/sc/codingStyleIdioms/RAII/">C++那些事：RAII</a></p>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/10/30/%E6%B5%85%E8%B0%88Linux%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B-Socket%E5%9F%BA%E7%A1%80/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.jpg">
-      <meta itemprop="name" content="cursorhu">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="ThinkNotes">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2020/10/30/%E6%B5%85%E8%B0%88Linux%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B-Socket%E5%9F%BA%E7%A1%80/" class="post-title-link" itemprop="url">浅谈Linux网络编程: Socket基础</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2020-10-30 12:06:24" itemprop="dateCreated datePublished" datetime="2020-10-30T12:06:24+08:00">2020-10-30</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2024-11-04 11:43:03" itemprop="dateModified" datetime="2024-11-04T11:43:03+08:00">2024-11-04</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/linux/" itemprop="url" rel="index"><span itemprop="name">linux</span></a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h1 id="套接字（socket）基础"><a href="#套接字（socket）基础" class="headerlink" title="套接字（socket）基础"></a>套接字（socket）基础</h1><p>套接字是网络编程中，应用层和传输层之间的数据结构，其作用如下:<br>应用层通过传输层进行数据通信时，TCP和UDP会遇到同时为多个应用程序进程提供并发服务的问题。多个TCP连接或多个应用程序进程可能需要通过同一个TCP协议端口传输数据。为了区别不同的应用程序进程和连接，许多计算机操作系统为应用程序与TCP／IP协议交互提供了称为套接字(Socket)的接口，以区分不同应用程序进程间的网络通信和连接。</p>
-<h1 id="套接字地址结构"><a href="#套接字地址结构" class="headerlink" title="套接字地址结构"></a>套接字地址结构</h1><p>通用套接字地址的结构体sockaddr定义如下：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051411648.png" alt="1"><br>在以太网中，不直接使用sockaddr结构体，而使用sockaddr_in,其定义如下：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051411109.png"><br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051411045.png" alt="3"></p>
-<p>通用结构体sockaddr和以太网的sockaddr_in结构体，有点像C++中的父类和子类的关系，sockaddr_in是对sockaddr的细化，其存储结构大小相同，分布如下：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051411360.png" alt="4"><br>由于大小相同，在设置socket地址时，一般先设置sockaddr_in结构体，然后强转为sockaddr类型</p>
-<h1 id="套接字地址结构在用户层和内核层的交互"><a href="#套接字地址结构在用户层和内核层的交互" class="headerlink" title="套接字地址结构在用户层和内核层的交互"></a>套接字地址结构在用户层和内核层的交互</h1><p>sockaddr的使用，以socket流程中的bind()函数为例：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051411733.png" alt="5"><br>bind函数需要传入sockaddr结构体的指针，和sockaddr结构体的长度</p>
-<h2 id="向内核传入数据"><a href="#向内核传入数据" class="headerlink" title="向内核传入数据"></a>向内核传入数据</h2><p>向内核传入数据的socket函数有：bind,send<br>传入过程如下：</p>
-<ul>
-<li>sockaddr结构体的长度，以传值方式传入内核</li>
-<li>内核通过sockaddr结构体的指针以及结构体长度，以内存复制的方式，从用户层拷贝sockaddr结构体到内核层。</li>
-</ul>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051411951.png" alt="6"></p>
-<h2 id="从内核获取数据"><a href="#从内核获取数据" class="headerlink" title="从内核获取数据"></a>从内核获取数据</h2><p>从内核得到数据的socket函数有：accept,recv</p>
-<ul>
-<li>sockaddr结构体的长度，以传值方式传入内核</li>
-<li>内核通过sockaddr结构体的指针以及结构体长度，以内存复制的方式，从内核层拷贝sockaddr结构体到用户层。</li>
-<li>内核返回内核的结构体的长度<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051412551.png" alt="7"></li>
-</ul>
-<h1 id="Socket编程流程"><a href="#Socket编程流程" class="headerlink" title="Socket编程流程"></a>Socket编程流程</h1><h2 id="总体架构"><a href="#总体架构" class="headerlink" title="总体架构"></a>总体架构</h2><p>TCP编程主要为C&#x2F;S模式，即服务器和客户端编程，我们讲socket编程，要区分是服务器端的流程还是客户端的流程。</p>
-<ul>
-<li>服务器端：创建服务-等待客户端连接-收到连接请求-处理</li>
-<li>客户端：发起对服务器的连接请求-根据服务器的响应做处理</li>
-</ul>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051412551.png"></p>
-<p>服务端各函数含义:</p>
-<ul>
-<li>socket：套接字初始化</li>
-<li>bind：绑定套接字和端口</li>
-<li>listen：配置服务器的请求队列，监测连接请求</li>
-<li>accept：接受客户端连接</li>
-<li>read&#x2F;write：数据的接收、发送</li>
-<li>close：断开连接，释放套接字</li>
-</ul>
-<p>客户端函数：</p>
-<ul>
-<li>客户端套接字不需要绑定端口和监听，直接connect发起连接请求，其他函数和服务端一致。</li>
-</ul>
-<h2 id="socket函数"><a href="#socket函数" class="headerlink" title="socket函数"></a>socket函数</h2><p>socket函数用于创建socket套接字的文件描述符，</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051412223.png" alt="9"></p>
-<p>有三个入参：</p>
-<ul>
-<li>domain：域，区分本地，IPV4 Internet，IPV6 Internet等。有的以PF开头，有的以AF开头，这两者值一样。</li>
-</ul>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051412180.png" alt="10"></p>
-<ul>
-<li>type：通信类型，如流式（TCP）,数据报式（UDP）等</li>
-</ul>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051412975.png" alt="11"></p>
-<ul>
-<li>protocal：协议类型，指定通信类型中的子类型，一般为0</li>
-</ul>
-<p>socket套接字初始化的一个例子：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051412776.png" alt="12"></p>
-<h2 id="socket函数在应用层和内核层的交互"><a href="#socket函数在应用层和内核层的交互" class="headerlink" title="socket函数在应用层和内核层的交互"></a>socket函数在应用层和内核层的交互</h2><p>用户调用的socket函数，会调用内核的sys_socket函数</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051415958.png" alt="2"></p>
-<p>sys_socket做两件事：</p>
-<ul>
-<li><p>sock_create生成内核的socket结构，和应用层的结构不同，如下：</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051413920.png" alt="13"></p>
-</li>
-<li><p>sock_map_fd将内核socket结构绑定文件描述符fd,用户层可通过fd访问内核socket结构</p>
-</li>
-</ul>
-<h2 id="bind函数"><a href="#bind函数" class="headerlink" title="bind函数"></a>bind函数</h2><p>服务端用socket函数建立套接字文件描述符后，需要绑定地址和端口到该文件描述符，才能接受客户端请求。</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051413732.png" alt="14"></p>
-<ul>
-<li>sockfd：socket函数创建的文件描述符</li>
-<li>sockaddr结构的指针：指向的sockaddr结构，包含ip和port等信息</li>
-<li>addrlen：即sizeof(struct sockaddr)</li>
-</ul>
-<p>bind函数绑定UNIX族的套接字：</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051413483.png" alt="15"></p>
-<p>bind函数绑定AF_INET族的套接字:</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051413289.png" alt="16"></p>
-<h2 id="bind函数在应用层和内核层的交互"><a href="#bind函数在应用层和内核层的交互" class="headerlink" title="bind函数在应用层和内核层的交互"></a>bind函数在应用层和内核层的交互</h2><p>以AF_INET族的套接字绑定为例，不同协议族实际上是调用内核不同的绑定函数<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051418474.png" alt="image-20221205141814380"></p>
-<h2 id="listen函数"><a href="#listen函数" class="headerlink" title="listen函数"></a>listen函数</h2><p>listen函数用于初始化服务器的可连接队列，即服务器处理客户的请求，不是并行处理，而是异步的串行处理。服务器建立可连接队列，将当前不能同步处理的新请求放到队列中，等队列前面的请求处理完了，才异步处理这个请求。<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051414568.png" alt="18"></p>
-<ul>
-<li>backlog是服务器可连接队列的最大长度</li>
-<li>当前队列没满，即当前队列的请求没超过backlog值，才可以调用accept</li>
-<li>listen函数只针对SOCK_STREAM和SOCK_SEQPACKET才能调用，因为TCP请求才需要建立连接。对于SOCK_DGRAM不支持listen，因为UDP是无连接的。</li>
-</ul>
-<p>TCP连接中，SOCK_STREAM类型的套接字，调用listen的示例：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051419762.png" alt="image-20221205141912644"><br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051419995.png" alt="image-20221205141921877"></p>
-<h2 id="listen函数在应用层和内核层的交互"><a href="#listen函数在应用层和内核层的交互" class="headerlink" title="listen函数在应用层和内核层的交互"></a>listen函数在应用层和内核层的交互</h2><p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051419209.png" alt="image-20221205141934130"></p>
-<h2 id="accept函数"><a href="#accept函数" class="headerlink" title="accept函数"></a>accept函数</h2><p>服务端用listen建立连接队列后，客户端以connect发来一个请求，会加入到服务端连接队列的队尾，当这个请求到达队头，会调用accept真正处理该请求。<br>accept会创建一个新的套接字文件描述符，用来描述客户端的连接，这个时候会有两个套接字描述符并存：</p>
-<ul>
-<li>socket函数创建的老的sockfd，表示正在监听的ip和端口</li>
-<li>accept函数创建的新的clientfd，表示当前的客户端连接，后续的客户端的收发和客户端关闭，即send，recv，close函数，都使用clientfd</li>
-</ul>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051420456.png" alt="image-20221205142030402"></p>
-<p>流式连接的accept示例：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051420563.png" alt="image-20221205142038423"><br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051420232.png" alt="image-20221205142048069"></p>
-<h2 id="accept函数在应用层和内核层的交互"><a href="#accept函数在应用层和内核层的交互" class="headerlink" title="accept函数在应用层和内核层的交互"></a>accept函数在应用层和内核层的交互</h2><p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051421941.png" alt="image-20221205142100841"></p>
-<h2 id="connect函数"><a href="#connect函数" class="headerlink" title="connect函数"></a>connect函数</h2><p>connect函数是客户端调用的函数，在客户端调用socket函数创建套接字文件sockfd后，可调用connect函数向服务端发起连接请求，请求的ip和端口信息包含在sockaddr结构体内。<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051422137.png" alt="image-20221205142256082"></p>
-<p>客户端的socket connect示例：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051422137.png"></p>
-<h2 id="connect函数在应用层和内核层的交互"><a href="#connect函数在应用层和内核层的交互" class="headerlink" title="connect函数在应用层和内核层的交互"></a>connect函数在应用层和内核层的交互</h2><p>根据数据流式或数据报式的请求，具体调用inet_stream_connect或inet_dgram_connect<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051423142.png" alt="image-20221205142315046"></p>
-<h2 id="read和write函数"><a href="#read和write函数" class="headerlink" title="read和write函数"></a>read和write函数</h2><p>服务端和客户端真正建立连接后（socket通信逻辑连接，不是TCP&#x2F;UDP的面向连接&#x2F;无连接的传输层连接），即客户端发起connect，服务端accept完成，双方就可以相互read&#x2F;write，读写对方的数据，通过sockfd文件描述符，就像读写本地文件一样。</p>
-<ul>
-<li>read：从套接字文件读取数据，写入本地缓冲区，返回非空的有效数据大小<br> <img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051423066.png" alt="image-20221205142328017"></li>
-<li>write：向套接字文件写入数据，将本地缓冲区数据写入socket函数创建的socket文件<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051423066.png"></li>
-</ul>
-<h2 id="close和shutdown函数"><a href="#close和shutdown函数" class="headerlink" title="close和shutdown函数"></a>close和shutdown函数</h2><ul>
-<li>close：关闭socket连接，释放内核的套接字资源，不能通过套接字文件来读写操作</li>
-<li>shutdown：支持读写的单向关闭，即关闭套接字文件的读、写、或者读写能力（等同于close）</li>
-</ul>
-<h1 id="Socket客户端和服务端交互的例程"><a href="#Socket客户端和服务端交互的例程" class="headerlink" title="Socket客户端和服务端交互的例程"></a>Socket客户端和服务端交互的例程</h1><h2 id="整体架构"><a href="#整体架构" class="headerlink" title="整体架构"></a>整体架构</h2><p>客户端从标准输入读取用户输入的字符串，发送给服务端，服务端读取数据，回写这些数据到客户端，客户端收到数据后输出到标准输出。<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051423842.png" alt="image-20221205142345794"></p>
-<p>客户端和服务端可以在同一台机器部署，访问回环地址127.0.0.1即可，注意服务端的监听端口不能和其他进程的端口冲突。</p>
-<h2 id="代码实现"><a href="#代码实现" class="headerlink" title="代码实现"></a>代码实现</h2><p>服务端代码：</p>
-<pre><code>#include &lt;stdio.h&gt;
-#include &lt;stdlib.h&gt;
-#include &lt;string.h&gt;
-#include &lt;sys/types.h&gt;
-#include &lt;sys/socket.h&gt;
-#include &lt;arpa/inet.h&gt;
-#include &lt;unistd.h&gt;
-//#define PORT 8088						/*侦听端口地址*/
-#define BACKLOG 2						/*侦听队列长度*/
-
-int main(int argc, char *argv[])
-{
-	int ss,sc;		/*ss为服务器的socket描述符，sc为客户端的socket描述符*/
-	struct sockaddr_in server_addr;	/*服务器地址结构*/
-	struct sockaddr_in client_addr;	/*客户端地址结构*/
-	int err;							/*返回值*/
-	pid_t pid;							/*分叉的进行ID*/
-
-	/*建立一个流式套接字*/
-	ss = socket(AF_INET, SOCK_STREAM, 0);
-	if(ss &lt; 0){							/*出错*/
-		printf(&quot;socket error\n&quot;);
-		return -1;	
-	}
-	
-	/*设置服务器地址*/
-	bzero(&amp;server_addr, sizeof(server_addr));			/*清零*/
-	server_addr.sin_family = AF_INET;					/*协议族*/
-	server_addr.sin_addr.s_addr = htonl(INADDR_ANY);	/*本地地址*/
-	//server_addr.sin_port = htons(PORT);
-	server_addr.sin_port = htons(atoi(argv[1]));		/*服务器端口*/
-	
-	/*绑定地址结构到套接字描述符*/
-	err = bind(ss, (struct sockaddr*)&amp;server_addr, sizeof(server_addr));
-	if(err &lt; 0){/*出错*/
-		printf(&quot;bind error\n&quot;);
-		return -1;	
-	}
-	
-	/*设置侦听*/
-	err = listen(ss, BACKLOG);
-	if(err &lt; 0){										/*出错*/
-		printf(&quot;listen error\n&quot;);
-		return -1;	
-	}
-	
-		/*主循环过程*/
-	for(;;)	{
-		socklen_t addrlen = sizeof(struct sockaddr);
-		/*接受客户端连接*/
-		sc = accept(ss, (struct sockaddr*)&amp;client_addr, &amp;addrlen); 
-		if(sc &lt; 0){							/*出错*/
-			continue;						/*结束本次循环*/
-		}	
-		
-		/*建立一个新的进程处理到来的连接*/
-		pid = fork();						/*分叉进程*/
-		if( pid == 0 ){						/*子进程中*/
-			process_conn_server(sc);		/*处理连接*/
-			close(ss);						/*在子进程中关闭服务器的侦听*/
-		}else{
-			close(sc);						/*在父进程中关闭客户端的连接*/
-		}
-	}
-}
-</code></pre>
-<p>服务端注意几点:</p>
-<ul>
-<li>accept后处理连接的过程，是在子进程中处理的，使用fork创建子进程用于连接处理。根据fork返回的pid是0还是其他，判断当前调度到子进程还是父进程，从全局上来讲，这个<code>if-else</code>的两种流程分别在父进程和子进程中指向。</li>
-<li>服务端有两个套接字：侦听套接字和连接套接字。处理连接传入的是连接套接字。</li>
-<li>在父进程（侦听进程）中，要关闭连接套接字；在子进程（连接处理进程）中，要关闭侦听套接字。这是为了避免子父进程相互影响。</li>
-<li>对于多进程，一个进程的套接字关闭不会释放该套接字内存，只有所有进程都关闭了这个套接字，内核才会 释放该套接字，所有可以放心在侦听进程和连接处理进程中，关闭对方的套接字。</li>
-</ul>
-<p>客户端代码：</p>
-<pre><code>#include &lt;stdio.h&gt;
-#include &lt;stdlib.h&gt;
-#include &lt;string.h&gt;
-#include &lt;sys/types.h&gt;
-#include &lt;sys/socket.h&gt;
-#include &lt;unistd.h&gt;
-#include &lt;arpa/inet.h&gt;
-//#define PORT 8088								/*侦听端口地址*/
-
-int main(int argc, char *argv[])
-{
-	int s;										/*s为socket描述符*/
-	struct sockaddr_in server_addr;			/*服务器地址结构*/
-	
-	s = socket(AF_INET, SOCK_STREAM, 0); 		/*建立一个流式套接字 */
-	if(s &lt; 0){									/*出错*/
-		printf(&quot;socket error\n&quot;);
-		return -1;
-	}	
-	
-	/*设置服务器地址*/
-	bzero(&amp;server_addr, sizeof(server_addr));	/*清零*/
-	server_addr.sin_family = AF_INET;					/*协议族*/
-	server_addr.sin_addr.s_addr = htonl(INADDR_ANY);	/*本地地址*/
-	server_addr.sin_port = htons(atoi(argv[2]));		/*服务器端口*/
-	
-	/*将用户输入的字符串类型的IP地址转为整型*/
-	inet_pton(AF_INET, argv[1], &amp;server_addr.sin_addr);	
-	/*连接服务器*/
-	connect(s, (struct sockaddr*)&amp;server_addr, sizeof(struct sockaddr));
-	process_conn_client(s);						/*客户端处理过程*/
-	close(s);									/*关闭连接*/
-	return 0;
-}
-</code></pre>
-<p>建立连接后的读写交互代码，包含服务端的调用和客户端的调用：</p>
-<pre><code>#include &lt;stdio.h&gt;
-#include &lt;string.h&gt;
-/*客户端的处理过程*/
-void process_conn_client(int s)					/* 传入的是客户端调用socket时创建的s */
-{
-	ssize_t size = 0;
-	char buffer[1024];							/*数据的缓冲区*/
-	
-	for(;;){									/*循环处理过程*/
-		/*从标准输入中读取数据放到缓冲区buffer中,标准输入：0，标准输出：1，标准错误：2*/
-		size = read(0, buffer, 1024);
-		if(size &gt; 0){							/*读到数据*/
-			write(s, buffer, size);				/*发送给服务器*/
-			/*客户端阻塞，等待服务器有数据可读*/
-			size = read(s, buffer, 1024);		/*从服务器读取数据*/
-			write(1, buffer, size);				/*写到标准输出*/
-		}
-	}	
-}
-/*服务器对客户端的处理*/
-void process_conn_server(int s) 				/* 传入的是服务端调用accept时创建的sc */
-{
-	ssize_t size = 0;
-	char buffer[1024];							/*数据的缓冲区*/
-	
-	for(;;){									/*循环处理过程*/		
-		size = read(s, buffer, 1024);			/*从套接字中读取数据放到缓冲区buffer中*/
-		if(size == 0){							/*没有数据*/
-			return;	
-		}
-		
-		/*构建响应数据*/
-		//sprintf(buffer, &quot;server receive %d bytes from client\n&quot;, size);
-		//write(s, buffer, strlen(buffer));
-		write(s, buffer, size);					/*发回给客户端*/
-	}	
-}
-</code></pre>
-<p>Makefile编译脚本:</p>
-<pre><code>all:client server					#all规则，它依赖于client和server规则
-
-client:tcp_process.o tcp_client.o	#client规则，生成客户端可执行程序
-	gcc -o client tcp_process.o tcp_client.o
-server:tcp_process.o tcp_server.o	#server规则，生成服务器端可执行程序
-	gcc -o server tcp_process.o tcp_server.o	
-tcp_process.o:						#tcp_process.o规则，生成tcp_process.o
-	gcc -c tcp_process.c -o tcp_process.o
-clean:								#清理规则，删除client、server和中间文件
-	rm -f client server *.o
-</code></pre>
-<h2 id="部署和运行"><a href="#部署和运行" class="headerlink" title="部署和运行"></a>部署和运行</h2><p>后台运行server,指定监听端口:<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051424795.png" alt="image-20221205142401747"><br>运行client，指定服务端的ip, port：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051424795.png"><br>客户端每输入一个字符串，服务端返回完全相同的字符串，通信正常<br>如果运行服务端时，有bind error，可能是端口被占用，<code>netstat</code>找到占用端口的PID，kill之后再运行server<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051424796.png" alt="image-20221205142416741"></p>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/09/06/Git%E5%A4%9A%E4%BA%BA%E5%8D%8F%E4%BD%9C%E4%B8%8B%E7%9A%84%E6%8D%A2%E8%A1%8C%E7%AC%A6%E9%97%AE%E9%A2%98/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.jpg">
-      <meta itemprop="name" content="cursorhu">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="ThinkNotes">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2020/09/06/Git%E5%A4%9A%E4%BA%BA%E5%8D%8F%E4%BD%9C%E4%B8%8B%E7%9A%84%E6%8D%A2%E8%A1%8C%E7%AC%A6%E9%97%AE%E9%A2%98/" class="post-title-link" itemprop="url">Git多人协作下的换行符问题</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2020-09-06 11:23:00" itemprop="dateCreated datePublished" datetime="2020-09-06T11:23:00+08:00">2020-09-06</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2024-04-26 16:13:35" itemprop="dateModified" datetime="2024-04-26T16:13:35+08:00">2024-04-26</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/Git/" itemprop="url" rel="index"><span itemprop="name">Git</span></a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h1 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h1><p>项目文件中有如下类型文件：</p>
-<pre><code>Makefile, .sh, .bat, .cfg, .exe
-</code></pre>
-<p>源码用git管理，客户端用cygwin实现windows内的linux环境</p>
-<p>问题：如何解决git多人协作下的linux、windows换行符差异问题？</p>
-<p>(1)什么是换行符<br>LF：”\n”，Linux的换行符, 只包含“换行”；<br>CRLF：”\r\n”，Windows的换行符，包含“回车+换行”;</p>
-<p>(2)不同换行符带来什么问题<br>用git管理代码，必定有远程端和本地端两个仓库，两端的操作系统不同，换行符可能有差异;</p>
-<p>多人协作时，本地端可能有linux环境和windows, 如果所有人都是linux就不存在换行符差异的问题；如果有windows和linux就有该问题;<br>例如A上传了Linux换行符LF的代码到远程，B 本地环境是windows, B git pull下来，其git-config设置了自动转换成本地换行，将代码换行全成了CRLF，B上传后，远程仓库变成CRLF换行。此时A git diff查看，所有代码都有换行差异，扰乱真正的代码diff。</p>
-<p>不仅是影响git diff， 换行差异还影响脚本执行</p>
-<ul>
-<li>例如LF换行的.sh，git pull到windows环境后换行转换成CRLF, 导致sh无法正常执行；</li>
-<li>.bat调用.exe读取.cfg内的一行，.exe是windows程序，其readline方法只能识别CRLF换行，无法读取LF换行的.cfg文件内容</li>
-</ul>
-<h1 id="git的自动换行符转换配置"><a href="#git的自动换行符转换配置" class="headerlink" title="git的自动换行符转换配置"></a>git的自动换行符转换配置</h1><p>参考：<a target="_blank" rel="noopener" href="https://git-scm.com/book/zh/v2/%E8%87%AA%E5%AE%9A%E4%B9%89-Git-%E9%85%8D%E7%BD%AE-Git">core.autocrlf</a></p>
-<p>假如你正在 Windows 上写程序，而其他人用的是其他系统（或相反），你可能会遇到 CRLF 问题。 这是因为 Windows 使用回车（CR）和换行（LF）两个字符来结束一行，而 macOS 和 Linux 只使用换行（LF）一个字符。 虽然这是小问题，但它会极大地扰乱跨平台协作。许多 Windows 上的编辑器会悄悄把行尾的换行字符转换成回车和换行， 或在用户按下 Enter 键时，插入回车和换行两个字符。</p>
-<p>Git 可以在你提交时自动地把回车和换行转换成换行，而在检出代码时把换行转换成回车和换行。 你可以用 core.autocrlf 来打开此项功能。 如果是在 Windows 系统上，把它设置成 true，这样在检出代码时，换行会被转换成回车和换行：</p>
-<pre><code>$ git config --global core.autocrlf true
-</code></pre>
-<p>如果使用以换行作为行结束符的 Linux 或 macOS，你不需要 Git 在检出文件时进行自动的转换； 然而当一个以回车加换行作为行结束符的文件不小心被引入时，你肯定想让 Git 修正。 你可以把 core.autocrlf 设置成 input 来告诉 Git 在提交时把回车和换行转换成换行，检出时不转换：</p>
-<pre><code>$ git config --global core.autocrlf input
-</code></pre>
-<p>这样在 Windows 上的检出文件中会保留回车和换行，而在 macOS 和 Linux 上，以及版本库中会保留换行。</p>
-<p>如果你是 Windows 程序员，且正在开发仅运行在 Windows 上的项目，可以设置 false 取消此功能，把回车保留在版本库中：</p>
-<pre><code>$ git config --global core.autocrlf false
-</code></pre>
-<p><strong>使用<code>git config --global core.autocrlf input</code>就可以做到windows的CRLF换行自动转换成LF换行存储在git远程仓库，且git pull&#x2F;clone到本地时维持LF换行，不影响.sh等linux shell script执行。</strong></p>
-<h1 id="手动换行符转换"><a href="#手动换行符转换" class="headerlink" title="手动换行符转换"></a>手动换行符转换</h1><ul>
-<li><p>dos2unix FilePath</p>
-</li>
-<li><p>unix2dos FilePath</p>
-</li>
-<li><p>windows2linux</p>
-<p> sed -i ‘s&#x2F;.$&#x2F;&#x2F;‘ FilePath</p>
-</li>
-<li><p>linux2windows</p>
-<p> sed -i ‘s&#x2F;$&#x2F;\r&#x2F;‘ FilePath</p>
-</li>
-</ul>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/09/05/Linux-Shell%E7%AC%94%E8%AE%B0%EF%BC%9ASSD%E7%9A%84S3-S4-S5%E5%8E%8B%E5%8A%9B%E6%B5%8B%E8%AF%95%E8%84%9A%E6%9C%AC/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -1673,7 +222,7 @@ clean:								#清理规则，删除client、server和中间文件
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2024-11-04 11:43:03" itemprop="dateModified" datetime="2024-11-04T11:43:03+08:00">2024-11-04</time>
+                <time title="修改时间：2025-11-18 11:09:20" itemprop="dateModified" datetime="2025-11-18T11:09:20+08:00">2025-11-18</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -1681,7 +230,7 @@ clean:								#清理规则，删除client、server和中间文件
               </span>
               <span class="post-meta-item-text">分类于</span>
                 <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/linux/" itemprop="url" rel="index"><span itemprop="name">linux</span></a>
+                  <a href="/categories/linux%E5%9F%BA%E7%A1%80/" itemprop="url" rel="index"><span itemprop="name">linux基础</span></a>
                 </span>
             </span>
 
@@ -2212,7 +761,7 @@ cat ~/.ssh/id_rsa.pub
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2024-04-26 16:13:35" itemprop="dateModified" datetime="2024-04-26T16:13:35+08:00">2024-04-26</time>
+                <time title="修改时间：2025-11-18 11:09:13" itemprop="dateModified" datetime="2025-11-18T11:09:13+08:00">2025-11-18</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -2220,7 +769,7 @@ cat ~/.ssh/id_rsa.pub
               </span>
               <span class="post-meta-item-text">分类于</span>
                 <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/linux/" itemprop="url" rel="index"><span itemprop="name">linux</span></a>
+                  <a href="/categories/linux%E5%9F%BA%E7%A1%80/" itemprop="url" rel="index"><span itemprop="name">linux基础</span></a>
                 </span>
             </span>
 
@@ -2354,25 +903,8 @@ if [ $1 = &quot;-bf&quot; ];then #backup defs
 elif [ $1 = &quot;-cf&quot; ];then #clear backup defs
 	rm -rf $DEFS_BACKUP_PATH
 </code></pre>
-<p>​<br>​    #add a macro name and macro value to defs, and add file postfix<br>​    elif [ $1 &#x3D; “-a” ];then<br>​<br>    	if [ $# !&#x3D; 4 ];then<br>    		echo “usage: .&#x2F;update.sh -a FILE_POSTFIX MACRO_NAME MACRO_VALUE”<br>    		exit;<br>    	fi</p>
-<pre><code>	mkdir -p $DEFS_TEMP_PATH &amp;&amp; cp -rf $DEFS_BACKUP_PATH/*.def $DEFS_TEMP_PATH
-	
-	FILE_POSTFIX=$2
-	MACRO_NAME=$3
-	MACRO_VALUE=$4
-	# sed -i makes change on original file, otherwise on stream
-	# xargs transfer multiple output from stream to multiple args to sed
-	find ${DEFS_TEMP_PATH} -name &#39;*.def&#39; | xargs sed -i &#39;$a\#define\ &#39;&quot;$MACRO_NAME&quot;&#39;\ &#39;&quot;$MACRO_VALUE&quot;&#39;&#39;
-	
-	for file in `ls ${DEFS_TEMP_PATH}/*.def`
-	do
-	 mv $file `echo $file | sed &#39;s/\(.*\)\(\..*\)/\1_&#39;&quot;$FILE_POSTFIX&quot;&#39;\2/g&#39;`
-	done
-	
-	cp -rf $DEFS_TEMP_PATH/*.def $DEFS_PATH
-	rm -rf $DEFS_TEMP_PATH
-
-#update a macro name and macro value to defs, and update file postfix
+<p>​<br>​    #add a macro name and macro value to defs, and add file postfix<br>​    elif [ $1 &#x3D; “-a” ];then<br>​<br>​    	if [ $# !&#x3D; 4 ];then<br>​    		echo “usage: .&#x2F;update.sh -a FILE_POSTFIX MACRO_NAME MACRO_VALUE”<br>​    		exit;<br>​    	fi<br>​<br>    	mkdir -p $DEFS_TEMP_PATH &amp;&amp; cp -rf $DEFS_BACKUP_PATH&#x2F;<em>.def $DEFS_TEMP_PATH<br>    	<br>    	FILE_POSTFIX&#x3D;$2<br>    	MACRO_NAME&#x3D;$3<br>    	MACRO_VALUE&#x3D;$4<br>    	# sed -i makes change on original file, otherwise on stream<br>    	# xargs transfer multiple output from stream to multiple args to sed<br>    	find ${DEFS_TEMP_PATH} -name ‘</em>.def’ | xargs sed -i ‘$a#define\ ‘“$MACRO_NAME”‘\ ‘“$MACRO_VALUE”‘’<br>    	<br>    	for file in <code>ls ${DEFS_TEMP_PATH}/*.def</code><br>    	do<br>    	 mv $file <code>echo $file | sed &#39;s/\(.*\)\(\..*\)/\1_&#39;&quot;$FILE_POSTFIX&quot;&#39;\2/g&#39;</code><br>    	done<br>    	<br>    	cp -rf $DEFS_TEMP_PATH&#x2F;*.def $DEFS_PATH<br>    	rm -rf $DEFS_TEMP_PATH</p>
+<pre><code>#update a macro name and macro value to defs, and update file postfix
 elif [ $1 = &quot;-u&quot; ];then
 
 	if [ $# != 5 ];then
@@ -2393,18 +925,8 @@ elif [ $1 = &quot;-u&quot; ];then
 	 	mv $file `echo $file | sed &#39;s/&#39;&quot;$ORIGIN_POSTFIX&quot;&#39;/&#39;&quot;$UPDATED_POSTFIX&quot;&#39;/g&#39;`
 	done
 </code></pre>
-<p>​<br>​    #delete a macro name and macro value of defs, and delete file postfix<br>​    elif [ $1 &#x3D; “-d” ];then<br>​    	<br>    	if [ $# !&#x3D; 3 ];then<br>    		echo “usage: .&#x2F;update.sh -d DELETE_POSTFIX MACRO_NAME”<br>    		exit;<br>    	fi</p>
-<pre><code>	DELETE_POSTFIX=$2
-	MACRO_NAME=$3
-	#delete all lines that contain $MACRO_NAME
-	find ${DEFS_PATH} -name &#39;*.def&#39; | grep $DELETE_POSTFIX | xargs sed -i &#39;/&#39;&quot;$MACRO_NAME&quot;&#39;/d&#39;
-	#delete file postfix
-	for file in `ls ${DEFS_PATH}/*.def`
-	do
-	 	mv $file `echo $file | sed &#39;s/_&#39;&quot;$DELETE_POSTFIX&quot;&#39;//g&#39;`
-	done
-
-#delete target file by postfix
+<p>​<br>​    #delete a macro name and macro value of defs, and delete file postfix<br>​    elif [ $1 &#x3D; “-d” ];then<br>​    	<br>​    	if [ $# !&#x3D; 3 ];then<br>​    		echo “usage: .&#x2F;update.sh -d DELETE_POSTFIX MACRO_NAME”<br>​    		exit;<br>​    	fi<br>​<br>    	DELETE_POSTFIX&#x3D;$2<br>    	MACRO_NAME&#x3D;$3<br>    	#delete all lines that contain $MACRO_NAME<br>    	find ${DEFS_PATH} -name ‘*.def’ | grep $DELETE_POSTFIX | xargs sed -i ‘&#x2F;‘“$MACRO_NAME”‘&#x2F;d’<br>    	#delete file postfix<br>    	for file in <code>ls ${DEFS_PATH}/*.def</code><br>    	do<br>    	 	mv $file <code>echo $file | sed &#39;s/_&#39;&quot;$DELETE_POSTFIX&quot;&#39;//g&#39;</code><br>    	done</p>
+<pre><code>#delete target file by postfix
 elif [ $1 = &quot;-df&quot; ];then
 	
 	if [ $# != 2 ];then
@@ -2482,7 +1004,7 @@ done
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/06/22/GCC%E4%BD%BF%E7%94%A8%E7%AC%94%E8%AE%B0/">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/06/22/linux%E5%9F%BA%E7%A1%80%20--%20GCC%E4%BD%BF%E7%94%A8%E7%AC%94%E8%AE%B0/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/avatar.jpg">
@@ -2496,7 +1018,7 @@ done
       <header class="post-header">
         <h2 class="post-title" itemprop="name headline">
           
-            <a href="/2020/06/22/GCC%E4%BD%BF%E7%94%A8%E7%AC%94%E8%AE%B0/" class="post-title-link" itemprop="url">GCC使用笔记</a>
+            <a href="/2020/06/22/linux%E5%9F%BA%E7%A1%80%20--%20GCC%E4%BD%BF%E7%94%A8%E7%AC%94%E8%AE%B0/" class="post-title-link" itemprop="url">linux基础 -- GCC使用笔记</a>
         </h2>
 
         <div class="post-meta">
@@ -2513,7 +1035,7 @@ done
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2024-11-04 11:43:03" itemprop="dateModified" datetime="2024-11-04T11:43:03+08:00">2024-11-04</time>
+                <time title="修改时间：2025-11-18 11:40:51" itemprop="dateModified" datetime="2025-11-18T11:40:51+08:00">2025-11-18</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -2521,7 +1043,7 @@ done
               </span>
               <span class="post-meta-item-text">分类于</span>
                 <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/GCC/" itemprop="url" rel="index"><span itemprop="name">GCC</span></a>
+                  <a href="/categories/linux%E5%9F%BA%E7%A1%80/" itemprop="url" rel="index"><span itemprop="name">linux基础</span></a>
                 </span>
             </span>
 
@@ -2644,7 +1166,7 @@ omit- frame-pointer:可能的情况下不产生栈帧;
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/06/10/Makefile%E4%BD%BF%E7%94%A8%E7%AC%94%E8%AE%B0/">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/06/10/linux%E5%9F%BA%E7%A1%80%20--%20Makefile%E4%BD%BF%E7%94%A8%E7%AC%94%E8%AE%B0/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/avatar.jpg">
@@ -2658,7 +1180,7 @@ omit- frame-pointer:可能的情况下不产生栈帧;
       <header class="post-header">
         <h2 class="post-title" itemprop="name headline">
           
-            <a href="/2020/06/10/Makefile%E4%BD%BF%E7%94%A8%E7%AC%94%E8%AE%B0/" class="post-title-link" itemprop="url">Makefile使用笔记</a>
+            <a href="/2020/06/10/linux%E5%9F%BA%E7%A1%80%20--%20Makefile%E4%BD%BF%E7%94%A8%E7%AC%94%E8%AE%B0/" class="post-title-link" itemprop="url">linux基础 -- Makefile使用笔记</a>
         </h2>
 
         <div class="post-meta">
@@ -2675,7 +1197,7 @@ omit- frame-pointer:可能的情况下不产生栈帧;
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2024-04-26 16:13:35" itemprop="dateModified" datetime="2024-04-26T16:13:35+08:00">2024-04-26</time>
+                <time title="修改时间：2025-11-18 11:29:14" itemprop="dateModified" datetime="2025-11-18T11:29:14+08:00">2025-11-18</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -2683,7 +1205,7 @@ omit- frame-pointer:可能的情况下不产生栈帧;
               </span>
               <span class="post-meta-item-text">分类于</span>
                 <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/makefile/" itemprop="url" rel="index"><span itemprop="name">makefile</span></a>
+                  <a href="/categories/linux%E5%9F%BA%E7%A1%80/" itemprop="url" rel="index"><span itemprop="name">linux基础</span></a>
                 </span>
             </span>
 
@@ -2841,7 +1363,7 @@ done
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2024-11-04 11:43:03" itemprop="dateModified" datetime="2024-11-04T11:43:03+08:00">2024-11-04</time>
+                <time title="修改时间：2025-11-18 11:09:15" itemprop="dateModified" datetime="2025-11-18T11:09:15+08:00">2025-11-18</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -2849,7 +1371,7 @@ done
               </span>
               <span class="post-meta-item-text">分类于</span>
                 <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/linux/" itemprop="url" rel="index"><span itemprop="name">linux</span></a>
+                  <a href="/categories/linux%E5%9F%BA%E7%A1%80/" itemprop="url" rel="index"><span itemprop="name">linux基础</span></a>
                 </span>
             </span>
 
@@ -3144,10 +1666,747 @@ find ./defs -name &#39;*.def&#39; | xargs sed -i &quot;s/aabb/$ARGS/&quot;
   
   
 
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/05/20/%E5%BC%80%E6%BA%90%E5%AD%A6%E4%B9%A0%20--%20nodejs%E4%BD%BF%E7%94%A8pm2%E9%83%A8%E7%BD%B2%E9%A1%B9%E7%9B%AE/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2020/05/20/%E5%BC%80%E6%BA%90%E5%AD%A6%E4%B9%A0%20--%20nodejs%E4%BD%BF%E7%94%A8pm2%E9%83%A8%E7%BD%B2%E9%A1%B9%E7%9B%AE/" class="post-title-link" itemprop="url">开源学习 -- nodejs使用pm2部署项目</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-05-20 14:25:24" itemprop="dateCreated datePublished" datetime="2020-05-20T14:25:24+08:00">2020-05-20</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2025-11-18 11:13:34" itemprop="dateModified" datetime="2025-11-18T11:13:34+08:00">2025-11-18</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E5%BC%80%E6%BA%90%E5%AD%A6%E4%B9%A0/" itemprop="url" rel="index"><span itemprop="name">开源学习</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h1 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h1><p>nodejs服务可以用<code>nohup node xxx.js &amp;</code>后台启动，但是实际使用发现不太稳定，使用专门的node后台服务管理工具：pm2解决此问题</p>
+<h1 id="pm2特性"><a href="#pm2特性" class="headerlink" title="pm2特性"></a>pm2特性</h1><p>1、内建负载均衡（使用Node cluster 集群模块）<br>2、后台运行<br>3、0秒停机重载<br>4、具有Ubuntu和CentOS 的启动脚本<br>5、停止不稳定的进程（避免无限循环）<br>6、控制台检测<br>7、提供 HTTP API<br>8、远程控制和实时的接口API ( Nodejs 模块,允许和PM2进程管理器交互 )</p>
+<h1 id="pm2安装"><a href="#pm2安装" class="headerlink" title="pm2安装"></a>pm2安装</h1><pre><code>npm install -g pm2
+</code></pre>
+<h1 id="pm2用法"><a href="#pm2用法" class="headerlink" title="pm2用法"></a>pm2用法</h1><pre><code>pm2 start app.js        //启动进程
+pm2 start app.js -i 4   // 后台运行pm2，启动4个app.js
+pm2 start app.js -i max //启动，使用所有CPU核心
+pm2 start app.js --name my-api // 命名进程
+pm2 list               // 显示所有进程状态
+pm2 monit              // 监视所有进程
+pm2 logs               //  显示所有进程日志
+pm2 stop all           // 停止所有进程
+pm2 restart all        // 重启所有进程
+pm2 reload all         // 0秒停机重载进程 (用于 NETWORKED 进程)
+pm2 stop 0             // 停止指定的进程
+pm2 restart 0          // 重启指定的进程
+pm2 startup            // 产生 init 脚本 保持进程活着
+pm2 web                // 运行健壮的 computer API endpoint 
+pm2 delete 0           // 杀死指定的进程
+pm2 delete all         // 杀死全部进程
+</code></pre>
+<h1 id="使用示例"><a href="#使用示例" class="headerlink" title="使用示例"></a>使用示例</h1><p>部署Github项目NodeMail，每天给指定邮箱发邮件。</p>
+<p>后台启动main.js并监测状态：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061427417.png" alt="image-20221206142729375"></p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061427110.png" alt="image-20221206142743066"></p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061427682.png" alt="image-20221206142752627"></p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061428280.png" alt="image-20221206142800236"></p>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/05/05/Linux-Shell%E7%AC%94%E8%AE%B0%EF%BC%9A%E5%88%A4%E6%96%AD%E8%AF%AD%E5%8F%A5if-then-else-fi/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2020/05/05/Linux-Shell%E7%AC%94%E8%AE%B0%EF%BC%9A%E5%88%A4%E6%96%AD%E8%AF%AD%E5%8F%A5if-then-else-fi/" class="post-title-link" itemprop="url">Linux Shell笔记：判断语句if-then-else-fi</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-05-05 14:46:30" itemprop="dateCreated datePublished" datetime="2020-05-05T14:46:30+08:00">2020-05-05</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2025-11-18 11:09:07" itemprop="dateModified" datetime="2025-11-18T11:09:07+08:00">2025-11-18</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/linux%E5%9F%BA%E7%A1%80/" itemprop="url" rel="index"><span itemprop="name">linux基础</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p>shell中if-then-else-fi判断语句如下：</p>
+<pre><code>a=&quot;abc&quot;
+
+if [ $a = &quot;abc&quot; ]
+then
+   echo &quot;$a = $b&quot;
+else
+   echo &quot;$a != $b&quot;
+fi
+</code></pre>
+<p>注意以下几点：</p>
+<ul>
+<li>shell中的等号：<code>=</code>可用于赋值，也可以用于判断；<code>==</code>只用于判断，更规范</li>
+<li>shell中的if语句各符号间都要空格分隔：<code>if</code>和<code>[ ]</code>之间要空格；<code>[ ]</code>和<code>“ ”</code>之间要空格； <code>&quot;</code>和<code>=</code>之间要空格。否则if语句中的符号会解析失败。</li>
+<li>shell变量没有数据类型的区分，把任何存储在变量中的值，皆视为“字符串”</li>
+<li>对于变量可能为空的情况，需要用双括号<code>[[ $a = &quot;abc&quot; ]]</code></li>
+<li>if-then可以写在同一行，用;分隔两个语句：<code>if [ $a = &quot;abc&quot; ];then</code></li>
+</ul>
+<h1 id="不同类型的判断语句"><a href="#不同类型的判断语句" class="headerlink" title="不同类型的判断语句"></a>不同类型的判断语句</h1><h2 id="关系运算符判断"><a href="#关系运算符判断" class="headerlink" title="关系运算符判断"></a>关系运算符判断</h2><p>-eq	检测两个数是否相等，相等返回 true。	[ $a -eq $b ] 返回 false。</p>
+<p>-ne	检测两个数是否不相等，不相等返回 true。	[ $a -ne $b ] 返回 true。</p>
+<p>-gt	检测左边的数是否大于右边的，如果是，则返回 true。	[ $a -gt $b ] 返回 false。</p>
+<p>-lt	检测左边的数是否小于右边的，如果是，则返回 true。	[ $a -lt $b ] 返回 true。</p>
+<p>-ge	检测左边的数是否大于等于右边的，如果是，则返回 true。	[ $a -ge $b ] 返回 false。</p>
+<p>-le	检测左边的数是否小于等于右边的，如果是，则返回 true。	[ $a -le $b ] 返回 true。</p>
+<pre><code>#!/bin/bash
+
+a=10
+b=20
+
+if [ $a -eq $b ]
+then
+   echo &quot;$a -eq $b : a 等于 b&quot;
+else
+   echo &quot;$a -eq $b: a 不等于 b&quot;
+fi
+if [ $a -ne $b ]
+then
+   echo &quot;$a -ne $b: a 不等于 b&quot;
+else
+   echo &quot;$a -ne $b : a 等于 b&quot;
+fi
+if [ $a -gt $b ]
+then
+   echo &quot;$a -gt $b: a 大于 b&quot;
+else
+   echo &quot;$a -gt $b: a 不大于 b&quot;
+fi
+if [ $a -lt $b ]
+then
+   echo &quot;$a -lt $b: a 小于 b&quot;
+else
+   echo &quot;$a -lt $b: a 不小于 b&quot;
+fi
+if [ $a -ge $b ]
+then
+   echo &quot;$a -ge $b: a 大于或等于 b&quot;
+else
+   echo &quot;$a -ge $b: a 小于 b&quot;
+fi
+if [ $a -le $b ]
+then
+   echo &quot;$a -le $b: a 小于或等于 b&quot;
+else
+   echo &quot;$a -le $b: a 大于 b&quot;
+fi
+</code></pre>
+<h2 id="布尔和逻辑运算符判断"><a href="#布尔和逻辑运算符判断" class="headerlink" title="布尔和逻辑运算符判断"></a>布尔和逻辑运算符判断</h2><p>!	非运算，表达式为 true 则返回 false，否则返回 true。	[ ! false ] 返回 true。</p>
+<p>-o	或运算，有一个表达式为 true 则返回 true。	[ $a -lt 20 -o $b -gt 100 ] 返回 true。</p>
+<p>-a	与运算，两个表达式都为 true 才返回 true。	[ $a -lt 20 -a $b -gt 100 ] 返回 false。</p>
+<pre><code>#!/bin/bash
+
+a=10
+b=20
+
+if [ $a != $b ]
+then
+   echo &quot;$a != $b : a 不等于 b&quot;
+else
+   echo &quot;$a == $b: a 等于 b&quot;
+fi
+if [ $a -lt 100 -a $b -gt 15 ]
+then
+   echo &quot;$a 小于 100 且 $b 大于 15 : 返回 true&quot;
+else
+   echo &quot;$a 小于 100 且 $b 大于 15 : 返回 false&quot;
+fi
+if [ $a -lt 100 -o $b -gt 100 ]
+then
+   echo &quot;$a 小于 100 或 $b 大于 100 : 返回 true&quot;
+else
+   echo &quot;$a 小于 100 或 $b 大于 100 : 返回 false&quot;
+fi
+if [ $a -lt 5 -o $b -gt 100 ]
+then
+   echo &quot;$a 小于 5 或 $b 大于 100 : 返回 true&quot;
+else
+   echo &quot;$a 小于 5 或 $b 大于 100 : 返回 false&quot;
+fi
+</code></pre>
+<p>&amp;&amp;	逻辑的 AND	[[ $a -lt 100 &amp;&amp; $b -gt 100 ]] 返回 false</p>
+<p>||	逻辑的 OR	[[ $a -lt 100 || $b -gt 100 ]] 返回 true</p>
+<pre><code>#!/bin/bash
+
+a=10
+b=20
+
+if [[ $a -lt 100 &amp;&amp; $b -gt 100 ]]
+then
+   echo &quot;返回 true&quot;
+else
+   echo &quot;返回 false&quot;
+fi
+
+if [[ $a -lt 100 || $b -gt 100 ]]
+then
+   echo &quot;返回 true&quot;
+else
+   echo &quot;返回 false&quot;
+fi
+</code></pre>
+<h2 id="字符串运算符判断"><a href="#字符串运算符判断" class="headerlink" title="字符串运算符判断"></a>字符串运算符判断</h2><p>&#x3D;	检测两个字符串是否相等，相等返回 true。	[ $a &#x3D; $b ] 返回 false。</p>
+<p>!&#x3D;	检测两个字符串是否相等，不相等返回 true。	[ $a !&#x3D; $b ] 返回 true。</p>
+<p>-z	检测字符串长度是否为0，为0返回 true。	[ -z $a ] 返回 false。  </p>
+<p>-n	检测字符串长度是否不为 0，不为 0 返回 true。	[ -n “$a” ] 返回 true。</p>
+<p><code>$</code> 检测字符串是否为空，不为空返回 true。	[ $a ] 返回 true。</p>
+<pre><code>#!/bin/bash
+
+a=&quot;abc&quot;
+b=&quot;efg&quot;
+
+if [ $a = $b ]
+then
+   echo &quot;$a = $b : a 等于 b&quot;
+else
+   echo &quot;$a != $b: a 不等于 b&quot;
+fi
+if [ $a != $b ]
+then
+   echo &quot;$a != $b : a 不等于 b&quot;
+else
+   echo &quot;$a = $b: a 等于 b&quot;
+fi
+if [ -z $a ]
+then
+   echo &quot;-z $a : 字符串长度为 0&quot;
+else
+   echo &quot;-z $a : 字符串长度不为 0&quot;
+fi
+if [ -n &quot;$a&quot; ]
+then
+   echo &quot;-n $a : 字符串长度不为 0&quot;
+else
+   echo &quot;-n $a : 字符串长度为 0&quot;
+fi
+if [ $a ]
+then
+   echo &quot;$a : 字符串不为空&quot;
+else
+   echo &quot;$a : 字符串为空&quot;
+fi
+</code></pre>
+<h2 id="文件检查运算符判断"><a href="#文件检查运算符判断" class="headerlink" title="文件检查运算符判断"></a>文件检查运算符判断</h2><p>b file	检测文件是否是块设备文件，如果是，则返回 true。	[ -b $file ] 返回 false。</p>
+<p>-c file	检测文件是否是字符设备文件，如果是，则返回 true。	[ -c $file ] 返回 false。</p>
+<p>-d file	检测文件是否是目录，如果是，则返回 true。	[ -d $file ] 返回 false。</p>
+<p>-f file	检测文件是否是普通文件（既不是目录，也不是设备文件），如果是，则返回 true。	[ -f $file ] 返回 true。</p>
+<p>-g file	检测文件是否设置了 SGID 位，如果是，则返回 true。	[ -g $file ] 返回 false。</p>
+<p>-k file	检测文件是否设置了粘着位(Sticky Bit)，如果是，则返回 true。	[ -k $file ] 返回 false。</p>
+<p>-p file	检测文件是否是有名管道，如果是，则返回 true。	[ -p $file ] 返回 false。</p>
+<p>-u file	检测文件是否设置了 SUID 位，如果是，则返回 true。	[ -u $file ] 返回 false。</p>
+<p>-r file	检测文件是否可读，如果是，则返回 true。	[ -r $file ] 返回 true。</p>
+<p>-w file	检测文件是否可写，如果是，则返回 true。	[ -w $file ] 返回 true。</p>
+<p>-x file	检测文件是否可执行，如果是，则返回 true。	[ -x $file ] 返回 true。</p>
+<p>-s file	检测文件是否为空（文件大小是否大于0），不为空返回 true。	[ -s $file ] 返回 true。</p>
+<p>-e file	检测文件（包括目录）是否存在，如果是，则返回 true。	[ -e $file ] 返回 true。</p>
+<p>-S: 判断某文件是否 socket。<br>-L: 检测文件是否存在并且是一个符号链接。</p>
+<pre><code>#!/bin/bash
+
+file=&quot;/root/test.sh&quot;
+
+if [ -r $file ]
+then
+   echo &quot;文件可读&quot;
+else
+   echo &quot;文件不可读&quot;
+fi
+if [ -w $file ]
+then
+   echo &quot;文件可写&quot;
+else
+   echo &quot;文件不可写&quot;
+fi
+if [ -x $file ]
+then
+   echo &quot;文件可执行&quot;
+else
+   echo &quot;文件不可执行&quot;
+fi
+if [ -f $file ]
+then
+   echo &quot;文件为普通文件&quot;
+else
+   echo &quot;文件为特殊文件&quot;
+fi
+if [ -d $file ]
+then
+   echo &quot;文件是个目录&quot;
+else
+   echo &quot;文件不是个目录&quot;
+fi
+if [ -s $file ]
+then
+   echo &quot;文件不为空&quot;
+else
+   echo &quot;文件为空&quot;
+fi
+if [ -e $file ]
+then
+   echo &quot;文件存在&quot;
+else
+   echo &quot;文件不存在&quot;
+fi
+</code></pre>
+<h1 id="判断语句报错：”unary-operator-expected”"><a href="#判断语句报错：”unary-operator-expected”" class="headerlink" title="判断语句报错：”unary operator expected”"></a>判断语句报错：”unary operator expected”</h1><p>在匹配字符串相等时，用了类似这样的语句：</p>
+<pre><code>if [ $STATUS == &quot;OK&quot; ]; then     
+echo &quot;OK&quot;
+fi
+</code></pre>
+<p>在运行时出现了 <code>[: =: unary operator expected</code> 的错误</p>
+<pre><code>if [[ $STATUS == &quot;OK&quot; ]]; 
+then     
+echo &quot;OK&quot;
+fi
+</code></pre>
+<p>究其原因，是因为如果变量STATUS值为空，那么就成了 [ &#x3D; “OK”] ，显然 [ 和 “OK” 不相等并且缺少了 [ 符号，所以报了这样的错误。当然不总是出错，如果变量STATUS值不为空，程序就正常了，所以这样的错误还是很隐蔽的。<br>或者用下面的方法也能避免这种错误：</p>
+<pre><code>if [ &quot;$STATUS&quot;x == &quot;OK&quot;x ]; 
+then     
+echo &quot;OK&quot;
+fi
+</code></pre>
+<p>当然，x也可以是其他字符。shell中有没有双引号在很多情况下是一致的,因此x可以不加引号。</p>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/04/30/Gitlab%E7%AC%94%E8%AE%B0%EF%BC%9ACentOS7%E9%83%A8%E7%BD%B2Gitlab%E6%9C%8D%E5%8A%A1/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2020/04/30/Gitlab%E7%AC%94%E8%AE%B0%EF%BC%9ACentOS7%E9%83%A8%E7%BD%B2Gitlab%E6%9C%8D%E5%8A%A1/" class="post-title-link" itemprop="url">Gitlab笔记：CentOS7部署Gitlab服务</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-04-30 14:39:02" itemprop="dateCreated datePublished" datetime="2020-04-30T14:39:02+08:00">2020-04-30</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2024-11-04 11:43:03" itemprop="dateModified" datetime="2024-11-04T11:43:03+08:00">2024-11-04</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Git/" itemprop="url" rel="index"><span itemprop="name">Git</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h1 id="环境"><a href="#环境" class="headerlink" title="环境"></a>环境</h1><p>阿里云ECS, CentOS7, RAM 4G</p>
+<h1 id="安装Gitlab"><a href="#安装Gitlab" class="headerlink" title="安装Gitlab"></a>安装Gitlab</h1><p>1.安装ssh并配置</p>
+<pre><code>#安装
+sudo yum install -y curl policycoreutils-python openssh-server
+#配置开机启动
+sudo systemctl enable sshd
+#启动服务
+sudo systemctl start sshd
+</code></pre>
+<p>2.配置防火墙</p>
+<pre><code>#启动防火墙
+service firewalld start
+#添加http服务到firewalld,pemmanent表示永久生效
+sudo firewall-cmd --permanent --add-service=http
+#重启防火墙
+sudo systemctl reload firewalld
+</code></pre>
+<p>3.安装gitlab</p>
+<pre><code>#下载安装脚本
+curl https://packages.gitlab.com/install/repositories/gitlab/gitlab-ee/script.rpm.sh | sudo bash
+#安装
+yum install -y gitlab-ee
+</code></pre>
+<p>4.配置gitlab</p>
+<pre><code>#gitlab配置文件
+vim /etc/gitlab/gitlab.rb
+#修改以下内容为主机ip和未使用的端口，否则使用默认端口8080
+external_url &#39;http://47.100.221.149:9030&#39;
+</code></pre>
+<p>5.配置生效并重启gitlab</p>
+<pre><code>#配置生效，改了配置需要运行
+gitlab-ctl reconfigure
+#重启服务，没改配置直接重启
+gitlab-ctl restart
+</code></pre>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061444445.png" alt="image-20221206144455394"><br>似乎服务都正常启动了，实际上可能有各种问题，参考问题记录</p>
+<h1 id="问题Debug记录"><a href="#问题Debug记录" class="headerlink" title="问题Debug记录"></a>问题Debug记录</h1><p>按以上步骤配置好后，访问主机ip:端口，直接弹出502服务端错误<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061445877.png" alt="image-20221206144542817"></p>
+<h2 id="配置文件权限问题"><a href="#配置文件权限问题" class="headerlink" title="配置文件权限问题?"></a>配置文件权限问题?</h2><p>配置文件生效命令<code>gitlab-ctl reconfigure</code>做了以下事情：</p>
+<ul>
+<li>配置设置写到gitlab服务直接调用的文件</li>
+</ul>
+<p>实际生效的配置文件：</p>
+<pre><code>vim /var/opt/gitlab/gitlab-rails/etc/gitlab.yml
+vim /opt/gitlab/embedded/service/gitlab-rails/config/gitlab.yml
+</code></pre>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061446719.png" alt="image-20221206144606669"><br>可见配置被自动拷贝到此处，gitlab相关服务读取的是这里的配置项</p>
+<ul>
+<li>生成服务相关临时文件</li>
+</ul>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061446110.png" alt="image-20221206144619066"></p>
+<p>原因：gitlab服务的配置文件在reconfigure时生成于&#x2F;var&#x2F;log&#x2F;gitlab，这个文件目录默认权限不够，有些子服务不能正常运行。</p>
+<p>解决方法：</p>
+<pre><code>chmod -R 777 /var/log/gitlab
+</code></pre>
+<p>restart服务，网页即可正常访问gitlab，如果恢复该目录755权限，重启服务会502</p>
+<p>每次重新配置，<code>gitlab-ctl reconfigure</code>似乎会删除该目录再重新写入<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061446151.png" alt="image-20221206144636079"></p>
+<p>因此每次gitlab-ctl reconfigure之后都要<code>chmod 777</code>改此目录权限</p>
+<h2 id="还有502问题"><a href="#还有502问题" class="headerlink" title="还有502问题?"></a>还有502问题?</h2><h3 id="检查阿里云端口"><a href="#检查阿里云端口" class="headerlink" title="检查阿里云端口"></a>检查阿里云端口</h3><p>首先确保主机ip是公网能访问的，不是内网ip<br>其次看端口是否禁用。在阿里云ECS的安全组策略中查看端口是否允许TCP输入输出<br>我把所有端口（1~65535）全部打开了<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061446454.png" alt="image-20221206144656411"></p>
+<h3 id="检查前向端口冲突"><a href="#检查前向端口冲突" class="headerlink" title="检查前向端口冲突"></a>检查前向端口冲突</h3><p>gitlab配置文件的external_url就包含前向端口</p>
+<pre><code>netstat -nlp | grep 9030 (我的gitlab前向端口)
+</code></pre>
+<p>显示的是nginx服务端口，因为gitlab默认被nginx反向代理了，说明gitlab的代理服务确实占用9030。</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061449545.png" alt="image-20221206144927508"></p>
+<h3 id="检查子服务的端口"><a href="#检查子服务的端口" class="headerlink" title="检查子服务的端口"></a>检查子服务的端口</h3><p>注意gitlab不只有一个服务，默认配置只设置了前向端口（nginx代理端口），而子服务都没配置端口，默认用了8080，如果有其他服务已经占用8080，可能子服务起不来<br>例如unicorn子服务：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061449220.png" alt="image-20221206144946178"></p>
+<p>查看子服务状态</p>
+<pre><code>gitlab-ctl status
+</code></pre>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061449573.png" alt="image-20221206144958510"></p>
+<p>如果本地已有8080的服务，最好杀掉或换其他端口，否则要手动配置gitlab子服务端口</p>
+<pre><code>unicorn[&#39;port&#39;] = 9032 （随便一个未使用端口）
+gitlab_workhorse[&#39;auth_backend&#39;] = &quot;http://localhost:9032&quot;
+</code></pre>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061450285.png" alt="image-20221206145014236"></p>
+<h3 id="检查内存资源不足"><a href="#检查内存资源不足" class="headerlink" title="检查内存资源不足"></a>检查内存资源不足</h3><p>阿里云2G以下RAM可能会有因内存不足，导致服务不能正常启动。<br>使用swap交换分区，避免内存不足的可能性。swap分区可以把部分内存分页存储到磁盘，变相“扩大”内存</p>
+<pre><code>#查看现有swap分区，若未分配大小为0
+cat /proc/swaps
+#创建swap文件，大小4G，挂载到/mnt。交换分区可以使用真正的分区，或者以文件形式的分区
+dd if=/dev/zero of=/mnt/swap bs=512 count=8388616
+#使之成为swap分区
+mkswap /mnt/swap
+#修改swap分区配置
+cat /proc/sys/vm/swappiness
+sysctl -w vm.swappiness=60
+#swap分区配置永久生效
+vim /etc/sysctl.conf
+修改vm.swappiness=60
+#启动分区
+swapon /mnt/swap
+echo “/mnt/swap swap swap defaults 0 0” &gt;&gt; /etc/fstab
+#停用分区
+swapoff /mnt/swap
+swapoff -a &gt; /dev/null
+</code></pre>
+<p>启用分区后运行gitlab，发现已经有一部分数据转移到了swap文件<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061450437.png" alt="image-20221206145023389"></p>
+<h1 id="ssh访问配置"><a href="#ssh访问配置" class="headerlink" title="ssh访问配置"></a>ssh访问配置</h1><p>通过ssh上传下载，需要建立ssh key</p>
+<pre><code>ssh-keygen   #一路回车
+</code></pre>
+<p>若创建成功，查看生成的公钥：</p>
+<pre><code>cat ~/.ssh/id_rsa.pub
+ssh-rsa AAAAB3NzaC1yXXXXXXXX
+</code></pre>
+<p>添加公钥至gitlab</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061450049.png" alt="image-20221206145031977"></p>
+<h1 id="初始化git项目"><a href="#初始化git项目" class="headerlink" title="初始化git项目"></a>初始化git项目</h1><p>配置git全局用户名，邮箱</p>
+<pre><code>git config --global user.name &quot;YOUR NAME&quot;
+git config --global user.email &quot;YOUR EMAIL@xxx.com&quot;
+</code></pre>
+<p>初始化git仓库<br>可以通过xftp上传项目文件夹到gitlab服务器，再到目录内初始化.git仓库。</p>
+<pre><code>cd project_folder (项目文件夹)
+git init
+git remote add origin git@YOUR_IP:YOUR_NAME/project_folder.git
+git add .
+git commit -m &quot;Initial commit&quot;
+git push -u origin master
+</code></pre>
+<p>这样在网页上可看到gitlab有首次commit的文件，后续也可以顺利提交和下载。</p>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/04/16/%E6%B5%85%E8%B0%88C%E7%9A%84%E5%AE%8F%E5%87%BD%E6%95%B0/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2020/04/16/%E6%B5%85%E8%B0%88C%E7%9A%84%E5%AE%8F%E5%87%BD%E6%95%B0/" class="post-title-link" itemprop="url">浅谈C的宏函数</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-04-16 15:07:37" itemprop="dateCreated datePublished" datetime="2020-04-16T15:07:37+08:00">2020-04-16</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2025-11-18 11:19:44" itemprop="dateModified" datetime="2025-11-18T11:19:44+08:00">2025-11-18</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/C/" itemprop="url" rel="index"><span itemprop="name">C</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h1 id="1-连接操作符"><a href="#1-连接操作符" class="headerlink" title="1. 连接操作符:##"></a>1. 连接操作符:##</h1><pre><code>#define Conn(x,y) x##y
+</code></pre>
+<p><code>##</code> 表示连接 , <code>x##y</code> 表示x连接y</p>
+<p>示例：</p>
+<pre><code>int n = Conn(123,456);
+     ==&gt; int n=123456;
+char* str = Conn(&quot;asdf&quot;, &quot;adf&quot;);
+     ==&gt; char* str = &quot;asdfadf&quot;;
+</code></pre>
+<p><code>##</code> 的左右符号必须能够组成一个有意义的符号，否则预处理器会报错</p>
+<h1 id="2-字符串化和字符化"><a href="#2-字符串化和字符化" class="headerlink" title="2.字符串化和字符化: #, #@"></a>2.字符串化和字符化: #, #@</h1><p>(1) # 把任意类型的宏入参转化成字符串：</p>
+<pre><code>#define ToString(x) #x
+</code></pre>
+<p>符号 # 表示字符串化操作符（stringification）。<br>其作用是：将宏定义中的传入参数名转换成用一对双引号括起来参数名字符串。<br>其只能用于有传入参数的宏定义中，且必须置于宏定义体中的参数名前。</p>
+<p>示例：</p>
+<pre><code> char* str = ToString(123132);
+ ==&gt; char* str=&quot;123132&quot;;
+</code></pre>
+<p>如果要对展开后的宏参数进行字符串化，则需要使用两层宏。</p>
+<pre><code>#define xstr(s) str(s)
+#define str(s) #s
+#define foo 4
+
+str (foo)
+     ==&gt; &quot;foo&quot;
+xstr (foo)
+     ==&gt; xstr (4)
+     ==&gt; str (4)
+     ==&gt; &quot;4&quot;
+</code></pre>
+<p>(2) #@ 把任意类型的宏入参转化成单字符：</p>
+<pre><code>#define ToChar(x) #@x
+</code></pre>
+<p>示例：</p>
+<pre><code>char a = ToChar(1);
+     ==&gt; char a=&#39;1&#39;
+</code></pre>
+<h1 id="3-不定参数宏-VA-ARGS"><a href="#3-不定参数宏-VA-ARGS" class="headerlink" title="3. 不定参数宏: __VA_ARGS__"></a>3. 不定参数宏: <code>__VA_ARGS__</code></h1><p><code>__VA_ARGS__</code>宏用来接受不定数量的参数。例如：</p>
+<pre><code>#define eprintf(...) fprintf (stderr, __VA_ARGS__)
+
+eprintf (&quot;%s:%d: &quot;, input_file, lineno)
+==&gt;  fprintf (stderr, &quot;%s:%d: &quot;, input_file, lineno)
+</code></pre>
+<p>当<code>__VA_ARGS__</code>宏前面加 <code>##</code> 时，可以省略参数输入。<br>例如：</p>
+<pre><code>#define eprintf(format, ...) fprintf (stderr, format, ##__VA_ARGS__)
+
+eprintf (&quot;success!\n&quot;)
+==&gt; fprintf(stderr, &quot;success!\n&quot;);
+</code></pre>
+<h1 id="4-宏函数定义-do-while-0-与换行"><a href="#4-宏函数定义-do-while-0-与换行" class="headerlink" title="4. 宏函数定义: do-while(0)与换行"></a>4. 宏函数定义: do-while(0)与换行</h1><p>(1) 用 do{}while(0) 定义宏函数</p>
+<pre><code>#define foo() do{...}while(0)
+</code></pre>
+<p>宏函数可能在任意地方被调用，如果在if-else语句中，为了确保宏函数作为整体单元被编译器替换后不产生歧义，一般用do-while(0)包起来定义<br>这种定义有点像其他语言的“闭包函数”，纯粹是C语言中为了避免语法歧义的可靠性定义。</p>
+<p>(2) 用显式换行符</p>
+<p>宏函数定义不能直接回车换行，需要在回车换行前，用\（反斜线）表示下一行继续此宏的定义<br>预处理器在编译之前会自动将\与换行回车去掉。</p>
+<p>例如：</p>
+<pre><code>#define PRINT_INT(a)    \
+do{                     \
+    printf(&quot;%d \n&quot;, a); \
+}while(0)
+</code></pre>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
 
   
   <nav class="pagination">
-    <a class="extend prev" rel="prev" href="/page/9/"><i class="fa fa-angle-left" aria-label="上一页"></i></a><a class="page-number" href="/">1</a><span class="space">&hellip;</span><a class="page-number" href="/page/9/">9</a><span class="page-number current">10</span><a class="page-number" href="/page/11/">11</a><a class="page-number" href="/page/12/">12</a><a class="extend next" rel="next" href="/page/11/"><i class="fa fa-angle-right" aria-label="下一页"></i></a>
+    <a class="extend prev" rel="prev" href="/page/9/"><i class="fa fa-angle-left" aria-label="上一页"></i></a><a class="page-number" href="/">1</a><span class="space">&hellip;</span><a class="page-number" href="/page/9/">9</a><span class="page-number current">10</span><a class="page-number" href="/page/11/">11</a><a class="extend next" rel="next" href="/page/11/"><i class="fa fa-angle-right" aria-label="下一页"></i></a>
   </nav>
 
 
@@ -3215,20 +2474,20 @@ find ./defs -name &#39;*.def&#39; | xargs sed -i &quot;s/aabb/$ARGS/&quot;
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">114</span>
+          <span class="site-state-item-count">110</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
       <div class="site-state-item site-state-categories">
             <a href="/categories/">
           
-        <span class="site-state-item-count">41</span>
+        <span class="site-state-item-count">33</span>
         <span class="site-state-item-name">分类</span></a>
       </div>
       <div class="site-state-item site-state-tags">
             <a href="/tags/">
           
-        <span class="site-state-item-count">56</span>
+        <span class="site-state-item-count">54</span>
         <span class="site-state-item-name">标签</span></a>
       </div>
   </nav>

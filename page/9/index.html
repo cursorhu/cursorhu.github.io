@@ -191,1467 +191,6 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2021/04/17/Vim%E4%BD%BF%E7%94%A8%E7%AC%94%E8%AE%B0/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.jpg">
-      <meta itemprop="name" content="cursorhu">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="ThinkNotes">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2021/04/17/Vim%E4%BD%BF%E7%94%A8%E7%AC%94%E8%AE%B0/" class="post-title-link" itemprop="url">Vim使用笔记.</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2021-04-17 12:30:05" itemprop="dateCreated datePublished" datetime="2021-04-17T12:30:05+08:00">2021-04-17</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2024-11-04 11:43:03" itemprop="dateModified" datetime="2024-11-04T11:43:03+08:00">2024-11-04</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/linux/" itemprop="url" rel="index"><span itemprop="name">linux</span></a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <p>最近在ChromeOS上做一些shell script测试用例开发，ChromeOS基于Debian9，但没有Ubuntu那种GNOME的gedit编辑器，更不谈安装Linux版VSCode，正好借此机会练习一下之前一直不熟悉的vim编辑器。</p>
-<p>ChromeOS不方便截图，所以本文以ubuntu上的linux0.11代码为例，整理vim最常用的操作。</p>
-<p>关于Linux上的文本编辑器基础概念，可以参考&lt;Linux命令行与shell脚本编程大全.第3版&gt;</p>
-<h2 id="1-三种编辑模式"><a href="#1-三种编辑模式" class="headerlink" title="1. 三种编辑模式"></a>1. 三种编辑模式</h2><p>我将vim归为三种编辑模式：</p>
-<ul>
-<li><p>文本编辑模式<br>文本编辑模式是默认模式，vim编辑器会将按键解释成命令。在任意模式按esc进入此默认模式。</p>
-</li>
-<li><p>文本插入模式<br>文本插入模式， vim会将你在当前光标位置输入的每个键都插入到缓冲区，即文本输入字符。在普通模式下按下”i 键” 进入(含义:insert)</p>
-</li>
-<li><p>命令行模式<br>命令行模式和shell命令行类似，在普通模式下按下”: 键”进入(形似shell terminal的冒号)</p>
-</li>
-</ul>
-<p>怎么知道当前处于哪种模式？<br>vim左下角是状态行，以下是三种模式的状态示例：</p>
-<ul>
-<li><code>vim init/main.c</code>默认进入文本编辑模式，下面显示文件名和行号<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202205171047554.png"></li>
-</ul>
-<p>输入i, 进入文本插入模式，下面显示insert状态<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202205171052433.png"></p>
-<p>按esc退出文本编辑，再输入<code>:</code> 进入命令行模式，例如输入<code>:wq</code>保存文件<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202205171053124.png"></p>
-<p>还有一种visual模式是复制粘贴时会用到：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202205181032041.png"></p>
-<p>下面讲文本编辑模式和命令行模式的常用命令<br>主要分为几类场景：</p>
-<ul>
-<li>光标移动</li>
-<li>增删改查</li>
-<li>文件保存</li>
-</ul>
-<p>光标移动类：</p>
-<table>
-<thead>
-<tr>
-<th>操作</th>
-<th>作用</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>gg</td>
-<td>移到第一行 (gg重来)</td>
-</tr>
-<tr>
-<td>G</td>
-<td>移到最后一行 (记为大G)</td>
-</tr>
-<tr>
-<td>PageUp&#x2F;PageDown</td>
-<td>翻页</td>
-</tr>
-<tr>
-<td>:行号</td>
-<td>光标移动到指定行(属于命令行模式)</td>
-</tr>
-</tbody></table>
-<p>增删改查类：</p>
-<table>
-<thead>
-<tr>
-<th>操作</th>
-<th>作用</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>i</td>
-<td>进入insert模式，在当前光标的左侧输入</td>
-</tr>
-<tr>
-<td>a</td>
-<td>追加文本（append），在当前光标的右侧输入</td>
-</tr>
-<tr>
-<td>o</td>
-<td>插入空行，在空行光标处可输入</td>
-</tr>
-<tr>
-<td>dd</td>
-<td>删除当前行 (记为双击delete)</td>
-</tr>
-<tr>
-<td>dw</td>
-<td>删除当前词（记为delete word）</td>
-</tr>
-<tr>
-<td>delete键，或x键</td>
-<td>删除当前字符，注意，Backspace在vim没有删除的作用！</td>
-</tr>
-<tr>
-<td>v+方向键选中+y</td>
-<td>复制选中的文本，v: visual，可视光标选中的文本范围， y: yank 复制</td>
-</tr>
-<tr>
-<td>yw</td>
-<td>复制当前词</td>
-</tr>
-<tr>
-<td>yy</td>
-<td>复制当前行</td>
-</tr>
-<tr>
-<td>p</td>
-<td>在复制之后，粘贴文本(paste)，注意粘贴内容来自vim缓冲区，而不是外部剪切板的</td>
-</tr>
-<tr>
-<td>dw&#x2F;dd + p</td>
-<td>剪切，d操作删除的文本位于缓冲区，可以直接用p粘贴</td>
-</tr>
-<tr>
-<td>&#x2F;字符串</td>
-<td>(当前文件内)查找字符串，按n查找下一个</td>
-</tr>
-<tr>
-<td>:s&#x2F;old&#x2F;new&#x2F;g</td>
-<td>(当前文件内)全局查找和替换</td>
-</tr>
-<tr>
-<td>u</td>
-<td>撤销上一步</td>
-</tr>
-</tbody></table>
-<p>文件保存类：</p>
-<table>
-<thead>
-<tr>
-<th>操作</th>
-<th>作用</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>:q!</td>
-<td>不保存文件退出</td>
-</tr>
-<tr>
-<td>:wq</td>
-<td>保存文件退出</td>
-</tr>
-</tbody></table>
-<h2 id="2-多文件编辑"><a href="#2-多文件编辑" class="headerlink" title="2.多文件编辑"></a>2.多文件编辑</h2><p>下面讲多个文本的常用命令<br>主要分为几类场景：</p>
-<ul>
-<li>多文本搜索</li>
-<li>多文件编辑</li>
-</ul>
-<p>多文本搜索类：<br>参考<a target="_blank" rel="noopener" href="https://thevaluable.dev/vim-search-find-replace/"># Vim Search and Replace With Examples</a><br>本文只以quickfix方式为例：</p>
-<table>
-<thead>
-<tr>
-<th>操作</th>
-<th>作用</th>
-</tr>
-</thead>
-<tbody><tr>
-<td><code>:vimgrep pattern **</code></td>
-<td>搜索当前目录和子目录的包含指定pattern的文件，vimgrep可缩写为vim, ** 表示递归子目录</td>
-</tr>
-<tr>
-<td><code>:vimgrep pattern **/*.c</code></td>
-<td>同上，只搜索.c文件</td>
-</tr>
-<tr>
-<td>:copen</td>
-<td>搜索完后使用此命令打开文件列表，才能用光标选择</td>
-</tr>
-<tr>
-<td>:cn (cnext) 和 :cp (cprev)</td>
-<td>上下选择搜索文件列表</td>
-</tr>
-</tbody></table>
-<p>示例：搜索linux0.11下的所有包含main的.c文件<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202205171959744.png"></p>
-<p>quickfix list即文件列表，copen后可方向键选择打开文件<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202205172002631.png"></p>
-<ul>
-<li>多文件编辑<br><strong>打开多个文件，分隔并列显示</strong></li>
-</ul>
-<ol>
-<li>用vim打开文件后，命令行输入<code>:vs newfile</code>，竖排并列打开新文件（vs是vertical split缩写，竖排分隔）</li>
-<li>特殊用法：<code>:vs ./</code>可以打开当前路径下的所有文件列表</li>
-<li>在窗口间切换：<code>ctrl + ww</code></li>
-<li>关闭文件只需要先切换到窗口再<code>:q!</code></li>
-<li>调整竖排的窗口比例：<br> 先按ctrl+w选择窗口模式，再按&lt;&gt;+-调整。&lt; 左移，&gt; 右移，+ 上移， - 下移。</li>
-</ol>
-<p>示例：实现类似IDE的界面，左侧是文件列表，下侧是查找栏，右侧文件内容<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202205181006035.png"></p>
-<p>  <strong>打开多个文件，不并列显示</strong><br>直接<code>:open file</code>打开新文件, 用 <code>:bn 和 :bN</code> (buffer next)切换文件, </p>
-<p>  <strong>多文件之间复制粘贴</strong><br>vim的多个文件直接可以直接用 y + p 命令复制粘贴，因为共用vim环境的缓冲区</p>
-<p>  退出所有文件<br><code>:qall!</code> 和 <code>:wqall</code></p>
-<h2 id="3-类似IDE的跳转功能"><a href="#3-类似IDE的跳转功能" class="headerlink" title="3.类似IDE的跳转功能"></a>3.类似IDE的跳转功能</h2><p>推荐cscope插件，具体参考<a target="_blank" rel="noopener" href="http://cscope.sourceforge.net/cscope_vim_tutorial.html">## The Vim&#x2F;Cscope tutorial</a></p>
-<p>关键步骤：</p>
-<ul>
-<li>建立cscope.vim<br>将  <a target="_blank" rel="noopener" href="http://cscope.sourceforge.net/cscope_maps.vim">http://cscope.sourceforge.net/cscope_maps.vim</a>  另存到文件<code>~/.vim/plugin/cscope_maps.vim</code></li>
-<li>源码目录建立cscope.out<br><code>cscope -R</code> 建立符号索引，<code>ctrl+D</code> 退出</li>
-<li>打开某符号的代码<br>例如 <code>vim -t main</code> 打开main所在文件</li>
-<li>查找函数的定义和调用<br>如果光标已经在函数上，用 “<code>ctrl +＼</code>“ 再输入s，查找所有调用、定义该函数的列表，输入索引号回车<br>更推荐用cscope的命令行，<code>:cs f s 函数名</code> 是一样的结果，且光标不需要位于函数上。参数含义 f: find, s: symbol<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202205181103274.png"></li>
-<li>跳转回之前的位置<br>“<code>ctrl + t</code></li>
-</ul>
-<h2 id="4-vim配置文件修改配色，行号"><a href="#4-vim配置文件修改配色，行号" class="headerlink" title="4.vim配置文件修改配色，行号"></a>4.vim配置文件修改配色，行号</h2><p>在有的Linux服务器上，Vim默认深蓝色亮瞎眼，修改配色为流行的Molokai.</p>
-<p>效果对比:</p>
-<p>默认配色看不清注释内容<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061435384.png" alt="image-20221206143528332"><br>Molokai配色<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212061437401.png" alt="image-20221206143701354"></p>
-<p>配置过程：</p>
-<p>默认的配色方案：</p>
-<pre><code>ls /usr/share/vim/vim74/colors
-</code></pre>
-<p>下载molokai配色文件,拷贝到vim配色文件目录</p>
-<pre><code>cd ~
-git clone git@github.com:tomasr/molokai.git
-cd molokai/colors
-cp molokai.vim /usr/share/vim/vim74/colors
-</code></pre>
-<p>在home下创建.vimrc用于配色详细设置</p>
-<pre><code>cd ~
-vim .vimrc
-</code></pre>
-<p>.vimrc设置如下：</p>
-<pre><code>  set t_Co=256
-  set background=dark
-  set ts=4
-  set nu!
-  syntax on
-  colorscheme molokai
-</code></pre>
-<p><code>:wq</code>保存后即生效<br>如果要全局用户通用，<code>vim /etc/vimrc</code></p>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2021/03/18/MFC%E7%AC%94%E8%AE%B0%EF%BC%9A%E5%A4%9A%E7%BA%BF%E7%A8%8B%E7%A3%81%E7%9B%98%E8%AF%BB%E5%86%99%E6%B5%8B%E8%AF%95%E5%B7%A5%E5%85%B7/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.jpg">
-      <meta itemprop="name" content="cursorhu">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="ThinkNotes">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2021/03/18/MFC%E7%AC%94%E8%AE%B0%EF%BC%9A%E5%A4%9A%E7%BA%BF%E7%A8%8B%E7%A3%81%E7%9B%98%E8%AF%BB%E5%86%99%E6%B5%8B%E8%AF%95%E5%B7%A5%E5%85%B7/" class="post-title-link" itemprop="url">MFC笔记：多线程磁盘读写测试工具</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2021-03-18 15:05:47" itemprop="dateCreated datePublished" datetime="2021-03-18T15:05:47+08:00">2021-03-18</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2024-11-04 11:43:03" itemprop="dateModified" datetime="2024-11-04T11:43:03+08:00">2024-11-04</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/windows/" itemprop="url" rel="index"><span itemprop="name">windows</span></a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>MFC（Microsoft Foundation Classes）是微软在win32 API上，用C++封装的GUI框架，在现在，MFC相比其他的GUI框架有些过时，可以参考：<br><a target="_blank" rel="noopener" href="https://www.zhihu.com/question/327876401">很多人说 C++ 的 MFC 已经过时了，那新入门的人到底应该学什么？</a><br>不同环境的选择：</p>
-<ul>
-<li>跨平台： QT</li>
-<li>C#: WPF</li>
-<li>Web：React，Vue，Electron</li>
-</ul>
-<p>既然如此，为何本文用MFC？<br>1.部分功能从老MFC项目移植，且VS环境能快速上手<br>2.技术本身不会过时，过时的是应用场景，GUI回调式的交互机制，以及Win32线程和进程的使用都是通用的技术。这是写本文的原因</p>
-<p>本文源码：<a target="_blank" rel="noopener" href="https://github.com/cursorhu/myMFCForAutoRWTest.git">cursorhu&#x2F;myMFCForAutoRWTest</a></p>
-<p>GUI界面：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051510224.png" alt="1"></p>
-<h1 id="初识MFC项目"><a href="#初识MFC项目" class="headerlink" title="初识MFC项目"></a>初识MFC项目</h1><p>VS新建MFC项目，例如“myMFC”，目录结构如下<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051514738.png" alt="2"><br>myMFC.cpp是VS自动创建的MFC项目入口，其主要功能是：创建一个窗口实例，注册会话对象（Dialog)<br>界面的交互一定是分层的</p>
-<ul>
-<li>对用户的是控件层，即各种按钮，输入输出框等可见可操作的东西</li>
-<li>处理数据的是逻辑层，例如从输入框输入，底层保存该字符串，点击运行，底层开始执行对应函数</li>
-</ul>
-<p>在MFC中，会话对象就是处理底层逻辑的类对象，其方法定义在myMFCDlg.cpp<br>也是开发的主要内容</p>
-<h2 id="MFC入口"><a href="#MFC入口" class="headerlink" title="MFC入口"></a>MFC入口</h2><p>下面介绍myMFC.cpp的MFC入口：</p>
-<pre><code>BOOL CmyMFCApp::InitInstance()
-&#123;
-	// 如果一个运行在 Windows XP 上的应用程序清单指定要
-	// 使用 ComCtl32.dll 版本 6 或更高版本来启用可视化方式，
-	//则需要 InitCommonControlsEx()。  否则，将无法创建窗口。
-	INITCOMMONCONTROLSEX InitCtrls;
-	InitCtrls.dwSize = sizeof(InitCtrls);
-	// 将它设置为包括所有要在应用程序中使用的
-	// 公共控件类。
-	InitCtrls.dwICC = ICC_WIN95_CLASSES;
-	InitCommonControlsEx(&amp;InitCtrls);
-
-	CWinApp::InitInstance();
-	
-	AfxEnableControlContainer();
-
-	// 创建 shell 管理器，以防对话框包含
-	// 任何 shell 树视图控件或 shell 列表视图控件。
-	CShellManager *pShellManager = new CShellManager;
-
-	// 激活“Windows Native”视觉管理器，以便在 MFC 控件中启用主题
-	CMFCVisualManager::SetDefaultManager(RUNTIME_CLASS(CMFCVisualManagerWindows));
-
-	// 标准初始化
-	// 如果未使用这些功能并希望减小
-	// 最终可执行文件的大小，则应移除下列
-	// 不需要的特定初始化例程
-	// 更改用于存储设置的注册表项
-	// TODO: 应适当修改该字符串，
-	// 例如修改为公司或组织名
-	SetRegistryKey(_T(&quot;应用程序向导生成的本地应用程序&quot;));
-
-	CmyMFCDlg dlg;
-	m_pMainWnd = &amp;dlg;
-	INT_PTR nResponse = dlg.DoModal();
-	if (nResponse == IDOK)
-	&#123;
-		// TODO: 在此放置处理何时用
-		//  “确定”来关闭对话框的代码
-	&#125;
-	else if (nResponse == IDCANCEL)
-	&#123;
-		// TODO: 在此放置处理何时用
-		//  “取消”来关闭对话框的代码
-	&#125;
-	else if (nResponse == -1)
-	&#123;
-		TRACE(traceAppMsg, 0, &quot;警告: 对话框创建失败，应用程序将意外终止。\n&quot;);
-		TRACE(traceAppMsg, 0, &quot;警告: 如果您在对话框上使用 MFC 控件，则无法 #define _AFX_NO_MFC_CONTROLS_IN_DIALOGS。\n&quot;);
-	&#125;
-
-	// 删除上面创建的 shell 管理器。
-	if (pShellManager != nullptr)
-	&#123;
-		delete pShellManager;
-	&#125;
-
-#if !defined(_AFXDLL) &amp;&amp; !defined(_AFX_NO_MFC_CONTROLS_IN_DIALOGS)
-	ControlBarCleanUp();
-#endif
-
-	return FALSE;
-&#125;
-</code></pre>
-<p>只需要关注这几句</p>
-<pre><code>CmyMFCDlg dlg;
-m_pMainWnd = &amp;dlg;
-INT_PTR nResponse = dlg.DoModal();
-</code></pre>
-<p>CmyMFCDlg类是在myMFCDlg.cpp定义的，即底层逻辑类。m_pMainWnd是myMFC.cpp的CmyMFCApp类(继承win32 API)的成员，表示主窗口，这两句就是把会话对象注册到窗口类，这样窗口运行时可以回调会话对象的方法。dlg.DoModal()是运行会话窗口，运行哪个会话？其调用者CmyMFCDlg类对象dlg。</p>
-<h2 id="MFC逻辑层"><a href="#MFC逻辑层" class="headerlink" title="MFC逻辑层"></a>MFC逻辑层</h2><p>VS自动创建myMFC项目的会话逻辑层，myMFCDlg.cpp<br>几个自动生成的方法如下，这里为了作为示例，加了自定义的类成员m_src, m_dst和方法OnBnClickedButtonsrc，OnBnClickedButtondst<br>(1)会话类构造函数</p>
-<pre><code>CmyMFCDlg::CmyMFCDlg(CWnd* pParent /*=nullptr*/)
-	: CDialogEx(IDD_MYMFC_DIALOG, pParent)
-	, m_src(_T(&quot;&quot;)) //初始化为空串，_T是兼容不同编码的转换
-    , m_dst(_T(&quot;&quot;))
-&#123;
-	m_hIcon = AfxGetApp()-&gt;LoadIcon(IDR_MAINFRAME);
-&#125;
-</code></pre>
-<p>(2)界面和类成员数据关联</p>
-<pre><code>void CmyMFCDlg::DoDataExchange(CDataExchange* pDX)
-&#123;
-	CDialogEx::DoDataExchange(pDX);
-	DDX_Text(pDX, IDC_EDIT_src, m_src); //关联m_src和IDC_EDIT_src控件，该控件是界面输入框
-	DDX_Text(pDX, IDC_EDIT_dst, m_dst);
-&#125;
-</code></pre>
-<p>(3)界面和类方法的关联</p>
-<pre><code>BEGIN_MESSAGE_MAP(CmyMFCDlg, CDialogEx)
-	ON_WM_SYSCOMMAND()
-	ON_WM_PAINT()
-	ON_WM_QUERYDRAGICON()
-	ON_BN_CLICKED(IDC_BUTTON_src, &amp;CmyMFCDlg::OnBnClickedButtonsrc) //关联IDC_BUTTON_src按钮和OnBnClickedButtonsrc方法
-	ON_BN_CLICKED(IDC_BUTTON_dst, &amp;CmyMFCDlg::OnBnClickedButtondst)
-END_MESSAGE_MAP()
-</code></pre>
-<p>类在头文件的定义：</p>
-<pre><code>class CmyMFCDlg : public CDialogEx
-&#123;
-// 构造
-public:
-	CmyMFCDlg(CWnd* pParent = nullptr);	// 标准构造函数
-
-// 对话框数据
-#ifdef AFX_DESIGN_TIME
-	enum &#123; IDD = IDD_MYMFC_DIALOG &#125;;
-#endif
-
-	protected:
-	virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV 支持
-
-// 实现
-protected:
-	HICON m_hIcon;
-
-	// 生成的消息映射函数
-	virtual BOOL OnInitDialog();
-	afx_msg void OnSysCommand(UINT nID, LPARAM lParam);
-	afx_msg void OnPaint();
-	afx_msg HCURSOR OnQueryDragIcon();
-	DECLARE_MESSAGE_MAP()
-	
-public:
-	CString m_src; //CString: MFC的字符串类型
-	CString m_dst;
-	afx_msg void OnBnClickedButtonsrc(); //afx_msg: MFC的方法对应的消息响应类型
-	afx_msg void OnBnClickedButtondst();
-&#125;;
-</code></pre>
-<p>在VS环境下,这些变量和方法的定义都不需要写代码，在控件资源视图直接配置即可。</p>
-<h2 id="界面资源层"><a href="#界面资源层" class="headerlink" title="界面资源层"></a>界面资源层</h2><p>注意项目文件有个Resource.h，包含界面相关的资源，如每个按钮有个ID，这个不要手动配置，在编辑UI控件时自动生成</p>
-<pre><code>//&#123;&#123;NO_DEPENDENCIES&#125;&#125;
-// Microsoft Visual C++ 生成的包含文件。
-// 供 myMFC.rc 使用
-//
-#define IDM_ABOUTBOX                    0x0010
-#define IDD_ABOUTBOX                    100
-#define IDS_ABOUTBOX                    101
-#define IDD_MYMFC_DIALOG                102
-#define IDR_MAINFRAME                   128
-#define IDC_BUTTON_src                  1000
-#define IDC_BUTTON_dst                  1001
-</code></pre>
-<p>myMFC.rc是UI的资源文件，打开就是UI界面<br><img src="C:\Users\thomas.hu\Desktop\3.png" alt="3"><br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051514703.png" alt="4"><br>可以看到界面的按钮，右键查看属性，可以修改标题和控件ID，会映射到Resource.h。双击按钮，myMFCDlg.cpp会自动创建方法<code>CmyMFCDlg::OnBnClickedButtondst()</code>，头文件自动加方法声明。<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051514147.png" alt="5"></p>
-<p>前文的Dlg.cpp中的控件ID, dlg类的方法，变量，从一开始就可以从资源界面配置，自动生成：</p>
-<ul>
-<li>在资源界面选按钮或其他控件</li>
-<li>右键配置控件ID</li>
-<li>右键添加值变量或控件变量</li>
-<li>双击添加方法</li>
-</ul>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051515208.png" alt="6"><br>关于值变量和控件变量：<br>值变量用于关联界面和类成员，值变量就是类成员名，例如点击dst按钮调用其方法后，获得的路径，会写入m_dst值变量<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051512803.png" alt="7"><br>控件变量代表控件本身，用于底层逻辑中，直接调用控件的方法，例如控件变量叫dst_ctrl，可以在某个方法中<code>ctrl_dst.SetWindowText(_T(&quot;&quot;))</code>清空界面的字符串<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051512701.png" alt="8"></p>
-<h1 id="简单拷贝校验的实现"><a href="#简单拷贝校验的实现" class="headerlink" title="简单拷贝校验的实现"></a>简单拷贝校验的实现</h1><p>实现从src目录拷贝所有文件到dst目录，并比较拷贝前后的文件是否一致</p>
-<h2 id="获取文件路径"><a href="#获取文件路径" class="headerlink" title="获取文件路径"></a>获取文件路径</h2><p>两个路径选择按钮和对应的编辑框显示路径，一个Start按钮<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051513686.png" alt="9"></p>
-<p>button src的方法：</p>
-<pre><code>void CmyMFCDlg::OnBnClickedButtonsrc()
-&#123;
-	CString SrcPath;
-	SrcPath = GetFolderPath(); //获取文件夹路径
-	ctrl_src.SetWindowText(SrcPath); //显示获取的路径字符串
-	m_src = SrcPath; //保存路径到会话对象的变量
-&#125;
-</code></pre>
-<p>GetFolderPath打开一个目录框，让用户选择：<br>SHBrowseForFolder是win32 API，专用于打开目录</p>
-<pre><code>CString CmyMFCDlg::GetFolderPath(void)
-&#123;
-	CString strPath;
-	BROWSEINFO bInfo;
-	ZeroMemory(&amp;bInfo, sizeof(bInfo));
-	bInfo.hwndOwner = m_hWnd;
-	bInfo.lpszTitle = _T(&quot;Select Folder: &quot;);
-	bInfo.ulFlags = BIF_RETURNONLYFSDIRS;
-
-	LPITEMIDLIST lpDlist;					
-	lpDlist = SHBrowseForFolder(&amp;bInfo); //win32 API, 打开目录	
-	if (lpDlist != NULL)						
-	&#123;
-		TCHAR chPath[255];					
-		SHGetPathFromIDList(lpDlist, chPath);
-		strPath = chPath;					
-	&#125;
-	return strPath;
-&#125;
-</code></pre>
-<p>如果是打开文件，用CFileDialog</p>
-<pre><code>CString CmyMFCDlg::GetFilePath(void)
-&#123;
-	CFileDialog mFileDlg(TRUE, NULL, NULL,
-		OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT | OFN_ALLOWMULTISELECT | OFN_NOCHANGEDIR,
-		_T(&quot;All Files(*.*)|*.*||&quot;), AfxGetMainWnd());
-	CString str(&quot; &quot;, 10000);
-	mFileDlg.m_ofn.lpstrFile = str.GetBuffer(10000);
-	mFileDlg.m_ofn.lpstrTitle = _T(&quot;Select File&quot;);
-	str.ReleaseBuffer();
-	mFileDlg.DoModal();
-	POSITION mPos = mFileDlg.GetStartPosition();
-	CFileStatus status;
-	CString strPath;
-	while (mPos != NULL)
-	&#123;
-		strPath = mFileDlg.GetNextPathName(mPos);
-		CFile::GetStatus(strPath, status);
-	&#125;
-	return strPath;
-&#125;
-</code></pre>
-<p>不管哪一种，效果如下<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051515196.png" alt="10"><br>选择完后，路径会在编辑框显示，这就是控件语句<code>ctrl_src.SetWindowText(SrcPath)</code>的效果<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051515342.png" alt="11"></p>
-<h2 id="拷贝和比较"><a href="#拷贝和比较" class="headerlink" title="拷贝和比较"></a>拷贝和比较</h2><p>拷贝函数如下，只需关注几个函数：</p>
-<ul>
-<li>CFileFind类的CFileFind(), FindNextFile(), GetFilePath(), GetFilePath()，这些都是afx.h定义，属于MFC库的类</li>
-<li>CopyFile()， 执行拷贝，这个也是继承自MFC类</li>
-</ul>
-<p>代码：</p>
-<pre><code>BOOL CmyMFCDlg::ModeTestCopyFileFromSRCtoDST(CString SRC, CString DST, CString&amp; StrResult)
-&#123;
-
-	CFileFind ff, ff_DST;
-	CString SRCDir = SRC;                 //source folder path
-	CString DSTDir = DST;
-	UINT copyFileResult = 0;
-	int i = 0;
-
-	BOOL bmakedir = MakeDirectory(DSTDir);
-
-	if (SRCDir.Right(1) != _T(&quot;\\&quot;))
-		SRCDir += _T(&quot;\\&quot;);
-	SRCDir += _T(&quot;*.*&quot;);
-
-	if (DSTDir.Right(1) != _T(&quot;\\&quot;))
-		DSTDir += _T(&quot;\\&quot;);
-</code></pre>
-<p>​<br>​    	SetLastError(0);<br>​    	CString DST_tmp &#x3D; DSTDir + _T(“<em>.</em>“);<br>​    	BOOL res_DST &#x3D; ff_DST.FindFile(DST_tmp);<br>​    	if (res_DST &#x3D;&#x3D; 0)<br>​    	{<br>​    		StrResult.Format(_T(“Access DST folder error, error code is %d. “), GetLastError());<br>​    	}<br>​    	BOOL res &#x3D; ff.FindFile(SRCDir);<br>​<br>​    	while (res)<br>​    	{<br>​    		res &#x3D; ff.FindNextFile();<br>​    		if (!ff.IsDirectory() &amp;&amp; !ff.IsDots())<br>​    		{<br>​    			CString DSTFildPath;<br>​    			CString SRCFilePath &#x3D; ff.GetFilePath();<br>​    			DSTFildPath &#x3D; DSTDir + ff.GetFileName();<br>​    			copyFileResult &#x3D; CopyFile(ff.GetFilePath(), DSTFildPath, FALSE);<br>​<br>    			Sleep(2000);</p>
-<pre><code>			if (copyFileResult == 0)
-			&#123;
-				DWORD ErrCode = GetLastError();
-				StrResult.Format(_T(&quot;CopyFile failed! The ErrCode is %d. &quot;), ErrCode);
-
-				for (i = 0; i &lt; 10; i++)
-				&#123;
-					copyFileResult = CopyFile(ff.GetFilePath(), DSTFildPath, FALSE);
-					Sleep(2000);
-					if (copyFileResult == 0)
-					&#123;
-						ErrCode = GetLastError();
-						StrResult.Format(_T(&quot;Retry CopyFile failed! The ErrCode is %d. &quot;), ErrCode);
-					&#125;
-					else
-					&#123;
-						break;
-					&#125;
-				&#125;
-
-				if (copyFileResult == 0)
-				&#123;
-					ff.Close();
-					return FALSE;
-				&#125;
-			&#125;
-		&#125;
-		else if (ff.IsDirectory() &amp;&amp; !ff.IsDots())
-		&#123;
-			CString DSTFildPath;
-			DSTFildPath = DSTDir + ff.GetFileName();
-			copyFileResult = ModeTestCopyFileFromSRCtoDST(ff.GetFilePath(), DSTFildPath, StrResult);
-			if (copyFileResult == 0)
-				break;
-		&#125;
-	&#125;
-
-	ff.Close();
-	if (copyFileResult == 0)
-		return FALSE;
-	else
-		return TRUE;
-&#125;
-</code></pre>
-<p>比较两个路径的文件：<br>其方法是，文件读到buffer, 再用memcmp比较buffer, 其FindNextFile也是如何从目录搜索到文件的关键方法</p>
-<pre><code>BOOL CmyMFCDlg::ModeTestCompareFilesBetweenSRCandDST(CString SRC, CString DST, CString&amp; StrResult)
-&#123;
-	CFileFind ff;
-	CString SRCDir = SRC;
-	CString DSTDir = DST;
-	BOOL bRes = TRUE;
-	HANDLE hSrcFile, hDstFile;
-	DWORD dwSRCFile, dwDSTFile, dwCB;
-
-	if (SRCDir.Right(1) != _T(&quot;\\&quot;))
-		SRCDir += _T(&quot;\\&quot;);
-	SRCDir += _T(&quot;*.*&quot;);
-
-	if (DSTDir.Right(1) != _T(&quot;\\&quot;))
-		DSTDir += _T(&quot;\\&quot;);
-	hSrcFile = hDstFile = NULL;
-	BYTE* pSrcBuffer = new BYTE[M_BUFSIZE];
-	BYTE* pDstBuffer = new BYTE[M_BUFSIZE];
-	memset(pSrcBuffer, 0, M_BUFSIZE);
-	memset(pSrcBuffer, 0, M_BUFSIZE);
-
-	BOOL res = ff.FindFile(SRCDir);
-
-	while (res)
-	&#123;
-		res = ff.FindNextFile();
-		if (!ff.IsDirectory() &amp;&amp; !ff.IsDots())
-		&#123;
-			CString DSTFilePath;
-			DSTFilePath = DSTDir + ff.GetFileName();
-			CString SRCFilePath = ff.GetFilePath();
-
-			if (hSrcFile)
-			&#123;
-				CloseHandle(hSrcFile);
-				hSrcFile = NULL;
-			&#125;
-
-			if (hDstFile)
-			&#123;
-				CloseHandle(hDstFile);
-				hSrcFile = NULL;
-			&#125;
-
-			hSrcFile = CreateFile(SRCFilePath, GENERIC_READ, 0, NULL, OPEN_EXISTING, 0, NULL);
-			if (hSrcFile == INVALID_HANDLE_VALUE)
-			&#123;
-				StrResult.Format(_T(&quot;\n Create Source file failed!! Error code = %d \n&quot;), GetLastError());
-				bRes = FALSE;
-				break;
-			&#125;
-
-			hDstFile = CreateFile(DSTFilePath, GENERIC_READ, 0, NULL, OPEN_EXISTING, 0, NULL);
-			if (hDstFile == INVALID_HANDLE_VALUE)
-			&#123;
-				StrResult.Format(_T(&quot;\n Create Destination file failed!! Error code = %d \n&quot;), GetLastError());
-				bRes = FALSE;
-				break;
-			&#125;
-
-			LARGE_INTEGER SrcFileSize, DstFileSize;
-
-			dwSRCFile = GetFileSizeEx(hSrcFile, &amp;SrcFileSize);
-			dwDSTFile = GetFileSizeEx(hDstFile, &amp;DstFileSize);
-
-			if (SrcFileSize.LowPart != DstFileSize.LowPart)
-			&#123;
-				StrResult.Format(_T(&quot;\n Compare file is different!! Src Length = %d, Dest Length = %d \n&quot;), SrcFileSize.LowPart, DstFileSize.LowPart);
-				bRes = FALSE;
-				break;
-			&#125;
-
-			while (SrcFileSize.LowPart &gt; 0)
-			&#123;
-				BOOL bCmpResult;
-				bCmpResult = ReadFile(hSrcFile, pSrcBuffer, M_BUFSIZE, &amp;dwCB, NULL);
-				if (bCmpResult == 0)
-				&#123;
-					bRes = FALSE;
-					break;
-				&#125;
-				bCmpResult = ReadFile(hDstFile, pDstBuffer, M_BUFSIZE, &amp;dwCB, NULL);
-				if (bCmpResult == 0)
-				&#123;
-					bRes = FALSE;
-					break;
-				&#125;
-				bCmpResult = memcmp(pSrcBuffer, pDstBuffer, dwCB);
-
-				if (bCmpResult != 0)
-				&#123;
-					bRes = FALSE;
-					CString DiffByte;
-
-					CString PostCmpErrorStr;
-					CString SrcDumpData, DstDumpData;
-					StrResult.Format(_T(&quot;\n Fatal_Error: Src Data from %d to %d.\n&quot;), (DstFileSize.LowPart - SrcFileSize.LowPart), (DstFileSize.LowPart - SrcFileSize.LowPart + dwCB));
-
-					PostCmpErrorStr = _T(&quot;SourceFilePath: &quot;) + SRCFilePath + _T(&quot; To \r\n&quot;) + _T(&quot;DstFilePath: &quot;) + DSTFilePath;
-					StrResult = PostCmpErrorStr + _T(&quot;  has compare error! \r\n&quot;);
-					//HugoPostMessageAndShowSD1(PostCmpErrorStr,1);
-					//HugoPostMessageAndShowSD2(PostCmpErrorStr,1);
-
-					::MessageBox(
-						NULL,
-						(LPCWSTR)L&quot;Compare error happened!!&quot;,
-						(LPCWSTR)L&quot;Fatal Error!&quot;,
-						MB_OK
-					);
-
-					break;
-				&#125;
-				SrcFileSize.LowPart -= dwCB;
-			&#125;
-
-			if (bRes == FALSE)
-				break;
-			else
-				ReadFile(hDstFile, pDstBuffer, 512, &amp;dwCB, NULL);
-		&#125;
-		else if (ff.IsDirectory() &amp;&amp; !ff.IsDots())
-		&#123;
-			CString DSTFildPath;
-			DSTFildPath = DSTDir + ff.GetFileName();
-			bRes = ModeTestCompareFilesBetweenSRCandDST(ff.GetFilePath(), DSTFildPath, StrResult);
-			if (bRes == FALSE)
-				break;
-		&#125;
-	&#125;
-
-	if (hSrcFile)
-	&#123;
-		CloseHandle(hSrcFile);
-		hSrcFile = NULL;
-	&#125;
-
-	if (hDstFile)
-	&#123;
-		CloseHandle(hDstFile);
-		hSrcFile = NULL;
-	&#125;
-
-	if (bRes == FALSE)
-	&#123;
-		delete[]pSrcBuffer;
-		delete[]pDstBuffer;
-		ff.Close();
-		return FALSE;
-	&#125;
-	else
-	&#123;
-		delete[]pSrcBuffer;
-		delete[]pDstBuffer;
-		ff.Close();
-		return TRUE;
-	&#125;
-&#125;
-</code></pre>
-<p>关于CString的格式化输出：<a target="_blank" rel="noopener" href="https://blog.csdn.net/wangkaishou/article/details/5846152">MFC中CString.Format的详细用法</a><br>关于CFile文件操作：<a target="_blank" rel="noopener" href="https://blog.csdn.net/perfectguyipeng/article/details/60148222">MFC——文件操作（CFile）</a></p>
-<h2 id="开始按钮"><a href="#开始按钮" class="headerlink" title="开始按钮"></a>开始按钮</h2><p>一般操作顺序：选择src和dst，再点击Start按钮<br>start按钮的方法调用已保存的m_src和m_dst路径，传入拷贝和比较，再输出结果即可，大致流程如下</p>
-<pre><code>void CmyMFCDlg::OnBnClickedButtonrun()
-&#123;
-    //读入所有界面数据
-	UpdateData(true);
-	
-	BOOL ret;
-	CString outStr;
-	
-	ret = ModeTestCopyFileFromSRCtoDST(m_src, m_dst, outStr);
-	if (!ret)
-			MessageBox(NULL, _T(outStr), _T(&quot;ERROR&quot;), MB_OK);
-	
-	ret = ModeTestCompareFilesBetweenSRCandDST(m_src, m_dst, outStr);
-	if (!ret)
-			MessageBox(NULL, _T(outStr), _T(&quot;ERROR&quot;), MB_OK);
-&#125;
-</code></pre>
-<p>这里用messagebox输出结果，即弹窗，弹窗是阻塞式的。也可以用编辑框，写文件输出。<br>关于messagebox，参考：<a target="_blank" rel="noopener" href="https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-messagebox">MessageBox function (winuser.h)</a><br>关于updateData：<a target="_blank" rel="noopener" href="https://www.cnblogs.com/lidabo/archive/2012/07/17/2595464.html">MFC中UpdateData()函数的使用</a><br>以上完成一个简单的文件拷贝和比较功能</p>
-<h1 id="多线程文件拷贝和写日志"><a href="#多线程文件拷贝和写日志" class="headerlink" title="多线程文件拷贝和写日志"></a>多线程文件拷贝和写日志</h1><p>将简单拷贝扩展，支持：</p>
-<ul>
-<li>多线程拷贝和比较，每个线程完成简单拷贝比较的功能</li>
-<li>在每个工作线程，输出打印到界面文本框，同时写到同一个日志文件</li>
-<li>界面主线程需要等待所有工作线程完成后，输出测试完成信息到文本框和日志</li>
-</ul>
-<h2 id="线程列表获取各自路径"><a href="#线程列表获取各自路径" class="headerlink" title="线程列表获取各自路径"></a>线程列表获取各自路径</h2><p>add和delete配置几个工作线程，每个线程配置其src和dst路径</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051516636.png" alt="12"></p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051516611.png" alt="13"></p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051516530.png" alt="14"></p>
-<p>这种动态增删的列表，在资源界面新建listbox类型变量和方法：</p>
-<pre><code>CListBox m_rwlist;
-afx_msg void OnLbnSelchangeListrwlist();
-</code></pre>
-<p>Add和Delete对应的方法：</p>
-<pre><code>void CmyMFCDlg::OnBnClickedButtonadd()
-void CmyMFCDlg::OnBnClickedButtondelete()
-</code></pre>
-<p>Add和Delete的方法控制listbox变量m_rwlist，选中任意m_rwlist后又会调用其方法OnLbnSelchangeListrwlist，获取每个线程各自的src、dst。</p>
-<p>按键控制m_rwlist的实现：</p>
-<pre><code>void CmyMFCDlg::OnBnClickedButtonadd()
-&#123;
-	CString Threadtest = _T(&quot;TestThread&quot;);
-	UINT ThreadCount = m_rwlist.GetCount();
-	if (ThreadCount == 0)
-	&#123;
-		m_rwlist.AddString(_T(&quot;TestThread1&quot;));
-	&#125;
-	else if (ThreadCount &lt; MAX_THREAD_COUNT)
-	&#123;
-		CString ThreadNum;
-		ThreadNum.Format(_T(&quot;%d&quot;), ThreadCount + 1);
-		Threadtest = Threadtest + ThreadNum;
-		m_rwlist.AddString(Threadtest);
-	&#125;
-	else if (ThreadCount == MAX_THREAD_COUNT)
-	&#123;
-		CString str;
-		str.Format(_T(&quot;Only support %d threads at most!!&quot;), MAX_THREAD_COUNT);
-		MessageBox(str);
-	&#125;
-	m_rwlist.SetCurSel(ThreadCount);
-	if (ThreadCount &lt; MAX_THREAD_COUNT)
-		totalThreadCount++;
-&#125;
-
-void CmyMFCDlg::OnBnClickedButtondelete()
-&#123;
-	UINT ThreadCount = m_rwlist.GetCount();
-	if (ThreadCount != 0)
-	&#123;
-		m_rwlist.DeleteString(ThreadCount - 1);
-		m_rwlist.SetCurSel(0);
-	&#125;
-	if (ThreadCount &gt; 0)
-		totalThreadCount--;
-&#125;
-</code></pre>
-<p>线程列表m_rwlist的方法读取路径到会话对象成员变量：</p>
-<pre><code>void CmyMFCDlg::OnLbnSelchangeListrwlist()
-&#123;
-	UpdateData(true); //update true: 从界面读入值到变量（使上次编辑生效）
-	if (m_rwlist.GetCount() != 0)
-	&#123;
-		UINT selectNum = m_rwlist.GetCurSel();
-		RWTestParamArray[selectNum].ThreadNum = m_rwlist.GetCount();
-		RefreshRWParam(RWTestParamArray, selectNum);
-	&#125;
-&#125;
-
-void CmyMFCDlg::RefreshRWParam(TabDialogRWTestParam(&amp;Array)[MAX_THREAD_COUNT], UINT CSel)
-&#123;
-	ctrl_src.SetWindowText(Array[CSel].SRCFolder_Path);
-	ctrl_dst.SetWindowText(Array[CSel].DSTFolder_Path);
-
-	UpdateData(false); //update false: 把变量写入到界面（实时显示）
-&#125;
-</code></pre>
-<p>真正读入路径的是dst、src按钮的方法：</p>
-<pre><code>void CmyMFCDlg::OnBnClickedButtonsrc()
-&#123;
-	CString SrcPath;
-	UINT ThreadCSelNum = m_rwlist.GetCurSel();
-	SrcPath = GetFolderPath();
-	ctrl_src.SetWindowText(SrcPath);
-	RWTestParamArray[ThreadCSelNum].SRCFolder_Path = SrcPath;
-&#125;
-
-void CmyMFCDlg::OnBnClickedButtondst()
-&#123;
-	CString DstPath;
-	UINT ThreadCSelNum = m_rwlist.GetCurSel();
-	DstPath = GetFolderPath();
-	ctrl_dst.SetWindowText(DstPath);
-	RWTestParamArray[ThreadCSelNum].DSTFolder_Path = DstPath;
-&#125;
-</code></pre>
-<p>线程数组定义在会话类，存储每个工作线程要用的数据</p>
-<pre><code>TabDialogRWTestParam RWTestParamArray[MAX_THREAD_COUNT];
-typedef struct TabRWParam
-&#123;
-	CString SRCFolder_Path;
-	CString DSTFolder_Path;
-	UINT ThreadNum;
-	UINT TestTimes;
-&#125;TabDialogRWTestParam;
-</code></pre>
-<h2 id="创建线程"><a href="#创建线程" class="headerlink" title="创建线程"></a>创建线程</h2><p>创建线程参考MS文档：<a target="_blank" rel="noopener" href="https://docs.microsoft.com/zh-cn/cpp/c-runtime-library/reference/beginthread-beginthreadex?view=msvc-160">beginthread、_beginthreadex</a><br>关注2点：</p>
-<ul>
-<li>传入线程内要执行的函数，和参数(可为NULL)</li>
-<li>返回线程句柄，如果是多个线程则是个数组</li>
-</ul>
-<p>创建线程的部分代码：</p>
-<pre><code>void CmyMFCDlg::RunModeTestInstance()
-&#123;
-    ....
-    
-	//线程内除了对象，还需要知道自己是哪个线程，因此打包this和ThreadCount
-	pTransParam ThreadTransPArray[MAX_THREAD_COUNT];
-
-	for (int i = 0; i &lt; totalThreadCount; i++)
-	&#123;
-		ThreadTransPArray[i] = new(TransParam);
-		ThreadTransPArray[i]-&gt;i = i;
-		ThreadTransPArray[i]-&gt;translpParam = this;
-
-		unsigned int rwThreadID;
-
-		//hThread defined as global data
-		hThread[i] = (HANDLE)_beginthreadex(
-			NULL,
-			0,
-			DoThreadProc,
-			ThreadTransPArray[i],
-			0,
-			&amp;rwThreadID);
-
-		if (hThread[i] == NULL)
-			MessageBox(_T(&quot;CreateThread Fail!!&quot;), MB_OK);
-		
-		....
-		
-		//release resource
-    	for (int i = 0; i &lt; totalThreadCount; i++)
-    	&#123;
-    		delete ThreadTransPArray[i];
-    		ThreadTransPArray[i] = NULL;
-    		CloseHandle(hThread[i]);
-    	&#125;
-	&#125;
-</code></pre>
-<p>由于要在线程内打印当前是哪个线程，这个从Dlg对象的this指针是获取不到的，因此把this指针和线程id打包结构体，传入DoThreadProc线程函数，结构体如下</p>
-<pre><code>typedef struct transParam
-&#123;
-	LPVOID translpParam;
-	int i;
-&#125;TransParam, *pTransParam;
-
-#define MAX_THREAD_COUNT 6
-</code></pre>
-<p>注意使用完后释放线程句柄和其他相关资源</p>
-<h2 id="主线程和工作线程的通信：Message机制"><a href="#主线程和工作线程的通信：Message机制" class="headerlink" title="主线程和工作线程的通信：Message机制"></a>主线程和工作线程的通信：Message机制</h2><p>先明白几点：</p>
-<ul>
-<li>所有工作线程都共享主线程（界面线程）的数据，即会话类对象的成员</li>
-<li>界面控件的操作函数，都是主线程独有的，工作线程不能调用</li>
-<li>主线程如果要等待工作线程，一般会阻塞</li>
-</ul>
-<p>问题：<br>如何将工作线程的打印输出到主线程界面控件？</p>
-<p>Windows消息机制可以解决工作线程和主线程通信问题，简单的讲，主线程有消息队列，工作线程可以发送消息到消息队列中，主线程用FIFO原则处理队列中的消息，在阻塞等待动作线程时，也支持消息队列的处理。<br>关于消息队列：<a target="_blank" rel="noopener" href="https://www.jianshu.com/p/5fd5bdaac69c">windows消息机制（MFC）</a></p>
-<p>（1）工作线程函数</p>
-<pre><code>unsigned int WINAPI DoThreadProc(void *threadTransParam)
-&#123;
-	pTransParam pTrans = (pTransParam)threadTransParam;
-	CString strResult;
-	BOOL res = 0;
-
-	CmyMFCDlg* pDlg = (CmyMFCDlg *)pTrans-&gt;translpParam;
-	int thread_id = pTrans-&gt;i;
-
-	for (int i = 0; i &lt; (int)pDlg-&gt;rwtime; i++)
-	&#123;
-		
-		res = pDlg-&gt;ModeTestCopyFileFromSRCtoDST(pDlg-&gt;RWTestParamArray[thread_id].SRCFolder_Path, pDlg-&gt;RWTestParamArray[thread_id].DSTFolder_Path, strResult);
-
-		res = pDlg-&gt;ModeTestCompareFilesBetweenSRCandDST(pDlg-&gt;RWTestParamArray[thread_id].SRCFolder_Path, pDlg-&gt;RWTestParamArray[thread_id].DSTFolder_Path, strResult);
-		if (res)
-		&#123;
-			criticalSec.Lock();
-			::PostMessage(pDlg-&gt;GetSafeHwnd(), WM_USER_MSG, WPARAM(thread_id + 1), LPARAM(i + 1));
-			criticalSec.Unlock();
-		&#125;
-	&#125;
-
-	return res;
-&#125;
-</code></pre>
-<p>几点说明：</p>
-<ul>
-<li>线程函数要用WINAPI实现，不属于会话类内的方法，因此需要this指针显式调用</li>
-<li>rwtime是测试次数，每个线程执行多次拷贝比较</li>
-<li>PostMessage是发布消息到主线程消息队列，可以传参：WPARAM和LPARAM</li>
-<li>由于不确定PostMessage是不是线程安全，这里加了锁：CCriticalSection类型的criticalSec</li>
-</ul>
-<p>(2)消息处理函数<br>来看message处理函数：</p>
-<pre><code>LRESULT CmyMFCDlg::OnMsg(WPARAM wp, LPARAM lp)
-&#123;
-	strAppend.Format(_T(&quot;Thread %d src:%s ---&gt; des:%s, Copy&amp;Compare Pass: test loop: %d \n&quot;), wp, RWTestParamArray[wp-1].SRCFolder_Path, RWTestParamArray[wp-1].DSTFolder_Path, lp);
-	ShowLogInEditBox(); //字符串显示到界面
-	return 0;
-&#125;
-</code></pre>
-<p>主界面字符串显示函数</p>
-<pre><code>/* call by message handler, for multiple child thread*/
-void CmyMFCDlg::ShowLogInEditBox()
-&#123;
-	CString str;
-	UINT i;
-
-	/*message 队列只在主线程内处理，无需加锁*/
-	//criticalSec.Lock();
-		WriteLogFile(this-&gt;strAppend); //only write append str
-	//criticalSec.Unlock();
-
-	this-&gt;GetDlgItemText(IDC_EDIT_logbox, str);
-	str += this-&gt;strAppend; //update old+append str
-	str += &quot;\r\n&quot;; //这里换行没用，要在控件设置中允许换行
-
-	this-&gt;SetDlgItemText(IDC_EDIT_logbox, str);
-
-	i = ((CEdit*)GetDlgItem(IDC_EDIT_logbox))-&gt;GetLineCount();
-	((CEdit*)GetDlgItem(IDC_EDIT_logbox))-&gt;LineScroll(++i, 0); //定位到下一行
-
-&#125;
-</code></pre>
-<p>写日志的相关方法如下：</p>
-<pre><code>BOOL CmyMFCDlg::CreateLogFile()
-&#123;
-	CString strName;
-	SYSTEMTIME st;
-
-	GetLocalTime(&amp;st);
-	strName.Format(_T(&quot;UtilityLogFile_%4d-%d-%d_%d-%d-%d.log&quot;), st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
-
-	if (!m_File.Open(strName, (CFile::modeCreate | CFile::modeReadWrite), 0))
-	&#123;
-		::AfxMessageBox(_T(&quot;Create Utility Log File Error!!&quot;));
-		return FALSE;
-	&#125;
-
-	m_logCreated = 1;
-	return TRUE;
-&#125;
-
-void CmyMFCDlg::WriteLogFile(CString str)
-&#123;
-	BOOL CreateRes = TRUE;
-
-	if (m_logCreated == 0)
-		CreateRes = CreateLogFile();
-
-	if (CreateRes)
-	&#123;
-		str += _T(&quot;\r\n&quot;);
-		int length = str.GetLength();
-		length *= 2;
-		m_File.Write(str, length);
-		m_File.Flush();
-	&#125;
-&#125;
-
-void CmyMFCDlg::CloseLogFile()
-&#123;
-	if (m_logCreated == 1)
-	&#123;
-		m_File.Close();
-		m_logCreated = 0;
-	&#125;
-&#125;
-</code></pre>
-<p>注意message处理函数的关键点：</p>
-<ul>
-<li>只在主线程中处理，不存在其他线程操作，无临界区问题。因此上述的窗口输出，日志文件写入都是线程安全的。</li>
-</ul>
-<p>编辑框作为输出要注意几点：</p>
-<ul>
-<li>换行要在设置里配置，字符串换行没用</li>
-<li>设置输出滚动显示</li>
-</ul>
-<p>效果如下：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051516097.png" alt="15"></p>
-<p>（3）线程同步<br>日志完成的输出是主线程等待所有工作线程函数返回后才执行，如何实现？<br>参考：<a target="_blank" rel="noopener" href="https://www.cnblogs.com/shangdawei/p/4015772.html">WaitForMultipleObject与MsgWaitForMultipleObjects用法</a><br>我们的需求是主线程在阻塞等待时要处理消息，因此用MsgWaitForMultipleObjects方法。<br>代码如下：</p>
-<pre><code>//wait all child threads return
-
-	/*
-	//主线程阻塞，不能处理消息
-	DWORD dwWaitResult = WaitForMultipleObjects(
-		totalThreadCount,
-		hThread,
-		TRUE,
-		INFINITE);
-	*/
-	//主线程阻塞，但不阻塞消息
-	int nWaitCount = totalThreadCount;
-	int nExitThreadCount = 0;      //标记已经有几个线程退出了
-	BOOL bWaitAll = FALSE;		//不等待所有线程完成，实时处理。如果TRUE, 会阻塞到所有线程完成
-	DWORD result;
-	MSG msg;
-
-	while (TRUE)
-	&#123;
-		/*该函数等待：多个线程的完成信号，或其他消息信号,有任意一种就返回
-		*返回值为[WAIT_OBJECT_0, WAIT_OBJECT_0 + nWaitCount - 1]表示对应下标的线程已完成
-		*返回值为WAIT_OBJECT_0 + nWaitCount表示有其他信号，如线程内发送的message
-		*WAIT_OBJECT_0值为0
-		*/
-		result = MsgWaitForMultipleObjects(nWaitCount, hThread, bWaitAll, INFINITE, QS_ALLINPUT);
-
-		if (result == WAIT_OBJECT_0 + nWaitCount) //表示收到消息
-		&#123;
-			while (PeekMessage(&amp;msg, NULL, 0, 0, PM_REMOVE)) //处理所有已入队的消息
-			&#123;
-				TranslateMessage(&amp;msg); //message translat and format, add into message queue
-				DispatchMessage(&amp;msg); //call message handler
-			&#125;
-		&#125;
-		else if (result &gt;= WAIT_OBJECT_0 &amp;&amp; result &lt; WAIT_OBJECT_0 + nWaitCount) //表示收到了线程结束信号
-		&#123;
-			nExitThreadCount++;
-			if (nExitThreadCount &lt; totalThreadCount)
-			&#123;
-				/*必须更新hThread，否则已退出的线程一直被检测到*/
-				int nIndex = result - WAIT_OBJECT_0; //退出线程的index
-				hThread[nIndex] = hThread[nWaitCount - 1]; //更新等待列表：hThread, 交换退出的成员和尾部成员
-				hThread[nWaitCount - 1] = NULL;
-
-				nWaitCount--; //更新要等待的线程数
-			&#125;
-			else
-			&#123;
-				break; //等待的所有线程都已完成
-			&#125;
-		&#125;
-	&#125;
-
-	//All threads returned
-</code></pre>
-<p>MsgWaitForMultipleObjects的MS说明文档：<a target="_blank" rel="noopener" href="https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-msgwaitformultipleobjects">MsgWaitForMultipleObjects function (winuser.h)</a><br>返回值的含义是重点，这个文档说的很隐晦：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051517122.png" alt="16"></p>
-<p>大意是：等待n个线程</p>
-<ul>
-<li>如果返回的值i是属于0~n-1，说明第i个工作线程结束了</li>
-<li>如果返回值是n，不是线程结束，而是收了到消息，例如工作线程内发送的消息。</li>
-</ul>
-<p>因此代码逻辑是：<br>1.如果有消息，就处理消息<br>关于message的peek,translate和dispatch:<br><a target="_blank" rel="noopener" href="https://blog.csdn.net/caimagic/article/details/50629570">PeekMessage使用方法</a><br><a target="_blank" rel="noopener" href="https://blog.csdn.net/wang15061955806/article/details/52066559">消息循环中TranslateMessage和Dispatch函数的作用</a></p>
-<p>2.如果有线程结束，要更新线程句柄数组，只保留未等待到的线程；<br>当所有线程都等待到，退出等待循环</p>
-<p>以上完成了主线程和多个工作线程的同步机制</p>
-<h1 id="再进一步：调用其他进程"><a href="#再进一步：调用其他进程" class="headerlink" title="再进一步：调用其他进程"></a>再进一步：调用其他进程</h1><p>现需求如下：<br>有多个功能的FW需要测试，要求测试工具遍历每个FW, 调用其他的程序，更新到磁盘固件后，做之前的多进程读写比较流程<br>重点关注如何调用其他程序。假设FW更新程序是FirwmareUpdateTool.exe，接受FW相关的参数<br>需要实现：</p>
-<ul>
-<li>界面接收参数</li>
-<li>调用其他程序，传参，且注意与主线程的同步</li>
-</ul>
-<p>代码：</p>
-<pre><code>BOOL CmyMFCDlg::DoUpdateFirmware(CString filename)
-&#123;
-	TCHAR szFilePath[MAX_PATH + 1] = &#123; 0 &#125;;
-	GetModuleFileName(NULL, szFilePath, MAX_PATH);
-	(_tcsrchr(szFilePath, _T(&#39;\\&#39;)))[1] = 0;
-
-	CString strToolPath(szFilePath);
-	strToolPath = strToolPath + _T(&quot;FirwmareUpdateTool.exe&quot;);
-	CString strPath;
-	strPath.Format(_T(&quot;%s %s %s %d&quot;), strToolPath.GetBuffer(0), m_str_VendorID.GetBuffer(0), filename.GetBuffer(0), m_SlotID);
-	
-	strAppend = strPath;
-	ShowLogInEditBox();
-
-	if (!PathFileExists(strToolPath))
-	&#123;
-		strAppend.Format(_T(&quot;The %s is not exist!&quot;), strToolPath.GetBuffer(0));
-		ShowLogInEditBox();
-		MessageBox(strAppend, MB_OK);
-		return FALSE;
-	&#125;
-
-	STARTUPINFO si = &#123; sizeof(STARTUPINFO) &#125;;//在产生子进程时，子进程的窗口相关信息
-	PROCESS_INFORMATION pi;                  //子进程的ID/线程相关信息
-	memset(&amp;pi, 0, sizeof(PROCESS_INFORMATION));
-	DWORD returnCode = -1;              //用于保存子程进的返回值;
-
-	BOOL bRet = CreateProcess(              //调用失败，返回0；调用成功返回非0；
-		NULL,                               //一般都是空；（另一种批处理情况：此参数指定&quot;cmd.exe&quot;,下一个命令行参数 &quot;/c otherBatFile&quot;)
-		strPath.GetBuffer(0),              //命令行参数         
-		NULL,                               //_In_opt_    LPSECURITY_ATTRIBUTES lpProcessAttributes,
-		NULL,                               //_In_opt_    LPSECURITY_ATTRIBUTES lpThreadAttributes,
-		FALSE,                              //_In_        BOOL                  bInheritHandles,
-		CREATE_NEW_CONSOLE,                 //新的进程使用新的窗口。
-		NULL,                               //_In_opt_    LPVOID                lpEnvironment,
-		NULL,                               //_In_opt_    LPCTSTR               lpCurrentDirectory,
-		&amp;si,                                //_In_        LPSTARTUPINFO         lpStartupInfo,
-		&amp;pi);                               //_Out_       LPPROCESS_INFORMATION lpProcessInformation
-
-	if (bRet)
-	&#123;
-		while (TRUE) //这里也是为了输出打印和日志而等待进程，同时也阻塞了主线程
-		&#123;
-			DWORD result;
-			MSG msg;
-			result = MsgWaitForMultipleObjects(1, &amp;pi.hProcess, FALSE, INFINITE, QS_ALLINPUT);
-			if (result == (WAIT_OBJECT_0))
-			&#123;
-				//获取子进程的返回值
-				GetExitCodeProcess(pi.hProcess, &amp;returnCode);
-				CloseHandle(pi.hThread);
-				CloseHandle(pi.hProcess);
-				break;
-			&#125;
-			else
-			&#123;
-				PeekMessage(&amp;msg, NULL, 0, 0, PM_REMOVE);
-				DispatchMessage(&amp;msg);
-			&#125;
-		&#125;
-		strAppend.Format(_T(&quot;%s returnCode : %d &quot;), strToolPath.GetBuffer(0), returnCode);
-		ShowLogInEditBox();
-	&#125;
-	else
-	&#123;
-		strAppend.Format(_T(&quot;Start the %s failed!&quot;), strToolPath.GetBuffer(0));
-		ShowLogInEditBox();
-		MessageBox(strAppend, MB_OK);
-	&#125;
-
-	if (!returnCode)
-	&#123;
-		return TRUE;
-	&#125;
-	return FALSE;
-&#125;
-</code></pre>
-<p>CreateProcess创建进程，执行第三方程序<br>MsgWaitForMultipleObjects等待第三方进程返回，阻塞了当前主进程</p>
-<h1 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h1><p>本文涉及的知识点：</p>
-<ul>
-<li>界面控件与底层类的数据交互</li>
-<li>MFC的文件，字符串操作</li>
-<li>线程创建和线程同步</li>
-<li>线程通信：消息机制</li>
-<li>进程创建与同步</li>
-</ul>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/12/12/Markdown%E4%BD%BF%E7%94%A8%E7%AC%94%E8%AE%B0/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.jpg">
-      <meta itemprop="name" content="cursorhu">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="ThinkNotes">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2020/12/12/Markdown%E4%BD%BF%E7%94%A8%E7%AC%94%E8%AE%B0/" class="post-title-link" itemprop="url">Markdown使用笔记</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2020-12-12 14:40:07" itemprop="dateCreated datePublished" datetime="2020-12-12T14:40:07+08:00">2020-12-12</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2024-04-26 16:13:35" itemprop="dateModified" datetime="2024-04-26T16:13:35+08:00">2024-04-26</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/markdown/" itemprop="url" rel="index"><span itemprop="name">markdown</span></a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h1 id="Markdown语法"><a href="#Markdown语法" class="headerlink" title="Markdown语法"></a>Markdown语法</h1><h2 id="标题"><a href="#标题" class="headerlink" title="标题"></a>标题</h2><pre><code>#
-##
-### 
-</code></pre>
-<h2 id="无序列表"><a href="#无序列表" class="headerlink" title="无序列表"></a>无序列表</h2><pre><code>- line 
-或者
-* line
-</code></pre>
-<h2 id="有序列表"><a href="#有序列表" class="headerlink" title="有序列表"></a>有序列表</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">1. line</span><br><span class="line">2. line</span><br></pre></td></tr></table></figure>
-
-<h2 id="转义字符"><a href="#转义字符" class="headerlink" title="转义字符"></a>转义字符</h2><p>有的文字或代码和markdown解析有冲突<br>如$, @等<br>在这些字符前加转义字符即可：$, @</p>
-<h2 id="tab缩进"><a href="#tab缩进" class="headerlink" title="tab缩进"></a>tab缩进</h2><p>markdown本身不支持tab缩进，有以下方法：<br>1.可以用全角输入+2个空格实现缩进<br>2.输入<code>&amp;emsp</code>，就是全角空格符号<br>3.输入<code>&gt;</code></p>
-<h2 id="插入链接"><a href="#插入链接" class="headerlink" title="插入链接"></a>插入链接</h2><pre><code>[标题](URL)
-</code></pre>
-<h2 id="表格"><a href="#表格" class="headerlink" title="表格"></a>表格</h2><pre><code>|  表头   | 表头  |
-|  ----  | ----  |
-| 单元格  | 单元格 |
-| 单元格  | 单元格 |
-</code></pre>
-<h1 id="Typora使用"><a href="#Typora使用" class="headerlink" title="Typora使用"></a>Typora使用</h1><h2 id="导出和打印"><a href="#导出和打印" class="headerlink" title="导出和打印"></a>导出和打印</h2><p>有的markdown文本内容中带换行，而Typora阅读时也有换行，照成换行混乱</p>
-<p>如果要打印，导出pdf的换行也混乱</p>
-<p>解决办法是导出HTML(without style)，然后打印</p>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/12/09/%E5%A6%82%E4%BD%95%E7%9C%8B%E6%87%82UML%E7%B1%BB%E5%9B%BE/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.jpg">
-      <meta itemprop="name" content="cursorhu">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="ThinkNotes">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2020/12/09/%E5%A6%82%E4%BD%95%E7%9C%8B%E6%87%82UML%E7%B1%BB%E5%9B%BE/" class="post-title-link" itemprop="url">如何看懂UML类图</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2020-12-09 14:33:00" itemprop="dateCreated datePublished" datetime="2020-12-09T14:33:00+08:00">2020-12-09</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2024-11-04 11:43:03" itemprop="dateModified" datetime="2024-11-04T11:43:03+08:00">2024-11-04</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/UML/" itemprop="url" rel="index"><span itemprop="name">UML</span></a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>统一建模语言（Unified Modeling Language，UML）是用来设计软件蓝图的可视化建模语言，1997年被国际对象管理组织（OMG）采纳为面向对象的建模语言的国际标准。它的特点是简单、统一、图形化、能表达软件设计中的动态与静态信息。<br>统一建模语言能为软件开发的所有阶段提供模型化和可视化支持。而且融入了软件工程领域的新思想、新方法和新技术，使软件设计人员沟通更简明，进一步缩短了设计时间，减少开发成本。它的应用领域很宽，不仅适合于一般系统的开发，而且适合于并行与分布式系统的建模。<br>UML从目标系统的不同角度出发，定义了用例图、类图、对象图、状态图、活动图、时序图、协作图、构件图、部署图等 9 种图<br>本文介绍开发中常用的类图</p>
-<h1 id="类图"><a href="#类图" class="headerlink" title="类图"></a>类图</h1><p>类（Class）是指具有相同属性、方法和关系的对象的抽象，它封装了数据和行为，是面向对象程序设计（OOP）的基础，具有封装性、继承性和多态性等三大特性。在 UML 中，类使用包含类名、属性和操作且带有分隔线的矩形来表示。<br>首先讲解关系, 先来看一个例子：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051148263.png" alt="image-20221205114810203"></p>
-<p>分析一下上面的图, 首先从动物开始<br>动物是一个类 动物依赖氧气和水<br>然后鸟继承了动物，所以鸟的父类是动物 所以鸟是属于动物<br>然后鸟和翅膀是组合关系 一只鸟有两个翅膀<br>大雁鸭子和企鹅都是鸟所以继承了鸟类<br>大雁会有大雁群，大雁群是由大雁组成所以是聚合关系<br>企鹅和气候是关联关系因为企鹅需要依赖气候<br>然后再看大雁 大雁会飞翔 所以就实现了飞翔接口<br>唐老鸭是属于鸭子的 所以唐老鸭继承了鸭子这个类<br>上图是借鉴了大话设计模式里面的图。下面具体介绍各个符号的作用</p>
-<h2 id="类"><a href="#类" class="headerlink" title="类"></a>类</h2><p>类一般是用三层矩形框表示，第一层表示类的名称，第二层表示的是字段和属性，第三层则是类的方法。第一层中，如果是抽象类，需用斜体显示<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051148740.png" alt="image-20221205114819689"></p>
-<h2 id="类符号"><a href="#类符号" class="headerlink" title="类符号"></a>类符号</h2><p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051148030.png" alt="image-20221205114830981"><br>看上面的学生类里面有五个属性和两个方法</p>
-<pre><code>+号表示公共的 public
--表示 私有的 private
-#表示protected
-</code></pre>
-<p>带下划线表示静态属性，一般表示方法: +属性:类型。<br>括号内表示参数，后面是返回类型, 没有表示无返回值</p>
-<h2 id="包"><a href="#包" class="headerlink" title="包"></a>包</h2><p>包(Package)： 是一种常规用途的组合机制。在UML中用一个Tab框表示，Tab里写上包的名称，框里则用来放一些其他子元素，比如类，子包等等。<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051148985.png" alt="image-20221205114837947"></p>
-<h2 id="接口"><a href="#接口" class="headerlink" title="接口"></a>接口</h2><p>接口(interface)：接口包含操作但不包含属性，且它没有对外界可见的关联<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051148968.png" alt="image-20221205114843929"></p>
-<h2 id="关系"><a href="#关系" class="headerlink" title="关系"></a>关系</h2><h3 id="依赖"><a href="#依赖" class="headerlink" title="依赖"></a>依赖</h3><p>依赖(Dependency) 表示的是类之间的调用关系。UML中用带箭头的虚线表示依赖关系，而箭头所指的则是被依赖的类。<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051148704.png" alt="image-20221205114849672"></p>
-<h3 id="泛化"><a href="#泛化" class="headerlink" title="泛化"></a>泛化</h3><p>泛化(Generalization)： 表示的是类之间的继承关系，注意是子类指向父类。UML中用带空心三角箭头的实线表示泛化关系，箭头指向的是一般个体。<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051148143.png" alt="image-20221205114855112"></p>
-<h3 id="关联"><a href="#关联" class="headerlink" title="关联"></a>关联</h3><p>关联(Association) 表示的是类与类之间存在某种特定的对应关系。UML中用双向带箭头的虚线表示关联关系，箭头两端为相互关联的两个类<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051149187.png" alt="image-20221205114902153"></p>
-<h3 id="聚合"><a href="#聚合" class="headerlink" title="聚合"></a>聚合</h3><p>聚合(Aggregation)： 是关联关系的一种特例，表示的是整体与部分之间的关系，部分不能离开整体单独存在。UML中用空心菱形头的实线表示聚合关系，菱形头指向整体<br><img src="C:\Users\thomas.hu\AppData\Roaming\Typora\typora-user-images\image-20221205114909206.png" alt="image-20221205114909206"></p>
-<h3 id="组合"><a href="#组合" class="headerlink" title="组合"></a>组合</h3><p>组合(Composition)： 是聚合的一种特殊形式，表示的是类之间更强的组合关系。UML中用实心菱形头的实线来表示组合，菱形头指向整体。<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051149567.png" alt="image-20221205114949528"></p>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/12/07/%E6%B5%85%E8%B0%88Linux%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B-IO%E5%A4%9A%E8%B7%AF%E5%A4%8D%E7%94%A8%E4%B9%8Bselect%E3%80%81poll%E3%80%81epoll/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -1761,7 +300,7 @@ void CmyMFCDlg::CloseLogFile()
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/12/03/%E5%BC%80%E6%BA%90%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0%EF%BC%9ATinyhttpd/">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/12/03/%E5%BC%80%E6%BA%90%E5%AD%A6%E4%B9%A0%20--%20tinyhttpd/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/avatar.jpg">
@@ -1775,7 +314,7 @@ void CmyMFCDlg::CloseLogFile()
       <header class="post-header">
         <h2 class="post-title" itemprop="name headline">
           
-            <a href="/2020/12/03/%E5%BC%80%E6%BA%90%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0%EF%BC%9ATinyhttpd/" class="post-title-link" itemprop="url">开源项目学习：Tinyhttpd</a>
+            <a href="/2020/12/03/%E5%BC%80%E6%BA%90%E5%AD%A6%E4%B9%A0%20--%20tinyhttpd/" class="post-title-link" itemprop="url">开源学习 -- tinyhttpd</a>
         </h2>
 
         <div class="post-meta">
@@ -1792,7 +331,7 @@ void CmyMFCDlg::CloseLogFile()
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2025-11-04 17:51:01" itemprop="dateModified" datetime="2025-11-04T17:51:01+08:00">2025-11-04</time>
+                <time title="修改时间：2025-11-18 10:40:17" itemprop="dateModified" datetime="2025-11-18T10:40:17+08:00">2025-11-18</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -1800,7 +339,7 @@ void CmyMFCDlg::CloseLogFile()
               </span>
               <span class="post-meta-item-text">分类于</span>
                 <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/opensource/" itemprop="url" rel="index"><span itemprop="name">opensource</span></a>
+                  <a href="/categories/%E5%BC%80%E6%BA%90%E5%AD%A6%E4%B9%A0/" itemprop="url" rel="index"><span itemprop="name">开源学习</span></a>
                 </span>
             </span>
 
@@ -1996,7 +535,7 @@ void test_sock(int);
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2025-04-16 10:29:28" itemprop="dateModified" datetime="2025-04-16T10:29:28+08:00">2025-04-16</time>
+                <time title="修改时间：2025-11-18 11:48:39" itemprop="dateModified" datetime="2025-11-18T11:48:39+08:00">2025-11-18</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -3176,10 +1715,1461 @@ public:
   
   
 
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/11/08/%E6%B5%85%E8%B0%88Linux%E7%9A%84Signal%E4%BF%A1%E5%8F%B7/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2020/11/08/%E6%B5%85%E8%B0%88Linux%E7%9A%84Signal%E4%BF%A1%E5%8F%B7/" class="post-title-link" itemprop="url">浅谈Linux的Signal信号</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-11-08 18:53:03" itemprop="dateCreated datePublished" datetime="2020-11-08T18:53:03+08:00">2020-11-08</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2024-04-26 16:13:35" itemprop="dateModified" datetime="2024-04-26T16:13:35+08:00">2024-04-26</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/linux/" itemprop="url" rel="index"><span itemprop="name">linux</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <p>本文将从以下几个方面来阐述信号:</p>
+<p>(1) 信号的基本知识<br>(2) 信号生命周期与处理过程分析<br>(3) 基本的信号处理函数<br>(4) 保护临界区不被中断<br>(5) 信号的继承与执行<br>(6) 实时信号中锁的研究</p>
+<h1 id="第一部分-信号的基本知识"><a href="#第一部分-信号的基本知识" class="headerlink" title="第一部分: 信号的基本知识"></a>第一部分: 信号的基本知识</h1><h2 id="1-信号本质"><a href="#1-信号本质" class="headerlink" title="1.信号本质:"></a>1.信号本质:</h2><p>信号的本质是软件层次上对中断的一种模拟。它是一种异步通信的处理机制，事实上，进程并不知道信号何时到来。</p>
+<h2 id="2-信号来源"><a href="#2-信号来源" class="headerlink" title="2.信号来源"></a>2.信号来源</h2><p>(1)程序错误，如非法访问内存<br>(2)外部信号，如按下了CTRL+C<br>(3)通过kill或sigqueue向另外一个进程发送信号</p>
+<h2 id="3-信号种类"><a href="#3-信号种类" class="headerlink" title="3.信号种类"></a>3.信号种类</h2><p>信号分为可靠信号与不可靠信号,可靠信号又称为实时信号，非可靠信号又称为非实时信号。<br>信号代码从1到32是不可靠信号,不可靠信号主要有以下问题:<br>(1)每次信号处理完之后，就会恢复成默认处理，这可能是调用者不希望看到的<br>(2)存在信号丢失的问题<br>现在的Linux对信号机制进行了改进，因此，不可靠信号主要是指信号丢失<br>信号代码从SIGRTMIN到SIGRTMAX之间的信号是可靠信号。可靠信号不存在丢失，由sigqueue发送，可靠信号支持排队。</p>
+<p>可靠信号注册机制:<br>内核每收到一个可靠信号都会去注册这个信号，在信号的未决信号链中分配sigqueue结构，因此，不会存在信号丢失的问题。</p>
+<p>不可靠信号的注册机制:<br>而对于不可靠的信号，如果内核已经注册了这个信号，那么便不会再去注册，对于进程来说，便不会知道本次信号的发生。<br>可靠信号与不可靠信号与发送函数没有关系，取决于信号代码，前面的32种信号就是不可靠信号，而后面的32种信号就是可靠信号。</p>
+<h2 id="4-信号响应的方式"><a href="#4-信号响应的方式" class="headerlink" title="4.信号响应的方式"></a>4.信号响应的方式</h2><p>(1)采用系统默认处理SIG_DFL,执行缺省操作<br>(2)捕捉信号处理，即用户自定义的信号处理函数来处理<br>(3)忽略信号SIG_IGN ,但有两种信号不能被忽略SIGKILL，SIGSTOP</p>
+<h1 id="第二部分-信号的生命周期与处理过程分析"><a href="#第二部分-信号的生命周期与处理过程分析" class="headerlink" title="第二部分: 信号的生命周期与处理过程分析"></a>第二部分: 信号的生命周期与处理过程分析</h1><h2 id="1-信号的生命周期"><a href="#1-信号的生命周期" class="headerlink" title="1. 信号的生命周期"></a>1. 信号的生命周期</h2><p>信号产生-&gt;信号注册－&gt;信号在进程中注销-&gt;信号处理函数执行完毕</p>
+<p>(1)信号的产生是指触发信号的事件的发生</p>
+<p>(2)信号注册<br>指的是在目标进程中注册，该目标进程中有未决信号的信息:</p>
+<pre><code>struct sigpending pending：
+struct sigpending{
+struct sigqueue *head, **tail;
+sigset_t signal;
+};
+
+struct sigqueue{
+struct sigqueue *next;
+siginfo_t info;
+}
+</code></pre>
+<p>其中 sigqueue结构组成的链称之为未决信号链，sigset_t称之为未决信号集。<br>*head,**tail分别指向未决信号链的头部与尾部。<br>siginfo_t info是信号所携带的信息。<br>信号注册的过程就是将信号值加入到未决信号集siginfo_t中，将信号所携带的信息加入到未决信号链的某一个sigqueue中去。<br> 因此，对于可靠的信号，可能存在多个未决信号的sigqueue结构，对于每次信号到来都会注册。而不可靠信号只注册一次，只有一个sigqueue结构。<br>只要信号在进程的未决信号集中，表明进程已经知道这些信号了，还没来得及处理，或者是这些信号被阻塞。</p>
+<p>(3)信号在目标进程中注销<br> 在进程的执行过程中，每次从系统调用或中断返回用户空间的时候，都会检查是否有信号没有被处理。如果这些信号没有被阻塞，那么就调用相应的信号处理函数来处理这些信号。则调用信号处理函数之前，进程会把信号在未决信号链中的sigqueue结构卸掉。是否从未决信号集中把信号删除掉，对于实时信号与非实时信号是不相同的。<br>非实时信号:由于非实时信号在未决信号链中只有一个sigqueue结构，因此将它删除的同时将信号从未决信号集中删除。<br>实时信号:由于实时信号在未决信号链中可能有多个sigqueue结构，如果只有一个，也将信号从未决信号集中删除掉。如果有多个那么不从未决信号集中删除信号，注销完毕。</p>
+<p>(4)信号处理函数执行完毕<br>执行处理函数，本次信号在进程中响应完毕。<br>在第4步，只简单的描述了信号处理函数执行完毕，就完成了本次信号的响应，但这个信号处理函数空间是怎么处理的呢? 内核栈与用户栈是怎么工作的呢? 这就涉及到了信号处理函数的过程。</p>
+<h2 id="2-信号处理函数的过程"><a href="#2-信号处理函数的过程" class="headerlink" title="2. 信号处理函数的过程:"></a>2. 信号处理函数的过程:</h2><p>(1)注册信号处理函数<br>信号的处理是由内核来代理的，首先程序通过sigal或sigaction函数为每个信号注册处理函数，而内核中维护一张信号向量表，对应信号处理机制。这样，在信号在进程中注销完毕之后，会调用相应的处理函数进行处理。</p>
+<p>(2)信号的检测与响应时机<br>在系统调用或中断返回用户态的前夕，内核会检查未决信号集，进行相应的信号处理。</p>
+<p>(3)处理过程:<br>程序运行在用户态时-&gt;进程由于系统调用或中断进入内核-&gt;转向用户态执行信号处理函数-&gt;信号处理函数完毕后进入内核-&gt;返回用户态继续执行程序<br>首先程序执行在用户态，在进程陷入内核并从内核返回的前夕，会去检查有没有信号没有被处理，如果有且没有被阻塞就会调用相应的信号处理程序去处理。首先，内核在用户栈上创建一个层，该层中将返回地址设置成信号处理函数的地址，这样，从内核返回用户态时，就会执行这个信号处理函数。当信号处理函数执行完，会再次进入内核，主要是检测有没有信号没有处理，以及恢复原先程序中断执行点，恢复内核栈等工作，这样，当从内核返回后便返回到原先程序执行的地方了。<br>信号处理函数的过程大概是这样了。<br>具体的可参考<a target="_blank" rel="noopener" href="http://www.spongeliu.com/linux/linux%E5%86%85%E6%A0%B8%E4%BF%A1%E5%8F%B7%E5%A4%84%E7%90%86%E6%9C%BA%E5%88%B6%E4%BB%8B%E7%BB%8D/">http://www.spongeliu.com/linux/linux内核信号处理机制介绍/</a></p>
+<h1 id="第三部分-基本的信号处理函数"><a href="#第三部分-基本的信号处理函数" class="headerlink" title="第三部分: 基本的信号处理函数"></a>第三部分: 基本的信号处理函数</h1><p>首先看一个两个概念: 信号未决与信号阻塞<br>信号未决: 指的是信号的产生到信号处理之前所处的一种状态。确切的说，是信号的产生到信号注销之间的状态。<br>信号阻塞: 指的是阻塞信号被处理，是一种信号处理方式。</p>
+<h2 id="1-信号操作"><a href="#1-信号操作" class="headerlink" title="1. 信号操作"></a>1. 信号操作</h2><p> 信号操作最常用的方法是信号的屏蔽，信号屏蔽主要用到以下几个函数:</p>
+<pre><code>int sigemptyset(sigset_t *set);
+int sigfillset(sigset_t *set);
+int sigaddset(sigset_t *set,int signo);
+int sigdelset(sigset_t *set,int signo);
+int sigismemeber(sigset_t* set,int signo);
+int sigprocmask(int how,const sigset_t*set,sigset_t *oset);
+</code></pre>
+<p>信号集，信号掩码，未决集<br>信号集: 所有的信号阻塞函数都使用一个称之为信号集的结构表明其所受到的影响。<br>信号掩码:当前正在被阻塞的信号集。<br>未决集: 进程在收到信号时到信号在未被处理之前信号所处的集合称为未决集。<br>可以看出，这三个概念没有必然的联系，信号集指的是一个泛泛的概念，而未决集与信号掩码指的是具体的信号状态。</p>
+<p>对于信号集的初始化有两种方法: 一种是用sigemptyset使信号集中不包含任何信号，然后用sigaddset把信号加入到信号集中去。<br>另一种是用sigfillset让信号集中包含所有信号，然后用sigdelset删除信号来初始化。<br>sigemptyset()函数初始化信号集set并将set设置为空。<br>sigfillset()函数初始化信号集，但将信号集set设置为所有信号的集合。<br>sigaddset()将信号signo加入到信号集中去。<br>sigdelset()从信号集中删除signo信号。<br>sigprocmask()将指定的信号集合加入到进程的信号阻塞集合中去。如果提供了oset,那么当前的信号阻塞集合将会保存到oset集全中去。<br>参数how决定了操作的方式:<br>SIG_BLOCK 增加一个信号集合到当前进程的阻塞集合中去<br>SIG_UNBLOCK 从当前的阻塞集合中删除一个信号集合<br>SIG_SETMASK 将当前的信号集合设置为信号阻塞集合</p>
+<p>下面看一个例子:</p>
+<pre><code>int main(){
+    sigset_t initset;
+    int i;
+    sigemptyset(&amp;initset);//初始化信号集合为空集合
+    sigaddset(&amp;initset,SIGINT);//将SIGINT信号加入到此集合中去
+    while(1){
+        sigprocmask(SIG_BLOCK,&amp;initset,NULL);//将信号集合加入到进程的阻塞集合中去
+        fprintf(stdout,&quot;SIGINT singal blocked/n&quot;);
+        for(i=0;i&lt;10;i++){
+        
+            sleep(1);//每1秒输出
+            fprintf(stdout,&quot;block %d/n&quot;,i);
+        }
+        //在这时按一下Ctrl+C不会终止
+        sigprocmask(SIG_UNBLOCK,&amp;initset,NULL);//从进程的阻塞集合中去删除信号集合
+        fprintf(stdout,&quot;SIGINT SINGAL unblokced/n&quot;);
+        for(i=0;i&lt;10;i++){
+            sleep(1);
+            fprintf(stdout,&quot;unblock %d/n&quot;,i);
+        }
+    }
+    exit(0);
+}
+</code></pre>
+<p>执行结果:</p>
+<pre><code>SIGINT singal blocked
+block 0
+block 1
+block 2
+block 3
+block 4
+block 5
+block 6
+block 7
+block 8
+block 9
+</code></pre>
+<p>在执行到block 3时按下了CTRL+C并不会终止，直到执行到block9后将集合从阻塞集合中移除。</p>
+<pre><code>[root@localhost C]# ./s1
+SIGINT singal blocked
+block 0
+block 1
+block 2
+block 3
+block 4
+block 5
+block 6
+block 7
+block 8
+block 9
+SIGINT SINGAL unblokced
+unblock 0
+unblock 1
+</code></pre>
+<p>由于此时已经解除了阻塞，在unblock1后按下CTRL+C则立即终止。</p>
+<h2 id="2-信号处理函数"><a href="#2-信号处理函数" class="headerlink" title="2. 信号处理函数"></a>2. 信号处理函数</h2><p>sigaction</p>
+<pre><code>int sigaction(
+    int signo,
+    const struct sigaction *act,
+    struct sigaction *oldact
+);
+</code></pre>
+<p>这个函数主要是用于改变或检测信号的行为。<br>第一个参数是变更signo指定的信号，它可以指向任何值，SIGKILL,SIGSTOP除外<br>第二个参数,第三个参数是对信号进行细粒度的控制。<br>如果*act不为空，*oldact不为空，那么oldact将会存储信号以前的行为。如果act为空，*oldact不为空，那么oldact将会存储信号现在的行为。</p>
+<pre><code>struct sigaction {
+    void (*sa_handler)(int);
+    void (*sa_sigaction)(int,siginfo_t*,void*);
+    sigset_t sa_mask;
+    int sa_flags;
+    void (*sa_restorer)(void);
+}
+</code></pre>
+<p>参数含义:<br>sa_handler是一个函数指针，主要是表示接收到信号时所要采取的行动。此字段的值可以是SIG_DFL,SIG_IGN.分别代表默认操作与内核将忽略进程的信号。这个函数只传递一个参数那就是信号代码。<br>当SA_SIGINFO被设定在sa_flags中，那么则会使用sa_sigaction来指示信号处理函数，而非sa_handler.<br>sa_mask设置了掩码集，在程序执行期间会阻挡掩码集中的信号。<br>sa_flags设置了一些标志， SA_RESETHAND当该函数处理完成之后，设定为为系统默认的处理模式。SA_NODEFER 在处理函数中，如果再次到达此信号时，将不会阻塞。默认情况下，同一信号两次到达时，如果此时处于信号处理程序中，那么此信号将会阻塞。<br>SA_SIGINFO表示用sa_sigaction指示的函数。<br>sa_restorer已经被废弃。</p>
+<p>sa_sigaction所指向的函数原型:</p>
+<pre><code>void my_handler(int signo,siginfo_t *si,void *ucontext);
+</code></pre>
+<p>第一个参数: 信号编号<br>第二个参数:指向一个siginfo_t结构。<br>第三个参数是一个ucontext_t结构。<br>其中siginfo_t结构体中包含了大量的信号携带信息，可以看出，这个函数比sa_handler要强大，因为前者只能传递一个信号代码，而后者可以传递siginfo_t信息。</p>
+<pre><code>typedef struct siginfo_t{
+    int si_signo;//信号编号
+    int si_errno;//如果为非零值则错误代码与之关联
+    int si_code;//说明进程如何接收信号以及从何处收到
+    pid_t si_pid;//适用于SIGCHLD，代表被终止进程的PID
+    pid_t si_uid;//适用于SIGCHLD,代表被终止进程所拥有进程的UID
+    int si_status;//适用于SIGCHLD，代表被终止进程的状态
+    clock_t si_utime;//适用于SIGCHLD，代表被终止进程所消耗的用户时间
+    clock_t si_stime;//适用于SIGCHLD，代表被终止进程所消耗系统的时间
+    sigval_t si_value;
+    int si_int;
+    void * si_ptr;
+    void* si_addr;
+    int si_band;
+    int si_fd;
+};
+</code></pre>
+<p>sigqueue</p>
+<pre><code>sigqueue(pid_t pid,int signo,const union sigval value)
+</code></pre>
+<p>sigqueue函数类似于kill,也是一个进程向另外一个进程发送信号的。<br>但它比kill函数强大。<br>第一个参数指定目标进程的pid.<br>第二个参数是一个信号代码。<br>第三个参数是一个共用体，每次只能使用一个，用来进程发送信号传递的数据。<br>或者传递整形数据，或者是传递指针。<br>发送的数据被sa_sigaction所指示的函数的siginfo_t结构体中的si_ptr或者是si_int所接收。</p>
+<p>sigpending</p>
+<pre><code>sigpending(sigset_t set);
+</code></pre>
+<p>这个函数的作用是返回未决的信号到信号集set中。即未决信号集，未决信号集不仅包括被阻塞的信号，也可能包括已经到达但没有被处理的信号。</p>
+<h2 id="示例1-sigaction函数的用法"><a href="#示例1-sigaction函数的用法" class="headerlink" title="示例1: sigaction函数的用法"></a>示例1: sigaction函数的用法</h2><pre><code>void signal_set(struct sigaction *act)
+{
+switch(act-&gt;sa_flags){
+    case (int)SIG_DFL:
+        printf(&quot;using default hander/n&quot;);
+        break;
+    case (int)SIG_IGN:
+        printf(&quot;ignore the signal/n&quot;);
+        break;
+    default:
+        printf(&quot;%0x/n&quot;,act-&gt;sa_handler);
+    }
+}
+void signal_set1(int x){//信号处理函数
+    printf(&quot;xxxxx/n&quot;);
+    while(1){}
+}
+
+int main(int argc,char** argv)
+{
+    int i;
+    struct sigaction act,oldact;
+    act.sa_handler = signal_set1;
+    act.sa_flags = SA_RESETHAND;
+    //SA_RESETHANDD 在处理完信号之后，将信号恢复成默认处理
+    //SA_NODEFER在信号处理程序执行期间仍然可以接收信号
+    sigaction (SIGINT,&amp;act,&amp;oldact) ;//改变信号的处理模式
+    for (i=1; i&lt;12; i++)
+    {
+        printf(&quot;signal %d handler is : &quot;,i);
+        sigaction (i,NULL,&amp;oldact) ;
+        signal_set(&amp;oldact);//如果act为NULL，oldact会存储信号当前的行为
+        //act不为空，oldact不为空，则oldact会存储信号以前的处理模式
+    }
+    while(1){
+        //等待信号的到来
+    }
+    return 0;
+}
+</code></pre>
+<p>运行结果:</p>
+<pre><code>[root@localhost C]# ./s2
+signal 1 handler is : using default hander
+signal 2 handler is : 8048437
+signal 3 handler is : using default hander
+signal 4 handler is : using default hander
+signal 5 handler is : using default hander
+signal 6 handler is : using default hander
+signal 7 handler is : using default hander
+signal 8 handler is : using default hander
+signal 9 handler is : using default hander
+signal 10 handler is : using default hander
+signal 11 handler is : using default hander
+xxxxx
+</code></pre>
+<p>解释:</p>
+<pre><code>sigaction(i,NULL,&amp;oldact);
+signal_set(&amp;oldact);
+</code></pre>
+<p>由于act为NULL,那么oldact保存的是当前信号的行为，当前的第二个信号的行为是执行自定义的处理程序。<br>当按下CTRL＋C时会执行信号处理程序，输出xxxxxx，再按一下CTRL＋C会停止,是由于SA_RESETHAND恢复成默认的处理模式，即终止程序。<br>如果没有设置SA_NODEFER,那么在处理函数执行过程中按一下CTRL＋C将会被阻塞，那么程序会停在那里。</p>
+<h2 id="示例2-sigqueue向本进程发送数据的信号"><a href="#示例2-sigqueue向本进程发送数据的信号" class="headerlink" title="示例2: sigqueue向本进程发送数据的信号"></a>示例2: sigqueue向本进程发送数据的信号</h2><pre><code>int main(){
+    union sigval val;//定义一个携带数据的共用体
+    struct sigaction oldact,act;
+    act.sa_sigaction=myhandler;
+    act.sa_flags=SA_SIGINFO;//表示使用sa_sigaction指示的函数，处理完恢复默认，不阻塞处理过程中到达下在被处理的信号
+    //注册信号处理函数
+    sigaction(SIGUSR1,&amp;act,&amp;oldact);
+    char data[100];
+    int num=0;
+    while(num&lt;10){
+        sleep(2);
+        printf(&quot;等待SIGUSR1信号的到来/n&quot;);
+        sprintf(data,&quot;%d&quot;,num++);
+        val.sival_ptr=data;
+        sigqueue(getpid(),SIGUSR1,val);//向本进程发送一个信号
+    }
+}
+
+void myhandler(int signo,siginfo_t *si,void *ucontext){
+    printf(&quot;已经收到SIGUSR1信号/n&quot;);
+    printf(&quot;%s/n&quot;,(char*)(si-&gt;si_ptr));
+}
+</code></pre>
+<p>程序执行的结果是:</p>
+<pre><code>等待SIGUSR1信号的到来
+已经收到SIGUSR1信号
+0
+等待SIGUSR1信号的到来
+已经收到SIGUSR1信号
+1
+等待SIGUSR1信号的到来
+已经收到SIGUSR1信号
+2
+等待SIGUSR1信号的到来
+已经收到SIGUSR1信号
+3
+等待SIGUSR1信号的到来
+已经收到SIGUSR1信号
+4
+等待SIGUSR1信号的到来
+已经收到SIGUSR1信号
+5
+等待SIGUSR1信号的到来
+已经收到SIGUSR1信号
+6
+等待SIGUSR1信号的到来
+已经收到SIGUSR1信号
+7
+等待SIGUSR1信号的到来
+已经收到SIGUSR1信号
+8
+等待SIGUSR1信号的到来
+已经收到SIGUSR1信号
+9
+</code></pre>
+<p>解释: 本程序用sigqueue不停的向自身发送信号,并且携带数据，数据被放到处理函数的第二个参数siginfo_t结构体中的si_ptr指针，当num&lt;10时不再发。</p>
+<p>一般而言，sigqueue与sigaction配合使用，而kill与signal配合使用。</p>
+<h2 id="示例3-一个进程向另外一个进程发送信号，并携带信息"><a href="#示例3-一个进程向另外一个进程发送信号，并携带信息" class="headerlink" title="示例3: 一个进程向另外一个进程发送信号，并携带信息"></a>示例3: 一个进程向另外一个进程发送信号，并携带信息</h2><p>发送端:</p>
+<pre><code>int main(){
+    union sigval value;
+    value.sival_int=10;
+    
+    if(sigqueue(4403,SIGUSR1,value)==-1){//4403是目标进程pid
+        perror(&quot;信号发送失败/n&quot;);
+    }
+    sleep(2);
+}
+</code></pre>
+<p>接收端:</p>
+<pre><code>int main(){
+    struct sigaction oldact,act;
+    act.sa_sigaction=myhandler;
+    act.sa_flags=SA_SIGINFO|SA_NODEFER;
+    //表示执行后恢复，用sa_sigaction指示的处理函数，在执行期间仍然可以接收信号
+    sigaction(SIGUSR1,&amp;act,&amp;oldact);
+    while(1){
+        sleep(2);
+        printf(&quot;等待信号的到来/n&quot;);
+    }
+}
+
+void myhandler(int signo,siginfo_t *si,void *ucontext){
+    printf(&quot;the value is %d/n&quot;,si-&gt;si_int);
+}
+</code></pre>
+<h2 id="示例4-sigpending的用法"><a href="#示例4-sigpending的用法" class="headerlink" title="示例4: sigpending的用法"></a>示例4: sigpending的用法</h2><p>sigpending(sigset_t *set)将未决信号放到指定的set信号集中去，未决信号包括被阻塞的信号和信号到达时但还没来得及处理的信号</p>
+<pre><code>int main(){
+    struct sigaction oldact,act;
+    sigset_t oldmask,newmask,pendingmask;
+    act.sa_sigaction=myhandler;
+    act.sa_flags=SA_SIGINFO;
+    sigemptyset(&amp;act.sa_mask);//首先将阻塞集合设置为空，即不阻塞任何信号
+    //注册信号处理函数
+    sigaction(SIGRTMIN+10,&amp;act,&amp;oldact);
+    //开始阻塞
+    sigemptyset(&amp;newmask);
+    sigaddset(&amp;newmask,SIGRTMIN+10);
+    printf(&quot;SIGRTMIN+10 blocked/n&quot;);
+    sigprocmask(SIG_BLOCK,&amp;newmask,&amp;oldmask);
+    sleep(20);//为了发出信号
+    printf(&quot;now begin to get pending mask/n&quot;);
+    if(sigpending(&amp;pendingmask)&lt;0){
+        perror(&quot;pendingmask error&quot;);
+    }
+    if(sigismember(&amp;pendingmask,SIGRTMIN+10)){
+        printf(&quot;SIGRTMIN+10 is in the pending mask/n&quot;);
+    }
+    
+    sigprocmask(SIG_UNBLOCK,&amp;newmask,&amp;oldmask);
+    printf(&quot;SIGRTMIN+10 unblocked/n&quot;);
+}
+//信号处理函数
+void myhandler(int signo,siginfo_t *si,void *ucontext){
+    printf(&quot;receive signal %d/n&quot;,si-&gt;si_signo);
+}
+</code></pre>
+<p>程序执行,在另一个shell发送信号:</p>
+<pre><code> kill -44 4579
+
+SIGRTMIN+10 blocked
+now begin to get pending mask
+SIGRTMIN+10 is in the pending mask
+receive signal 44
+SIGRTMIN+10 unblocked
+</code></pre>
+<p>可以看到SIGRTMIN由于被阻塞所以处于未决信号集中。<br>关于基本的信号处理函数就介绍到这了。</p>
+<h1 id="第四部分-保护临界区不被中断"><a href="#第四部分-保护临界区不被中断" class="headerlink" title="第四部分: 保护临界区不被中断"></a>第四部分: 保护临界区不被中断</h1><h2 id="1-函数的可重入性"><a href="#1-函数的可重入性" class="headerlink" title="1. 函数的可重入性"></a>1. 函数的可重入性</h2><p>函数的可重入性是指可以多于一个任务并发使用函数，而不必担心数据错误。相反，不可重入性是指不能多于一个任务共享函数，除非能保持函数互斥(或者使用信号量，或者在代码的关键部分禁用中断)。可重入函数可以在任意时刻被中断，稍后继续执行，而不会丢失数据。</p>
+<p>可重入函数：</p>
+<ul>
+<li>不为连续的调用持有静态数据。</li>
+<li>不返回指向静态数据的指针；所有数据都由函数的调用者提供。</li>
+<li>使用本地数据，或者通过制作全局数据的本地拷贝来保护全局数据。</li>
+<li>绝不调用任何不可重入函数。</li>
+</ul>
+<p>不可重入函数可能导致混乱现象，如果当前进程的操作与信号处理程序同时对一个文件进行写操作或者是调用malloc()，那么就可能出现混乱，当从信号处理程序返回时，造成了状态不一致。从而引发错误。<br>因此，信号的处理必须是可重入函数。<br>简单的说，可重入函数是指在一个程序中调用了此函数，在信号处理程序中又调用了此函数，但仍然能够得到正确的结果。<br>printf，malloc函数都是不可重入函数。printf函数如果打印缓冲区一半时，又有一个printf函数，那么此时会造成混乱。而malloc函数使用了系统全局内存分配表。</p>
+<h2 id="2-保护临界区不被中断"><a href="#2-保护临界区不被中断" class="headerlink" title="2. 保护临界区不被中断"></a>2. 保护临界区不被中断</h2><p>由于临界区的代码是关键代码，是非常重要的部分，因此，有必要对临界区进行保护，不希望信号来中断临界区操作。这里通过信号屏蔽字来阻塞信号的发生。</p>
+<p> 下面介绍两个与保护临界区不被信号中断的相关函数。</p>
+<pre><code>int pause(void);
+int sigsuspend(const sigset_t *sigmask);
+</code></pre>
+<p>pause函数挂起一个进程，直到一个信号发生。</p>
+<p>sigsuspend函数的执行过程如下:<br>(1)设置新的mask去阻塞当前进程<br>(2)收到信号，调用信号的处理函数<br>(3)将mask设置为原先的掩码<br>(4)sigsuspend函数返回</p>
+<p>可以看出，sigsuspend函数是等待一个信号发生，当等待的信号发生时，执行完信号处理函数后就会返回。它是一个原子操作。</p>
+<p>保护临界区的中断:<br>(1)首先用sigprocmask去阻塞信号<br>(2)执行后关键代码后,用sigsuspend去捕获信号<br>(3)然后sigprocmask去除阻塞<br>这样信号就不会丢失了，而且不会中断临界区。</p>
+<p>上面的程序是用pause去保护临界区，首先用sigprocmask去阻塞SIGINT信号，执行临界区代码，然后解除阻塞。最后调用pause()函数等待信号的发生。但此时会产生一个问题，如果信号在解除阻塞与pause之间发生的话，信号就可能丢失。这将是一个不可靠的信号机制。<br>因此，采用sigsuspend可以避免上述情况发生。</p>
+<p>sigsuspend函数的用法：<br>sigsuspend函数是等待的信号发生时才会返回。<br>sigsuspend函数遇到结束时不会返回，这一点很重要。</p>
+<p>示例:</p>
+<p>下面的例子能够处理信号SIGUSR1,SIGUSR2,SIGSEGV,其它的信号被屏蔽，该程序输出对应的信号，然后继续等待其它信号的出现。</p>
+<pre><code>void myhandler(int signo);
+int main(){
+    struct sigaction action;
+    sigset_t sigmask;
+    sigemptyset(&amp;sigmask);
+    sigaddset(&amp;sigmask,SIGUSR1);
+    sigaddset(&amp;sigmask,SIGUSR2);
+    sigaddset(&amp;sigmask,SIGSEGV);
+    action.sa_handler=myhandler;
+    action.sa_mask=sigmask;
+    sigaction(SIGUSR1,&amp;action,NULL);
+    sigaction(SIGUSR2,&amp;action,NULL);
+    sigaction(SIGSEGV,&amp;action,NULL);
+    sigfillset(&amp;sigmask);
+    sigdelset(&amp;sigmask,SIGUSR1);
+    sigdelset(&amp;sigmask,SIGUSR2);
+    sigdelset(&amp;sigmask,SIGSEGV);
+    while(1){
+        sigsuspend(&amp;sigmask);//不断的等待信号到来
+    }
+    return 0;
+}
+    
+void myhandler(int signo){
+    switch(signo){
+        case SIGUSR1:
+            printf(&quot;received sigusr1 signal./n&quot;);
+        break ;
+        case SIGUSR2:
+            printf(&quot;received sigusr2 signal./n&quot;);
+        break;
+        case SIGSEGV:
+            printf(&quot;received sigsegv signal/n&quot;);
+        break;
+    }
+}
+</code></pre>
+<p>程序运行结果:</p>
+<pre><code>received sigusr1 signal
+received sigusr2 signal
+received sigsegv signal
+received sigusr1 signal
+已终止
+</code></pre>
+<p>另一个终端用于发送信号:<br>先得到当前进程的pid, ps aux|grep 程序名</p>
+<pre><code>kill -SIGUSR1 4901
+kill -SIGUSR2 4901
+kill -SIGSEGV 4901
+kill -SIGTERM 4901
+kill -SIGUSR1  4901
+</code></pre>
+<p>解释:<br>第一行发送SIGUSR1，则调用信号处理函数，打印出结果。<br>第二，第三行分别打印对应的结果。<br>第四行发送一个默认处理为终止进程的信号。<br>但此时，但不会终止程序，由于sigsuspend遇到终止进程信号并不会返回，此时并不会打印出”已终止”，这个信号被阻塞了。当再次发送SIGURS1信号时，进程的信号阻塞恢复成默认的值，因此，此时将会解除阻塞SIGTERM信号，所以进程被终止。</p>
+<h1 id="第五部分-信号的继承与执行"><a href="#第五部分-信号的继承与执行" class="headerlink" title="第五部分: 信号的继承与执行"></a>第五部分: 信号的继承与执行</h1><p>当使用fork()函数时，子进程会继承父进程完全相同的信号语义，这也是有道理的，因为父子进程共享一个地址空间，所以父进程的信号处理程序也存在于子进程中。</p>
+<p>示例: 子进程继承父进程的信号处理函数</p>
+<pre><code>void myhandler(int signo,siginfo_t *si,void *vcontext);
+int main(){
+    union sigval val;
+    struct sigaction oldact,newact;
+    newact.sa_sigaction=myhandler;
+    newact.sa_flags=SA_SIGINFO|SA_RESETHAND;//表示采用sa_sigaction指示的函数以及执行完处理函数后恢复默认操作
+    //注册信号处理函数
+    sigaction(SIGUSR1,&amp;newact,&amp;oldact);
+    
+    if(fork()==0){
+        val.sival_int=10;
+        printf(&quot;子进程/n&quot;);
+        sigqueue(getpid(),SIGUSR1,val);
+    }
+    else {
+        val.sival_int=20;
+        printf(&quot;父进程/n&quot;);
+        sigqueue(getpid(),SIGUSR1,val);
+    }
+}
+
+void myhandler(int signo,siginfo_t *si,void *vcontext){
+    printf(&quot;信号处理/n&quot;);
+    printf(&quot;%d/n&quot;,(si-&gt;si_int));
+}
+</code></pre>
+<p>输出的结果为:</p>
+<pre><code>子进程
+信号处理
+10
+父进程
+信号处理
+20
+</code></pre>
+<p>可以看出来，子进程继承了父进程的信号处理函数。</p>
+<h1 id="第六部分-实时信号中锁的研究"><a href="#第六部分-实时信号中锁的研究" class="headerlink" title="第六部分: 实时信号中锁的研究"></a>第六部分: 实时信号中锁的研究</h1><h2 id="1-信号处理函数与主函数之间的死锁"><a href="#1-信号处理函数与主函数之间的死锁" class="headerlink" title="1. 信号处理函数与主函数之间的死锁"></a>1. 信号处理函数与主函数之间的死锁</h2><p>当主函数访问临界资源时，通常需要加锁，如果主函数在访问临界区时，给临界资源上锁，此时发生了一个信号，那么转入信号处理函数，如果此时信号处理函数也对临界资源进行访问，那么信号处理函数也会加锁，由于主程序持有锁，信号处理程序等待主程序释放锁。又因为信号处理函数已经抢占了主函数，因此，主函数在信号处理函数结束之前不能运行。因此，必然造成死锁。</p>
+<p>示例1: 主函数与信号处理函数之间的死锁</p>
+<pre><code>int value=0;
+sem_t sem_lock;//定义信号量
+void myhandler(int signo,siginfo_t *si,void *vcontext);//进程处理函数声明
+int main(){
+    union sigval val;
+    val.sival_int=1;
+    struct sigaction oldact,newact;
+    int res;
+    res=sem_init(&amp;sem_lock,0,1);
+    if(res!=0){
+        perror(&quot;信号量初始化失败&quot;);
+    }
+    
+    newact.sa_sigaction=myhandler;
+    newact.sa_flags=SA_SIGINFO;
+    sigaction(SIGUSR1,&amp;newact,&amp;oldact);
+    sem_wait(&amp;sem_lock);
+    printf(&quot;xxxx/n&quot;);
+    value=1;
+    sleep(10);
+    sigqueue(getpid(),SIGUSR1,val);//sigqueue发送带参数的信号
+    sem_post(&amp;sem_lock);
+    sleep(10);
+    exit(0);
+}
+
+void myhandler(int signo,siginfo_t *si,void *vcontext){
+    sem_wait(&amp;sem_lock);
+    value=0;
+    sem_post(&amp;sem_lock);
+}
+</code></pre>
+<p>此程序将一直阻塞在信号处理函数的sem_wait函数处。</p>
+<h2 id="2-利用测试锁解决死锁"><a href="#2-利用测试锁解决死锁" class="headerlink" title="2. 利用测试锁解决死锁"></a>2. 利用测试锁解决死锁</h2><p>sem_trywait(&amp;sem_lock);是非阻塞的sem_wait,如果加锁失败或者是超时，则返回－1。<br>示例2: 用sem_trywait来解决死锁</p>
+<pre><code>int value=0;
+sem_t sem_lock;//定义信号量
+void myhandler(int signo,siginfo_t *si,void *vcontext);//进程处理函数声明
+int main(){
+    union sigval val;
+    val.sival_int=1;
+    struct sigaction oldact,newact;
+    int res;
+    res=sem_init(&amp;sem_lock,0,1);
+    if(res!=0){
+        perror(&quot;信号量初始化失败&quot;);
+    }
+    
+    newact.sa_sigaction=myhandler;
+    newact.sa_flags=SA_SIGINFO;
+    sigaction(SIGUSR1,&amp;newact,&amp;oldact);
+    sem_wait(&amp;sem_lock);
+    printf(&quot;xxxx/n&quot;);
+    value=1;
+    sleep(10);
+    sigqueue(getpid(),SIGUSR1,val);//sigqueue发送带参数的信号
+    sem_post(&amp;sem_lock);
+    sleep(10);
+    sigqueue(getpid(),SIGUSR1,val);
+    exit(0);
+}
+
+void myhandler(int signo,siginfo_t *si,void *vcontext){
+    if(sem_trywait(&amp;sem_lock)==0){
+        value=0;
+        sem_post(&amp;sem_lock);
+    }
+}
+</code></pre>
+<p>第一次发送sigqueue时，由于主函数持有锁，因此，sem_trywait返回－1，当第二次发送sigqueue时，主函数已经释放锁，此时就可以在信号处理函数中对临界资源加锁了。<br>但这种方法明显丢失了一个信号，不是很好的解决方法。</p>
+<h2 id="3-利用双线程来解决主函数与信号处理函数死锁"><a href="#3-利用双线程来解决主函数与信号处理函数死锁" class="headerlink" title="3. 利用双线程来解决主函数与信号处理函数死锁"></a>3. 利用双线程来解决主函数与信号处理函数死锁</h2><p>我们知道，当进程收到一个信号时，会选择其中的某个线程进行处理，前提是这个线程没有屏蔽此信号。因此，可以在主线程中屏蔽信号，另选一个线程去处理这个信号。由于主线程与另外一个线程是平行执行的，因此，等待主线程执行完临界区时，释放锁，这个线程去执行信号处理函数，直到执行完毕释放临界资源。</p>
+<p>这里用到一个线程的信号处理函数: pthread_sigmask</p>
+<pre><code>int pthread_sigmask(int how,const sigset_t *set,sigset_t *oldset);
+</code></pre>
+<p>这个函数与sigprocmask很相似。<br>how的取值:<br>SIG_BLOCK 将信号集加入到线程的阻塞集中去<br>SIG_UNBLOCK 将信号集从阻塞集中删除<br>SIG_SETMASK 将当前集合设置为线程的阻塞集</p>
+<p>示例: 利用双线程来解决主函数与信号处理函数之间的死锁</p>
+<pre><code>void*thread_function(void *arg);//线程处理函数
+void myhandler(int signo,siginfo_t *si,void *vcontext);//信号处理函数
+int value;
+sem_t semlock;
+int main(){
+    int res;
+    pthread_t mythread;
+    void *thread_result;
+    res=pthread_create(&amp;mythread,NULL,thread_function,NULL);//创建一个子线程
+    if(res!=0){
+        perror(&quot;线程创建失败&quot;);
+    }
+
+    //在主线程中将信号屏蔽
+    sigset_t empty;
+    sigemptyset(&amp;empty);
+    sigaddset(&amp;empty,SIGUSR1);
+    pthread_sigmask(SIG_BLOCK,&amp;empty,NULL);
+
+    //主线程中对临界资源的访问
+    if(sem_init(&amp;semlock,0,1)!=0){
+        perror(&quot;信号量创建失败&quot;);
+    }
+    sem_wait(&amp;semlock);
+    printf(&quot;主线程已经执行/n&quot;);
+    value=1;
+    sleep(10);
+    sem_post(&amp;semlock);
+    res=pthread_join(mythread,&amp;thread_result);//等待子线程退出
+    exit(EXIT_SUCCESS);
+}
+
+void *thread_function(void *arg){
+    struct sigaction oldact,newact;
+    newact.sa_sigaction=myhandler;
+    newact.sa_flags=SA_SIGINFO;
+    //注册信号处理函数
+    sigaction(SIGUSR1,&amp;newact,&amp;oldact);
+    union sigval val;
+    val.sival_int=1;
+    printf(&quot;子线程睡眠3秒/n&quot;);
+    sleep(3);
+    sigqueue(getpid(),SIGUSR1,val);
+    pthread_exit(0);//线程结束
+}
+
+void myhandler(int signo,siginfo_t *si,void *vcontext){
+    sem_wait(&amp;semlock);
+    value=0;
+    printf(&quot;信号处理完毕/n&quot;);
+    sem_post(&amp;semlock);
+}
+</code></pre>
+<p>运行结果如下:</p>
+<pre><code>主线程已经执行
+子线程睡眠3秒
+信号处理完毕
+</code></pre>
+<p>解释一下:<br>在主线线程中阻塞了SIGUSR1信号,首先让子线程睡眠3秒，目的让主线程先运行，然后当主线程访问临界资源时，让线程sleep(10),在这期间，子线程发送信号，此时子线程会去处理信号，而主线程依旧平行的运行，子线程被阻止信号处理函数的sem_wait处，等待主线程10后，信号处理函数得到锁，然后进行临界资源的访问。这就解决了主函数与信号处理函数之间的死锁问题。</p>
+<p>扩展: 如果有多个信号到达时，还可以用多线程来处理多个信号，从而达到并行的目的，这个很好实现的，可以尝试一下。</p>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/11/08/%E6%B5%85%E8%B0%88C-%E7%9A%84RAII%E6%9C%BA%E5%88%B6/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2020/11/08/%E6%B5%85%E8%B0%88C-%E7%9A%84RAII%E6%9C%BA%E5%88%B6/" class="post-title-link" itemprop="url">浅谈C++的RAII机制</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-11-08 16:57:03" itemprop="dateCreated datePublished" datetime="2020-11-08T16:57:03+08:00">2020-11-08</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2024-11-04 11:43:03" itemprop="dateModified" datetime="2024-11-04T11:43:03+08:00">2024-11-04</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/C/" itemprop="url" rel="index"><span itemprop="name">C++</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h1 id="1-资源与内存分配"><a href="#1-资源与内存分配" class="headerlink" title="1.资源与内存分配"></a>1.资源与内存分配</h1><p>资源的概念:资源是数量有限且对系统正常运转具有一定作用的元素。比如，内存，文件句柄，网络套接字（network sockets），互斥锁（mutex locks）等等<br>对于进程，这些资源都作为某种数据结构存储在内存中。<br>程序运行需要分配内存来管理以上资源，内存分配可以分为三类：</p>
+<ul>
+<li>静态分配：如创建一个进程执行某段代码，需要加载该代码的代码段，数据段等数据到内存中，其中数据段包含已初始化的全局数据，可以称为是静态的内存分配</li>
+<li>自动分配：进程内函数的调用和返回，以及其内部的局部变量创建和销毁，对应该进程高地址的入栈出栈，这个是操作系统自动处理的，无需应用程序控制</li>
+<li>动态分配：静态数据和堆栈之前的空间（称为堆），可由应用程序动态分配，同时，也必须由应用程序释放。所谓的内存的动态分配与释放，通常讨论的是这种情况</li>
+</ul>
+<p>以32位Linux环境的应用程序为例，每个进程可见的（虚拟）内存分布如下，C&#x2F;C++常用的malloc&#x2F;free, new&#x2F;delete对应的内存分配释放都在.heap段内<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212081658341.png" alt="image-20221208165846274"></p>
+<h1 id="2-动态内存管理的缺陷"><a href="#2-动态内存管理的缺陷" class="headerlink" title="2.动态内存管理的缺陷"></a>2.动态内存管理的缺陷</h1><p>我们在使用资源时必须严格遵循的步骤是：</p>
+<ol>
+<li>获取资源</li>
+<li>使用资源</li>
+<li>释放资源</li>
+</ol>
+<p>代码形式：</p>
+<pre><code>void UseResources()    
+{  
+    // 获取资源1  
+    // ...  
+    // 获取资源n  
+     
+    // 使用这些资源  
+     
+    // 释放资源n  
+    // ...  
+    // 释放资源1  
+} 
+</code></pre>
+<p>当代码量和复杂度达到一定程度，这种手动资源管理容易出错，且难以避免<br>例如C++使用new和delete时可能发生的一些错误是：</p>
+<ul>
+<li>内存泄漏：例如，使用new分配对象，而忘记删除该对象，打开文件，忘记关闭文件等等</li>
+<li>过早删除（或悬挂引用）：持有指向对象的另一个指针，删除该对象，但是还有其他指针在引用它。</li>
+<li>双重删除：尝试两次删除一个对象</li>
+</ul>
+<h1 id="3-RAII：将资源管理交给系统"><a href="#3-RAII：将资源管理交给系统" class="headerlink" title="3.RAII：将资源管理交给系统"></a>3.RAII：将资源管理交给系统</h1><ul>
+<li>自动内存管理，局部变量能在调用函数时分配，退出函数时释放</li>
+<li>类是 C++ 中的主要抽象工具，将资源抽象为类，用局部对象来表示资源，把管理资源的任务转化为管理局部对象的任务</li>
+</ul>
+<p>RAII 就是基于以上思想，折中了全手动和全自动的内存管理，手动的选择管理哪些资源，自动的分配和释放资源。有效地实现了 C++ 资源管理的自动化</p>
+<p>RAII（Resource Acquisition Is Initialization, 资源获取即初始化）:<br>是80年代，Bjarne Stroustrup为C++发明了的范例。<br>具体实现方法：将资源的声明周期，绑定到对象的生命周期，即将资源分配和释放操作，包含到指定对象的构造函数和析构函数中，这些构造函数和析构函数在适当的时候由编译器自动调用，资源数据包含到对象的成员中。</p>
+<p>一个简单示例：</p>
+<p>（1）常规内存管理</p>
+<pre><code>#include &lt;iostream&gt; 
+using namespace std; 
+int main() 
+{ 
+    int *testArray = new int [10]; 
+    // Here, you can use the array 
+    delete [] testArray; 
+    testArray = NULL ; 
+    return 0; 
+}
+</code></pre>
+<p>（2）RAII方式</p>
+<pre><code>#include &lt;iostream&gt; 
+using namespace std; 
+
+class ArrayOperation 
+{ 
+public : 
+    ArrayOperation() 
+    { 
+        m_Array = new int [10]; //构造函数包含资源的分配
+    } 
+ 
+    void InitArray()  //使用资源
+    { 
+        for (int i = 0; i &lt; 10; ++i) 
+        { 
+            *(m_Array + i) = i; 
+        } 
+    } 
+ 
+    void ShowArray() //使用资源
+    { 
+        for (int i = 0; i &lt;10; ++i) 
+        { 
+            cout&lt;&lt;m_Array[i]&lt;&lt;endl; 
+        } 
+    } 
+ 
+    ~ArrayOperation()  //析构函数包含资源的释放
+    { 
+        cout&lt;&lt; &quot;~ArrayOperation is called&quot; &lt;&lt;endl; 
+        if (m_Array != NULL ) 
+        { 
+            delete[] m_Array;  
+            m_Array = NULL ; 
+        } 
+    } 
+ 
+private : 
+    int *m_Array;  //成员变量包含资源
+}; 
+ 
+int main() 
+{ 
+    ArrayOperation arrayOp; //资源自动分配
+    arrayOp.InitArray(); 
+    arrayOp.ShowArray(); 
+    return 0;           //资源自动释放
+}
+</code></pre>
+<p>根据RAII对资源的所有权控制，分为常性类型和外部初始化类型<br>上述示例即为常性类型，也是最纯粹的RAII形式，最容易理解，最容易编码。获取资源的地点是构造函数，释放点是析构函数，并且在这两点之间的一段时间里，任何对该RAII类型实例的操纵都不应该从它手里夺走资源的所有权<br>外部初始化类型是指资源在外部被创建，并被传给RAII实例的构造函数，后者进而接管了其所有权。boost::shared_ptr&lt;&gt;和std::auto_ptr&lt;&gt;都是此类型</p>
+<h1 id="4-RAII的应用场景"><a href="#4-RAII的应用场景" class="headerlink" title="4.RAII的应用场景"></a>4.RAII的应用场景</h1><p>常见的应用有：</p>
+<ul>
+<li>文件操作</li>
+<li>智能指针</li>
+<li>互斥量</li>
+</ul>
+<h2 id="4-1文件操作"><a href="#4-1文件操作" class="headerlink" title="4.1文件操作"></a>4.1文件操作</h2><p>（1）常规形式</p>
+<pre><code>void UseFile(char const* fn)  
+{  
+    FILE* f = fopen(fn, &quot;r&quot;);        // 获取资源  
+    // 在此处使用文件句柄f...代码          // 使用资源  
+    fclose(f);                       // 释放资源  
+}  
+</code></pre>
+<p>（2）RAII<br>文件类：</p>
+<pre><code>class FileHandle {  
+public:  
+    FileHandle(char const* n, char const* a) { p = fopen(n, a); } 
+    ~FileHandle() { fclose(p); }  
+private:   
+    FileHandle(FileHandle const&amp;);  
+    FileHandle&amp; operator= (FileHandle const&amp;); // 禁止拷贝操作  
+    FILE *p;  
+}; 
+</code></pre>
+<p> FileHandle 类的构造函数调用 fopen() 获取资源；FileHandle类的析构函数调用 fclose()释放资源。请注意，考虑到FileHandle对象代表一种资源，它并不具有拷贝语义，因此将拷贝构造函数和赋值运算符声明为私有成员<br> 使用：</p>
+<pre><code>void UseFile(char const* fn)  
+{  
+    FileHandle file(fn, &quot;r&quot;);  
+    // 在此处使用文件句柄  
+    // 超出此作用域时，系统会自动调用file的析构函数，从而释放资源
+}  
+</code></pre>
+<h2 id="4-2互斥量"><a href="#4-2互斥量" class="headerlink" title="4.2互斥量"></a>4.2互斥量</h2><p>C++标准库提供lock_guard类实现mutex分配与释放，其实现就是RAII方式。</p>
+<pre><code>template&lt;class... _Mutexes&gt;
+	class lock_guard
+	{	// class with destructor that unlocks mutexes
+public:
+	explicit lock_guard(_Mutexes&amp;... _Mtxes)
+		: _MyMutexes(_Mtxes...)
+		{	// construct and lock
+		_STD lock(_Mtxes...);
+		}
+ 
+	lock_guard(_Mutexes&amp;... _Mtxes, adopt_lock_t)
+		: _MyMutexes(_Mtxes...)
+		{	// construct but don&#39;t lock
+		}
+ 
+	~lock_guard() _NOEXCEPT
+		{	// unlock all
+		_For_each_tuple_element(
+			_MyMutexes,
+			[](auto&amp; _Mutex) _NOEXCEPT { _Mutex.unlock(); });
+		}
+ 
+	lock_guard(const lock_guard&amp;) = delete;
+	lock_guard&amp; operator=(const lock_guard&amp;) = delete;
+private:
+	tuple&lt;_Mutexes&amp;...&gt; _MyMutexes;
+	};
+</code></pre>
+<p>使用多线程时，经常会涉及到共享数据的问题，C++中通过实例化std::mutex创建互斥量，通过调用成员函数lock()进行上锁，unlock()进行解锁。不过这意味着必须记住在每个函数出口都要去调用unlock()，也包括异常的情况，这非常麻烦，而且不易管理。C++标准库为互斥量提供了一个RAII语法的模板类std::lock_guard，其会在构造函数的时候提供已锁的互斥量，并在析构的时候进行解锁，从而保证了一个已锁的互斥量总是会被正确的解锁。上面的代码属于mutex头文件</p>
+<h2 id="4-3智能指针"><a href="#4-3智能指针" class="headerlink" title="4.3智能指针"></a>4.3智能指针</h2><p>先看一个例子，用RAII管理指针</p>
+<pre><code>#include &lt;iostream&gt;
+#include &lt;mutex&gt;
+#include &lt;fstream&gt;
+using namespace std;
+
+enum class shape_type {
+    circle,
+    rectangle,
+};
+
+class shape {
+public:
+    shape() { cout &lt;&lt; &quot;shape&quot; &lt;&lt; endl; }
+    virtual void print() {
+        cout &lt;&lt; &quot;I am shape&quot; &lt;&lt; endl;
+    }
+    virtual ~shape() {}
+};
+
+class circle : public shape {
+public:
+    circle() { cout &lt;&lt; &quot;circle&quot; &lt;&lt; endl; }
+    void print() {
+        cout &lt;&lt; &quot;I am circle&quot; &lt;&lt; endl;
+    }
+};
+
+class rectangle : public shape {
+public:
+    rectangle() { cout &lt;&lt; &quot;rectangle&quot; &lt;&lt; endl; }
+    void print() {
+        cout &lt;&lt; &quot;I am rectangle&quot; &lt;&lt; endl;
+    }
+};
+
+// 利用多态上转,如果返回值为shape,会存在对象切片问题。
+shape *create_shape(shape_type type) {
+    switch (type) {
+        case shape_type::circle:
+            return new circle();
+        case shape_type::rectangle:
+            return new rectangle();
+    }
+}
+
+class shape_wrapper {
+public:
+    explicit shape_wrapper(shape *ptr = nullptr) : ptr_(ptr) {}
+
+    ~shape_wrapper() {
+        delete ptr_;
+    }
+
+    shape *get() const {
+        return ptr_;
+    }
+
+private:
+    shape *ptr_;
+};
+</code></pre>
+<p>​<br>​<br>    int main() {</p>
+<pre><code>    // 第一种方式, 手动管理指针
+    shape *sp = create_shape(shape_type::circle);
+    sp-&gt;print();
+    delete sp; //显式delete
+
+    // 第二种方式， RAII管理指针，一般封装到函数，更快释放
+    shape_wrapper ptr(create_shape(shape_type::circle));
+    ptr.get()-&gt;print();
+
+    return 0;
+}
+</code></pre>
+<p>C++标准库的智能指针：auto_ptr(C++11弃用), unique_ptr,shared_ptr, weak_ptr<br>可以参考<a target="_blank" rel="noopener" href="https://www.cnblogs.com/WindSun/p/11444429.html">WindSun:详解C++11智能指针</a></p>
+<h2 id="4-4实现自己的RAII类"><a href="#4-4实现自己的RAII类" class="headerlink" title="4.4实现自己的RAII类"></a>4.4实现自己的RAII类</h2><p>一般情况下，RAII临时对象不允许复制和赋值，当然更不允许在heap上创建，所以先写下一个RAII的base类，使子类私有继承Base类来禁用这些操作：</p>
+<pre><code>class RAIIBase  
+{  
+public:  
+    RAIIBase(){}  
+    ~RAIIBase(){}//由于不能使用该类的指针，定义虚函数是完全没有必要的  
+      
+    RAIIBase (const RAIIBase &amp;);  
+    RAIIBase &amp; operator = (const RAIIBase &amp;);  
+    void * operator new(size_t size);   
+    // 不定义任何成员  
+};
+</code></pre>
+<p>要写自己的RAII类时就可以直接继承该类的实现</p>
+<pre><code>template&lt;typename T&gt;  
+class ResourceHandle: private RAIIBase //私有继承 禁用Base的所有继承操作  
+{  
+public:  
+    explicit ResourceHandle(T * aResource):r_(aResource){}//获取资源  
+    ~ResourceHandle() {delete r_;} //释放资源  
+    T *get()    {return r_ ;} //访问资源  
+private:  
+    T * r_;  
+};
+</code></pre>
+<p>将Handle类做成模板类，这样就可以将class类型放入其中。另外，ResourceHandle可以根据不同资源类型的释放形式来定义不同的析构函数。由于不能使用该类的指针，所以不使用虚函数。</p>
+<h1 id="5-GC和RAII"><a href="#5-GC和RAII" class="headerlink" title="5.GC和RAII"></a>5.GC和RAII</h1><p>在没有RAII的时代，GC和非GC语言是水火不容，GC追求开发效率和稳健设计，非GC如C++最求极致性能和绝对控制。RAII的设计机制，兼顾了两者的优点。<br>如果用三个等级代表程序员对系统资源的使用权限，如下：</p>
+<ul>
+<li>动态分配：C++的new&#x2F;delete之类，程序员100%负责内存使用和释放，编译器、操作系统不额外干预</li>
+<li>垃圾回收(GC)：java&#x2F;go语言之类，程序员只负责要内存，而不用管，也管不了内存释放，其由该语言运行环境管理，规则可以描述成：如果一个资源没被任何对象使用(例如没有指针指向它)，运行环境定时或者其他方式检测到后，自动释放该资源，该过程对程序员不可控。可以说程序员有50%的权限，即想要就能要，但想甩却不能甩</li>
+<li>RAII：程序员负责资源编排，运行时的分配与释放由系统自动完成，可以说程序员有90%的权限，放权10%给系统</li>
+</ul>
+<h1 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h1><p>RAII的本质内容是用对象代表资源，把管理资源的任务转化为管理对象的任务，将资源的获取和释放与对象的构造和析构对应起来，从而确保在对象的生存期内资源始终有效，对象销毁时资源必被释放。换句话说，拥有对象就等于拥有资源，对象存在则资源必定存在。<br>具体实现：</p>
+<ul>
+<li>资源在构造函数中获取</li>
+<li>资源在析构函数中释放</li>
+<li>资源是类的成员变量</li>
+<li>类的实例是堆栈分配的</li>
+</ul>
+<p>相关文章<br><a target="_blank" rel="noopener" href="https://light-city.club/sc/codingStyleIdioms/RAII/">C++那些事：RAII</a></p>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/10/30/%E6%B5%85%E8%B0%88Linux%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B-Socket%E5%9F%BA%E7%A1%80/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2020/10/30/%E6%B5%85%E8%B0%88Linux%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B-Socket%E5%9F%BA%E7%A1%80/" class="post-title-link" itemprop="url">浅谈Linux网络编程: Socket基础</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-10-30 12:06:24" itemprop="dateCreated datePublished" datetime="2020-10-30T12:06:24+08:00">2020-10-30</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2024-11-04 11:43:03" itemprop="dateModified" datetime="2024-11-04T11:43:03+08:00">2024-11-04</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/linux/" itemprop="url" rel="index"><span itemprop="name">linux</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h1 id="套接字（socket）基础"><a href="#套接字（socket）基础" class="headerlink" title="套接字（socket）基础"></a>套接字（socket）基础</h1><p>套接字是网络编程中，应用层和传输层之间的数据结构，其作用如下:<br>应用层通过传输层进行数据通信时，TCP和UDP会遇到同时为多个应用程序进程提供并发服务的问题。多个TCP连接或多个应用程序进程可能需要通过同一个TCP协议端口传输数据。为了区别不同的应用程序进程和连接，许多计算机操作系统为应用程序与TCP／IP协议交互提供了称为套接字(Socket)的接口，以区分不同应用程序进程间的网络通信和连接。</p>
+<h1 id="套接字地址结构"><a href="#套接字地址结构" class="headerlink" title="套接字地址结构"></a>套接字地址结构</h1><p>通用套接字地址的结构体sockaddr定义如下：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051411648.png" alt="1"><br>在以太网中，不直接使用sockaddr结构体，而使用sockaddr_in,其定义如下：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051411109.png"><br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051411045.png" alt="3"></p>
+<p>通用结构体sockaddr和以太网的sockaddr_in结构体，有点像C++中的父类和子类的关系，sockaddr_in是对sockaddr的细化，其存储结构大小相同，分布如下：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051411360.png" alt="4"><br>由于大小相同，在设置socket地址时，一般先设置sockaddr_in结构体，然后强转为sockaddr类型</p>
+<h1 id="套接字地址结构在用户层和内核层的交互"><a href="#套接字地址结构在用户层和内核层的交互" class="headerlink" title="套接字地址结构在用户层和内核层的交互"></a>套接字地址结构在用户层和内核层的交互</h1><p>sockaddr的使用，以socket流程中的bind()函数为例：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051411733.png" alt="5"><br>bind函数需要传入sockaddr结构体的指针，和sockaddr结构体的长度</p>
+<h2 id="向内核传入数据"><a href="#向内核传入数据" class="headerlink" title="向内核传入数据"></a>向内核传入数据</h2><p>向内核传入数据的socket函数有：bind,send<br>传入过程如下：</p>
+<ul>
+<li>sockaddr结构体的长度，以传值方式传入内核</li>
+<li>内核通过sockaddr结构体的指针以及结构体长度，以内存复制的方式，从用户层拷贝sockaddr结构体到内核层。</li>
+</ul>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051411951.png" alt="6"></p>
+<h2 id="从内核获取数据"><a href="#从内核获取数据" class="headerlink" title="从内核获取数据"></a>从内核获取数据</h2><p>从内核得到数据的socket函数有：accept,recv</p>
+<ul>
+<li>sockaddr结构体的长度，以传值方式传入内核</li>
+<li>内核通过sockaddr结构体的指针以及结构体长度，以内存复制的方式，从内核层拷贝sockaddr结构体到用户层。</li>
+<li>内核返回内核的结构体的长度<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051412551.png" alt="7"></li>
+</ul>
+<h1 id="Socket编程流程"><a href="#Socket编程流程" class="headerlink" title="Socket编程流程"></a>Socket编程流程</h1><h2 id="总体架构"><a href="#总体架构" class="headerlink" title="总体架构"></a>总体架构</h2><p>TCP编程主要为C&#x2F;S模式，即服务器和客户端编程，我们讲socket编程，要区分是服务器端的流程还是客户端的流程。</p>
+<ul>
+<li>服务器端：创建服务-等待客户端连接-收到连接请求-处理</li>
+<li>客户端：发起对服务器的连接请求-根据服务器的响应做处理</li>
+</ul>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051412551.png"></p>
+<p>服务端各函数含义:</p>
+<ul>
+<li>socket：套接字初始化</li>
+<li>bind：绑定套接字和端口</li>
+<li>listen：配置服务器的请求队列，监测连接请求</li>
+<li>accept：接受客户端连接</li>
+<li>read&#x2F;write：数据的接收、发送</li>
+<li>close：断开连接，释放套接字</li>
+</ul>
+<p>客户端函数：</p>
+<ul>
+<li>客户端套接字不需要绑定端口和监听，直接connect发起连接请求，其他函数和服务端一致。</li>
+</ul>
+<h2 id="socket函数"><a href="#socket函数" class="headerlink" title="socket函数"></a>socket函数</h2><p>socket函数用于创建socket套接字的文件描述符，</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051412223.png" alt="9"></p>
+<p>有三个入参：</p>
+<ul>
+<li>domain：域，区分本地，IPV4 Internet，IPV6 Internet等。有的以PF开头，有的以AF开头，这两者值一样。</li>
+</ul>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051412180.png" alt="10"></p>
+<ul>
+<li>type：通信类型，如流式（TCP）,数据报式（UDP）等</li>
+</ul>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051412975.png" alt="11"></p>
+<ul>
+<li>protocal：协议类型，指定通信类型中的子类型，一般为0</li>
+</ul>
+<p>socket套接字初始化的一个例子：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051412776.png" alt="12"></p>
+<h2 id="socket函数在应用层和内核层的交互"><a href="#socket函数在应用层和内核层的交互" class="headerlink" title="socket函数在应用层和内核层的交互"></a>socket函数在应用层和内核层的交互</h2><p>用户调用的socket函数，会调用内核的sys_socket函数</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051415958.png" alt="2"></p>
+<p>sys_socket做两件事：</p>
+<ul>
+<li><p>sock_create生成内核的socket结构，和应用层的结构不同，如下：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051413920.png" alt="13"></p>
+</li>
+<li><p>sock_map_fd将内核socket结构绑定文件描述符fd,用户层可通过fd访问内核socket结构</p>
+</li>
+</ul>
+<h2 id="bind函数"><a href="#bind函数" class="headerlink" title="bind函数"></a>bind函数</h2><p>服务端用socket函数建立套接字文件描述符后，需要绑定地址和端口到该文件描述符，才能接受客户端请求。</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051413732.png" alt="14"></p>
+<ul>
+<li>sockfd：socket函数创建的文件描述符</li>
+<li>sockaddr结构的指针：指向的sockaddr结构，包含ip和port等信息</li>
+<li>addrlen：即sizeof(struct sockaddr)</li>
+</ul>
+<p>bind函数绑定UNIX族的套接字：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051413483.png" alt="15"></p>
+<p>bind函数绑定AF_INET族的套接字:</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051413289.png" alt="16"></p>
+<h2 id="bind函数在应用层和内核层的交互"><a href="#bind函数在应用层和内核层的交互" class="headerlink" title="bind函数在应用层和内核层的交互"></a>bind函数在应用层和内核层的交互</h2><p>以AF_INET族的套接字绑定为例，不同协议族实际上是调用内核不同的绑定函数<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051418474.png" alt="image-20221205141814380"></p>
+<h2 id="listen函数"><a href="#listen函数" class="headerlink" title="listen函数"></a>listen函数</h2><p>listen函数用于初始化服务器的可连接队列，即服务器处理客户的请求，不是并行处理，而是异步的串行处理。服务器建立可连接队列，将当前不能同步处理的新请求放到队列中，等队列前面的请求处理完了，才异步处理这个请求。<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051414568.png" alt="18"></p>
+<ul>
+<li>backlog是服务器可连接队列的最大长度</li>
+<li>当前队列没满，即当前队列的请求没超过backlog值，才可以调用accept</li>
+<li>listen函数只针对SOCK_STREAM和SOCK_SEQPACKET才能调用，因为TCP请求才需要建立连接。对于SOCK_DGRAM不支持listen，因为UDP是无连接的。</li>
+</ul>
+<p>TCP连接中，SOCK_STREAM类型的套接字，调用listen的示例：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051419762.png" alt="image-20221205141912644"><br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051419995.png" alt="image-20221205141921877"></p>
+<h2 id="listen函数在应用层和内核层的交互"><a href="#listen函数在应用层和内核层的交互" class="headerlink" title="listen函数在应用层和内核层的交互"></a>listen函数在应用层和内核层的交互</h2><p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051419209.png" alt="image-20221205141934130"></p>
+<h2 id="accept函数"><a href="#accept函数" class="headerlink" title="accept函数"></a>accept函数</h2><p>服务端用listen建立连接队列后，客户端以connect发来一个请求，会加入到服务端连接队列的队尾，当这个请求到达队头，会调用accept真正处理该请求。<br>accept会创建一个新的套接字文件描述符，用来描述客户端的连接，这个时候会有两个套接字描述符并存：</p>
+<ul>
+<li>socket函数创建的老的sockfd，表示正在监听的ip和端口</li>
+<li>accept函数创建的新的clientfd，表示当前的客户端连接，后续的客户端的收发和客户端关闭，即send，recv，close函数，都使用clientfd</li>
+</ul>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051420456.png" alt="image-20221205142030402"></p>
+<p>流式连接的accept示例：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051420563.png" alt="image-20221205142038423"><br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051420232.png" alt="image-20221205142048069"></p>
+<h2 id="accept函数在应用层和内核层的交互"><a href="#accept函数在应用层和内核层的交互" class="headerlink" title="accept函数在应用层和内核层的交互"></a>accept函数在应用层和内核层的交互</h2><p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051421941.png" alt="image-20221205142100841"></p>
+<h2 id="connect函数"><a href="#connect函数" class="headerlink" title="connect函数"></a>connect函数</h2><p>connect函数是客户端调用的函数，在客户端调用socket函数创建套接字文件sockfd后，可调用connect函数向服务端发起连接请求，请求的ip和端口信息包含在sockaddr结构体内。<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051422137.png" alt="image-20221205142256082"></p>
+<p>客户端的socket connect示例：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051422137.png"></p>
+<h2 id="connect函数在应用层和内核层的交互"><a href="#connect函数在应用层和内核层的交互" class="headerlink" title="connect函数在应用层和内核层的交互"></a>connect函数在应用层和内核层的交互</h2><p>根据数据流式或数据报式的请求，具体调用inet_stream_connect或inet_dgram_connect<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051423142.png" alt="image-20221205142315046"></p>
+<h2 id="read和write函数"><a href="#read和write函数" class="headerlink" title="read和write函数"></a>read和write函数</h2><p>服务端和客户端真正建立连接后（socket通信逻辑连接，不是TCP&#x2F;UDP的面向连接&#x2F;无连接的传输层连接），即客户端发起connect，服务端accept完成，双方就可以相互read&#x2F;write，读写对方的数据，通过sockfd文件描述符，就像读写本地文件一样。</p>
+<ul>
+<li>read：从套接字文件读取数据，写入本地缓冲区，返回非空的有效数据大小<br> <img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051423066.png" alt="image-20221205142328017"></li>
+<li>write：向套接字文件写入数据，将本地缓冲区数据写入socket函数创建的socket文件<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051423066.png"></li>
+</ul>
+<h2 id="close和shutdown函数"><a href="#close和shutdown函数" class="headerlink" title="close和shutdown函数"></a>close和shutdown函数</h2><ul>
+<li>close：关闭socket连接，释放内核的套接字资源，不能通过套接字文件来读写操作</li>
+<li>shutdown：支持读写的单向关闭，即关闭套接字文件的读、写、或者读写能力（等同于close）</li>
+</ul>
+<h1 id="Socket客户端和服务端交互的例程"><a href="#Socket客户端和服务端交互的例程" class="headerlink" title="Socket客户端和服务端交互的例程"></a>Socket客户端和服务端交互的例程</h1><h2 id="整体架构"><a href="#整体架构" class="headerlink" title="整体架构"></a>整体架构</h2><p>客户端从标准输入读取用户输入的字符串，发送给服务端，服务端读取数据，回写这些数据到客户端，客户端收到数据后输出到标准输出。<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051423842.png" alt="image-20221205142345794"></p>
+<p>客户端和服务端可以在同一台机器部署，访问回环地址127.0.0.1即可，注意服务端的监听端口不能和其他进程的端口冲突。</p>
+<h2 id="代码实现"><a href="#代码实现" class="headerlink" title="代码实现"></a>代码实现</h2><p>服务端代码：</p>
+<pre><code>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt;
+#include &lt;sys/types.h&gt;
+#include &lt;sys/socket.h&gt;
+#include &lt;arpa/inet.h&gt;
+#include &lt;unistd.h&gt;
+//#define PORT 8088						/*侦听端口地址*/
+#define BACKLOG 2						/*侦听队列长度*/
+
+int main(int argc, char *argv[])
+{
+	int ss,sc;		/*ss为服务器的socket描述符，sc为客户端的socket描述符*/
+	struct sockaddr_in server_addr;	/*服务器地址结构*/
+	struct sockaddr_in client_addr;	/*客户端地址结构*/
+	int err;							/*返回值*/
+	pid_t pid;							/*分叉的进行ID*/
+
+	/*建立一个流式套接字*/
+	ss = socket(AF_INET, SOCK_STREAM, 0);
+	if(ss &lt; 0){							/*出错*/
+		printf(&quot;socket error\n&quot;);
+		return -1;	
+	}
+	
+	/*设置服务器地址*/
+	bzero(&amp;server_addr, sizeof(server_addr));			/*清零*/
+	server_addr.sin_family = AF_INET;					/*协议族*/
+	server_addr.sin_addr.s_addr = htonl(INADDR_ANY);	/*本地地址*/
+	//server_addr.sin_port = htons(PORT);
+	server_addr.sin_port = htons(atoi(argv[1]));		/*服务器端口*/
+	
+	/*绑定地址结构到套接字描述符*/
+	err = bind(ss, (struct sockaddr*)&amp;server_addr, sizeof(server_addr));
+	if(err &lt; 0){/*出错*/
+		printf(&quot;bind error\n&quot;);
+		return -1;	
+	}
+	
+	/*设置侦听*/
+	err = listen(ss, BACKLOG);
+	if(err &lt; 0){										/*出错*/
+		printf(&quot;listen error\n&quot;);
+		return -1;	
+	}
+	
+		/*主循环过程*/
+	for(;;)	{
+		socklen_t addrlen = sizeof(struct sockaddr);
+		/*接受客户端连接*/
+		sc = accept(ss, (struct sockaddr*)&amp;client_addr, &amp;addrlen); 
+		if(sc &lt; 0){							/*出错*/
+			continue;						/*结束本次循环*/
+		}	
+		
+		/*建立一个新的进程处理到来的连接*/
+		pid = fork();						/*分叉进程*/
+		if( pid == 0 ){						/*子进程中*/
+			process_conn_server(sc);		/*处理连接*/
+			close(ss);						/*在子进程中关闭服务器的侦听*/
+		}else{
+			close(sc);						/*在父进程中关闭客户端的连接*/
+		}
+	}
+}
+</code></pre>
+<p>服务端注意几点:</p>
+<ul>
+<li>accept后处理连接的过程，是在子进程中处理的，使用fork创建子进程用于连接处理。根据fork返回的pid是0还是其他，判断当前调度到子进程还是父进程，从全局上来讲，这个<code>if-else</code>的两种流程分别在父进程和子进程中指向。</li>
+<li>服务端有两个套接字：侦听套接字和连接套接字。处理连接传入的是连接套接字。</li>
+<li>在父进程（侦听进程）中，要关闭连接套接字；在子进程（连接处理进程）中，要关闭侦听套接字。这是为了避免子父进程相互影响。</li>
+<li>对于多进程，一个进程的套接字关闭不会释放该套接字内存，只有所有进程都关闭了这个套接字，内核才会 释放该套接字，所有可以放心在侦听进程和连接处理进程中，关闭对方的套接字。</li>
+</ul>
+<p>客户端代码：</p>
+<pre><code>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt;
+#include &lt;sys/types.h&gt;
+#include &lt;sys/socket.h&gt;
+#include &lt;unistd.h&gt;
+#include &lt;arpa/inet.h&gt;
+//#define PORT 8088								/*侦听端口地址*/
+
+int main(int argc, char *argv[])
+{
+	int s;										/*s为socket描述符*/
+	struct sockaddr_in server_addr;			/*服务器地址结构*/
+	
+	s = socket(AF_INET, SOCK_STREAM, 0); 		/*建立一个流式套接字 */
+	if(s &lt; 0){									/*出错*/
+		printf(&quot;socket error\n&quot;);
+		return -1;
+	}	
+	
+	/*设置服务器地址*/
+	bzero(&amp;server_addr, sizeof(server_addr));	/*清零*/
+	server_addr.sin_family = AF_INET;					/*协议族*/
+	server_addr.sin_addr.s_addr = htonl(INADDR_ANY);	/*本地地址*/
+	server_addr.sin_port = htons(atoi(argv[2]));		/*服务器端口*/
+	
+	/*将用户输入的字符串类型的IP地址转为整型*/
+	inet_pton(AF_INET, argv[1], &amp;server_addr.sin_addr);	
+	/*连接服务器*/
+	connect(s, (struct sockaddr*)&amp;server_addr, sizeof(struct sockaddr));
+	process_conn_client(s);						/*客户端处理过程*/
+	close(s);									/*关闭连接*/
+	return 0;
+}
+</code></pre>
+<p>建立连接后的读写交互代码，包含服务端的调用和客户端的调用：</p>
+<pre><code>#include &lt;stdio.h&gt;
+#include &lt;string.h&gt;
+/*客户端的处理过程*/
+void process_conn_client(int s)					/* 传入的是客户端调用socket时创建的s */
+{
+	ssize_t size = 0;
+	char buffer[1024];							/*数据的缓冲区*/
+	
+	for(;;){									/*循环处理过程*/
+		/*从标准输入中读取数据放到缓冲区buffer中,标准输入：0，标准输出：1，标准错误：2*/
+		size = read(0, buffer, 1024);
+		if(size &gt; 0){							/*读到数据*/
+			write(s, buffer, size);				/*发送给服务器*/
+			/*客户端阻塞，等待服务器有数据可读*/
+			size = read(s, buffer, 1024);		/*从服务器读取数据*/
+			write(1, buffer, size);				/*写到标准输出*/
+		}
+	}	
+}
+/*服务器对客户端的处理*/
+void process_conn_server(int s) 				/* 传入的是服务端调用accept时创建的sc */
+{
+	ssize_t size = 0;
+	char buffer[1024];							/*数据的缓冲区*/
+	
+	for(;;){									/*循环处理过程*/		
+		size = read(s, buffer, 1024);			/*从套接字中读取数据放到缓冲区buffer中*/
+		if(size == 0){							/*没有数据*/
+			return;	
+		}
+		
+		/*构建响应数据*/
+		//sprintf(buffer, &quot;server receive %d bytes from client\n&quot;, size);
+		//write(s, buffer, strlen(buffer));
+		write(s, buffer, size);					/*发回给客户端*/
+	}	
+}
+</code></pre>
+<p>Makefile编译脚本:</p>
+<pre><code>all:client server					#all规则，它依赖于client和server规则
+
+client:tcp_process.o tcp_client.o	#client规则，生成客户端可执行程序
+	gcc -o client tcp_process.o tcp_client.o
+server:tcp_process.o tcp_server.o	#server规则，生成服务器端可执行程序
+	gcc -o server tcp_process.o tcp_server.o	
+tcp_process.o:						#tcp_process.o规则，生成tcp_process.o
+	gcc -c tcp_process.c -o tcp_process.o
+clean:								#清理规则，删除client、server和中间文件
+	rm -f client server *.o
+</code></pre>
+<h2 id="部署和运行"><a href="#部署和运行" class="headerlink" title="部署和运行"></a>部署和运行</h2><p>后台运行server,指定监听端口:<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051424795.png" alt="image-20221205142401747"><br>运行client，指定服务端的ip, port：<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051424795.png"><br>客户端每输入一个字符串，服务端返回完全相同的字符串，通信正常<br>如果运行服务端时，有bind error，可能是端口被占用，<code>netstat</code>找到占用端口的PID，kill之后再运行server<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202212051424796.png" alt="image-20221205142416741"></p>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/09/06/Git%E5%A4%9A%E4%BA%BA%E5%8D%8F%E4%BD%9C%E4%B8%8B%E7%9A%84%E6%8D%A2%E8%A1%8C%E7%AC%A6%E9%97%AE%E9%A2%98/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2020/09/06/Git%E5%A4%9A%E4%BA%BA%E5%8D%8F%E4%BD%9C%E4%B8%8B%E7%9A%84%E6%8D%A2%E8%A1%8C%E7%AC%A6%E9%97%AE%E9%A2%98/" class="post-title-link" itemprop="url">Git多人协作下的换行符问题</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-09-06 11:23:00" itemprop="dateCreated datePublished" datetime="2020-09-06T11:23:00+08:00">2020-09-06</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2024-04-26 16:13:35" itemprop="dateModified" datetime="2024-04-26T16:13:35+08:00">2024-04-26</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Git/" itemprop="url" rel="index"><span itemprop="name">Git</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h1 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h1><p>项目文件中有如下类型文件：</p>
+<pre><code>Makefile, .sh, .bat, .cfg, .exe
+</code></pre>
+<p>源码用git管理，客户端用cygwin实现windows内的linux环境</p>
+<p>问题：如何解决git多人协作下的linux、windows换行符差异问题？</p>
+<p>(1)什么是换行符<br>LF：”\n”，Linux的换行符, 只包含“换行”；<br>CRLF：”\r\n”，Windows的换行符，包含“回车+换行”;</p>
+<p>(2)不同换行符带来什么问题<br>用git管理代码，必定有远程端和本地端两个仓库，两端的操作系统不同，换行符可能有差异;</p>
+<p>多人协作时，本地端可能有linux环境和windows, 如果所有人都是linux就不存在换行符差异的问题；如果有windows和linux就有该问题;<br>例如A上传了Linux换行符LF的代码到远程，B 本地环境是windows, B git pull下来，其git-config设置了自动转换成本地换行，将代码换行全成了CRLF，B上传后，远程仓库变成CRLF换行。此时A git diff查看，所有代码都有换行差异，扰乱真正的代码diff。</p>
+<p>不仅是影响git diff， 换行差异还影响脚本执行</p>
+<ul>
+<li>例如LF换行的.sh，git pull到windows环境后换行转换成CRLF, 导致sh无法正常执行；</li>
+<li>.bat调用.exe读取.cfg内的一行，.exe是windows程序，其readline方法只能识别CRLF换行，无法读取LF换行的.cfg文件内容</li>
+</ul>
+<h1 id="git的自动换行符转换配置"><a href="#git的自动换行符转换配置" class="headerlink" title="git的自动换行符转换配置"></a>git的自动换行符转换配置</h1><p>参考：<a target="_blank" rel="noopener" href="https://git-scm.com/book/zh/v2/%E8%87%AA%E5%AE%9A%E4%B9%89-Git-%E9%85%8D%E7%BD%AE-Git">core.autocrlf</a></p>
+<p>假如你正在 Windows 上写程序，而其他人用的是其他系统（或相反），你可能会遇到 CRLF 问题。 这是因为 Windows 使用回车（CR）和换行（LF）两个字符来结束一行，而 macOS 和 Linux 只使用换行（LF）一个字符。 虽然这是小问题，但它会极大地扰乱跨平台协作。许多 Windows 上的编辑器会悄悄把行尾的换行字符转换成回车和换行， 或在用户按下 Enter 键时，插入回车和换行两个字符。</p>
+<p>Git 可以在你提交时自动地把回车和换行转换成换行，而在检出代码时把换行转换成回车和换行。 你可以用 core.autocrlf 来打开此项功能。 如果是在 Windows 系统上，把它设置成 true，这样在检出代码时，换行会被转换成回车和换行：</p>
+<pre><code>$ git config --global core.autocrlf true
+</code></pre>
+<p>如果使用以换行作为行结束符的 Linux 或 macOS，你不需要 Git 在检出文件时进行自动的转换； 然而当一个以回车加换行作为行结束符的文件不小心被引入时，你肯定想让 Git 修正。 你可以把 core.autocrlf 设置成 input 来告诉 Git 在提交时把回车和换行转换成换行，检出时不转换：</p>
+<pre><code>$ git config --global core.autocrlf input
+</code></pre>
+<p>这样在 Windows 上的检出文件中会保留回车和换行，而在 macOS 和 Linux 上，以及版本库中会保留换行。</p>
+<p>如果你是 Windows 程序员，且正在开发仅运行在 Windows 上的项目，可以设置 false 取消此功能，把回车保留在版本库中：</p>
+<pre><code>$ git config --global core.autocrlf false
+</code></pre>
+<p><strong>使用<code>git config --global core.autocrlf input</code>就可以做到windows的CRLF换行自动转换成LF换行存储在git远程仓库，且git pull&#x2F;clone到本地时维持LF换行，不影响.sh等linux shell script执行。</strong></p>
+<h1 id="手动换行符转换"><a href="#手动换行符转换" class="headerlink" title="手动换行符转换"></a>手动换行符转换</h1><ul>
+<li><p>dos2unix FilePath</p>
+</li>
+<li><p>unix2dos FilePath</p>
+</li>
+<li><p>windows2linux</p>
+<p> sed -i ‘s&#x2F;.$&#x2F;&#x2F;‘ FilePath</p>
+</li>
+<li><p>linux2windows</p>
+<p> sed -i ‘s&#x2F;$&#x2F;\r&#x2F;‘ FilePath</p>
+</li>
+</ul>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
 
   
   <nav class="pagination">
-    <a class="extend prev" rel="prev" href="/page/8/"><i class="fa fa-angle-left" aria-label="上一页"></i></a><a class="page-number" href="/">1</a><span class="space">&hellip;</span><a class="page-number" href="/page/8/">8</a><span class="page-number current">9</span><a class="page-number" href="/page/10/">10</a><span class="space">&hellip;</span><a class="page-number" href="/page/12/">12</a><a class="extend next" rel="next" href="/page/10/"><i class="fa fa-angle-right" aria-label="下一页"></i></a>
+    <a class="extend prev" rel="prev" href="/page/8/"><i class="fa fa-angle-left" aria-label="上一页"></i></a><a class="page-number" href="/">1</a><span class="space">&hellip;</span><a class="page-number" href="/page/8/">8</a><span class="page-number current">9</span><a class="page-number" href="/page/10/">10</a><a class="page-number" href="/page/11/">11</a><a class="extend next" rel="next" href="/page/10/"><i class="fa fa-angle-right" aria-label="下一页"></i></a>
   </nav>
 
 
@@ -3247,20 +3237,20 @@ public:
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">114</span>
+          <span class="site-state-item-count">110</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
       <div class="site-state-item site-state-categories">
             <a href="/categories/">
           
-        <span class="site-state-item-count">41</span>
+        <span class="site-state-item-count">33</span>
         <span class="site-state-item-name">分类</span></a>
       </div>
       <div class="site-state-item site-state-tags">
             <a href="/tags/">
           
-        <span class="site-state-item-count">56</span>
+        <span class="site-state-item-count">54</span>
         <span class="site-state-item-name">标签</span></a>
       </div>
   </nav>

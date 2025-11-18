@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 8.0.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/my_icon/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/my_icon/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+  <link rel="manifest" href="/images/my_icon/manifest.json">
+  <meta name="msapplication-config" content="/images/my_icon/browserconfig.xml">
+
+<link rel="stylesheet" href="/css/main.css">
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Noto+Serif+SC|Roboto/css?family=Noto Serif SC:300,300italic,400,400italic,700,700italic|Roboto:300,300italic,400,400italic,700,700italic&display=swap&subset=latin,latin-ext">
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"cursorhu.github.io","root":"/","scheme":"Pisces","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="本文描述：如何参与到Linux kernel社区中，为Linux kernel提交Patch代码；以Linux子系统MMC&#x2F;SD为例介绍如何使用patch。 Linux kernel提交代码的基本概念如何参与Linux内核开发Linux kernel的官方网站：kernel.org kernel.org内的中文文档：如何参与Linux内核开发, 其中最常用的：  内核源码库：https:">
+<meta property="og:type" content="article">
+<meta property="og:title" content="linux驱动 -- 代码提交和使用patch">
+<meta property="og:url" content="https://cursorhu.github.io/2023/03/09/linux%E9%A9%B1%E5%8A%A8%20--%20%E4%BB%A3%E7%A0%81%E6%8F%90%E4%BA%A4%E5%92%8C%E4%BD%BF%E7%94%A8patch/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="本文描述：如何参与到Linux kernel社区中，为Linux kernel提交Patch代码；以Linux子系统MMC&#x2F;SD为例介绍如何使用patch。 Linux kernel提交代码的基本概念如何参与Linux内核开发Linux kernel的官方网站：kernel.org kernel.org内的中文文档：如何参与Linux内核开发, 其中最常用的：  内核源码库：https:">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303091635752.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303091621148.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303091623615.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303091623615.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303091942357.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303091945285.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303131133722.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303131921412.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303131917802.png">
+<meta property="article:published_time" content="2023-03-09T07:19:37.000Z">
+<meta property="article:modified_time" content="2025-11-18T03:31:59.958Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="linux">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303091635752.png">
+
+<link rel="canonical" href="https://cursorhu.github.io/2023/03/09/linux%E9%A9%B1%E5%8A%A8%20--%20%E4%BB%A3%E7%A0%81%E6%8F%90%E4%BA%A4%E5%92%8C%E4%BD%BF%E7%94%A8patch/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>linux驱动 -- 代码提交和使用patch | ThinkNotes</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">ThinkNotes</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Simple is not easy | 化繁为简，知易行难</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于我</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2023/03/09/linux%E9%A9%B1%E5%8A%A8%20--%20%E4%BB%A3%E7%A0%81%E6%8F%90%E4%BA%A4%E5%92%8C%E4%BD%BF%E7%94%A8patch/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          linux驱动 -- 代码提交和使用patch
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2023-03-09 15:19:37" itemprop="dateCreated datePublished" datetime="2023-03-09T15:19:37+08:00">2023-03-09</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2025-11-18 11:31:59" itemprop="dateModified" datetime="2025-11-18T11:31:59+08:00">2025-11-18</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/linux%E9%A9%B1%E5%8A%A8/" itemprop="url" rel="index"><span itemprop="name">linux驱动</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>本文描述：如何参与到Linux kernel社区中，为Linux kernel提交Patch代码；以Linux子系统MMC&#x2F;SD为例介绍如何使用patch。</p>
+<h2 id="Linux-kernel提交代码的基本概念"><a href="#Linux-kernel提交代码的基本概念" class="headerlink" title="Linux kernel提交代码的基本概念"></a>Linux kernel提交代码的基本概念</h2><h3 id="如何参与Linux内核开发"><a href="#如何参与Linux内核开发" class="headerlink" title="如何参与Linux内核开发"></a>如何参与Linux内核开发</h3><p>Linux kernel的官方网站：<a target="_blank" rel="noopener" href="https://kernel.org/">kernel.org</a></p>
+<p>kernel.org内的中文文档：<a target="_blank" rel="noopener" href="https://www.kernel.org/doc/html/latest/translations/zh_CN/process/howto.html">如何参与Linux内核开发</a>, 其中最常用的：</p>
+<ul>
+<li>内核源码库：<a target="_blank" rel="noopener" href="https://elixir.bootlin.com/">https://elixir.bootlin.com/</a> 在线查看kernel源码而无需git下载</li>
+<li>内核子系统(subsystem)的补丁(patch)列表：<a target="_blank" rel="noopener" href="https://patchwork.kernel.org/">https://patchwork.kernel.org/</a> 显示正在发布、评论或修订的patch： </li>
+<li>内核邮件列表的存档(archive)：<a target="_blank" rel="noopener" href="https://lore.kernel.org/lkml/">https://lore.kernel.org/lkml/</a> 所有正在进行或已存档的patchwork都能在此找到邮件记录：</li>
+</ul>
+<h3 id="如何提交Patch"><a href="#如何提交Patch" class="headerlink" title="如何提交Patch"></a>如何提交Patch</h3><p>Patch是提交到kernel之前的一个阶段，由kernel subsystem maintainer review后<strong>有机会</strong>进入Linux kernel Mainline。事实上绝大所述patch最终未进入Linux kernel Mainline，仅存档到了邮件列表，在lore&#x2F;patchwork.kernel.org可查看这部分patch的内容和提交过程。</p>
+<ul>
+<li><p>提交Patch的总体规范参考：</p>
+<p><a target="_blank" rel="noopener" href="https://docs.kernel.org/translations/zh_CN/process/submitting-patches.html">提交补丁：如何让你的改动进入内核</a></p>
+</li>
+<li><p>具体地讲如何向kernel提交patch和使用patch（需要详细看）: </p>
+<p><a target="_blank" rel="noopener" href="https://www.kernel.org/doc/html/v4.11/process/submitting-patches.html">Submitting patches: the essential guide to getting your code into the kernel</a></p>
+<p><a target="_blank" rel="noopener" href="https://www.kernel.org/doc/html/v4.11/process/applying-patches.html?highlight=applying%20patches%20linux%20kernel">Applying Patches To The Linux Kernel</a></p>
+</li>
+<li><p>关于patch命令如何使用，参考： </p>
+<p><a target="_blank" rel="noopener" href="https://www.thegeekstuff.com/2014/12/patch-command-examples/">patch-command-examples</a></p>
+<p><a target="_blank" rel="noopener" href="https://www.man7.org/linux/man-pages/man1/patch.1.html">patch(1) — Linux manual page</a> </p>
+<p><a target="_blank" rel="noopener" href="https://blog.csdn.net/dl0914791011/article/details/17299103">Linux下生成patch和打patch</a></p>
+</li>
+</ul>
+<h2 id="示例：Linux-MMC子系统中UHS-II-Patch的演化过程"><a href="#示例：Linux-MMC子系统中UHS-II-Patch的演化过程" class="headerlink" title="示例：Linux MMC子系统中UHS-II Patch的演化过程"></a>示例：Linux MMC子系统中UHS-II Patch的演化过程</h2><h3 id="Linux-MMC子系统的现状"><a href="#Linux-MMC子系统的现状" class="headerlink" title="Linux MMC子系统的现状"></a>Linux MMC子系统的现状</h3><p>MMC子系统主要包含SD card, eMMC card, SDIO几部分，Kernel Mainline的支持情况参考：<a target="_blank" rel="noopener" href="https://elinux.org/images/9/91/Clement-sd-mmc-high-speed-support-in-linux-kernel_0.pdf#:~:text=%E2%96%B6New%20speed%20modes%20%28name%20are%20base%20on%20the,the%203.3V%20forDS%28Default%20Speed25MHz%29%20andHS%28High%20Speed%20at%2050MHz%29">SD&#x2F;eMMC: new speed modes and their support in Linux</a></p>
+<p>这里只关注SD card, Kernel Mainline在当前时间点（kernel 6.2）：</p>
+<ul>
+<li>不支持UHS-II (SD 4.0 specification)</li>
+<li>SD express(SD 7.0 specification)在Kernel 5.11版本以后是支持的</li>
+<li>SD UHS-I (SD 3.0 specification)和更老版本的SD协议则在kernel 3.0就已经支持</li>
+</ul>
+<h3 id="Linux-MMC-UHS-II-patch的演变"><a href="#Linux-MMC-UHS-II-patch的演变" class="headerlink" title="Linux MMC UHS-II patch的演变"></a>Linux MMC UHS-II patch的演变</h3><p>Linux MMC子系统的维护者可以在<a target="_blank" rel="noopener" href="https://patchwork.kernel.org/">patchwork.kernel.org</a>的MMC development的about页面看到：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303091635752.png" alt="image-20230309163541697"></p>
+<p>在patch页面可以搜索以<a target="_blank" rel="noopener" href="https://patchwork.kernel.org/project/linux-mmc/list/?q=UHS-II&archive=both&series=&submitter=&delegate=&state=*">UHS-II为关键字的相关patch</a></p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303091621148.png" alt="image-20230309162128061">结果如下：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303091623615.png" alt="image-20230309162327522"></p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303091623615.png"> </p>
+<p>具体看一下上面这些UHS-II patch的内容和reviewer的评论：</p>
+<p>1.首次提交是<a target="_blank" rel="noopener" href="https://patchwork.kernel.org/project/linux-mmc/patch/1419672479-30852-2-git-send-email-yi.y.sun@intel.com/">Intel的yisun</a>, 该patch被MMC维护者Ulf Hansson评论：应该split it up，之后就没有再修改和提交。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line">[RFC,1/2] mmc: core: support UHS-II in core stack.</span><br><span class="line"></span><br><span class="line">Commit Message</span><br><span class="line"></span><br><span class="line">[yisun1](https://patchwork.kernel.org/project/linux-mmc/list/?submitter=102631)Dec. 27, 2014, 9:27 a.m. UTC</span><br><span class="line"></span><br><span class="line">This patch adds the UHS-II support in core layer. This is a RFC patch for</span><br><span class="line">community review.</span><br><span class="line"></span><br><span class="line">Signed-off-by: Yi Sun &lt;yi.y.sun@intel.com&gt;</span><br><span class="line">---</span><br><span class="line"> drivers/mmc/core/Makefile |    3 +-</span><br><span class="line"> drivers/mmc/core/bus.c    |    5 +-</span><br><span class="line"> drivers/mmc/core/core.c   |   89 ++++-</span><br><span class="line"> drivers/mmc/core/sd.c     |   15 +</span><br><span class="line"> drivers/mmc/core/sd_ops.c |   12 +</span><br><span class="line"> drivers/mmc/core/uhs2.c   |  908 +++++++++++++++++++++++++++++++++++++++++++++</span><br><span class="line"> drivers/mmc/core/uhs2.h   |   26 ++</span><br><span class="line"> include/linux/mmc/core.h  |    6 +</span><br><span class="line"> include/linux/mmc/host.h  |   27 ++</span><br><span class="line"> include/linux/mmc/uhs2.h  |  274 ++++++++++++++</span><br><span class="line"> 10 files changed, 1356 insertions(+), 9 deletions(-)</span><br><span class="line"> create mode 100644 drivers/mmc/core/uhs2.c</span><br><span class="line"> create mode 100644 drivers/mmc/core/uhs2.h</span><br><span class="line"> create mode 100644 include/linux/mmc/uhs2.h</span><br><span class="line"></span><br><span class="line">Comments</span><br><span class="line"></span><br><span class="line">[Ulf Hansson](https://patchwork.kernel.org/project/linux-mmc/list/?submitter=45281)Jan. 21, 2015, 10:31 a.m. UTC | [#1](https://patchwork.kernel.org/comment/12007791/)</span><br><span class="line"></span><br><span class="line">Even if this an RFC, me and likely everybody else just stops from</span><br><span class="line">reviewing this patch by looking at the above change log.</span><br><span class="line"></span><br><span class="line">Is there a way to split it up?</span><br><span class="line"></span><br><span class="line">Kind regards</span><br><span class="line">Uffe</span><br></pre></td></tr></table></figure>
+
+<ol start="2">
+<li>Genesys的Ben Chuang, Jason Lai, Victor.shih 和linaro 的akashi 在Intel的UHS-II patch上不断提交修改后的UHS-II patch（V3~V6）跟随着Kernel版本不断演化，此patch完整内容可在GitLab查看 <a target="_blank" rel="noopener" href="https://gitlab.com/ben.chuang/linux-uhs2-gl9755">linux-uhs2-gl9755</a>，在patchwork也可以查看commit内容和review意见：<a target="_blank" rel="noopener" href="https://patchwork.kernel.org/project/linux-mmc/patch/20221213090047.3805-7-victor.shih@genesyslogic.com.tw/">V6 patch的第6&#x2F;24提交</a>：</li>
+</ol>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br></pre></td><td class="code"><pre><span class="line">[V6,06/24] mmc: core: Support UHS-II card control and access</span><br><span class="line"></span><br><span class="line">Commit Message </span><br><span class="line"></span><br><span class="line">[Victor Shih](https://patchwork.kernel.org/project/linux-mmc/list/?submitter=207469) Dec. 13, 2022, 9 a.m. UTC</span><br><span class="line"></span><br><span class="line">Embed UHS-II access/control functionality into the MMC request</span><br><span class="line">processing flow.</span><br><span class="line"></span><br><span class="line">Signed-off-by: Ulf Hansson &lt;ulf.hansson@linaro.org&gt;</span><br><span class="line">Signed-off-by: Jason Lai &lt;jason.lai@genesyslogic.com.tw&gt;</span><br><span class="line">Signed-off-by: Victor Shih &lt;victor.shih@genesyslogic.com.tw&gt;</span><br><span class="line">---</span><br><span class="line"> drivers/mmc/core/block.c   |    6 +-</span><br><span class="line"> drivers/mmc/core/core.c    |   20 +</span><br><span class="line"> drivers/mmc/core/mmc_ops.c |   25 +-</span><br><span class="line"> drivers/mmc/core/mmc_ops.h |    1 +</span><br><span class="line"> drivers/mmc/core/sd.c      |   11 +-</span><br><span class="line"> drivers/mmc/core/sd.h      |    3 +</span><br><span class="line"> drivers/mmc/core/sd_ops.c  |   13 +</span><br><span class="line"> drivers/mmc/core/sd_ops.h  |    3 +</span><br><span class="line"> drivers/mmc/core/sd_uhs2.c | 1171 +++++++++++++++++++++++++++++++++++-</span><br><span class="line"> 9 files changed, 1206 insertions(+), 47 deletions(-)</span><br><span class="line"></span><br><span class="line">Comments</span><br><span class="line"></span><br><span class="line">[Adrian Hunter](https://patchwork.kernel.org/project/linux-mmc/list/?submitter=31052) Jan. 5, 2023, 9:26 p.m. UTC | [#1](https://patchwork.kernel.org/comment/25148889/)</span><br><span class="line"></span><br><span class="line">&gt; +u32 sd_uhs2_select_voltage(struct mmc_host *host, u32 ocr)</span><br><span class="line">&gt; +&#123;</span><br><span class="line">...</span><br><span class="line">&gt; +</span><br><span class="line">&gt; +	if (host-&gt;caps2 &amp; MMC_CAP2_FULL_PWR_CYCLE) &#123;</span><br><span class="line">&gt; +		bit = ffs(ocr) - 1;</span><br><span class="line">&gt; +		ocr &amp;= 3 &lt;&lt; bit;</span><br><span class="line">&gt; +		/* Power cycle */</span><br><span class="line">&gt; +		err = sd_uhs2_power_off(host);</span><br><span class="line">&gt; +		if (err)</span><br><span class="line">&gt; +			return 0;</span><br><span class="line">&gt; +		err = sd_uhs2_reinit(host);</span><br><span class="line"></span><br><span class="line">This looks circular:</span><br><span class="line"></span><br><span class="line">sd_uhs2_select_voltage</span><br><span class="line">-&gt; sd_uhs2_reinit</span><br><span class="line">   -&gt; sd_uhs2_init_card</span><br><span class="line">      -&gt; sd_uhs2_legacy_init</span><br><span class="line">         -&gt; sd_uhs2_select_voltage</span><br><span class="line"></span><br><span class="line">[Ulf Hansson](https://patchwork.kernel.org/project/linux-mmc/list/?submitter=45281) Feb. 8, 2023, 3:30 p.m. UTC | [#2](https://patchwork.kernel.org/comment/25202573/)</span><br><span class="line"></span><br><span class="line">&gt; diff --git a/drivers/mmc/core/block.c b/drivers/mmc/core/block.c</span><br><span class="line">&gt; index 20da7ed43e6d..d3e8ec43cdd5 100644</span><br><span class="line">&gt; --- a/drivers/mmc/core/block.c</span><br><span class="line">&gt; +++ b/drivers/mmc/core/block.c</span><br><span class="line">&gt; @@ -1596,6 +1596,9 @@ static void mmc_blk_rw_rq_prep(struct mmc_queue_req *mqrq,</span><br><span class="line">&gt;         struct request *req = mmc_queue_req_to_req(mqrq);</span><br><span class="line">&gt;         struct mmc_blk_data *md = mq-&gt;blkdata;</span><br><span class="line">&gt;         bool do_rel_wr, do_data_tag;</span><br><span class="line">&gt; +       bool do_multi;</span><br><span class="line">&gt; +</span><br><span class="line">&gt; +       do_multi = (card-&gt;uhs2_state &amp; MMC_UHS2_INITIALIZED) ? true : false;</span><br><span class="line">&gt;</span><br><span class="line">&gt;         mmc_blk_data_prep(mq, mqrq, recovery_mode, &amp;do_rel_wr, &amp;do_data_tag);</span><br><span class="line">&gt;</span><br><span class="line">&gt; @@ -1606,7 +1609,7 @@ static void mmc_blk_rw_rq_prep(struct mmc_queue_req *mqrq,</span><br><span class="line">&gt;                 brq-&gt;cmd.arg &lt;&lt;= 9;</span><br><span class="line">&gt;         brq-&gt;cmd.flags = MMC_RSP_SPI_R1 | MMC_RSP_R1 | MMC_CMD_ADTC;</span><br><span class="line">&gt;</span><br><span class="line">&gt; -       if (brq-&gt;data.blocks &gt; 1 || do_rel_wr) &#123;</span><br><span class="line">&gt; +       if (brq-&gt;data.blocks &gt; 1 || do_rel_wr || do_multi) &#123;</span><br><span class="line"></span><br><span class="line">This looks wrong to me. UHS2 can use single block read/writes too. Right?</span><br><span class="line"></span><br><span class="line">&gt;                 /* SPI multiblock writes terminate using a special</span><br><span class="line">&gt;                  * token, not a STOP_TRANSMISSION request.</span><br><span class="line">&gt;                  */</span><br><span class="line">&gt; @@ -1619,6 +1622,7 @@ static void mmc_blk_rw_rq_prep(struct mmc_queue_req *mqrq,</span><br><span class="line">&gt;                 brq-&gt;mrq.stop = NULL;</span><br><span class="line">&gt;                 readcmd = MMC_READ_SINGLE_BLOCK;</span><br><span class="line">&gt;                 writecmd = MMC_WRITE_BLOCK;</span><br><span class="line">&gt; +               brq-&gt;cmd.uhs2_tmode0_flag = 1;</span><br><span class="line"></span><br><span class="line">As &quot;do_multi&quot; is always set for UHS2, setting this flag here seems to</span><br><span class="line">be wrong/redundant.</span><br><span class="line"></span><br><span class="line">Anyway, if I understand correctly, the flag is intended to be used to</span><br><span class="line">inform the host driver whether the so-called 2L_HD_mode (half-duplex</span><br><span class="line">or full-duplex) should be used for the I/O request or not.</span><br><span class="line"></span><br><span class="line">To fix the above behaviour, I suggest we try to move the entire</span><br><span class="line">control of the flag into mmc_uhs2_prepare_cmd(). We want the flag to</span><br><span class="line">be set for multi block read/writes (CMD18 and CMD25), but only if the</span><br><span class="line">host and card supports the 2L_HD_mode too. According to my earlier</span><br><span class="line">suggestions, we should be able to check that via the bits we set</span><br><span class="line">earlier in the ios-&gt;timing.</span><br><span class="line"></span><br><span class="line">Moreover, by making mmc_uhs2_prepare_cmd() responsible for setting the</span><br><span class="line">flag, I think we can also move the definition of the flag into the</span><br><span class="line">struct uhs2_command. While at it, I suggest we also rename the flag</span><br><span class="line">into &quot;tmode_half_duplex&quot;, to better describe its purpose, which also</span><br><span class="line">means the interpretation of the flag becomes inverted.</span><br></pre></td></tr></table></figure>
+
+<h2 id="详解Patch的使用"><a href="#详解Patch的使用" class="headerlink" title="详解Patch的使用"></a>详解Patch的使用</h2><p>Kernel document: <a target="_blank" rel="noopener" href="https://www.kernel.org/doc/html/latest/process/applying-patches.html#:~:text=A%20patch%20is%20a%20small%20text%20document%20containing,the%20patch%20will%20change%20the%20source%20tree%20into.">Applying Patches To The Linux Kernel</a></p>
+<h3 id="Patch与git-diff"><a href="#Patch与git-diff" class="headerlink" title="Patch与git diff"></a>Patch与git diff</h3><p>Patch文件的内容实际是<code>git diff</code>命令的输出，git diff的输出定义为.diff文件或.patch文件，即可作为patch使用。打patch实际上就是按diff规则，解析diff&#x2F;patch文件，去改变本地的代码树和内容。</p>
+<p>git diff说明文档参考 <a target="_blank" rel="noopener" href="https://git-scm.com/docs/git-diff">git-diff</a>，比较常用的是使用<code>git diff [&lt;path&gt;…]</code>输出某个路径&#x2F;文件的差异；如果path为空，则输出当前git仓库所有文件的差异。</p>
+<p>如下示例：在drivers&#x2F;mmc&#x2F;core&#x2F;block.c增加修改了<code>//AAAAAAAAA</code>，在drivers&#x2F;mmc&#x2F;core&#x2F;block.h增加了<code>//BBBBBBBBB</code>，以下详细说明git diff 输出的含义：</p>
+<ul>
+<li>diff –git a&#x2F;drivers&#x2F;mmc&#x2F;core&#x2F;block.c b&#x2F;drivers&#x2F;mmc&#x2F;core&#x2F;block.c：用git diff命令，比较a和b版本的drivers&#x2F;mmc&#x2F;core&#x2F;block.c，a和b是diff用来区分同名文件的标识，不是实际路径。</li>
+<li>index 7fa83e5..8963e57：这个diff如果被commit提交，commit-id将是index值7fa83e5..8963e57。</li>
+<li>— a&#x2F;drivers&#x2F;mmc&#x2F;core&#x2F;block.c 和+++ b&#x2F;drivers&#x2F;mmc&#x2F;core&#x2F;block.c 同时存在：表示是对已存在的block.c文件有内容修改；与之相对的是某个文件只有+++或—，表示是新增文件文件，或者是删除了文件。</li>
+<li>@@ -1829,6 +1829,8 @@ static void mmc_blk_mq_rw_recovery(struct mmc_queue *mq, struct request *req)：该修改代码所在的行数以及所在的函数名。</li>
+<li>+&#x2F;&#x2F;AAAAAAAAA：具体的修改内容，+是新增，-是删除。</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">diff --git a/drivers/mmc/core/block.c b/drivers/mmc/core/block.c</span><br><span class="line">index 7fa83e5..8963e57 100644</span><br><span class="line">--- a/drivers/mmc/core/block.c</span><br><span class="line">+++ b/drivers/mmc/core/block.c</span><br><span class="line">@@ -1829,6 +1829,8 @@ static void mmc_blk_mq_rw_recovery(struct mmc_queue *mq, struct request *req)</span><br><span class="line">        u32 blocks;</span><br><span class="line">        int err;</span><br><span class="line"></span><br><span class="line">+//AAAAAAAAA</span><br><span class="line"></span><br><span class="line">/*</span><br><span class="line"></span><br><span class="line">diff --git a/drivers/mmc/core/block.h b/drivers/mmc/core/block.h</span><br><span class="line">index 31153f6..5501895 100644</span><br><span class="line">--- a/drivers/mmc/core/block.h</span><br><span class="line">+++ b/drivers/mmc/core/block.h</span><br><span class="line">@@ -17,4 +17,6 @@ struct work_struct;</span><br><span class="line"></span><br><span class="line"> void mmc_blk_mq_complete_work(struct work_struct *work);</span><br><span class="line"></span><br><span class="line">+//BBBBBBBBB</span><br><span class="line"></span><br><span class="line"> #endif</span><br></pre></td></tr></table></figure>
+
+<p>如果是已经git commit的两个版本之间的diff, 可直接产生所有修改内容的diff文件:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git diff commit-a commit-b</span><br></pre></td></tr></table></figure>
+
+<p>一般提交给Kernel社区的patch需要按功能和文件拆分成多个patch提交，也就是说应该对某个文件或者路径git diff, 而不建议直接对版本所有文件git diff。例如以上patch可以分为两个diff，内容等价于：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">git diff drivers/mmc/core/block.c</span><br><span class="line"></span><br><span class="line">git diff drivers/mmc/core/block.h</span><br></pre></td></tr></table></figure>
+
+<h3 id="Patch与kernel版本"><a href="#Patch与kernel版本" class="headerlink" title="Patch与kernel版本"></a>Patch与kernel版本</h3><p>为了正确打一个补丁，你需要知道这个补丁是从哪个基础代码版本(base)产生的，以及这个补丁会使源码树升级成哪个版本。</p>
+<h4 id="用于Kernel升级的官方patch"><a href="#用于Kernel升级的官方patch" class="headerlink" title="用于Kernel升级的官方patch"></a>用于Kernel升级的官方patch</h4><p>在kernel.org可以看到有很多Kernel版本之间有patch可以用于升级kernel，例如从kernel 4.19.275升级到5.4.234，可以下载并安装patch-5.4.234.xz</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303091942357.png" alt="image-20230309194230288"></p>
+<h4 id="patchwork社区的第三方patch"><a href="#patchwork社区的第三方patch" class="headerlink" title="patchwork社区的第三方patch"></a>patchwork社区的第三方patch</h4><p>可以下载diff或者series去获取patch文件，根据patch提交时间和代码上下文大致估计当时的Kernel版本</p>
+<ul>
+<li>diff: 当前patch的diff, 由于一个大patch可能被拆分为多个小patch，此文件通常为某个小patch</li>
+<li>mbox: 在diff基础上包含了邮件信息（MIME信息）</li>
+<li>series: 整个功能的所有patch系列的mbox合并内容，包括邮件信息（MIME信息）</li>
+</ul>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303091945285.png" alt="image-20230309194559245"></p>
+<p>Patch命令使用以上的.diff文件，有的也命名为.patch文件</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">patch -p1 &lt; xxx.diff</span><br></pre></td></tr></table></figure>
+
+<p>-p 表示path：跳过第几级目录；1 表示忽略第一级目录</p>
+<p>例如diff如下时，第一级目录用a, b表示，patch -p1将忽略a, b，将drivers&#x2F;mmc&#x2F;xxx的diff内容打patch到当前：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">diff --git a/drivers/mmc/core/bus.c b/drivers/mmc/core/bus.c</span><br><span class="line">index 86d2711..6565754 100644</span><br><span class="line">--- a/drivers/mmc/core/bus.c</span><br><span class="line">+++ b/drivers/mmc/core/bus.c</span><br><span class="line">@@ -308,8 +308,9 @@ int mmc_add_card(struct mmc_card *card)</span><br><span class="line"> 	&#125; else &#123;</span><br><span class="line"> 		pr_info(&quot;%s: new %s%s%s%s%s card at address %04x\n&quot;,</span><br><span class="line"> 			mmc_hostname(card-&gt;host),</span><br><span class="line">-			mmc_card_uhs(card) ? &quot;ultra high speed &quot; :</span><br><span class="line">-			(mmc_card_hs(card) ? &quot;high speed &quot; : &quot;&quot;),</span><br><span class="line">+			mmc_card_uhs2(card) ? &quot;ultra high speed 2 &quot; :</span><br><span class="line">+			(mmc_card_uhs(card) ? &quot;ultra high speed 1&quot; :</span><br><span class="line">+			(mmc_card_hs(card) ? &quot;high speed &quot; : &quot;&quot;)),</span><br><span class="line"> 			mmc_card_hs400(card) ? &quot;HS400 &quot; :</span><br><span class="line"> 			(mmc_card_hs200(card) ? &quot;HS200 &quot; : &quot;&quot;),</span><br><span class="line"> 			mmc_card_ddr52(card) ? &quot;DDR &quot; : &quot;&quot;,</span><br></pre></td></tr></table></figure>
+
+<p>对于一个大功能的多个patch series，需要分别下载各diff文件； 或者一次下载series后手动删除所有MIME信息。</p>
+<h4 id="如何寻找Patch对应的kernel版本"><a href="#如何寻找Patch对应的kernel版本" class="headerlink" title="如何寻找Patch对应的kernel版本"></a>如何寻找Patch对应的kernel版本</h4><p>如果Patch和kernel版本不匹配，patch命令无法合并patch到此kernel中，导致patch失败，因此打patch首先要确定其对应哪个kernel版本。</p>
+<p>（1）如果patch commit是已提交到kernel的官方patch，则可以根据commit-id查找包含此commit的kernel版本，参考：<a target="_blank" rel="noopener" href="https://lwn.net/Articles/392293/">Finding a patch’s kernel version with git</a></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git describe --contains &lt;commit-id&gt;</span><br></pre></td></tr></table></figure>
+
+<p>（2）大多数patch是没提交到kernel的第三方patch，因此patch中的index在kernel是找不到的，所以只能通过提交邮件的信息确定适用的kernel版本。</p>
+<p>以前文提到的 <a target="_blank" rel="noopener" href="https://lore.kernel.org/all/20201106022726.19831-2-takahiro.akashi@linaro.org/T/#u">RFC PATCH v3.1 16&#x2F;27</a>为例，patch是在提交时间点的kernel master版本或tag版本上测试的。</p>
+<blockquote>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">[auto build test WARNING on linus/master]</span><br><span class="line">[also build test WARNING on v5.10-rc2]</span><br><span class="line">[cannot apply to v3.1 next-20201105]</span><br><span class="line">[If your patch is applied to the wrong git tree, kindly drop us a note</span><br></pre></td></tr></table></figure></blockquote>
+<p>另外一个示例：提交者在提交信息中写了基于哪个kernel版本：<a target="_blank" rel="noopener" href="https://lore.kernel.org/all/20221213090047.3805-24-victor.shih@genesyslogic.com.tw/T/#u">Add support UHS-II for GL9755</a></p>
+<blockquote>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">Changes in v6 (Dec. 12, 2022)</span><br><span class="line">* rebased to the linux-kernel-v6.1.0-rc8 in Ulf Hansson next branch.</span><br><span class="line"></span><br><span class="line">Changes in v5 (Oct. 19, 2022)</span><br><span class="line">* rebased to the linux-kernel-v6.1-rc1 in Ulf Hansson next branch.</span><br></pre></td></tr></table></figure></blockquote>
+<p>如果一个第三方patch没有任何kernel版本的信息，只能通过提交时间来尝试kernel，一般情况下不建议这种尝试，因为提交者使用的可能是当时最新的kernel, 也可能是一两个月前的kernel, 中间可能有很多-rc版本。</p>
+<p>下面以<a target="_blank" rel="noopener" href="https://lore.kernel.org/all/525EAED47491124EB5123A51BD2FC79101A30EE2@SHSMSX101.ccr.corp.intel.com/">RFC 0&#x2F;2 mmc: UHS-II implementation</a>为例，尝试寻找此patch可应用的kernel版本，此patch提交信息如下：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">* RE: [RFC 0/2] mmc: UHS-II implementation</span><br><span class="line">  2014-12-27  9:27 [RFC 0/2] mmc: UHS-II implementation Yi Sun</span><br><span class="line">  2014-12-27  9:27 ` [RFC 1/2] mmc: core: support UHS-II in core stack Yi Sun</span><br><span class="line">  2014-12-27  9:27 ` [RFC 2/2] mmc: sdhci: support UHS-II in SDHCI host Yi Sun</span><br></pre></td></tr></table></figure>
+
+<p>（1）首先在linux kernel git tag时间记录找到接近此patch提交时间的kernel版本：</p>
+<p>在<a target="_blank" rel="noopener" href="https://github.com/torvalds/linux">linux kernel github</a> 下拉tag列表，找接近patch申请时间的kernel release版本，可见kernel version &lt; 4.0是此patch可能适用的版本</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303131133722.png" alt="image-20230313113324650"></p>
+<p>（2）patch内容的函数名和上下文</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">@@ -248,6 +252,12 @@ mmc_start_request(struct mmc_host *host, struct mmc_request *mrq)</span><br><span class="line"> 			mrq-&gt;stop-&gt;mrq = mrq;</span><br><span class="line"> 		&#125;</span><br><span class="line"> 	&#125;</span><br><span class="line">+</span><br><span class="line">+	if (host-&gt;flags &amp; MMC_UHS2_SUPPORT &amp;&amp;</span><br><span class="line">+	    host-&gt;flags &amp; MMC_UHS2_INITIALIZED)</span><br><span class="line">+		if (mrq-&gt;cmd-&gt;uhs2_cmd == NULL)</span><br><span class="line">+			uhs2_prepare_sd_cmd(host, mrq);</span><br><span class="line">+</span><br><span class="line"> 	mmc_host_clk_hold(host);</span><br><span class="line"> 	led_trigger_event(host-&gt;led, LED_FULL);</span><br><span class="line"> 	host-&gt;ops-&gt;request(host, mrq);</span><br></pre></td></tr></table></figure>
+
+<p>（3）在 <a target="_blank" rel="noopener" href="https://elixir.bootlin.com/linux/v4.9/source/drivers/mmc/core/core.c#L264">bootlin</a> 找到kernel的同函数并对比上下文：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">if (mrq-&gt;data) &#123;</span><br><span class="line">      ...</span><br><span class="line">      </span><br><span class="line">	mrq-&gt;cmd-&gt;data = mrq-&gt;data;</span><br><span class="line">	mrq-&gt;data-&gt;error = 0;</span><br><span class="line">	mrq-&gt;data-&gt;mrq = mrq;</span><br><span class="line">	if (mrq-&gt;stop) &#123;</span><br><span class="line">		mrq-&gt;data-&gt;stop = mrq-&gt;stop;</span><br><span class="line">		mrq-&gt;stop-&gt;error = 0;</span><br><span class="line">		mrq-&gt;stop-&gt;mrq = mrq;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">///// 此处为patch添加处</span><br><span class="line"></span><br><span class="line">led_trigger_event(host-&gt;led, LED_FULL);</span><br><span class="line">__mmc_start_request(host, mrq);</span><br><span class="line"></span><br><span class="line">return 0;</span><br></pre></td></tr></table></figure>
+
+<p>在stable kernel版本上尝试此patch (跳过-rc版本)，首先找kernel tag早于此patch邮件的时间，尝试了kernel 3.18, 3.17都有patch fail，如下可见patch和kernel有少量代码offset能自动匹配，但是有些差异patch搞不定，例如有merge代码冲突会导致对应的Hunk # FAILED，hunk是patch中的diff –git的代码块。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">ubuntu@ubuntu-Z390-GAMING-X:~/linux-4.9$ patch -p1 &lt; RFC-1-2-mmc-core-support-UHS-II-in-core-stack..diff </span><br><span class="line">patching file drivers/mmc/core/Makefile</span><br><span class="line">Hunk #1 FAILED at 7.</span><br><span class="line">1 out of 1 hunk FAILED -- saving rejects to file drivers/mmc/core/Makefile.rej</span><br><span class="line">patching file drivers/mmc/core/bus.c</span><br><span class="line">Hunk #1 succeeded at 334 with fuzz 2 (offset 26 lines).</span><br><span class="line">patching file drivers/mmc/core/core.c</span><br><span class="line">Hunk #2 FAILED at 36.</span><br><span class="line">Hunk #3 succeeded at 63 with fuzz 2 (offset 6 lines).</span><br><span class="line">Hunk #4 FAILED at 250.</span><br><span class="line">Hunk #5 succeeded at 503 (offset 116 lines).</span><br><span class="line">Hunk #6 succeeded at 518 (offset 116 lines).</span><br><span class="line">Hunk #7 FAILED at 425.</span><br><span class="line">...</span><br><span class="line">6 out of 17 hunks FAILED -- saving rejects to file drivers/mmc/core/core.c.rej</span><br></pre></td></tr></table></figure>
+
+<p>在kernel 3.18打此patch，只有一个fail，可以根据此fail进一步定位</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">Hunk #13 FAILED at 2339.</span><br><span class="line">1 out of 17 hunks FAILED -- saving rejects to file drivers/mmc/core/core.c.rej</span><br></pre></td></tr></table></figure>
+
+<p>core.c.rej 内容如下，注意这里的行号是已经经过patch操作被偏移的代码的行号，实际行号应该去patch原文件查看此hunk的行号，这里只看是什么函数名。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">--- drivers/mmc/core/core.c</span><br><span class="line">+++ drivers/mmc/core/core.c</span><br><span class="line">@@ -2339,7 +2391,9 @@ static int mmc_do_hw_reset(struct mmc_host *host, int check)</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        /* Set initial state and call mmc_set_ios */</span><br><span class="line">-       mmc_set_initial_state(host);</span><br><span class="line">+       /* TODO: need verify this for UHS2. */</span><br><span class="line">+       if (!host-&gt;flags &amp; MMC_UHS2_SUPPORT)</span><br><span class="line">+               mmc_set_initial_state(host);</span><br><span class="line"></span><br><span class="line">        mmc_host_clk_release(host);</span><br></pre></td></tr></table></figure>
+
+<p>patch原文件drivers&#x2F;mmc&#x2F;core&#x2F;core.c搜索函数名对应的hunk内容，得知代码行数是2287：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">@@ -2287,7 +2339,9 @@ static int mmc_do_hw_reset(struct mmc_host *host, int check)</span><br><span class="line"> 	&#125;</span><br><span class="line"> </span><br><span class="line"> 	/* Set initial state and call mmc_set_ios */</span><br><span class="line">-	mmc_set_initial_state(host);</span><br><span class="line">+	/* TODO: need verify this for UHS2. */</span><br><span class="line">+	if (!host-&gt;flags &amp; MMC_UHS2_SUPPORT)</span><br><span class="line">+		mmc_set_initial_state(host);</span><br><span class="line"> </span><br><span class="line"> 	mmc_host_clk_release(host);</span><br></pre></td></tr></table></figure>
+
+<p>去bootlin.com查找<a target="_blank" rel="noopener" href="https://elixir.bootlin.com/linux/v3.18/source/drivers/mmc/core/core.c">kernel 3.18的core.c代码</a>如下(直接搜索drivers&#x2F;mmc&#x2F;core&#x2F;core.c定位到文件，然后在core.c文件ctrl+F查找行数2287)，2287行对不上当然patch fail。</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303131921412.png" alt="image-20230313192134365"></p>
+<p>根据patch提交时间，其大概率是使用3.18~4.0之间的kernel版本，因此搜寻3.18以后，且符合上面fail点的代码，首先就是<a target="_blank" rel="noopener" href="https://elixir.bootlin.com/linux/v3.19/source/drivers/mmc/core/core.c">3.19版本</a>对比代码如下，可见2287开始的几行和patch完全对应：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202303131917802.png" alt="image-20230313191733743"></p>
+<p>打patch也全部通过未报错，所以3.19是此patch可适配的kernel版本：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">ubuntu@ubuntu-Z390-GAMING-X:~/linux-3.19$ patch -p1 &lt; RFC-1-2-mmc-core-support-UHS-II-in-core-stack..diff</span><br><span class="line">patching file drivers/mmc/core/Makefile</span><br><span class="line">patching file drivers/mmc/core/bus.c</span><br><span class="line">patching file drivers/mmc/core/core.c</span><br><span class="line">patching file drivers/mmc/core/sd.c</span><br><span class="line">patching file drivers/mmc/core/sd_ops.c</span><br><span class="line">patching file drivers/mmc/core/uhs2.c</span><br><span class="line">patching file drivers/mmc/core/uhs2.h</span><br><span class="line">patching file include/linux/mmc/core.h</span><br><span class="line">patching file include/linux/mmc/host.h</span><br><span class="line">patching file include/linux/mmc/uhs2.h</span><br></pre></td></tr></table></figure>
+
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/linux/" rel="tag"># linux</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2023/03/01/%E6%B5%85%E8%B0%88%E6%95%B0%E5%AD%97%E7%94%B5%E8%B7%AF%E4%B9%8BPLL/" rel="prev" title="浅谈数字电路之PLL">
+      <i class="fa fa-chevron-left"></i> 浅谈数字电路之PLL
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2023/03/15/hexo%E5%92%8Cnext%E4%B8%BB%E9%A2%98%E7%9A%84%E9%85%8D%E7%BD%AE%E7%AC%94%E8%AE%B0/" rel="next" title="hexo和next主题的配置笔记">
+      hexo和next主题的配置笔记 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#Linux-kernel%E6%8F%90%E4%BA%A4%E4%BB%A3%E7%A0%81%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5"><span class="nav-number">1.</span> <span class="nav-text">Linux kernel提交代码的基本概念</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%A6%82%E4%BD%95%E5%8F%82%E4%B8%8ELinux%E5%86%85%E6%A0%B8%E5%BC%80%E5%8F%91"><span class="nav-number">1.1.</span> <span class="nav-text">如何参与Linux内核开发</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%A6%82%E4%BD%95%E6%8F%90%E4%BA%A4Patch"><span class="nav-number">1.2.</span> <span class="nav-text">如何提交Patch</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%A4%BA%E4%BE%8B%EF%BC%9ALinux-MMC%E5%AD%90%E7%B3%BB%E7%BB%9F%E4%B8%ADUHS-II-Patch%E7%9A%84%E6%BC%94%E5%8C%96%E8%BF%87%E7%A8%8B"><span class="nav-number">2.</span> <span class="nav-text">示例：Linux MMC子系统中UHS-II Patch的演化过程</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Linux-MMC%E5%AD%90%E7%B3%BB%E7%BB%9F%E7%9A%84%E7%8E%B0%E7%8A%B6"><span class="nav-number">2.1.</span> <span class="nav-text">Linux MMC子系统的现状</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Linux-MMC-UHS-II-patch%E7%9A%84%E6%BC%94%E5%8F%98"><span class="nav-number">2.2.</span> <span class="nav-text">Linux MMC UHS-II patch的演变</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%AF%A6%E8%A7%A3Patch%E7%9A%84%E4%BD%BF%E7%94%A8"><span class="nav-number">3.</span> <span class="nav-text">详解Patch的使用</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Patch%E4%B8%8Egit-diff"><span class="nav-number">3.1.</span> <span class="nav-text">Patch与git diff</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Patch%E4%B8%8Ekernel%E7%89%88%E6%9C%AC"><span class="nav-number">3.2.</span> <span class="nav-text">Patch与kernel版本</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E7%94%A8%E4%BA%8EKernel%E5%8D%87%E7%BA%A7%E7%9A%84%E5%AE%98%E6%96%B9patch"><span class="nav-number">3.2.1.</span> <span class="nav-text">用于Kernel升级的官方patch</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#patchwork%E7%A4%BE%E5%8C%BA%E7%9A%84%E7%AC%AC%E4%B8%89%E6%96%B9patch"><span class="nav-number">3.2.2.</span> <span class="nav-text">patchwork社区的第三方patch</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%A6%82%E4%BD%95%E5%AF%BB%E6%89%BEPatch%E5%AF%B9%E5%BA%94%E7%9A%84kernel%E7%89%88%E6%9C%AC"><span class="nav-number">3.2.3.</span> <span class="nav-text">如何寻找Patch对应的kernel版本</span></a></li></ol></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="cursorhu"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">cursorhu</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">110</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">33</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">54</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/cursorhu" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;cursorhu" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:2449055512@qq.com" title="E-Mail → mailto:2449055512@qq.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2025</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">cursorhu</span>
+</div>
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

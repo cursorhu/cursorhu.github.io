@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 8.0.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/my_icon/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/my_icon/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+  <link rel="manifest" href="/images/my_icon/manifest.json">
+  <meta name="msapplication-config" content="/images/my_icon/browserconfig.xml">
+
+<link rel="stylesheet" href="/css/main.css">
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Noto+Serif+SC|Roboto/css?family=Noto Serif SC:300,300italic,400,400italic,700,700italic|Roboto:300,300italic,400,400italic,700,700italic&display=swap&subset=latin,latin-ext">
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"cursorhu.github.io","root":"/","scheme":"Pisces","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="Printk详解printk参考Kernel document: 使用printk记录消息 其中printk是一组4个值,分别是:current, default, minimum 和 boot-time-default. 调试打印一般只配置current和boot-time-default &#x3D; 7 (支持&lt; pr_debug的打印)或者8 (支持&#x3D; pr_debug的打">
+<meta property="og:type" content="article">
+<meta property="og:title" content="linux驱动 -- 常用调试技术">
+<meta property="og:url" content="https://cursorhu.github.io/2023/08/02/linux%E9%A9%B1%E5%8A%A8%20--%20%E5%B8%B8%E7%94%A8%E8%B0%83%E8%AF%95%E6%8A%80%E6%9C%AF/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="Printk详解printk参考Kernel document: 使用printk记录消息 其中printk是一组4个值,分别是:current, default, minimum 和 boot-time-default. 调试打印一般只配置current和boot-time-default &#x3D; 7 (支持&lt; pr_debug的打印)或者8 (支持&#x3D; pr_debug的打">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202308031201872.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202308031201364.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202308031202070.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202309071044981.jpg">
+<meta property="article:published_time" content="2023-08-02T09:52:38.000Z">
+<meta property="article:modified_time" content="2025-11-18T03:31:25.476Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="linux">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202308031201872.png">
+
+<link rel="canonical" href="https://cursorhu.github.io/2023/08/02/linux%E9%A9%B1%E5%8A%A8%20--%20%E5%B8%B8%E7%94%A8%E8%B0%83%E8%AF%95%E6%8A%80%E6%9C%AF/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>linux驱动 -- 常用调试技术 | ThinkNotes</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">ThinkNotes</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Simple is not easy | 化繁为简，知易行难</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于我</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2023/08/02/linux%E9%A9%B1%E5%8A%A8%20--%20%E5%B8%B8%E7%94%A8%E8%B0%83%E8%AF%95%E6%8A%80%E6%9C%AF/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          linux驱动 -- 常用调试技术
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2023-08-02 17:52:38" itemprop="dateCreated datePublished" datetime="2023-08-02T17:52:38+08:00">2023-08-02</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2025-11-18 11:31:25" itemprop="dateModified" datetime="2025-11-18T11:31:25+08:00">2025-11-18</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/linux%E9%A9%B1%E5%8A%A8/" itemprop="url" rel="index"><span itemprop="name">linux驱动</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="Printk详解"><a href="#Printk详解" class="headerlink" title="Printk详解"></a>Printk详解</h2><p>printk参考Kernel document: <a target="_blank" rel="noopener" href="https://www.kernel.org/doc/html/latest/translations/zh_CN/core-api/printk-basics.html">使用printk记录消息</a></p>
+<p>其中printk是一组4个值,分别是:<em>current</em>, <em>default</em>, <em>minimum</em> 和 <em>boot-time-default</em>. 调试打印一般只配置current和boot-time-default &#x3D; 7 (支持&lt; pr_debug的打印)或者8 (支持&#x3D; pr_debug的打印).</p>
+<h3 id="printk的基础用法"><a href="#printk的基础用法" class="headerlink" title="printk的基础用法"></a>printk的基础用法</h3><p>常用示例如下，一般是手动添加打印代码时使用：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">step1: 例如要打印当前函数被调用，添加pr_info(&quot;%s\n&quot;, __FUNCTION__)</span><br><span class="line">step2: echo 7 &gt; /proc/sys/kernel/printk</span><br></pre></td></tr></table></figure>
+
+<p><strong>Tips1: 非root用户不能成功执行<code>sudo echo 7 &gt; /proc/sys/kernel/printk</code>，显示permission denied</strong></p>
+<p>原因：因为sudo仅让echo按root权限执行，没有让&gt;按root权限执行</p>
+<p>解决办法一：<code>sudo su</code>进入root用户</p>
+<p>解决办法二：dmesg配置printk级别：<code>sudo dmesg -n 7</code></p>
+<p>解决办法三：解决任何sudo echo写入的权限问题：</p>
+<p><code>sudo sh -c &quot;cmd&quot;</code>，让bash将整个cmd字符串当一个命令执行，并赋予root权限</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo sh -c &quot;echo 7 &gt; /proc/sys/kernel/printk&quot;</span><br></pre></td></tr></table></figure>
+
+<p>再<code>cat /proc/sys/kernel/printk</code>可见printk已变成7,4,1,7(默认是4,4,1,7)</p>
+<p><strong>Tips2: (printk持久化)系统启动自动设置打印级别：</strong></p>
+<p>&#x2F;proc&#x2F;sys&#x2F;kernel&#x2F;printk每次启动后都恢复为默认值4,4,1,7.</p>
+<p>在&#x2F;etc&#x2F;sysctl.conf添加kernel.printk可以系统启动时自动配置打印级别, 通常用于记录kernel boot阶段的打印：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">sudo vim /etc/sysctl.conf</span><br><span class="line">kernel.printk = 8 4 1 8   #8: 打开包括pr_debug的所有打印级别 </span><br></pre></td></tr></table></figure>
+
+<p>小结:</p>
+<p><strong>如果要观测系统启动中的driver debug打印，必须&#x2F;etc&#x2F;sysctl.conf配置kernel.printk</strong></p>
+<p><strong>如果要观测系统启动后的driver debug打印，建议使用dmesg -n修改printk</strong></p>
+<h3 id="printk在driver-subsystem中的使用"><a href="#printk在driver-subsystem中的使用" class="headerlink" title="printk在driver subsystem中的使用"></a>printk在driver subsystem中的使用</h3><p>Linux driver子系统通常使用printk的封装版。以pci driver为例，pci driver代码已经提供了pci_dbg, pci_info, pci_err等打印函数，其不仅打印arg信息，也打印pci port设备信息，例如以下PCIe driver的log:</p>
+<p>pcieport 0000:00:1b.4 显示了当前的PCIe port。如果有多个PCIe port的打印，可以区分是哪个port的打印输出。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">[   44.713266] pcieport 0000:00:1b.4: DPC: containment event, status:0x1f01 source:0x0000</span><br><span class="line">[   44.713268] pcieport 0000:00:1b.4: DPC: unmasked uncorrectable error detected</span><br><span class="line">[   44.713274] pcieport 0000:00:1b.4: PCIe Bus Error: severity=Uncorrected (Non-Fatal), type=Transaction Layer, (Receiver ID)</span><br><span class="line">[   44.713277] pcieport 0000:00:1b.4:   device [8086:43c4] error status/mask=00200000/00004000</span><br><span class="line">[   44.713280] pcieport 0000:00:1b.4:    [21] ACSViol                (First)</span><br></pre></td></tr></table></figure>
+
+<p><strong>如何设置dev_info, dev_err:</strong></p>
+<p>pci_info, pci_err的打开和pr_info, pr_err一致，只需要设置打印级别大于info&#x2F;err即可：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">echo 7 &gt; /proc/sys/kernel/printk</span><br></pre></td></tr></table></figure>
+
+<p>其他驱动模块的xxx_info, xxx_err也是一样</p>
+<p><strong>如何设置dev_dbg:</strong></p>
+<p>dev_dbg是比较特殊但常用的打印方式，定义如下。</p>
+<p>可见dev_dbg的开启依赖于两个条件：</p>
+<ul>
+<li><p>driver定义了CONFIG_DYNAMIC_DEBUG 或者 DEBUG 宏才能开启，一般使用DEBUG宏</p>
+</li>
+<li><p>printk级别需要为8（7为debug level, 8 &gt; debug level，才能开启debug打印）</p>
+</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">#if defined(CONFIG_DYNAMIC_DEBUG) || \</span><br><span class="line">	(defined(CONFIG_DYNAMIC_DEBUG_CORE) &amp;&amp; defined(DYNAMIC_DEBUG_MODULE))</span><br><span class="line">#define dev_dbg(dev, fmt, ...)						\</span><br><span class="line">	dynamic_dev_dbg(dev, dev_fmt(fmt), ##__VA_ARGS__)</span><br><span class="line">#elif defined(DEBUG)</span><br><span class="line">#define dev_dbg(dev, fmt, ...)						\</span><br><span class="line">	dev_printk(KERN_DEBUG, dev, dev_fmt(fmt), ##__VA_ARGS__)</span><br><span class="line">#else</span><br><span class="line">#define dev_dbg(dev, fmt, ...)						\</span><br><span class="line">(&#123;									\</span><br><span class="line">	if (0)								\</span><br><span class="line">		dev_printk(KERN_DEBUG, dev, dev_fmt(fmt), ##__VA_ARGS__); \</span><br><span class="line">&#125;)</span><br><span class="line">#endif</span><br></pre></td></tr></table></figure>
+
+<p>以pci_dbg为例(内部实现是dev_dbg)，要打开pci_dbg设置如下：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">在Kernel Makefile定义DEBUG宏，可以在driver/pci的Makefile定义，也可以在Kernel根目录Makefile定义：</span><br><span class="line"></span><br><span class="line">方式一：DEBUG宏定义在KCFLAG，即编译此目录的任何driver .o, .ko都定义了DEBUG宏</span><br><span class="line">KCFLAGS += -DDEBUG </span><br><span class="line"></span><br><span class="line">方式二：DEBUG宏定义在某一个driver模块，即编译此模块时定义了DEBUG宏，例如</span><br><span class="line">obj-$&#123;CONFIG_PCI&#125; += -DDEBUG </span><br></pre></td></tr></table></figure>
+
+<p>以上是对任意Driver模块打开DEBUG宏的通用方法；实际上drivers&#x2F;pci已经定义了KCONFIG可选项如下，只需要make menuconfig时设置PCI_DEBUG &#x3D; y 即可对drivers&#x2F;pci的当前目录和子目录的模块编译都定义DEBUG宏：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">### Makefile:</span><br><span class="line">subdir-ccflags-$(CONFIG_PCI_DEBUG) := -DDEBUG</span><br><span class="line"></span><br><span class="line">### Kconfig:</span><br><span class="line">config PCI_DEBUG</span><br><span class="line">	bool &quot;PCI Debugging&quot;</span><br><span class="line">	depends on DEBUG_KERNEL</span><br><span class="line">	help</span><br><span class="line">	  Say Y here if you want the PCI core to produce a bunch of debug</span><br><span class="line">	  messages to the system log.  Select this if you are having a</span><br><span class="line">	  problem with PCI support and want to see more of what is going on.</span><br><span class="line"></span><br><span class="line">	  When in doubt, say N.</span><br></pre></td></tr></table></figure>
+
+<p>最后设置printk level大于DEBUG level：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">echo 8 &gt; /proc/sys/kernel/printk</span><br></pre></td></tr></table></figure>
+
+<p>此后dmesg可查看drivers&#x2F;pci下的所有pci_dbg都被打印（当然也包括pci_info, pci_err等）。</p>
+<h2 id="make-menuconfig配置技巧"><a href="#make-menuconfig配置技巧" class="headerlink" title="make menuconfig配置技巧"></a>make menuconfig配置技巧</h2><h3 id="如何快速定位CONFIG项"><a href="#如何快速定位CONFIG项" class="headerlink" title="如何快速定位CONFIG项"></a>如何快速定位CONFIG项</h3><p>以PCIe driver为例，drivers&#x2F;pci的Makefile有以下CONFIG</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">subdir-ccflags-$(CONFIG_PCI_DEBUG) := -DDEBUG</span><br></pre></td></tr></table></figure>
+
+<p>现在make menuconfig时想快速定位CONFIG_PCI_DEBUG对应的位置再设置为y，定位操作如下：</p>
+<p>step1: 输入<code>/</code> 打开查找，输入要查找的CONFIG名，注意这里不支持模糊匹配</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202308031201872.png" alt="Screenshot from 2023-08-03 11-52-54"></p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202308031201364.png" alt="Screenshot from 2023-08-03 11-51-31"></p>
+<p>step2: 按1跳转到CONFIG对应位置</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202308031202070.png" alt="Screenshot from 2023-08-03 11-51-55"></p>
+<h3 id="直接修改-config文件"><a href="#直接修改-config文件" class="headerlink" title="直接修改.config文件"></a>直接修改.config文件</h3><p>make menuconfig本质是配置.config文件，可以手动修改CONFIG_XXX &#x3D; y&#x2F;m</p>
+<h2 id="Ftrace详解"><a href="#Ftrace详解" class="headerlink" title="Ftrace详解"></a>Ftrace详解</h2><p>ftrace是printk之外，能观测driver&#x2F;kernel的函数(symbol)调用流程和执行时间的重要debug功能。</p>
+<p>ftrace的系统框图如下，只需要配置用户空间暴露的trace文件，就可以读取kernel的trace buffer信息：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202309071044981.jpg" alt="524572_1276915819YAfE"></p>
+<p>ftrace的完整使用教程和原理，参考：</p>
+<p><a target="_blank" rel="noopener" href="https://vdoc.pub/documents/mastering-embedded-linux-programming-2pons0ikdkb0">Mastering Embedded Linux Programming</a></p>
+<p><a target="_blank" rel="noopener" href="https://www.kernel.org/doc/html/v6.1/trace/index.html">Linux Tracing Technologies</a></p>
+<h3 id="function-graph使用示例"><a href="#function-graph使用示例" class="headerlink" title="function_graph使用示例"></a>function_graph使用示例</h3><p>在ftrace相关Kconfig和debugfs已开启情况下，如下是查询sleep调用了哪些function</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">sudo su	#用root操作debugfs</span><br><span class="line">cd /sys/kernel/debug/tracing	#进入tracing目录，方便操作trace文件</span><br><span class="line">echo function_graph &gt; current_tracer	当前tracer使用function_graph模式</span><br><span class="line">echo 1 &gt; tracing_on	#开启trace</span><br><span class="line">sleep 1	#执行要trace的操作</span><br><span class="line">echo 0 &gt; tracing_on	#(可选)关闭trace</span><br><span class="line">cat trace #查看trace的输出文件</span><br></pre></td></tr></table></figure>
+
+<p>部分关键函数调用流程如下：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br></pre></td><td class="code"><pre><span class="line"># tracer: function_graph</span><br><span class="line">#</span><br><span class="line"># CPU  DURATION                  FUNCTION CALLS</span><br><span class="line"># |     |   |                     |   |   |   |</span><br><span class="line"></span><br><span class="line"> 3)               |    cpuidle_enter() &#123;</span><br><span class="line"> 3)   0.271 us    |      tick_nohz_get_next_hrtimer();</span><br><span class="line"> 3)               |      cpuidle_enter_state() &#123;</span><br><span class="line"> 3)               |        leave_mm() &#123;</span><br><span class="line"> 3)               |          switch_mm() &#123;</span><br><span class="line"> 3)               |            switch_mm_irqs_off() &#123;</span><br><span class="line"> 3)   0.441 us    |              load_new_mm_cr3();</span><br><span class="line"> 3)   0.299 us    |              switch_ldt();</span><br><span class="line"> 3)   1.661 us    |            &#125;</span><br><span class="line"> 3)   2.193 us    |          &#125;</span><br><span class="line"> 3)   2.721 us    |        &#125;</span><br><span class="line"> 3)   0.271 us    |        sched_idle_set_state();</span><br><span class="line"> 3)               |        intel_idle_ibrs() &#123;</span><br><span class="line"> 3)   0.273 us    |          spec_ctrl_current();</span><br><span class="line"> 3) # 8916.545 us |        &#125;</span><br><span class="line"> 3)   0.608 us    |        sched_idle_set_state();</span><br><span class="line"> 3)               |        irq_enter_rcu() &#123;</span><br><span class="line"> 3)               |          tick_irq_enter() &#123;</span><br><span class="line"> 3)   0.394 us    |            tick_check_oneshot_broadcast_this_cpu();</span><br><span class="line"> 3)   0.466 us    |            ktime_get();</span><br><span class="line"> 3)   0.337 us    |            nr_iowait_cpu();</span><br><span class="line"> 3)   0.379 us    |            tick_do_update_jiffies64();</span><br><span class="line"> 3)   3.274 us    |          &#125;</span><br><span class="line"> 3)   3.996 us    |        &#125;</span><br><span class="line"> 3)               |        __common_interrupt() &#123;</span><br><span class="line"> 3)               |          handle_edge_irq() &#123;</span><br><span class="line"> 3)   0.348 us    |            _raw_spin_lock();</span><br><span class="line"> 3)               |            irq_chip_ack_parent() &#123;</span><br><span class="line"> 3)   0.526 us    |              apic_ack_irq();</span><br><span class="line"> 3)   1.275 us    |            &#125;</span><br><span class="line"> 3)               |            handle_irq_event() &#123;</span><br><span class="line"> 3)   0.332 us    |              _raw_spin_unlock();</span><br><span class="line"> 3)               |              __handle_irq_event_percpu() &#123;</span><br><span class="line"> 3)               |                e1000_intr_msi [e1000e]() &#123;</span><br><span class="line"> 3)   0.322 us    |                  napi_schedule_prep();</span><br><span class="line"> 3)               |                  __napi_schedule() &#123;</span><br><span class="line"> 3)   0.320 us    |                    __raise_softirq_irqoff();</span><br><span class="line"> 3)   0.982 us    |                  &#125;</span><br><span class="line"> 3)   4.938 us    |                &#125;</span><br><span class="line"> 3)   5.759 us    |              &#125;</span><br><span class="line"> 3)               |              add_interrupt_randomness() &#123;</span><br><span class="line"> 3)   0.334 us    |                fast_mix();</span><br><span class="line"> 3)   0.982 us    |              &#125;</span><br><span class="line"> 3)   0.340 us    |              note_interrupt();</span><br><span class="line"> 3)   0.322 us    |              _raw_spin_lock();</span><br><span class="line"> 3)   9.578 us    |            &#125;</span><br><span class="line"> 3)   0.323 us    |            _raw_spin_unlock();</span><br><span class="line"> 3) + 13.112 us   |          &#125;</span><br><span class="line"> 3) + 13.883 us   |        &#125;</span><br><span class="line"> 3)               |        irq_exit_rcu() &#123;</span><br><span class="line"> 3)               |          __do_softirq() &#123;</span><br><span class="line">                             ....</span><br><span class="line"> 3) ! 135.293 us  |          &#125;</span><br><span class="line"> 3)   0.371 us    |          idle_cpu();</span><br><span class="line"> 3) ! 136.785 us  |        &#125;</span><br><span class="line"> 3) # 9079.848 us |      &#125;</span><br><span class="line"> 3) # 9080.993 us |    &#125;</span><br></pre></td></tr></table></figure>
+
+<p>和<a target="_blank" rel="noopener" href="https://elixir.bootlin.com/linux/latest/source/drivers/cpuidle/cpuidle.c#L372">cpuidle_enter</a>源码对照一致</p>
+<p>注意多个CPU的trace可能混杂，例如下面是CPU1和3交替执行：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"># tracer: function_graph</span><br><span class="line">#</span><br><span class="line"># CPU  DURATION                  FUNCTION CALLS</span><br><span class="line"># |     |   |                     |   |   |   |</span><br><span class="line"> 1)               |    cpuidle_enter() &#123;</span><br><span class="line"> 1)   0.158 us    |      tick_nohz_get_next_hrtimer();</span><br><span class="line"> 1)               |      cpuidle_enter_state() &#123;</span><br><span class="line"> 1)   0.174 us    |        leave_mm();</span><br><span class="line"> 1)   0.158 us    |        sched_idle_set_state();</span><br><span class="line"> 1)               |        intel_idle_ibrs() &#123;</span><br><span class="line"> 1)   0.158 us    |          spec_ctrl_current();</span><br><span class="line"> 1) # 3924.061 us |        &#125;</span><br><span class="line"> 3) # 7847.617 us |        &#125;</span><br><span class="line"> 1)   0.337 us    |        sched_idle_set_state();</span><br><span class="line"> 3)   0.323 us    |        sched_idle_set_state();</span><br><span class="line"> 1)               |        irq_enter_rcu() &#123;</span><br><span class="line"> 1)               |          tick_irq_enter() &#123;</span><br><span class="line"> 3)               |        irq_enter_rcu() &#123;</span><br><span class="line"> 1)   0.210 us    |            tick_check_oneshot_broadcast_this_cpu();</span><br></pre></td></tr></table></figure>
+
+<h3 id="trace函数的过滤-ftrace-filter"><a href="#trace函数的过滤-ftrace-filter" class="headerlink" title="trace函数的过滤(ftrace_filter)"></a>trace函数的过滤(ftrace_filter)</h3><p>查看有哪些symbol(function)可以作为trace过滤关键字，一般kernel和已加载的driver函数都在此列表中</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">cat available_filter_functions #查看所有symbol</span><br><span class="line">cat available_filter_functions | grep pci #查看所有名字带pci的symbol</span><br></pre></td></tr></table></figure>
+
+<p>一个symbol list示例如下(grep pci)，其中带[]的是Driver Module的symbol, 不带的为build-in kernel的symbol：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">read_pci_config</span><br><span class="line">read_pci_config_byte</span><br><span class="line">write_pci_config</span><br><span class="line">write_pci_config_byte</span><br><span class="line">...</span><br><span class="line">pciehp_probe</span><br><span class="line">pciehp_configure_device</span><br><span class="line">pciehp_isr</span><br><span class="line">pciehp_ist</span><br><span class="line">...</span><br><span class="line">sdhci_pci_enable_dma [sdhci_pci]</span><br><span class="line">sdhci_pci_remove_slot [sdhci_pci]</span><br><span class="line">nvme_pci_complete_rq [nvme]</span><br><span class="line">nvme_pci_enable [nvme]</span><br></pre></td></tr></table></figure>
+
+<p>trace带pci关键字的symbol，示例如下：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">echo &quot;&quot; &gt; trace #清空现有trace信息</span><br><span class="line">echo &quot;*pci*&quot; &gt; set_ftrace_filter	#设置过滤关键字</span><br><span class="line">echo 1 &gt; /sys/bus/pci/rescan	#执行trace操作：rescan所有pci设备</span><br></pre></td></tr></table></figure>
+
+<p>关键流程的trace输出如下，<a target="_blank" rel="noopener" href="https://elixir.bootlin.com/linux/latest/source/drivers/pci/probe.c#L2674">pci_scan_slot</a>是rescan的核心操作：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">1)               |      pci_scan_slot() &#123;</span><br><span class="line">1)               |        pci_scan_single_device() &#123;</span><br><span class="line">1)               |          pci_get_slot() &#123;</span><br><span class="line">1)   0.912 us    |            pci_dev_get();</span><br><span class="line">1)   2.467 us    |          &#125;</span><br><span class="line">1)               |          pci_bus_generic_read_dev_vendor_id() &#123;</span><br><span class="line">1)               |            pci_bus_read_config_dword() &#123;</span><br><span class="line">1)               |              pci_read() &#123;</span><br><span class="line">1)   9.293 us    |                pci_conf1_read();</span><br><span class="line">1) + 10.669 us   |              &#125;</span><br><span class="line">1) + 12.057 us   |            &#125;</span><br><span class="line">1) + 18.047 us   |          &#125;</span><br><span class="line">1) + 31.012 us   |        &#125;</span><br><span class="line">1) + 32.412 us   |      &#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="trace过滤的高级用法"><a href="#trace过滤的高级用法" class="headerlink" title="trace过滤的高级用法"></a>trace过滤的高级用法</h3><p>假设想trace某个driver module的所有symbol, 如果仅靠函数关键字很难实现</p>
+<p>解决办法：将available_filter_functions经过文本处理(sed&#x2F;awk&#x2F;grep)后，输出要trace的driver module的所有symbol列表，再写入set_ftrace_filter文件。</p>
+<p>以下示例trace driver module名为bht_sd的所有symbol:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">lsmod | grep bht_sd	#首先确认module已加载</span><br><span class="line">cat available_filter_functions | grep bht_sd	#查看module的symbol是否存在于available_filter_functions</span><br></pre></td></tr></table></figure>
+
+<p>grep bht_sd输出的部分symbol如下：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">bht_sd_resume [bht_sd]</span><br><span class="line">bht_sd_suspend [bht_sd]</span><br><span class="line">bht_sd_pci_release [bht_sd]</span><br><span class="line">bht_sd_remove [bht_sd]</span><br><span class="line">bht_sd_probe [bht_sd]</span><br></pre></td></tr></table></figure>
+
+<p>用grep, awk过滤一下，只保留函数名，去掉[module名]</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">cat available_filter_functions | grep bht_sd | awk &#x27;&#123; print $1 &#125;&#x27;</span><br></pre></td></tr></table></figure>
+
+<p>输出：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">bht_sd_resume </span><br><span class="line">bht_sd_suspend </span><br><span class="line">bht_sd_pci_release</span><br><span class="line">bht_sd_remove </span><br><span class="line">bht_sd_probe</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+
+<p>再写入set_ftrace_filter(要一段时间)，用一个命令处理：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">cat available_filter_functions | grep bht_sd | awk &#x27;&#123; print $1 &#125;&#x27; &gt; set_ftrace_filter</span><br></pre></td></tr></table></figure>
+
+<p>查看set_ftrace_filter可见Driver module的symbol又添加了[module名]，可能是ftrace_filter自己添加的索引信息</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">bht_sd_resume [bht_sd]</span><br><span class="line">bht_sd_suspend [bht_sd]</span><br><span class="line">bht_sd_pci_release [bht_sd]</span><br><span class="line">bht_sd_remove [bht_sd]</span><br><span class="line">bht_sd_probe [bht_sd]</span><br></pre></td></tr></table></figure>
+
+<p>对该Driver设备操作(例如device rescan)，cat&#x2F;vim trace输出正常：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">2)               |    bht_sd_probe [bht_sd]() &#123;</span><br><span class="line">2)   2.516 us    |      os_memset [bht_sd]();</span><br><span class="line">2)               |      DbgInfo [bht_sd]() &#123;</span><br><span class="line">2)   0.911 us    |        fls32 [bht_sd]();</span><br><span class="line">2)   0.850 us    |        os_memcpy [bht_sd]();</span><br><span class="line">2)   5.089 us    |        os_print [bht_sd]();</span><br><span class="line">2) + 12.315 us   |      &#125;</span><br><span class="line">...</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>另外一种对.ko用nm命令输出symbol，参考：<a target="_blank" rel="noopener" href="https://blog.csdn.net/defeattroy/article/details/5618099">defeattroy&#x2F;用Ftrace跟踪内核模块</a></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/linux/" rel="tag"># linux</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2023/07/24/windows-coredump%E7%9A%84%E9%85%8D%E7%BD%AE%E5%92%8C%E6%B5%8B%E8%AF%95/" rel="prev" title="windows core dump的配置和测试">
+      <i class="fa fa-chevron-left"></i> windows core dump的配置和测试
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2023/08/11/linux%E7%B3%BB%E7%BB%9F%20--%20Debian12%20Gnome%E9%85%8D%E7%BD%AE%E7%AC%94%E8%AE%B0/" rel="next" title="linux系统 -- Debian12 Gnome配置笔记">
+      linux系统 -- Debian12 Gnome配置笔记 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#Printk%E8%AF%A6%E8%A7%A3"><span class="nav-number">1.</span> <span class="nav-text">Printk详解</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#printk%E7%9A%84%E5%9F%BA%E7%A1%80%E7%94%A8%E6%B3%95"><span class="nav-number">1.1.</span> <span class="nav-text">printk的基础用法</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#printk%E5%9C%A8driver-subsystem%E4%B8%AD%E7%9A%84%E4%BD%BF%E7%94%A8"><span class="nav-number">1.2.</span> <span class="nav-text">printk在driver subsystem中的使用</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#make-menuconfig%E9%85%8D%E7%BD%AE%E6%8A%80%E5%B7%A7"><span class="nav-number">2.</span> <span class="nav-text">make menuconfig配置技巧</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%A6%82%E4%BD%95%E5%BF%AB%E9%80%9F%E5%AE%9A%E4%BD%8DCONFIG%E9%A1%B9"><span class="nav-number">2.1.</span> <span class="nav-text">如何快速定位CONFIG项</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%9B%B4%E6%8E%A5%E4%BF%AE%E6%94%B9-config%E6%96%87%E4%BB%B6"><span class="nav-number">2.2.</span> <span class="nav-text">直接修改.config文件</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Ftrace%E8%AF%A6%E8%A7%A3"><span class="nav-number">3.</span> <span class="nav-text">Ftrace详解</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#function-graph%E4%BD%BF%E7%94%A8%E7%A4%BA%E4%BE%8B"><span class="nav-number">3.1.</span> <span class="nav-text">function_graph使用示例</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#trace%E5%87%BD%E6%95%B0%E7%9A%84%E8%BF%87%E6%BB%A4-ftrace-filter"><span class="nav-number">3.2.</span> <span class="nav-text">trace函数的过滤(ftrace_filter)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#trace%E8%BF%87%E6%BB%A4%E7%9A%84%E9%AB%98%E7%BA%A7%E7%94%A8%E6%B3%95"><span class="nav-number">3.3.</span> <span class="nav-text">trace过滤的高级用法</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="cursorhu"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">cursorhu</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">110</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">33</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">54</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/cursorhu" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;cursorhu" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:2449055512@qq.com" title="E-Mail → mailto:2449055512@qq.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2025</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">cursorhu</span>
+</div>
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
