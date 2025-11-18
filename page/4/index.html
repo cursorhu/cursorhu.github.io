@@ -191,6 +191,686 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2024/08/30/Windows%20Driver%20Model%20Architecture%20for%20SD%20Host%20projects/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2024/08/30/Windows%20Driver%20Model%20Architecture%20for%20SD%20Host%20projects/" class="post-title-link" itemprop="url">Windows Driver Model Architecture for SD Host projects</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2024-08-30 17:52:38" itemprop="dateCreated datePublished" datetime="2024-08-30T17:52:38+08:00">2024-08-30</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2025-11-18 10:33:54" itemprop="dateModified" datetime="2025-11-18T10:33:54+08:00">2025-11-18</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/windows%E9%A9%B1%E5%8A%A8/" itemprop="url" rel="index"><span itemprop="name">windows驱动</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h1 id="Windows-Driver-Model-Architecture-for-SD-Host-projects"><a href="#Windows-Driver-Model-Architecture-for-SD-Host-projects" class="headerlink" title="Windows Driver Model Architecture for SD Host projects"></a>Windows Driver Model Architecture for SD Host projects</h1><h2 id="Driver-Pair-Model和Device-Driver-Interface-DDI-的概念"><a href="#Driver-Pair-Model和Device-Driver-Interface-DDI-的概念" class="headerlink" title="Driver Pair Model和Device Driver Interface(DDI)的概念"></a>Driver Pair Model和Device Driver Interface(DDI)的概念</h2><h3 id="Driver-Pair-Model"><a href="#Driver-Pair-Model" class="headerlink" title="Driver Pair Model"></a>Driver Pair Model</h3><p>Microsoft provides the general driver, and typically an independent hardware vendor provides the specific driver.</p>
+<p>Driver Pair Model有两种不同层次的实现方式：</p>
+<p>(1) Microsoft定义的某类设备的driver pair model: Microsoft实现XX device port driver + 设备厂商实现XX device miniport driver。这类driver pair model包括：</p>
+<ul>
+<li>(display miniport driver, display port driver)</li>
+<li>(audio miniport driver, audio port driver)</li>
+<li>(storage miniport driver, storage port driver)</li>
+<li>(battery miniclass driver, battery class driver)</li>
+<li>(HID minidriver, HID class driver)</li>
+<li>(changer miniclass driver, changer port driver)</li>
+<li>(NDIS miniport driver, NDIS library)</li>
+</ul>
+<p>Miniport Driver Pair Model：<a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/gettingstarted/minidrivers-and-driver-pairs">https://learn.microsoft.com/en-us/windows-hardware/drivers/gettingstarted/minidrivers-and-driver-pairs</a></p>
+<p>(2) Microsoft定义的general driver pair model：Microsoft实现WDF框架 + 设备厂商实现KMDF(Kernel Mode WDF)驱动。</p>
+<ul>
+<li>The driver is split into two pieces: one that handles general processing and one that handles processing that is specific to a particular device.</li>
+<li>The general piece, called the Framework, is written by Microsoft.</li>
+<li>The specific piece, called the KMDF driver, may be written by Microsoft or an independent hardware vendor.</li>
+</ul>
+<p> KMDF as a generic driver pair model: <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/gettingstarted/kmdf-as-a-generic-pair-model">https://learn.microsoft.com/en-us/windows-hardware/drivers/gettingstarted/kmdf-as-a-generic-pair-model</a></p>
+<h3 id="Device-Driver-Interface-DDI"><a href="#Device-Driver-Interface-DDI" class="headerlink" title="Device Driver Interface(DDI)"></a>Device Driver Interface(DDI)</h3><p>The DDI Compliance rules define requirements for the proper interaction between a driver and the kernel interface of the operating system</p>
+<p><a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/devtest/static-driver-verifier-rules">https://learn.microsoft.com/en-us/windows-hardware/drivers/devtest/static-driver-verifier-rules</a></p>
+<p>DDI相当于应用层的API规范，对于每种类型的Driver Pair Mode，都有对应的DDI要求：</p>
+<p><a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/devtest/rules-for-audio-drivers">Rules for Audio Drivers</a><br><a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/devtest/rules-for-avstream-drivers">Rules for AVStream Drivers</a><br><a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/devtest/sdv-rules-for-wdm-drivers">Rules for WDM Drivers</a><br><a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/devtest/sdv-rules-for-kmdf-drivers">Rules for KMDF Drivers</a><br><a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/devtest/sdv-rules-for-ndis-drivers">Rules for NDIS Drivers</a><br><a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/devtest/sdv-rules-for-storport-drivers">Rules for Storport Drivers</a></p>
+<p>重点对比以下KMDF（Kernel Mode WDF）的DDI和Storport的DDI：</p>
+<p>KMDF DDI rules：只说明了一些WDF函数接口的调用条件和先后顺序要求，没有禁用任何WDF函数接口。</p>
+<p>Storport DDI rules: 专门定义了禁用的WDM函数列表HwStorPortProhibitedDDIs: a list of WDM DDIs that should not be called in physical StorPort miniport drivers</p>
+<p><a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/devtest/ddi-usage-rule-set--storport-">https://learn.microsoft.com/en-us/windows-hardware/drivers/devtest/ddi-usage-rule-set--storport-</a></p>
+<h3 id="几个关键问题"><a href="#几个关键问题" class="headerlink" title="几个关键问题"></a>几个关键问题</h3><p>（1）Driver Pair Model和Dirver接口函数DDI是什么关系？</p>
+<p>Driver Pair Model是Diver接口函数DDI的集合，独立的功能例如创建设备，处理中断，处理IO请求，这些都是Diver接口函数去实现；这些Diver接口函数的集合使用分层设计（部分是Microsoft实现，部分是设备厂商实现）就是Driver Pair Model。</p>
+<p>举个例子：Storport-miniport的Driver Pair Model中，默认使用WDM DDI去实现port driver部分和miniport driver部分。</p>
+<p>（2）为什么Storport Driver Pair Model会禁用很多WDM接口函数(WDM DDI)，尤其是从Win11开始？</p>
+<p>原因：微软定义的Storport driver pair model本身也是基于WDM和WDF函数(DDI)上实现，即用WDM或者WDF Model去实现Storage设备（例如SCSI, NVMe）的数据结构和特殊流程函数，封装成Storport的DDI。而微软的Driver开发趋势是弃用WDM逐步过渡到WDF，因此Storport为了适配Win11系统，可能有很多Storport DDI用WDF DDI重写了，因此Storport禁用了设备厂商去直接调用很多WDM DDI，避免造成同一个功能用WDM和WDF都去实现了而产生冲突。</p>
+<h2 id="SD-host的Driver-Model选型"><a href="#SD-host的Driver-Model选型" class="headerlink" title="SD host的Driver Model选型"></a>SD host的Driver Model选型</h2><h3 id="支持SD-host驱动开发的Driver-Model"><a href="#支持SD-host驱动开发的Driver-Model" class="headerlink" title="支持SD host驱动开发的Driver Model"></a>支持SD host驱动开发的Driver Model</h3><p>对于SD设备生态可用的Driver Pair Model有：</p>
+<ul>
+<li><p>KMDF Framework + KMDF driver：通用框架，任意厂商可用KMDF去实现任意类型设备的host&#x2F;slave驱动；微软也在KMDF去升级已有的特定设备框架，例如微软定义的usbport驱动框架：USB 1.0&#x2F;2.0使用WDM（usbport.sys），USB 3.0使用WDF（Wdf01000.sys）</p>
+</li>
+<li><p>Storport + storage miniport：<a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/storage/storport-miniport-drivers">https://learn.microsoft.com/en-us/windows-hardware/drivers/storage/storport-miniport-drivers</a></p>
+<p>这个Driver Model支持厂商实现SD host驱动，但其数据和流程定义很多是针对SCSI&#x2F;NVMe等大容量Disk设备，对于SD host&#x2F;device没有专门的定义；此外Storport从Win11开始禁用了很多WDM DDI，代码开发限制多。</p>
+</li>
+<li><p>sdport + sdhci-miniport：<a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/samples/microsoft/windows-driver-samples/standard-sd-host-controller-miniport/">https://learn.microsoft.com/en-us/samples/microsoft/windows-driver-samples/standard-sd-host-controller-miniport/</a></p>
+<p>实现SD protocol的port driver框架，支持厂商实现vendor SD host驱动，但API文档已停止维护, sample code有维护（win11）。</p>
+</li>
+<li><p>sdbus + sddisk: <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/sd/sd-card-driver-stack">https://learn.microsoft.com/en-us/windows-hardware/drivers/sd/sd-card-driver-stack</a></p>
+<p>微软的Inbox SD驱动使用此框架；只支持SD&#x2F;SDIO device厂商去写device driver，不支持厂商实现SD host驱动。</p>
+</li>
+</ul>
+<h3 id="微软的Driver-Model选型的参考文档"><a href="#微软的Driver-Model选型的参考文档" class="headerlink" title="微软的Driver Model选型的参考文档"></a>微软的Driver Model选型的参考文档</h3><p><a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/develop/creating-a-new-driver">https://learn.microsoft.com/en-us/windows-hardware/drivers/develop/creating-a-new-driver</a></p>
+<p>其中分为两种选项：</p>
+<p>（1）KMDF框架</p>
+<p>（2）miniport框架</p>
+<p>微软推荐miniport框架都用WDM DDI开发；不推荐miniport + WDF DDI的混合开发方式（尽管可行），参考：</p>
+<p>If your device technology has a minidriver model, and you aren’t able to find a specific template for your type of minidriver, the Windows Driver Model (WDM) template is most likely going to be your starting point. Refer to your technology-specific documentation for guidance. In rare cases, you can use KMDF to write a minidriver, but usually the starting point is WDM.</p>
+<p>微软开发论坛（OSR）也提出过storport的WDM不够灵活，又不能兼容WDF DDI的问题：</p>
+<p><a target="_blank" rel="noopener" href="https://www.osr.com/nt-insider/2014-issue4/win7-vs-win8-storport-miniports/">https://www.osr.com/nt-insider/2014-issue4/win7-vs-win8-storport-miniports/</a></p>
+<p><a target="_blank" rel="noopener" href="https://community.osr.com/t/wdfdeviceminiportcreate-and-virtual-storport/46617/8">https://community.osr.com/t/wdfdeviceminiportcreate-and-virtual-storport/46617/8</a></p>
+<p>结论：KMDF框架是万能方案</p>
+<h2 id="从Storport-miniport框架过渡到KMDF框架"><a href="#从Storport-miniport框架过渡到KMDF框架" class="headerlink" title="从Storport-miniport框架过渡到KMDF框架"></a>从Storport-miniport框架过渡到KMDF框架</h2><p>（1）问题：Storport-miniport框架一定能porting到KMDF框架吗？</p>
+<p>参考：<a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/wdf/which-drivers-can-be-ported">https://learn.microsoft.com/en-us/windows-hardware/drivers/wdf/which-drivers-can-be-ported</a></p>
+<p>Which WDM drivers can I port to WDF?</p>
+<p>For some device types, system-supplied device class and port drivers provide driver dispatch functions and call a vendor-supplied miniport driver to handle specific I&#x2F;O details. These miniport drivers are essentially callback libraries and are not supported by WDF.</p>
+<p>结论1：如果该Storage设备驱动依赖于Storport框架定义的流程，例如SCSI， NVMe设备依赖于Storport定义的SCSI和NVMe初始化和I&#x2F;O流程。那么就不能直接porting到WDF，因为WDF没有定义特定设备的请求流程。</p>
+<p>结论2：对于SD设备，Storport框架本身就没有实现SD协议的初始化和I&#x2F;O流程。SD host设备的Storport-miniport驱动完全可以porting到WDF框架，<strong>唯一可能有问题的是SD disk相关的Storport请求对应WDF的哪些请求？移植到WDF必须要求SD host和Disk整个生态都能顺利过渡</strong>。</p>
+<p>（2）问题：Storport代码如何porting到KMDF</p>
+<p>主要工作是将Storport-miniport中的DDI函数，映射到KMDF的DDI函数。</p>
+<p>Storport-miniport的DDI列表：<a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/storage/storport-driver-support-routines">https://learn.microsoft.com/en-us/windows-hardware/drivers/storage/storport-driver-support-routines</a></p>
+<p>KMDF的DDI列表：<a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/_wdf/">https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/_wdf/</a></p>
+<p>基于此方法，后面两章分为两部分：</p>
+<ul>
+<li><p>Storport DDI在SD host miniport driver中的使用（第4章）：SD host miniport driver用到了哪些DDI，实现什么功能。</p>
+</li>
+<li><p>从Storport DDI到KMDF DDI（第5章）：SD host miniport driver用到的Storport DDI应该用哪些KMDF DDI去重写功能。</p>
+</li>
+</ul>
+<h2 id="Storport-DDI在SD-host-miniport-driver中的使用"><a href="#Storport-DDI在SD-host-miniport-driver中的使用" class="headerlink" title="Storport DDI在SD host miniport driver中的使用"></a>Storport DDI在SD host miniport driver中的使用</h2><p>Storport DDI routine分为两大类：</p>
+<p>（1）callback routine：是Storport定义函数形式，miniport实现函数内容</p>
+<p>（2）normal routine：是Storport定义函数形式和内容，miniport只调用</p>
+<table>
+<thead>
+<tr>
+<th>Storport Callback Routine</th>
+<th>sub-function parameter</th>
+<th>Function Description</th>
+<th>SD miniport driver’s implementation for this callback</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>HwStorInitialize</strong></td>
+<td><strong>HwStorPassiveInitializeRoutine</strong></td>
+<td>The <strong>HwStorInitialize</strong> routine initializes the miniport driver after a system reboot or power failure occurs. It is called by StorPort after <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nc-storport-hw_find_adapter"><strong>HwStorFindAdapter</strong></a> successfully returns. <strong>HwStorInitialize</strong> initializes the HBA and finds all devices that are of interest to the miniport driver.<br/>The following responsibilities are shared between HwStorInitialize and HwStorPassiveInitializeRoutine:<br/>Initialize hardware for the HBA registers and buffers.<br/>Initialize and allocate all DeviceExtension fields.<br/>Set up and initialize all events and DPCs that are used by the miniport driver.<br/><a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nc-storport-hw_initialize">https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nc-storport-hw_initialize</a>  <br/> <br/><a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nc-storport-hw_passive_initialize_routine">https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nc-storport-hw_passive_initialize_routine</a></td>
+<td>Support. <br/>HwStorPassiveInitializeRoutine中注册了Adapter的POFX数据（StorPortInitializePoFxPower）</td>
+</tr>
+<tr>
+<td><strong>HwStorInterrupt</strong></td>
+<td>N&#x2F;A</td>
+<td>The Storport driver calls the <strong>HwStorInterrupt</strong> routine after the HBA generates an interrupt request. The <strong>HwStorInterrupt</strong> routine should return within 50 microseconds, ideally as short a time as possible. Therefore, all activity does not have to occur at high IRQL should be deferred to the [<strong>HwStorDpcRoutine</strong>]</td>
+<td>Support. <br/>用于SD card的插拔卡中断和数据传输完成或错误中断的处理入口</td>
+</tr>
+<tr>
+<td><strong>HwStorFindAdapter</strong></td>
+<td><strong>PORT_CONFIGURATION_INFORMATION</strong> contains configuration information for a host bus adapter (HBA). <br/><a target="_blank" rel="noopener" href="https://learn.microsoft.com/zh-cn/windows-hardware/drivers/ddi/storport/ns-storport-_port_configuration_information">https://learn.microsoft.com/zh-cn/windows-hardware/drivers/ddi/storport/ns-storport-_port_configuration_information</a></td>
+<td>The <strong>HwStorFindAdapter</strong> routine uses the supplied configuration to determine whether a specific HBA is supported and, if it is, to return configuration information about that adapter.<br/><br/><a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nc-storport-hw_find_adapter">https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nc-storport-hw_find_adapter</a><br/><br/><a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/ns-storport-_port_configuration_information">https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/ns-storport-_port_configuration_information</a></td>
+<td>Support. <br/>Main tasks:<br/>1. Zero the device extention<br/>2. Get the memory base, the vendor ID and the device ID<br/>3. Port Configuration Information initialization<br/>4. Driver used memory allocation<br/>5. Initialize the timer, tag queue, host capability, vendor register settings, host software structure<br/></td>
+</tr>
+<tr>
+<td><strong>HwStorAdapterControl</strong></td>
+<td><strong>SCSI_ADAPTER_CONTROL_TYPE</strong> <br/> <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/ne-storport-scsi_adapter_control_type">https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/ne-storport-scsi_adapter_control_type</a></td>
+<td>A miniport driver’s <strong>HwStorAdapterControl</strong> routine is called to perform synchronous operations to control the state or behavior of an adapter, such as stopping or restarting the host bus adapter (HBA) for power management. <br/><a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nc-storport-hw_adapter_control">https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nc-storport-hw_adapter_control</a></td>
+<td>支持部分ControlTypes：<br/>ScsiQuerySupportedControlTypes, ScsiStopAdapter, ScsiRestartAdapter, ScsiSetBootConfig, ScsiSetRunningConfig, ScsiPowerSettingNotification, ScsiAdapterPoFxPowerActive, ScsiAdapterPower, ScsiAdapterPrepareForBusReScan, ScsiAdapterSystemPowerHints,</td>
+</tr>
+<tr>
+<td></td>
+<td>ScsiQuerySupportedControlTypes</td>
+<td>Reports the adapter-control operations implemented by the miniport driver. A miniport must support this control type. Using <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/ns-storport-scsi_supported_control_type_list"><strong>SCSI_SUPPORTED_CONTROL_TYPE_LIST</strong></a> structure</td>
+<td>support.</td>
+</tr>
+<tr>
+<td></td>
+<td>ScsiStopAdapter</td>
+<td>Shuts down the HBA. A miniport must support this control type.</td>
+<td>support. <br/>但什么都没干</td>
+</tr>
+<tr>
+<td></td>
+<td>ScsiRestartAdapter</td>
+<td>Reinitializes an HBA. A miniport must support this control type.</td>
+<td>support. <br/>调用req_enter_d0()函数，做host reset &amp; init，然后判断卡在位，发起card-change event去处理Adapter Stop期间的card insert or card remove操作。</td>
+</tr>
+<tr>
+<td></td>
+<td>ScsiSetBootConfig</td>
+<td>Restores any settings on an HBA that the BIOS might need to reboot. A miniport driver must implement <strong>ScsiSetBootConfig</strong> if it must call <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nf-storport-storportgetbusdata"><strong>StorPortGetBusData</strong></a> or <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nf-storport-storportsetbusdatabyoffset"><strong>StorPortSetBusDataByOffset</strong></a> before the system will be able to reboot.</td>
+<td>support. <br/>但什么都没干</td>
+</tr>
+<tr>
+<td></td>
+<td>ScsiSetRunningConfig</td>
+<td>Restores any settings on an HBA that the miniport driver might need to control the HBA while the system is running. A miniport driver must implement <strong>ScsiSetRunningConfig</strong> if it must call <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nf-storport-storportgetbusdata"><strong>StorPortGetBusData</strong></a> or <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nf-storport-storportsetbusdatabyoffset"><strong>StorPortSetBusDataByOffset</strong></a> to restore the appropriate running configuration to the HBA before it can be restarted.</td>
+<td>support. <br/>调用pcr_part_a_restore和pcr_part_b_restore函数去配置SD host PCR register的一些默认值</td>
+</tr>
+<tr>
+<td></td>
+<td>ScsiPowerSettingNotification</td>
+<td>Notification for a registered power setting change. Using <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/ns-storport-stor_power_setting_info"><strong>STOR_POWER_SETTING_INFO</strong></a> structure</td>
+<td>support. <br/>但什么都没干</td>
+</tr>
+<tr>
+<td></td>
+<td>ScsiAdapterPower</td>
+<td>Reports the adapter power on or power off states. Using <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/ns-storport-stor_adapter_control_power"><strong>STOR_ADAPTER_CONTROL_POWER</strong></a> structure. 其中包括<strong>STOR_POWER_ACTION</strong>和<strong>STOR_DEVICE_POWER_STATE</strong> 两个子参数</td>
+<td>support. <br/>实现STOR_DEVICE_POWER_STATE &#x3D; D0~D3和STOR_POWER_ACTION &#x3D; Sleep&#x2F;Hibernate&#x2F;Shutdown&#x2F;ShutdownReset&#x2F;ShutdownOff&#x2F;StorPowerActionNone的设备、系统的电源状态请求</td>
+</tr>
+<tr>
+<td></td>
+<td>ScsiAdapterPoFxPowerRequired</td>
+<td>Notifies the miniport whether power is required or not for the adapter component.</td>
+<td>Not support</td>
+</tr>
+<tr>
+<td></td>
+<td>ScsiAdapterPoFxPowerActive</td>
+<td>Notifies the miniport whether the adapter component is active or idle.using <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/ns-storport-stor_pofx_active_context"><strong>STOR_POFX_ACTIVE_CONTEXT</strong></a> structure</td>
+<td>support<br/>只读了Storport下发的STOR_POFX_ACTIVE_CONTEXT，而没使用。相当于什么都没干</td>
+</tr>
+<tr>
+<td></td>
+<td>ScsiAdapterPoFxPowerSetFState</td>
+<td>Notifies the miniport to set the adapter component to the given F-state. using <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/ns-storport-stor_pofx_fstate_context"><strong>STOR_POFX_FSTATE_CONTEXT</strong></a> structure</td>
+<td>Not support</td>
+</tr>
+<tr>
+<td></td>
+<td>ScsiAdapterPoFxPowerControl</td>
+<td>Requests that the miniport execute a private power control operation that was initiated for the adapter by a power engine plug-in (PEP). using <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/ns-storport-stor_pofx_power_control"><strong>STOR_POFX_POWER_CONTROL</strong></a> structure.</td>
+<td>support. <br/>但什么都没干</td>
+</tr>
+<tr>
+<td></td>
+<td>ScsiAdapterPrepareForBusReScan</td>
+<td>Notifies the miniport to prepare the adapter for bus enumeration.</td>
+<td>support. <br/>但什么都没干</td>
+</tr>
+<tr>
+<td></td>
+<td>ScsiAdapterSystemPowerHints</td>
+<td>Provides system power hints to the miniport. using <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/ns-storport-stor_system_power_hints"><strong>STOR_SYSTEM_POWER_HINTS</strong></a> structure</td>
+<td>support. <br/>但什么都没干</td>
+</tr>
+<tr>
+<td></td>
+<td>ScsiAdapterFilterResourceRequirements</td>
+<td>Filters the required resources for the adapter. Using <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/ns-storport-stor_filter_resource_requirements"><strong>STOR_FILTER_RESOURCE_REQUIREMENTS</strong></a> structure.</td>
+<td>Not support</td>
+</tr>
+<tr>
+<td></td>
+<td>ScsiAdapterPoFxMaxOperationalPower</td>
+<td>Communicates a maximum operational power value to the miniport. Using <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/ns-storport-stor_max_operational_power"><strong>STOR_MAX_OPERATIONAL_POWER</strong></a> structure</td>
+<td>Not support</td>
+</tr>
+<tr>
+<td></td>
+<td>ScsiAdapterPoFxSetPerfState</td>
+<td>Informs the miniport of the status of a P-State transition requested by a call to <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nf-storport-storportpofxsetperfstate"><strong>StorPortPoFxSetPerfState</strong></a>. Using STOR_POFX_PERF_STATE_CONTEXT**](<a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/ns-storport-stor_pofx_perf_state_context">https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/ns-storport-stor_pofx_perf_state_context</a>) structure</td>
+<td>Not support</td>
+</tr>
+<tr>
+<td></td>
+<td>ScsiAdapterSurpriseRemoval</td>
+<td>Notifies the miniport that the unit has been surprise-removed.</td>
+<td>Not support</td>
+</tr>
+<tr>
+<td></td>
+<td>ScsiAdapterSerialNumber</td>
+<td>Requests that the miniport retrieve the adapter’s serial number.</td>
+<td>Not support</td>
+</tr>
+<tr>
+<td></td>
+<td>ScsiAdapterQueryFruId</td>
+<td>Available starting in Windows 10 version 21H1. Queries the ID of a fault replacement unit (FRU) of the adapter. Storport sends this control only if a miniport has also previously called <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nf-storport-storportsetfeaturelist"><strong>StorPortSetFeatureList</strong></a> in its <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nc-storport-hw_find_adapter"><strong>HwFindAdapter</strong></a> routine with <strong>StorportFeatureFruIdAdapterControl</strong> specified.</td>
+<td>Not support</td>
+</tr>
+<tr>
+<td></td>
+<td>ScsiAdapterSetEventLogging</td>
+<td>Available starting in Windows 10 version 21H1. Notifies the miniport about whether a specific event channel is enabled or disabled for an adapter. Storport sends this control only if a miniport has also previously called <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nf-storport-storportsetfeaturelist"><strong>StorPortSetFeatureList</strong></a> in its <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nc-storport-hw_find_adapter"><strong>HwFindAdapter</strong></a> routine with <strong>StorportFeatureFruIdAdapterControl</strong> specified.</td>
+<td>Not support</td>
+</tr>
+<tr>
+<td></td>
+<td>ScsiAdapterResetBusSynchronous</td>
+<td>Available starting in Windows 11, version 22H2. Storport sends this control during the handling of an IOCTL_STORAGE_DEVICE_RESET. The miniport driver should handle this control similar to what it does in its <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nc-storport-hw_reset_bus"><strong>HwResetBus</strong></a> callback routine. Storport sends this control only if a miniport has also previously called <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nf-storport-storportsetfeaturelist"><strong>StorPortSetFeatureList</strong></a> in its <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nc-storport-hw_find_adapter"><strong>HwFindAdapter</strong></a> routine with <strong>StorportFeatureResetBusSynchronous</strong> specified.</td>
+<td>Not support</td>
+</tr>
+<tr>
+<td></td>
+<td>ScsiAdapterPreparePLDR</td>
+<td>Storport sends this control to notify miniport to do necessary work before invoking PLDR. Available starting in Windows 11, version 24H2</td>
+<td>Not support</td>
+</tr>
+<tr>
+<td></td>
+<td>ScsiNvmeofAdapterOperation</td>
+<td>Indicates whether ScsiNvmeofAdapterOperation is supported. Available starting in Windows 11, version 24H2.</td>
+<td>Not support</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><strong>HwStorStartIo</strong> and <strong>HwStorBuildIo</strong></td>
+<td><strong>HwStorBuildIo</strong> and <strong>HwStorStartIo</strong> receive the following Srb function types:</td>
+<td>The Storport driver calls the <strong>HwStorStartIo</strong> routine one time for each incoming I&#x2F;O request.<br/><strong>HwStorStartIo</strong> initiates an I&#x2F;O operation. StorPort is designed to use a miniport’s private data that is prepared in <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nc-storport-hw_buildio"><strong>HwStorBuildIo</strong></a> and stored in either <strong>DeviceExtension</strong> or <strong>Srb-&gt;SrbExtension</strong>. Because <strong>HwStorBuildIo</strong> is called without spin locks, the best driver performance is achieved by preparing as much data as possible in <strong>HwStorBuildIo</strong>. <br/><br/><a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nc-storport-hw_startio">https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nc-storport-hw_startio</a></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>The <strong>HwStorBuildIo</strong> routine processes the SRB with unsynchronized access to shared system data structures before passing it to <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nc-storport-hw_startio"><strong>HwStorStartIo</strong></a>.</td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>SRB_FUNCTION_EXECUTE_SCSI</td>
+<td>Sends a CDB to the specified bus&#x2F;target&#x2F;lun.</td>
+<td>根据如下SCSI operation code分别处理：<br/>SCSIOP_TEST_UNIT_READY, SCSIOP_REQUEST_SENSE, SCSIOP_INQUIRY, SCSIOP_READ_CAPACITY, SCSIOP_READ, SCSIOP_WRITE, SCSIOP_MODE_SENSE, SCSIOP_VERIFY, SCSIOP_LOAD_UNLOAD, SCSIOP_MEDIUM_REMOVAL<br/>注：这部分代码有多存疑的地方，代码本身是从老的SCSI驱动移植过来，SD设备不属于SCSI disk类型，这些SCSI请求哪些应该在SD disk上用哪些不该用，没有微软文档说明</td>
+</tr>
+<tr>
+<td></td>
+<td>SRB_FUNCTION_IO_CONTROL</td>
+<td>Miniport defined.</td>
+<td>直接返回SRB_STATUS_SUCCESS</td>
+</tr>
+<tr>
+<td></td>
+<td>SRB_FUNCTION_RESET_LOGICAL_UNIT</td>
+<td>Reset the specified logical unit (if the device is capable).</td>
+<td>Not support</td>
+</tr>
+<tr>
+<td></td>
+<td>SRB_FUNCTION_RESET_DEVICE</td>
+<td>Reset the specified Scsi Target.</td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>SRB_FUNCTION_RESET_BUS</td>
+<td>Reset all of the targets on the specified SCSI bus.</td>
+<td>直接返回SRB_STATUS_SUCCESS</td>
+</tr>
+<tr>
+<td></td>
+<td>SRB_FUNCTION_FLUSH</td>
+<td>Instructs the miniport driver to flush all cached data.</td>
+<td>Not support</td>
+</tr>
+<tr>
+<td></td>
+<td>SRB_FUNCTION_SHUTDOWN</td>
+<td>Instructs the miniport driver to flush all cached data preparatory to shut down.</td>
+<td>Not support</td>
+</tr>
+<tr>
+<td></td>
+<td>SRB_FUNCTION_DUMP_POINTERS</td>
+<td>Supplies information needed for the miniport driver to support crash dump and hibernation. This request is sent to a Storport virtual miniport driver that is used to control the disk that holds the crash dump data. Starting with Windows 8, non-virtual miniport drivers can optionally receive this request.</td>
+<td>Not support</td>
+</tr>
+<tr>
+<td></td>
+<td>SRB_FUNCTION_FREE_DUMP_POINTERS</td>
+<td>Starting with Windows 8, this request is sent to the miniport to free resources allocated during the SRB_FUNCTION_DUMP_POINTERS request.</td>
+<td>Not support</td>
+</tr>
+<tr>
+<td></td>
+<td>SRB_FUNCTION_PNP</td>
+<td><a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/srb/ns-srb-_stor_device_capabilities_ex">https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/srb/ns-srb-_stor_device_capabilities_ex</a></td>
+<td>只处理STOR_DEVICE_CAPABILITIES_EX定义的StorQueryCapability请求类型去上报Removable，EjectSupported等能力<br/>The <strong>STOR_DEVICE_CAPABILITIES_EX</strong> structure reports device capabilities to the SCSI port driver in response to a capabilities query in a SCSI request block (SRB) with a function of SRB_FUNCTION_PNP<br/>注：此请求是否兼容Storport存疑，因为是作为SCSI port driver定义的结构</td>
+</tr>
+<tr>
+<td><strong>HwStorResetBus</strong></td>
+<td>N&#x2F;A</td>
+<td>The <strong>HwStorResetBus</strong> routine is called by the port driver to clear error conditions.</td>
+<td>support. <br/>其中实现card关电，host reset，cancel所有IO的操作</td>
+</tr>
+<tr>
+<td><strong>HwStorUnitControl</strong></td>
+<td><strong>SCSI_UNIT_CONTROL_TYPE</strong> enumeration contains unit control operations, where each control type initiates an action on a unit by the miniport driver. <br/><a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/ne-storport-scsi_unit_control_type">https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/ne-storport-scsi_unit_control_type</a></td>
+<td>A miniport driver’s <strong>HwStorUnitControl</strong> routine is called to perform synchronous operations to control the state of storage unit device. <br/><a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nc-storport-hw_unit_control">https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nc-storport-hw_unit_control</a></td>
+<td>Support.</td>
+</tr>
+<tr>
+<td></td>
+<td>ScsiQuerySupportedUnitControlTypes</td>
+<td>Reports the unit-control operations implemented by the miniport driver. A miniport must support this control type.</td>
+<td>Support ScsiQuerySupportedUnitControlTypes, ScsiUnitStart, ScsiUnitPower, ScsiUnitPoFxPowerInfo, ScsiUnitPoFxPowerActive, ScsiUnitPoFxPowerSetFState</td>
+</tr>
+<tr>
+<td></td>
+<td>ScsiUnitUsage</td>
+<td>Notifies the miniport whether the logical unit is used for any supported usage types.</td>
+<td>Not support</td>
+</tr>
+<tr>
+<td></td>
+<td>ScsiUnitStart</td>
+<td>Notifies the miniport to start a unit device.</td>
+<td>support. 但实际什么都没干</td>
+</tr>
+<tr>
+<td></td>
+<td>ScsiUnitPower</td>
+<td>Reports the unit power on or power off states.If the miniport supports this control type, it will not receive a storage request block with SRB_FUNCTION_POWER.</td>
+<td>support. 但实际什么都没干</td>
+</tr>
+<tr>
+<td></td>
+<td>ScsiUnitPoFxPowerInfo</td>
+<td>Notifies the miniport if idle power management is enabled or disabled on the unit component. The miniport should call <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nf-storport-storportinitializepofxpower"><strong>StorPortInitializePoFxPower</strong></a> within this unit control if idle power management was enabled and if it supports runtime power management for the unit device.</td>
+<td>support. 对Disk注册了Pofx(StorPortInitializePoFxPower). <br/>注：这里合理性存疑：Host Driver需要给Disk注册Pofx吗？</td>
+</tr>
+<tr>
+<td></td>
+<td>ScsiUnitPoFxPowerRequired</td>
+<td>Notifies the miniport whether power is required for the unit component. Using <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/ns-storport-stor_pofx_power_required_context"><strong>STOR_POFX_POWER_REQUIRED_CONTEXT</strong></a> structure</td>
+<td>Not support</td>
+</tr>
+<tr>
+<td></td>
+<td>ScsiUnitPoFxPowerActive</td>
+<td>Notifies the miniport that the unit component is either active or idle. Using <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/ns-storport-stor_pofx_active_context"><strong>STOR_POFX_ACTIVE_CONTEXT</strong></a> structure</td>
+<td>support. 但实际什么都没干</td>
+</tr>
+<tr>
+<td></td>
+<td>ScsiUnitPoFxPowerSetFState</td>
+<td>Notifies the miniport to set the unit component to the given functional power state (F-state). Using <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/ns-storport-stor_pofx_fstate_context"><strong>STOR_POFX_FSTATE_CONTEXT</strong></a> structure</td>
+<td>support. 但实际什么都没干</td>
+</tr>
+<tr>
+<td></td>
+<td>ScsiUnitPoFxPowerControl</td>
+<td>Requests that the miniport execute a private power control operation that was initiated for the unit by a power engine plug-in (PEP). Using <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/ns-storport-stor_pofx_power_control"><strong>STOR_POFX_POWER_CONTROL</strong></a> structure</td>
+<td>Not support</td>
+</tr>
+<tr>
+<td></td>
+<td>ScsiUnitRemove</td>
+<td>Notifies the miniport that the unit has been removed.</td>
+<td>Not support</td>
+</tr>
+<tr>
+<td></td>
+<td>ScsiUnitSurpriseRemoval</td>
+<td>Notifies the miniport that the unit has been surprise-removed.</td>
+<td>Not support</td>
+</tr>
+<tr>
+<td></td>
+<td>ScsiUnitRichDescription</td>
+<td>The miniport can choose to support this if the device reports a longer vendor ID, model number, or firmware revision than is defined in the SCSI spec</td>
+<td>Not support</td>
+</tr>
+<tr>
+<td></td>
+<td>ScsiUnitQueryBusType</td>
+<td>Queries whether the miniport wants to specify a bus type for a given logical unit (LUN). Using <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/ns-storport-stor_unit_control_query_bus_type"><strong>STOR_UNIT_CONTROL_QUERY_BUS_TYPE</strong></a> structure. In Windows 10 version 21H1 and later, Storport sends this control only if a miniport has also previously called <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nf-storport-storportsetfeaturelist"><strong>StorPortSetFeatureList</strong></a> in its <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nc-storport-hw_find_adapter"><strong>HwFindAdapter</strong></a> routine with <strong>StorportFeatureBusTypeUnitControl</strong> specified.</td>
+<td>Not support</td>
+</tr>
+<tr>
+<td></td>
+<td>ScsiUnitQueryFruId</td>
+<td>Queries the ID of a fault replacement unit (FRU). Available in Windows 10 version 21H1 and later.</td>
+<td></td>
+</tr>
+</tbody></table>
+<table>
+<thead>
+<tr>
+<th>Storport Normal Routine that used by SD miniport driver.</th>
+<th>Function Description</th>
+<th>SD miniport driver’s purpose to use the routine</th>
+</tr>
+</thead>
+<tbody><tr>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>StorPortWaitForSingleObject</td>
+<td>A miniport can call <strong>StorPortWaitForSingleObject</strong> function to put the current thread into a wait state until the given dispatcher object is set to signaled state or optionally times out. dispatcher object (event, mutex, semaphore, thread, or timer)<br/><a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nf-storport-storportwaitforsingleobject">https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nf-storport-storportwaitforsingleobject</a></td>
+<td>用于Storport routine和miniport thread的同步：storport routine发起dispatcher object(event), miniport thread使用StorPortWaitForSingleObject等待event信号产生后进入处理流程此时开始占用CPU；如果没有event，miniport thread将sleep，不会占用CPU.</td>
+</tr>
+<tr>
+<td>StorPortInitializeEvent</td>
+<td><strong>StorPortInitializeEvent</strong> initializes an event object as a synchronization or notification type event, and sets it to a signaled or not-signaled state.<br/><a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nf-storport-storportinitializeevent">https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nf-storport-storportinitializeevent</a></td>
+<td>初始化event事件对象，但不设置事件产生的信号。注意：如果没有初始化event就使用会产生空指针访问，系统会BSOD.</td>
+</tr>
+<tr>
+<td>StorPortSetEvent</td>
+<td>A miniport can call <strong>StorPortSetEvent</strong> to set an event object to the signaled state.<br/><a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nf-storport-storportsetevent">https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nf-storport-storportsetevent</a></td>
+<td>设置事件产生的信号</td>
+</tr>
+<tr>
+<td>StorPortInitializeDpc</td>
+<td>The <strong>StorPortInitializeDpc</strong> routine initializes a StorPort DPC.<br/><a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nf-storport-storportinitializedpc">https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nf-storport-storportinitializedpc</a></td>
+<td>创建DPC对象：用于在高IRQL的Storport routine(IRQL &gt;&#x3D;中断级别)中设置延迟处理任务，目的是减少CPU处在高IRQL的时间，将不紧急的任务放到低IRQL(IRQL &lt;&#x3D; DPC)执行。这是Driver设计的基本要求。</td>
+</tr>
+<tr>
+<td>StorPortIssueDpc</td>
+<td>The <strong>StorPortIssueDpc</strong> routine issues a deferred procedure call (DPC).<br/><a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nf-storport-storportissuedpc">https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nf-storport-storportissuedpc</a></td>
+<td>发起DPC任务：将延迟处理的任务加到DPC队列</td>
+</tr>
+<tr>
+<td>StorPortCancelDpc</td>
+<td><strong>StorPortCancelDpc</strong> attempts to cancel the execution of a StorPort deferred procedure call (DPC).</td>
+<td>销毁DPC对象：Driver卸载时清理资源</td>
+</tr>
+<tr>
+<td>StorPortRequestTimer</td>
+<td>Schedules a callback event for a Storport timer context object.</td>
+<td>启动Timer：OS提供的定时器模块，miniport driver用于定时任务，例如设置指定disk idle时间后进入runtime D3.</td>
+</tr>
+<tr>
+<td>StorPortFreeTimer</td>
+<td>Frees a Storport timer context object previously created by the <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nf-storport-storportinitializetimer">StorPortInitializeTimer</a> routine.</td>
+<td>销毁Timer：Driver卸载时清理资源</td>
+</tr>
+<tr>
+<td>StorPortStallExecution</td>
+<td>The <strong>StorPortStallExecution</strong> routine stalls the miniport driver. This call ties up a processor, doing no useful work while stalling in the driver. <br/> 参考：<a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/srb/nf-srb-scsiportstallexecution">https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/srb/nf-srb-scsiportstallexecution</a></td>
+<td>使当前storport routine忙等待：miniport driver用于卸载driver时，等待miniport thread退出；如果不等待miniport thread退出就完成storport卸载routine，miniport创建的thread将会在卸载后继续运行，应用层会卸载报错。</td>
+</tr>
+<tr>
+<td>StorPortDelayExecution</td>
+<td>The <strong>StorPortDelayExecution</strong> function delays the current thread by the given amount of time, in microseconds. If the current IRQL is lower than DISPATCH_LEVEL then the current thread is simply put in the wait state and other threads are allowed to run. Otherwise, this routine performs a busy-wait.</td>
+<td>miniport driver用于将当前miniport thread放到Sleep状态，释放CPU的占用，使其它thread（不管是storport还是miniport）可以运行。</td>
+</tr>
+<tr>
+<td>StorPortGetCurrentIrql</td>
+<td><strong>StorPortGetCurrentIrql</strong> retrieves the current interrupt request level (IRQL).</td>
+<td>miniport driver用于配合StorPortDelayExecution使用：如果当前IRQL高，Sleep实际是忙等.</td>
+</tr>
+<tr>
+<td>StorPortAllocateRegistryBuffer</td>
+<td>The <strong>StorPortAllocateRegistryBuffer</strong> routine is called by the miniport driver to allocate a buffer that can be used to read and write registry data.</td>
+<td>以下几个Registry Routine都是Windows Registry的访问操作，INF里面配置的Registry默认值通过这些Registry Routine去写入注册表，Driver动态功能开关是通过Registry Routine去读取注册表</td>
+</tr>
+<tr>
+<td>StorPortRegistryRead</td>
+<td>The <strong>StorPortRegistryRead</strong> routine reads the registry data for the indicated device and value.</td>
+<td></td>
+</tr>
+<tr>
+<td>StorPortRegistryWrite</td>
+<td>The <strong>StorPortRegistryWrite</strong> routine is called by the miniport driver to convert the registry data contained in a specified buffer from ASCII to Unicode and to then write the data to the miniport driver’s per-HBA storage area.</td>
+<td></td>
+</tr>
+<tr>
+<td>StorPortFreeRegistryBuffer</td>
+<td>The <strong>StorPortFreeRegistryBuffer</strong> routine frees the buffer that was allocated for storing registry data.</td>
+<td></td>
+</tr>
+<tr>
+<td>StorPortNotification</td>
+<td>The miniport driver uses the <strong>StorPortNotification</strong> routine to notify the Storport driver of certain events and conditions. <strong>StorPortNotification</strong> takes a variable number of parameters depending on the notification type specified. <br/>NotificationType：<a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nf-storport-storportnotification">https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nf-storport-storportnotification</a></td>
+<td>miniport对storport的反向通知机制</td>
+</tr>
+<tr>
+<td></td>
+<td>BusChangeDetected: Indicates that a target device might have been added or removed from a dynamic bus.</td>
+<td>miniport driver用于：当disk有插拔或者card模式切换，都会发BusChangeDetected去通知OS</td>
+</tr>
+<tr>
+<td></td>
+<td>RequestComplete: Indicates that the given SRB has finished. After this notification is sent, the port driver owns the request.</td>
+<td>miniport driver用于返回Storport的每一个SRB请求，包括inquiry查询和i&#x2F;O读写等各类收到的SRB请求。</td>
+</tr>
+<tr>
+<td></td>
+<td>ResetDetected: Indicates that the HBA has detected a reset on the bus. After this notification is sent, the miniport driver is still responsible for completing any active requests. The port driver will manage all required bus-reset delays.</td>
+<td>miniport driver没使用此notification类型</td>
+</tr>
+<tr>
+<td></td>
+<td>RequestTimerCall: Indicates that the miniport driver requires the port driver to call the miniport driver’s <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/nc-storport-hw_timer">HwStorTimer</a> routine in the requested number of microseconds.</td>
+<td>miniport driver用于在Storport routine里面，将一部分任务放到指定时间后开始执行，相当于一种不精确的DPC.</td>
+</tr>
+<tr>
+<td></td>
+<td>IoTargetRequestServiceTime: Indicates to Storport the amount of time that was required to process a specified request.</td>
+<td>miniport driver用于指定tagIO任务的完成时间，让Storport driver有个预期不要误判请求完成超时。</td>
+</tr>
+<tr>
+<td>StorPortGetBusData</td>
+<td>The <strong>StorPortGetBusData</strong> routine retrieves the bus-specific configuration information necessary to initialize the HBA.</td>
+<td>miniport driver用于获取Bus(PCIe Bus)的数据，拿到SD host device在PCIe Bus的信息。例如VendorID，DeviceID，区分SD host类型。</td>
+</tr>
+<tr>
+<td>StorPortGetUncachedExtension</td>
+<td>The <strong>StorPortGetUncachedExtension</strong> routine allocates an uncached common buffer to be shared by the CPU and the device.</td>
+<td>在HwStorFindAdapter Callback创建DMA Buffer时使用</td>
+</tr>
+<tr>
+<td>StorPortGetPhysicalAddress</td>
+<td>The <strong>StorPortGetPhysicalAddress</strong> routine converts a given virtual address range to a physical address range for a DMA operation.</td>
+<td>在HwStorFindAdapter Callback创建DMA Buffer时使用</td>
+</tr>
+<tr>
+<td>StorPortInitialize</td>
+<td>The <strong>StorPortInitialize</strong> routine initializes the port driver parameters and extension data. <strong>StorPortInitialize</strong> also saves the adapter information provided from the <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/storage/storage-miniport-drivers">miniport driver</a> <strong>DriverEntry</strong> routine.</td>
+<td>miniport driver将Storport指定的HW_INITIALIZATION_DATA全部初始化完成后调用，上报miniport的所有能力配置和回调函数。</td>
+</tr>
+<tr>
+<td>StorPortReadRegisterBuffer</td>
+<td>reads a value from a specified register address.</td>
+<td>miniport driver用于register读（包括SD host register和PCIe Config register，register address由PCIe bar address + offset指定）</td>
+</tr>
+<tr>
+<td>StorPortWriteRegisterBuffer</td>
+<td>transfers a given number of unsigned bytes from a buffer to the HBA.</td>
+<td>miniport driver用于register写（包括SD host register和PCIe Config register，register address由PCIe bar address + offset指定）</td>
+</tr>
+<tr>
+<td>StorPortWritePort</td>
+<td>transfers an unsigned byte to the HBA</td>
+<td>miniport driver没有使用，只遗留历史代码</td>
+</tr>
+<tr>
+<td>StorPortReadPort</td>
+<td>reads a value from a specified port address</td>
+<td>miniport driver没有使用，只遗留历史代码</td>
+</tr>
+<tr>
+<td>StorPortInitializePoFxPower</td>
+<td>A miniport driver calls <strong>StorPortInitializePoFxPower</strong> to register a storage device with the power management framework (PoFx). Using <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/storport/ns-storport-_stor_pofx_device">STOR_POFX_DEVICE</a>, <strong>STOR_POFX_DEVICE_V2</strong>, or <strong>STOR_POFX_DEVICE_V3</strong></td>
+<td>miniport driver用于注册Adapter和Disk Unit的pofx</td>
+</tr>
+<tr>
+<td>StorPortPoFxIdleComponent</td>
+<td>The <strong>StorPortPoFxIdleComponent</strong> routine decrements the activation reference count of a specified component of a storage device.</td>
+<td>在remove card， auto power off时调用</td>
+</tr>
+<tr>
+<td>StorPortPoFxActivateComponent</td>
+<td>The <strong>StorPortPoFxActivateComponent</strong> routine increments the activation reference count on the specified component of a storage device.</td>
+<td>在insert card调用</td>
+</tr>
+<tr>
+<td>StorPortGetD3ColdSupport</td>
+<td>Get D3Cold support or not by this HBA</td>
+<td>StorPortInitializePoFxPower其中一个参数是D3Cold enable or not</td>
+</tr>
+<tr>
+<td>StorPortGetDeviceObjects</td>
+<td>Returns the device objects that are associated with the adapter device stack</td>
+<td>处理PNP请求用到，根据SD host extension获取<em>AdapterDeviceObject</em>和<em>PhysicalDeviceObject</em>和LowerDeviceObject</td>
+</tr>
+</tbody></table>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2024/08/30/ubuntu%E6%90%AD%E5%BB%BA%E8%B7%A8%E5%B9%B3%E5%8F%B0markdown%E5%86%99%E4%BD%9C%E7%8E%AF%E5%A2%83/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -1286,106 +1966,6 @@
   
   
 
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2023/11/22/SDMMC%20--%20PCIe%E9%80%9A%E9%81%93SD%E5%91%BD%E4%BB%A4%E7%9A%84%E5%8D%8F%E8%AE%AE%E5%8C%85%E5%88%86%E6%9E%90/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.jpg">
-      <meta itemprop="name" content="cursorhu">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="ThinkNotes">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2023/11/22/SDMMC%20--%20PCIe%E9%80%9A%E9%81%93SD%E5%91%BD%E4%BB%A4%E7%9A%84%E5%8D%8F%E8%AE%AE%E5%8C%85%E5%88%86%E6%9E%90/" class="post-title-link" itemprop="url">SD/MMC -- PCIe通道SD命令的协议包分析</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2023-11-22 14:39:20" itemprop="dateCreated datePublished" datetime="2023-11-22T14:39:20+08:00">2023-11-22</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2025-11-18 11:37:02" itemprop="dateModified" datetime="2025-11-18T11:37:02+08:00">2025-11-18</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/SD-MMC/" itemprop="url" rel="index"><span itemprop="name">SD/MMC</span></a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <p>本文记录用LeCroy PCIe协议分析仪debug SD host controller issue的方法。具体背景是该issue使用windbg或者打开driver debug log后无法复现，只能用PCIe协议分析仪分析。</p>
-<h3 id="PCIe包解析的配置"><a href="#PCIe包解析的配置" class="headerlink" title="PCIe包解析的配置"></a>PCIe包解析的配置</h3><p>使用spread view模式：</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202311221449131.png" alt="image-20231122144912104"></p>
-<p>数据解析方式使用小端（Little-endian）+ MSB（高bit解析）</p>
-<h3 id="寻找目标PCIe设备"><a href="#寻找目标PCIe设备" class="headerlink" title="寻找目标PCIe设备"></a>寻找目标PCIe设备</h3><p>本文的PCIe设备为SD host controller。</p>
-<p>以下PCIe trace包含一次Memory read和Config read操作，以Memory read为例，一次通信流程是：</p>
-<p>MRd 指定Address -&gt; MRd ACK -&gt; CpID包含设备返回的数据（98601217）-&gt; CpID的ACK </p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202311221443875.png" alt="image-20231122144334835"></p>
-<p>一般PCIe包开头会枚举设备，此CpID数据即目标设备的VendorID&#x2F;DeviceID，反推出此设备在PCIe config space的mapping起始地址是0x51200000</p>
-<p>那么SD host设备的register被mapping到哪里？这是由PCIe config space的BAR0&#x2F;BAR1&#x2F;…地址指定。</p>
-<p>如下图，SD host controller register space起使于PCIe config space的0x51200000，其中的0x10~0x27 offset内的值即BAR0&#x2F;BAR1&#x2F;…空间的地址</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202311221439448.png" alt="image-20231122143946372"></p>
-<p>看PCIe包即可得到SD host controller的Bar0位于0x51201000，即PCIe config space的4KB位置。该空间包含SD host register(由该chip的设计决定)</p>
-<h3 id="SD-command分析"><a href="#SD-command分析" class="headerlink" title="SD command分析"></a>SD command分析</h3><p>既然已知SD host register，那么查找SD command，实际就是查找对SD command register (如下图0Eh)的Memory write操作，根据写入数据查看SD command index。</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202311221504817.png" alt="image-20231122150434747"></p>
-<p>具体包分析如下：</p>
-<p>下图0x5120100C中的0x0C即SD host register 0x0C，其写入数据Dword的高16bit即0x0E，所以最高byte即代表command index，即0x19是SD Command25: 多block写。</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202311221512611.png" alt="image-20231122151211580"></p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202311221516595.png" alt="image-20231122151622555"></p>
-<p>如何查看该SD command是否正常完成：</p>
-<p>查看中断状态register 0x30h, 一般正常完成会返回command complete&#x2F; transfer complete等正常状态；未完成一般有Error interrupt。</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202311221519332.png" alt="image-20231122151913284"></p>
-<p>对于error interrupt，在0x32（即0x30高16bit）查看具体类型：</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202311221520612.png" alt="image-20231122152004564">下面两个CpID分别是正常返回和错误返回：</p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202311221521406.png" alt="image-20231122152111371"></p>
-<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202311221520509.png" alt="image-20231122152045475"></p>
-<p>正常返回的0x32(0x30高16bit)全为0，错误返回非0；错误类型为ADMA error + CRC error (data 0x32 &#x3D; 0x0220)</p>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
 
   
   <nav class="pagination">
@@ -1470,7 +2050,7 @@
       <div class="site-state-item site-state-tags">
             <a href="/tags/">
           
-        <span class="site-state-item-count">54</span>
+        <span class="site-state-item-count">53</span>
         <span class="site-state-item-name">标签</span></a>
       </div>
   </nav>
