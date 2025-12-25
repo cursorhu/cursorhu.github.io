@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 8.0.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/my_icon/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/my_icon/favicon-16x16.ico">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+  <link rel="manifest" href="/images/my_icon/manifest.json">
+  <meta name="msapplication-config" content="/images/my_icon/browserconfig.xml">
+
+<link rel="stylesheet" href="/css/main.css">
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Noto+Serif+SC|Roboto/css?family=Noto Serif SC:300,300italic,400,400italic,700,700italic|Roboto:300,300italic,400,400italic,700,700italic&display=swap&subset=latin,latin-ext">
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"cursorhu.github.io","root":"/","scheme":"Pisces","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="Android驱动调试技术Android嵌入式平台的系统要抓取驱动模块的log，一般不能像Linux系统直接在系统终端内配置，需要通过ADB(Android Debug Bridge)联机调试通道抓log。 ADB查看kernel logADB主机环境安装windows主机可通过ADB连接Android板子，登录到开发板的系统root文件目录操作rootfs，并配置和抓取板子的kernel log">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Android驱动调试技术">
+<meta property="og:url" content="https://cursorhu.github.io/2025/12/23/Android%E9%A9%B1%E5%8A%A8%E8%B0%83%E8%AF%95%E6%8A%80%E6%9C%AF/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="Android驱动调试技术Android嵌入式平台的系统要抓取驱动模块的log，一般不能像Linux系统直接在系统终端内配置，需要通过ADB(Android Debug Bridge)联机调试通道抓log。 ADB查看kernel logADB主机环境安装windows主机可通过ADB连接Android板子，登录到开发板的系统root文件目录操作rootfs，并配置和抓取板子的kernel log">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://s3.bmp.ovh/imgs/2025/12/24/5bb77b5b45d3fd58.png">
+<meta property="og:image" content="https://s3.bmp.ovh/imgs/2025/12/24/c8b72005fcbfc3b4.png">
+<meta property="og:image" content="https://s3.bmp.ovh/imgs/2025/12/24/280f6d9f0ba628f4.png">
+<meta property="og:image" content="https://s3.bmp.ovh/imgs/2025/12/24/96c045160a55fe42.png">
+<meta property="article:published_time" content="2025-12-23T15:00:00.000Z">
+<meta property="article:modified_time" content="2025-12-25T03:15:38.132Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="android">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://s3.bmp.ovh/imgs/2025/12/24/5bb77b5b45d3fd58.png">
+
+<link rel="canonical" href="https://cursorhu.github.io/2025/12/23/Android%E9%A9%B1%E5%8A%A8%E8%B0%83%E8%AF%95%E6%8A%80%E6%9C%AF/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>Android驱动调试技术 | ThinkNotes</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">ThinkNotes</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Simple is not easy | 化繁为简，知易行难</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于我</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2025/12/23/Android%E9%A9%B1%E5%8A%A8%E8%B0%83%E8%AF%95%E6%8A%80%E6%9C%AF/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="cursorhu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ThinkNotes">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Android驱动调试技术
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2025-12-23 23:00:00" itemprop="dateCreated datePublished" datetime="2025-12-23T23:00:00+08:00">2025-12-23</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2025-12-25 11:15:38" itemprop="dateModified" datetime="2025-12-25T11:15:38+08:00">2025-12-25</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/android/" itemprop="url" rel="index"><span itemprop="name">android</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="Android驱动调试技术"><a href="#Android驱动调试技术" class="headerlink" title="Android驱动调试技术"></a>Android驱动调试技术</h1><p>Android嵌入式平台的系统要抓取驱动模块的log，一般不能像Linux系统直接在系统终端内配置，需要通过ADB(Android Debug Bridge)联机调试通道抓log。</p>
+<h2 id="ADB查看kernel-log"><a href="#ADB查看kernel-log" class="headerlink" title="ADB查看kernel log"></a>ADB查看kernel log</h2><h3 id="ADB主机环境安装"><a href="#ADB主机环境安装" class="headerlink" title="ADB主机环境安装"></a>ADB主机环境安装</h3><p>windows主机可通过ADB连接Android板子，登录到开发板的系统root文件目录操作rootfs，并配置和抓取板子的kernel log打印。</p>
+<p>Windows主机装ADB环境需要两个东西：</p>
+<ol>
+<li>安装ADB exe包</li>
+</ol>
+<p>在google andoid下载platform tools，即adb包</p>
+<p><a target="_blank" rel="noopener" href="https://www.thecustomdroid.com/google-android-usb-drivers/">https://www.thecustomdroid.com/google-android-usb-drivers/</a></p>
+<ol start="2">
+<li>安装USB-ADB驱动</li>
+</ol>
+<p>不装驱动连接soc板子（启动成功情况下），会有yellow-bang设备</p>
+<p>驱动安装过程：</p>
+<p>（1）右键yellow-bang设备，选择更新驱动 -&gt; “通用串行总线”驱动类 -&gt; 找到WinUSB的ADB设备类驱动，不管警告，安装。</p>
+<p><img src="https://s3.bmp.ovh/imgs/2025/12/24/5bb77b5b45d3fd58.png" alt="图片1"></p>
+<p>（2）安装正常，设备会归为USB类，没有yellowbang</p>
+<p><img src="https://s3.bmp.ovh/imgs/2025/12/24/c8b72005fcbfc3b4.png" alt="图片2"></p>
+<h3 id="使用ADB抓log"><a href="#使用ADB抓log" class="headerlink" title="使用ADB抓log"></a>使用ADB抓log</h3><h3 id="方式1-使用-动态调试（Dynamic-Debug）-和dmesg"><a href="#方式1-使用-动态调试（Dynamic-Debug）-和dmesg" class="headerlink" title="方式1 使用**动态调试（Dynamic Debug）**和dmesg"></a>方式1 使用**动态调试（Dynamic Debug）**和dmesg</h3><p>需要设备已经root，并且adbd以root权限运行（adb root），如果没有root权限，可能只能依赖系统已有的日志输出，或者使用一些不需要root的调试方法（如logcat内核日志，如果系统支持）</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">#!/bin/bash</span><br><span class="line"># 启用MMC动态调试</span><br><span class="line">adb root</span><br><span class="line">adb wait-for-device</span><br><span class="line"># 挂载debugfs类型(-t)的设备(debugfs)到节点/sys/kernel/debug</span><br><span class="line">adb shell &quot;mount -t debugfs debugfs /sys/kernel/debug&quot;</span><br><span class="line"># 打开mmc模块的动态调试</span><br><span class="line">adb shell &quot;echo &#x27;file drivers/mmc/* +p&#x27; &gt; /sys/kernel/debug/dynamic_debug/control&quot;</span><br><span class="line">adb shell &quot;echo &#x27;module mmc_core +p&#x27; &gt;&gt; /sys/kernel/debug/dynamic_debug/control&quot;</span><br><span class="line">adb shell &quot;echo &#x27;module sdhci +p&#x27; &gt;&gt; /sys/kernel/debug/dynamic_debug/control&quot;</span><br><span class="line"># 设置printk级别</span><br><span class="line">adb shell &quot;echo 7 &gt; /proc/sys/kernel/printk&quot;</span><br><span class="line"># 清除旧日志</span><br><span class="line">adb shell &quot;dmesg -c&quot;</span><br><span class="line"># 开始捕获日志(两种都行)</span><br><span class="line">adb shell &quot;dmesg -w &gt; mmc_log.txt&quot;</span><br><span class="line">adb shell &quot;cat /proc/kmsg&quot; | tee mmc_log.txt</span><br></pre></td></tr></table></figure>
+
+<p>以上很多adb shell命令可以先进入adb shell终端模式里面，之后就可以像linux终端内一样直接输入echo，dmesg命令，最后exit退出adb shell</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">adb shell</span><br><span class="line">mount -t debugfs debugfs /sys/kernel/debug</span><br><span class="line">echo &#x27;file drivers/mmc/* +p&#x27; &gt; /sys/kernel/debug/dynamic_debug/control</span><br><span class="line">echo &#x27;module mmc_core +p&#x27; &gt;&gt; /sys/kernel/debug/dynamic_debug/control</span><br><span class="line">echo &#x27;module sdhci +p&#x27; &gt;&gt; /sys/kernel/debug/dynamic_debug/control</span><br><span class="line">...</span><br><span class="line">exit</span><br></pre></td></tr></table></figure>
+
+<p>最后<code>adb pull</code>拉取mmc_log.txt</p>
+<p>一个示例：</p>
+<p><img src="https://s3.bmp.ovh/imgs/2025/12/24/280f6d9f0ba628f4.png" alt="图片3"></p>
+<h3 id="方式2-使用kernel-logcat"><a href="#方式2-使用kernel-logcat" class="headerlink" title="方式2 使用kernel logcat"></a>方式2 <strong>使用kernel logcat</strong></h3><p>Android 有自己的日志系统：logcat，可以直接打印日志</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"># 查看内核消息</span><br><span class="line">adb logcat -b kernel</span><br><span class="line"># 查看内核日志(-verbose带时间戳，-select关键词)</span><br><span class="line">adb logcat -b kernel -v time -s mmc,sdhci</span><br><span class="line"></span><br><span class="line"># 清除日志并重新开始</span><br><span class="line">adb logcat -c</span><br><span class="line">adb logcat -b kernel -v time</span><br></pre></td></tr></table></figure>
+
+<p>一个示例：</p>
+<p><img src="https://s3.bmp.ovh/imgs/2025/12/24/96c045160a55fe42.png" alt="图片4"></p>
+<h2 id="QA-为什么Android系统不能像Linux一样直接操作shell"><a href="#QA-为什么Android系统不能像Linux一样直接操作shell" class="headerlink" title="QA:为什么Android系统不能像Linux一样直接操作shell"></a>QA:为什么Android系统不能像Linux一样直接操作shell</h2><p><strong>Android和传统Linux主机有着根本不同的设计目标和安全架构</strong></p>
+<ol>
+<li><strong>应用沙箱与权限模型</strong>：每个应用（包括可能运行的Shell应用）都被严格隔离在独立的“沙箱”中，无法直接访问系统日志文件等核心资源。即使你安装了终端模拟器，它本质上也是一个普通应用，权限受到严格限制。</li>
+<li><strong>强化的内核安全（SELinux）</strong>：这是最关键的一层。从Android 5.0开始，系统会强制所有进程（包括拥有root权限的进程）都必须在SELinux的<strong>强制模式（Enforcing）</strong> 下运行。这意味着，即使你通过某种方式获得了<code>root</code>身份，SELinux策略规则（Policy）也会严格规定你这个“root”能做什么、不能做什么，通常禁止直接访问<code>/proc/kmsg</code>或<code>/sys/kernel/debug</code>等调试节点。这回答了之前提到的为什么有时即使使用<code>su</code>命令也无法访问某些节点。</li>
+<li><strong>厂商的深度定制</strong>：为了进一步控制权限，一些设备制造商会在原生Android系统之上增加额外限制。例如，小米的MIUI系统就曾定制限制Shell对“工作空间”用户的访问</li>
+</ol>
+<p>ADB在PC和Android设备之间建立了一个<strong>受控的、权限更高的调试通道</strong></p>
+<ul>
+<li><strong>它是如何工作的</strong>：当设备设置中启用“USB调试”后，设备上的<code>adbd</code>守护进程会以<strong>较高权限</strong>运行（但仍受SELinux策略约束）。通过PC端的ADB命令，你可以执行许多在设备内部Shell中无法直接完成的操作。</li>
+<li><strong>实际应用</strong>：可以使用 <code>adb shell</code> 进入一个功能更强的设备端Shell，然后挂载<code>debugfs</code>或通过<code>dmesg</code>查看内核日志。也可以直接通过 <code>adb logcat</code> 命令抓取系统和应用日志</li>
+</ul>
+<p>如果你想获取完全的访问权限，通常有两种途径：</p>
+<ul>
+<li><strong>在开发阶段</strong>：编译一个<strong>用户调试（userdebug）版本</strong>的系统镜像并刷入设备。这类版本通常会放宽SELinux策略（设为宽容模式<code>Permissive</code>），并默认启用ADB的root访问。</li>
+<li><strong>对已发布设备</strong>：这通常需要<strong>解锁Bootloader</strong>并刷入提供完整<code>root</code>权限的自定义内核或系统，但这会使设备失去官方保修并带来安全风险。</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/android/" rel="tag"># android</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2025/12/15/HP%20SBOM%20release%20pack%E5%88%9B%E5%BB%BA%E6%96%B9%E6%B3%95/" rel="prev" title="">
+      <i class="fa fa-chevron-left"></i> 
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Android%E9%A9%B1%E5%8A%A8%E8%B0%83%E8%AF%95%E6%8A%80%E6%9C%AF"><span class="nav-number">1.</span> <span class="nav-text">Android驱动调试技术</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#ADB%E6%9F%A5%E7%9C%8Bkernel-log"><span class="nav-number">1.1.</span> <span class="nav-text">ADB查看kernel log</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#ADB%E4%B8%BB%E6%9C%BA%E7%8E%AF%E5%A2%83%E5%AE%89%E8%A3%85"><span class="nav-number">1.1.1.</span> <span class="nav-text">ADB主机环境安装</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BD%BF%E7%94%A8ADB%E6%8A%93log"><span class="nav-number">1.1.2.</span> <span class="nav-text">使用ADB抓log</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%96%B9%E5%BC%8F1-%E4%BD%BF%E7%94%A8-%E5%8A%A8%E6%80%81%E8%B0%83%E8%AF%95%EF%BC%88Dynamic-Debug%EF%BC%89-%E5%92%8Cdmesg"><span class="nav-number">1.1.3.</span> <span class="nav-text">方式1 使用**动态调试（Dynamic Debug）**和dmesg</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%96%B9%E5%BC%8F2-%E4%BD%BF%E7%94%A8kernel-logcat"><span class="nav-number">1.1.4.</span> <span class="nav-text">方式2 使用kernel logcat</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#QA-%E4%B8%BA%E4%BB%80%E4%B9%88Android%E7%B3%BB%E7%BB%9F%E4%B8%8D%E8%83%BD%E5%83%8FLinux%E4%B8%80%E6%A0%B7%E7%9B%B4%E6%8E%A5%E6%93%8D%E4%BD%9Cshell"><span class="nav-number">1.2.</span> <span class="nav-text">QA:为什么Android系统不能像Linux一样直接操作shell</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="cursorhu"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">cursorhu</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">112</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">32</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">53</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/cursorhu" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;cursorhu" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:cursorhu@outlook.com" title="E-Mail → mailto:cursorhu@outlook.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2025</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">cursorhu</span>
+</div>
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+</body>
+</html>
