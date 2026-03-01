@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="卡尔曼滤波在电池漏电流检测中的应用概述本文档描述了在SD77428电池管理系统中使用卡尔曼滤波器来优化漏电流和短路电阻检测的实现方案。卡尔曼滤波器是一种递归式滤波算法，能够在噪声环境下对系统状态进行最优估计，特别适合处理电池参数这类动态变化且受测量噪声影响的数据。 原有滤波方案分析原有的漏电流检测系统使用了以下滤波方法：  电压平均滤波：使用简单的移动平均滤波器处理电池电压 电阻中值滤波：使用排序">
+<meta property="og:type" content="article">
+<meta property="og:title" content="电量计 -- 卡尔曼滤波在电池内部短路漏电流检测中的应用">
+<meta property="og:url" content="https://cursorhu.github.io/2025/10/20/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E7%94%B5%E6%B1%A0%E5%BE%AE%E7%9F%AD%E8%B7%AF%E4%B8%AD%E7%9A%84%E5%8D%A1%E5%B0%94%E6%9B%BC%E6%BB%A4%E6%B3%A2/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="卡尔曼滤波在电池漏电流检测中的应用概述本文档描述了在SD77428电池管理系统中使用卡尔曼滤波器来优化漏电流和短路电阻检测的实现方案。卡尔曼滤波器是一种递归式滤波算法，能够在噪声环境下对系统状态进行最优估计，特别适合处理电池参数这类动态变化且受测量噪声影响的数据。 原有滤波方案分析原有的漏电流检测系统使用了以下滤波方法：  电压平均滤波：使用简单的移动平均滤波器处理电池电压 电阻中值滤波：使用排序">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2025-10-20T14:50:54.000Z">
+<meta property="article:modified_time" content="2026-03-01T13:17:19.011Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="电量计">
+<meta name="twitter:card" content="summary">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>电量计 -- 卡尔曼滤波在电池内部短路漏电流检测中的应用</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+<meta name="generator" content="Hexo 8.0.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="顶部" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="上一篇" href="/2025/10/30/%E9%AB%98%E9%80%9A%E5%B9%B3%E5%8F%B0%20--%20Qualcomm%20sdhci%20dts%E5%88%86%E6%9E%90/"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="下一篇" href="/2025/10/18/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E7%94%B5%E6%B1%A0%E5%BE%AE%E7%9F%AD%E8%B7%AF%E7%9A%84%E7%AE%97%E6%B3%95%E7%A7%BB%E6%A4%8D%E4%BB%8ESTM32%E4%B8%BB%E6%9C%BA%E5%88%B0%E7%94%B5%E9%87%8F%E8%AE%A1IC/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="返回顶部" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="分享文章" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">上一篇</span>
+      <span id="i-next" class="info" style="display:none;">下一篇</span>
+      <span id="i-top" class="info" style="display:none;">返回顶部</span>
+      <span id="i-share" class="info" style="display:none;">分享文章</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2025/10/20/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E7%94%B5%E6%B1%A0%E5%BE%AE%E7%9F%AD%E8%B7%AF%E4%B8%AD%E7%9A%84%E5%8D%A1%E5%B0%94%E6%9B%BC%E6%BB%A4%E6%B3%A2/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2025/10/20/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E7%94%B5%E6%B1%A0%E5%BE%AE%E7%9F%AD%E8%B7%AF%E4%B8%AD%E7%9A%84%E5%8D%A1%E5%B0%94%E6%9B%BC%E6%BB%A4%E6%B3%A2/&text=电量计 -- 卡尔曼滤波在电池内部短路漏电流检测中的应用"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2025/10/20/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E7%94%B5%E6%B1%A0%E5%BE%AE%E7%9F%AD%E8%B7%AF%E4%B8%AD%E7%9A%84%E5%8D%A1%E5%B0%94%E6%9B%BC%E6%BB%A4%E6%B3%A2/&title=电量计 -- 卡尔曼滤波在电池内部短路漏电流检测中的应用"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2025/10/20/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E7%94%B5%E6%B1%A0%E5%BE%AE%E7%9F%AD%E8%B7%AF%E4%B8%AD%E7%9A%84%E5%8D%A1%E5%B0%94%E6%9B%BC%E6%BB%A4%E6%B3%A2/&is_video=false&description=电量计 -- 卡尔曼滤波在电池内部短路漏电流检测中的应用"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=电量计 -- 卡尔曼滤波在电池内部短路漏电流检测中的应用&body=Check out this article: https://cursorhu.github.io/2025/10/20/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E7%94%B5%E6%B1%A0%E5%BE%AE%E7%9F%AD%E8%B7%AF%E4%B8%AD%E7%9A%84%E5%8D%A1%E5%B0%94%E6%9B%BC%E6%BB%A4%E6%B3%A2/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2025/10/20/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E7%94%B5%E6%B1%A0%E5%BE%AE%E7%9F%AD%E8%B7%AF%E4%B8%AD%E7%9A%84%E5%8D%A1%E5%B0%94%E6%9B%BC%E6%BB%A4%E6%B3%A2/&title=电量计 -- 卡尔曼滤波在电池内部短路漏电流检测中的应用"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2025/10/20/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E7%94%B5%E6%B1%A0%E5%BE%AE%E7%9F%AD%E8%B7%AF%E4%B8%AD%E7%9A%84%E5%8D%A1%E5%B0%94%E6%9B%BC%E6%BB%A4%E6%B3%A2/&title=电量计 -- 卡尔曼滤波在电池内部短路漏电流检测中的应用"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2025/10/20/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E7%94%B5%E6%B1%A0%E5%BE%AE%E7%9F%AD%E8%B7%AF%E4%B8%AD%E7%9A%84%E5%8D%A1%E5%B0%94%E6%9B%BC%E6%BB%A4%E6%B3%A2/&title=电量计 -- 卡尔曼滤波在电池内部短路漏电流检测中的应用"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2025/10/20/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E7%94%B5%E6%B1%A0%E5%BE%AE%E7%9F%AD%E8%B7%AF%E4%B8%AD%E7%9A%84%E5%8D%A1%E5%B0%94%E6%9B%BC%E6%BB%A4%E6%B3%A2/&title=电量计 -- 卡尔曼滤波在电池内部短路漏电流检测中的应用"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2025/10/20/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E7%94%B5%E6%B1%A0%E5%BE%AE%E7%9F%AD%E8%B7%AF%E4%B8%AD%E7%9A%84%E5%8D%A1%E5%B0%94%E6%9B%BC%E6%BB%A4%E6%B3%A2/&name=电量计 -- 卡尔曼滤波在电池内部短路漏电流检测中的应用&description=&lt;h1 id=&#34;卡尔曼滤波在电池漏电流检测中的应用&#34;&gt;&lt;a href=&#34;#卡尔曼滤波在电池漏电流检测中的应用&#34; class=&#34;headerlink&#34; title=&#34;卡尔曼滤波在电池漏电流检测中的应用&#34;&gt;&lt;/a&gt;卡尔曼滤波在电池漏电流检测中的应用&lt;/h1&gt;&lt;h2 id=&#34;概述&#34;&gt;&lt;a href=&#34;#概述&#34; class=&#34;headerlink&#34; title=&#34;概述&#34;&gt;&lt;/a&gt;概述&lt;/h2&gt;&lt;p&gt;本文档描述了在SD77428电池管理系统中使用卡尔曼滤波器来优化漏电流和短路电阻检测的实现方案。卡尔曼滤波器是一种递归式滤波算法，能够在噪声环境下对系统状态进行最优估计，特别适合处理电池参数这类动态变化且受测量噪声影响的数据。&lt;/p&gt;
+&lt;h2 id=&#34;原有滤波方案分析&#34;&gt;&lt;a href=&#34;#原有滤波方案分析&#34; class=&#34;headerlink&#34; title=&#34;原有滤波方案分析&#34;&gt;&lt;/a&gt;原有滤波方案分析&lt;/h2&gt;&lt;p&gt;原有的漏电流检测系统使用了以下滤波方法：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;&lt;strong&gt;电压平均滤波&lt;/strong&gt;：使用简单的移动平均滤波器处理电池电压&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;电阻中值滤波&lt;/strong&gt;：使用排序后的中值滤波处理短路电阻&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;漏电流加权平均&lt;/strong&gt;：基于偏差大小动态调整权重的加权平均算法&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;这些方法在一定程度上可以抑制噪声，但存在以下局限性：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;不考虑系统动态特性&lt;/li&gt;
+&lt;li&gt;对异常值处理机制简单&lt;/li&gt;
+&lt;li&gt;没有综合考虑测量噪声和系统噪声&lt;/li&gt;
+&lt;li&gt;参数调整不够灵活&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;卡尔曼滤波器原理&#34;&gt;&lt;a href=&#34;#卡尔曼滤波器原理&#34; class=&#34;headerlink&#34; title=&#34;卡尔曼滤波器原理&#34;&gt;&lt;/a&gt;卡尔曼滤波器原理&lt;/h2&gt;&lt;p&gt;卡尔曼滤波器基于以下模型：&lt;/p&gt;"><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2025/10/20/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E7%94%B5%E6%B1%A0%E5%BE%AE%E7%9F%AD%E8%B7%AF%E4%B8%AD%E7%9A%84%E5%8D%A1%E5%B0%94%E6%9B%BC%E6%BB%A4%E6%B3%A2/&t=电量计 -- 卡尔曼滤波在电池内部短路漏电流检测中的应用"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%8D%A1%E5%B0%94%E6%9B%BC%E6%BB%A4%E6%B3%A2%E5%9C%A8%E7%94%B5%E6%B1%A0%E6%BC%8F%E7%94%B5%E6%B5%81%E6%A3%80%E6%B5%8B%E4%B8%AD%E7%9A%84%E5%BA%94%E7%94%A8"><span class="toc-number">1.</span> <span class="toc-text">卡尔曼滤波在电池漏电流检测中的应用</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%A6%82%E8%BF%B0"><span class="toc-number">1.1.</span> <span class="toc-text">概述</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8E%9F%E6%9C%89%E6%BB%A4%E6%B3%A2%E6%96%B9%E6%A1%88%E5%88%86%E6%9E%90"><span class="toc-number">1.2.</span> <span class="toc-text">原有滤波方案分析</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8D%A1%E5%B0%94%E6%9B%BC%E6%BB%A4%E6%B3%A2%E5%99%A8%E5%8E%9F%E7%90%86"><span class="toc-number">1.3.</span> <span class="toc-text">卡尔曼滤波器原理</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8D%A1%E5%B0%94%E6%9B%BC%E6%BB%A4%E6%B3%A2%E5%99%A8%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.4.</span> <span class="toc-text">卡尔曼滤波器实现</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84"><span class="toc-number">1.4.1.</span> <span class="toc-text">数据结构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%BB%A4%E6%B3%A2%E5%99%A8%E7%AE%97%E6%B3%95"><span class="toc-number">1.4.2.</span> <span class="toc-text">滤波器算法</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%9B%86%E6%88%90%E5%88%B0%E6%BC%8F%E7%94%B5%E6%B5%81%E6%A3%80%E6%B5%8B%E7%B3%BB%E7%BB%9F"><span class="toc-number">1.5.</span> <span class="toc-text">集成到漏电流检测系统</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8D%A1%E5%B0%94%E6%9B%BC%E6%BB%A4%E6%B3%A2%E5%99%A8%E5%8F%82%E6%95%B0%E9%85%8D%E7%BD%AE"><span class="toc-number">1.6.</span> <span class="toc-text">卡尔曼滤波器参数配置</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%80%A7%E8%83%BD%E5%AF%B9%E6%AF%94"><span class="toc-number">1.7.</span> <span class="toc-text">性能对比</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BD%BF%E7%94%A8%E7%A4%BA%E4%BE%8B"><span class="toc-number">1.8.</span> <span class="toc-text">使用示例</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%BB%93%E8%AE%BA"><span class="toc-number">1.9.</span> <span class="toc-text">结论</span></a></li></ol></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        电量计 -- 卡尔曼滤波在电池内部短路漏电流检测中的应用
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">cursorhu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2025-10-20T14:50:54.000Z" class="dt-published" itemprop="datePublished">2025-10-20</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fa-solid fa-archive"></i>
+        <a class="category-link" href="/categories/%E7%94%B5%E9%87%8F%E8%AE%A1/">电量计</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/%E7%94%B5%E9%87%8F%E8%AE%A1/" rel="tag">电量计</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <h1 id="卡尔曼滤波在电池漏电流检测中的应用"><a href="#卡尔曼滤波在电池漏电流检测中的应用" class="headerlink" title="卡尔曼滤波在电池漏电流检测中的应用"></a>卡尔曼滤波在电池漏电流检测中的应用</h1><h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><p>本文档描述了在SD77428电池管理系统中使用卡尔曼滤波器来优化漏电流和短路电阻检测的实现方案。卡尔曼滤波器是一种递归式滤波算法，能够在噪声环境下对系统状态进行最优估计，特别适合处理电池参数这类动态变化且受测量噪声影响的数据。</p>
+<h2 id="原有滤波方案分析"><a href="#原有滤波方案分析" class="headerlink" title="原有滤波方案分析"></a>原有滤波方案分析</h2><p>原有的漏电流检测系统使用了以下滤波方法：</p>
+<ol>
+<li><strong>电压平均滤波</strong>：使用简单的移动平均滤波器处理电池电压</li>
+<li><strong>电阻中值滤波</strong>：使用排序后的中值滤波处理短路电阻</li>
+<li><strong>漏电流加权平均</strong>：基于偏差大小动态调整权重的加权平均算法</li>
+</ol>
+<p>这些方法在一定程度上可以抑制噪声，但存在以下局限性：</p>
+<ul>
+<li>不考虑系统动态特性</li>
+<li>对异常值处理机制简单</li>
+<li>没有综合考虑测量噪声和系统噪声</li>
+<li>参数调整不够灵活</li>
+</ul>
+<h2 id="卡尔曼滤波器原理"><a href="#卡尔曼滤波器原理" class="headerlink" title="卡尔曼滤波器原理"></a>卡尔曼滤波器原理</h2><p>卡尔曼滤波器基于以下模型：</p>
+<ol>
+<li><strong>状态方程</strong>：$x_k &#x3D; Ax_{k-1} + Bu_k + w_k$</li>
+<li><strong>观测方程</strong>：$z_k &#x3D; Hx_k + v_k$</li>
+</ol>
+<p>其中：</p>
+<ul>
+<li>$x_k$ 是系统状态</li>
+<li>$z_k$ 是测量值</li>
+<li>$w_k$ 是系统噪声</li>
+<li>$v_k$ 是测量噪声</li>
+</ul>
+<p>在我们的应用中，使用了简化的一维卡尔曼滤波器：</p>
+<ul>
+<li>状态变量：漏电流或短路电阻</li>
+<li>状态转移矩阵 A &#x3D; 1（假设状态在短时间内保持不变）</li>
+<li>观测矩阵 H &#x3D; 1（直接观测状态）</li>
+<li>系统噪声协方差 Q（表示状态变化速度）</li>
+<li>测量噪声协方差 R（表示测量精度）</li>
+</ul>
+<h2 id="卡尔曼滤波器实现"><a href="#卡尔曼滤波器实现" class="headerlink" title="卡尔曼滤波器实现"></a>卡尔曼滤波器实现</h2><h3 id="数据结构"><a href="#数据结构" class="headerlink" title="数据结构"></a>数据结构</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> &#123;</span></span><br><span class="line">    <span class="comment">/* 状态变量 */</span></span><br><span class="line">    <span class="type">float</span> x;           <span class="comment">/* 当前状态估计 */</span></span><br><span class="line">    <span class="type">float</span> p;           <span class="comment">/* 当前状态不确定性/协方差 */</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment">/* 滤波器参数 */</span></span><br><span class="line">    <span class="type">float</span> q;           <span class="comment">/* 过程噪声协方差 */</span></span><br><span class="line">    <span class="type">float</span> r;           <span class="comment">/* 测量噪声协方差 */</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment">/* 滤波器限制 */</span></span><br><span class="line">    <span class="type">float</span> min_value;   <span class="comment">/* 最小允许值 */</span></span><br><span class="line">    <span class="type">float</span> max_value;   <span class="comment">/* 最大允许值 */</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment">/* 自适应参数 */</span></span><br><span class="line">    <span class="type">float</span> adapt_rate;  <span class="comment">/* 滤波器适应变化的速率 (0-1) */</span></span><br><span class="line">    <span class="type">uint8_t</span> init;      <span class="comment">/* 初始化标志 */</span></span><br><span class="line">&#125; KalmanFilter;</span><br></pre></td></tr></table></figure>
+
+<h3 id="滤波器算法"><a href="#滤波器算法" class="headerlink" title="滤波器算法"></a>滤波器算法</h3><p>卡尔曼滤波器的核心算法包括预测和更新两个步骤：</p>
+<ol>
+<li><p><strong>预测步骤</strong>：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">filter-&gt;p = filter-&gt;p + filter-&gt;q;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p><strong>更新步骤</strong>：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">float</span> k = filter-&gt;p / (filter-&gt;p + filter-&gt;r);</span><br><span class="line">filter-&gt;x = filter-&gt;x + k * (measurement - filter-&gt;x);</span><br><span class="line">filter-&gt;p = (<span class="number">1</span> - k) * filter-&gt;p;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p><strong>自适应机制</strong>：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> <span class="title function_">kalman_adapt</span><span class="params">(KalmanFilter* filter, <span class="type">float</span> measurement)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">float</span> deviation = fabsf(measurement - filter-&gt;x);</span><br><span class="line">    <span class="type">float</span> normalized_deviation = deviation / (filter-&gt;max_value - filter-&gt;min_value);</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">if</span> (normalized_deviation &gt; <span class="number">0.2f</span>) &#123;</span><br><span class="line">        <span class="comment">/* 高偏差 - 增加测量噪声（减少对测量的信任） */</span></span><br><span class="line">        filter-&gt;r = filter-&gt;r * (<span class="number">1.0f</span> + filter-&gt;adapt_rate);</span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (normalized_deviation &lt; <span class="number">0.05f</span>) &#123;</span><br><span class="line">        <span class="comment">/* 低偏差 - 减少测量噪声（增加对测量的信任） */</span></span><br><span class="line">        filter-&gt;r = filter-&gt;r * (<span class="number">1.0f</span> - filter-&gt;adapt_rate * <span class="number">0.5f</span>);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ol>
+<h2 id="集成到漏电流检测系统"><a href="#集成到漏电流检测系统" class="headerlink" title="集成到漏电流检测系统"></a>集成到漏电流检测系统</h2><p>卡尔曼滤波器被集成到<code>fd_isrw1_update</code>函数中，用于处理漏电流和短路电阻：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 应用卡尔曼滤波 */</span></span><br><span class="line"><span class="keyword">if</span> (s_kalman_filter_enabled) &#123;</span><br><span class="line">    <span class="comment">/* 对漏电流应用卡尔曼滤波 */</span></span><br><span class="line">    filtered_leak_current = (<span class="type">int16_t</span>)kalman_update(&amp;s_leak_current_filter, (<span class="type">float</span>)final_leak_current);</span><br><span class="line">    </span><br><span class="line">    <span class="comment">/* 基于测量质量调整滤波器参数 */</span></span><br><span class="line">    kalman_adapt(&amp;s_leak_current_filter, (<span class="type">float</span>)final_leak_current);</span><br><span class="line">    </span><br><span class="line">    <span class="comment">/* 使用滤波后的电流重新计算电阻 */</span></span><br><span class="line">    <span class="keyword">if</span> (filtered_leak_current &gt; <span class="number">0</span>) &#123;</span><br><span class="line">        filtered_resistance = params.voltage / filtered_leak_current;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">/* 对电阻应用卡尔曼滤波 */</span></span><br><span class="line">    filtered_resistance = (<span class="type">uint16_t</span>)kalman_update(&amp;s_resistance_filter, (<span class="type">float</span>)filtered_resistance);</span><br><span class="line">    </span><br><span class="line">    <span class="comment">/* 基于测量质量调整滤波器参数 */</span></span><br><span class="line">    kalman_adapt(&amp;s_resistance_filter, (<span class="type">float</span>)filtered_resistance);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="卡尔曼滤波器参数配置"><a href="#卡尔曼滤波器参数配置" class="headerlink" title="卡尔曼滤波器参数配置"></a>卡尔曼滤波器参数配置</h2><p>为了获得最佳性能，可以根据实际应用场景调整卡尔曼滤波器参数：</p>
+<ol>
+<li><p><strong>漏电流滤波器</strong>：</p>
+<ul>
+<li>过程噪声 Q &#x3D; 0.5（漏电流可能会缓慢变化）</li>
+<li>测量噪声 R &#x3D; 5.0（测量值有一定噪声）</li>
+<li>取值范围：-1000 ~ 1000 mA</li>
+</ul>
+</li>
+<li><p><strong>短路电阻滤波器</strong>：</p>
+<ul>
+<li>过程噪声 Q &#x3D; 0.1（电阻变化较慢）</li>
+<li>测量噪声 R &#x3D; 10.0（电阻计算受多个因素影响，噪声较大）</li>
+<li>取值范围：20 ~ 1000 ohm</li>
+</ul>
+</li>
+</ol>
+<h2 id="性能对比"><a href="#性能对比" class="headerlink" title="性能对比"></a>性能对比</h2><p>卡尔曼滤波器相比原有滤波方法的优势：</p>
+<ol>
+<li><strong>更平滑的输出</strong>：减少了数据跳变，提供更稳定的估计值</li>
+<li><strong>更好的噪声抑制</strong>：综合考虑系统噪声和测量噪声</li>
+<li><strong>自适应能力</strong>：能够根据测量质量动态调整滤波参数</li>
+<li><strong>快速响应</strong>：在保持稳定的同时能够快速响应真实变化</li>
+<li><strong>参数可调</strong>：提供了灵活的参数调整接口，适应不同应用场景</li>
+</ol>
+<h2 id="使用示例"><a href="#使用示例" class="headerlink" title="使用示例"></a>使用示例</h2><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 初始化ISRW1和卡尔曼滤波器 */</span></span><br><span class="line">fd_isrw1_init();</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 配置漏电流滤波器 */</span></span><br><span class="line">fd_isrw1_configure_leak_current_filter(<span class="number">0.5f</span>, <span class="number">5.0f</span>, <span class="number">-1000.0f</span>, <span class="number">1000.0f</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 配置短路电阻滤波器 */</span></span><br><span class="line">fd_isrw1_configure_resistance_filter(<span class="number">0.1f</span>, <span class="number">10.0f</span>, <span class="number">20.0f</span>, <span class="number">1000.0f</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 启用卡尔曼滤波 */</span></span><br><span class="line">fd_isrw1_enable_kalman_filter(<span class="literal">true</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 更新检测 */</span></span><br><span class="line">fd_isrw1_update();</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 获取滤波后的值 */</span></span><br><span class="line"><span class="type">int16_t</span> filtered_current = fd_isrw1_get_filtered_leak_current();</span><br><span class="line"><span class="type">uint16_t</span> filtered_resistance = fd_isrw1_get_filtered_resistance();</span><br></pre></td></tr></table></figure>
+
+<h2 id="结论"><a href="#结论" class="headerlink" title="结论"></a>结论</h2><p>卡尔曼滤波器在电池漏电流和短路电阻检测中的应用，显著提高了测量的稳定性和可靠性。通过合理配置滤波器参数，可以在保持快速响应的同时有效抑制噪声，提高电池短路检测的准确性。</p>
+<p>该方案易于集成到现有系统中，并提供了灵活的配置接口，可根据实际应用场景进行优化调整。</p>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">首页</a></li>
+        
+          <li><a href="/about/">关于</a></li>
+        
+          <li><a href="/archives/">归档</a></li>
+        
+          <li><a href="/tags/">标签</a></li>
+        
+          <li><a href="/categories/">分类</a></li>
+        
+          <li><a href="/search/">搜索</a></li>
+        
+          <li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%8D%A1%E5%B0%94%E6%9B%BC%E6%BB%A4%E6%B3%A2%E5%9C%A8%E7%94%B5%E6%B1%A0%E6%BC%8F%E7%94%B5%E6%B5%81%E6%A3%80%E6%B5%8B%E4%B8%AD%E7%9A%84%E5%BA%94%E7%94%A8"><span class="toc-number">1.</span> <span class="toc-text">卡尔曼滤波在电池漏电流检测中的应用</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%A6%82%E8%BF%B0"><span class="toc-number">1.1.</span> <span class="toc-text">概述</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8E%9F%E6%9C%89%E6%BB%A4%E6%B3%A2%E6%96%B9%E6%A1%88%E5%88%86%E6%9E%90"><span class="toc-number">1.2.</span> <span class="toc-text">原有滤波方案分析</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8D%A1%E5%B0%94%E6%9B%BC%E6%BB%A4%E6%B3%A2%E5%99%A8%E5%8E%9F%E7%90%86"><span class="toc-number">1.3.</span> <span class="toc-text">卡尔曼滤波器原理</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8D%A1%E5%B0%94%E6%9B%BC%E6%BB%A4%E6%B3%A2%E5%99%A8%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.4.</span> <span class="toc-text">卡尔曼滤波器实现</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84"><span class="toc-number">1.4.1.</span> <span class="toc-text">数据结构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%BB%A4%E6%B3%A2%E5%99%A8%E7%AE%97%E6%B3%95"><span class="toc-number">1.4.2.</span> <span class="toc-text">滤波器算法</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%9B%86%E6%88%90%E5%88%B0%E6%BC%8F%E7%94%B5%E6%B5%81%E6%A3%80%E6%B5%8B%E7%B3%BB%E7%BB%9F"><span class="toc-number">1.5.</span> <span class="toc-text">集成到漏电流检测系统</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8D%A1%E5%B0%94%E6%9B%BC%E6%BB%A4%E6%B3%A2%E5%99%A8%E5%8F%82%E6%95%B0%E9%85%8D%E7%BD%AE"><span class="toc-number">1.6.</span> <span class="toc-text">卡尔曼滤波器参数配置</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%80%A7%E8%83%BD%E5%AF%B9%E6%AF%94"><span class="toc-number">1.7.</span> <span class="toc-text">性能对比</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BD%BF%E7%94%A8%E7%A4%BA%E4%BE%8B"><span class="toc-number">1.8.</span> <span class="toc-text">使用示例</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%BB%93%E8%AE%BA"><span class="toc-number">1.9.</span> <span class="toc-text">结论</span></a></li></ol></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2025/10/20/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E7%94%B5%E6%B1%A0%E5%BE%AE%E7%9F%AD%E8%B7%AF%E4%B8%AD%E7%9A%84%E5%8D%A1%E5%B0%94%E6%9B%BC%E6%BB%A4%E6%B3%A2/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2025/10/20/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E7%94%B5%E6%B1%A0%E5%BE%AE%E7%9F%AD%E8%B7%AF%E4%B8%AD%E7%9A%84%E5%8D%A1%E5%B0%94%E6%9B%BC%E6%BB%A4%E6%B3%A2/&text=电量计 -- 卡尔曼滤波在电池内部短路漏电流检测中的应用"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2025/10/20/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E7%94%B5%E6%B1%A0%E5%BE%AE%E7%9F%AD%E8%B7%AF%E4%B8%AD%E7%9A%84%E5%8D%A1%E5%B0%94%E6%9B%BC%E6%BB%A4%E6%B3%A2/&title=电量计 -- 卡尔曼滤波在电池内部短路漏电流检测中的应用"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2025/10/20/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E7%94%B5%E6%B1%A0%E5%BE%AE%E7%9F%AD%E8%B7%AF%E4%B8%AD%E7%9A%84%E5%8D%A1%E5%B0%94%E6%9B%BC%E6%BB%A4%E6%B3%A2/&is_video=false&description=电量计 -- 卡尔曼滤波在电池内部短路漏电流检测中的应用"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=电量计 -- 卡尔曼滤波在电池内部短路漏电流检测中的应用&body=Check out this article: https://cursorhu.github.io/2025/10/20/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E7%94%B5%E6%B1%A0%E5%BE%AE%E7%9F%AD%E8%B7%AF%E4%B8%AD%E7%9A%84%E5%8D%A1%E5%B0%94%E6%9B%BC%E6%BB%A4%E6%B3%A2/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2025/10/20/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E7%94%B5%E6%B1%A0%E5%BE%AE%E7%9F%AD%E8%B7%AF%E4%B8%AD%E7%9A%84%E5%8D%A1%E5%B0%94%E6%9B%BC%E6%BB%A4%E6%B3%A2/&title=电量计 -- 卡尔曼滤波在电池内部短路漏电流检测中的应用"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2025/10/20/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E7%94%B5%E6%B1%A0%E5%BE%AE%E7%9F%AD%E8%B7%AF%E4%B8%AD%E7%9A%84%E5%8D%A1%E5%B0%94%E6%9B%BC%E6%BB%A4%E6%B3%A2/&title=电量计 -- 卡尔曼滤波在电池内部短路漏电流检测中的应用"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2025/10/20/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E7%94%B5%E6%B1%A0%E5%BE%AE%E7%9F%AD%E8%B7%AF%E4%B8%AD%E7%9A%84%E5%8D%A1%E5%B0%94%E6%9B%BC%E6%BB%A4%E6%B3%A2/&title=电量计 -- 卡尔曼滤波在电池内部短路漏电流检测中的应用"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2025/10/20/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E7%94%B5%E6%B1%A0%E5%BE%AE%E7%9F%AD%E8%B7%AF%E4%B8%AD%E7%9A%84%E5%8D%A1%E5%B0%94%E6%9B%BC%E6%BB%A4%E6%B3%A2/&title=电量计 -- 卡尔曼滤波在电池内部短路漏电流检测中的应用"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2025/10/20/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E7%94%B5%E6%B1%A0%E5%BE%AE%E7%9F%AD%E8%B7%AF%E4%B8%AD%E7%9A%84%E5%8D%A1%E5%B0%94%E6%9B%BC%E6%BB%A4%E6%B3%A2/&name=电量计 -- 卡尔曼滤波在电池内部短路漏电流检测中的应用&description=&lt;h1 id=&#34;卡尔曼滤波在电池漏电流检测中的应用&#34;&gt;&lt;a href=&#34;#卡尔曼滤波在电池漏电流检测中的应用&#34; class=&#34;headerlink&#34; title=&#34;卡尔曼滤波在电池漏电流检测中的应用&#34;&gt;&lt;/a&gt;卡尔曼滤波在电池漏电流检测中的应用&lt;/h1&gt;&lt;h2 id=&#34;概述&#34;&gt;&lt;a href=&#34;#概述&#34; class=&#34;headerlink&#34; title=&#34;概述&#34;&gt;&lt;/a&gt;概述&lt;/h2&gt;&lt;p&gt;本文档描述了在SD77428电池管理系统中使用卡尔曼滤波器来优化漏电流和短路电阻检测的实现方案。卡尔曼滤波器是一种递归式滤波算法，能够在噪声环境下对系统状态进行最优估计，特别适合处理电池参数这类动态变化且受测量噪声影响的数据。&lt;/p&gt;
+&lt;h2 id=&#34;原有滤波方案分析&#34;&gt;&lt;a href=&#34;#原有滤波方案分析&#34; class=&#34;headerlink&#34; title=&#34;原有滤波方案分析&#34;&gt;&lt;/a&gt;原有滤波方案分析&lt;/h2&gt;&lt;p&gt;原有的漏电流检测系统使用了以下滤波方法：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;&lt;strong&gt;电压平均滤波&lt;/strong&gt;：使用简单的移动平均滤波器处理电池电压&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;电阻中值滤波&lt;/strong&gt;：使用排序后的中值滤波处理短路电阻&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;漏电流加权平均&lt;/strong&gt;：基于偏差大小动态调整权重的加权平均算法&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;这些方法在一定程度上可以抑制噪声，但存在以下局限性：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;不考虑系统动态特性&lt;/li&gt;
+&lt;li&gt;对异常值处理机制简单&lt;/li&gt;
+&lt;li&gt;没有综合考虑测量噪声和系统噪声&lt;/li&gt;
+&lt;li&gt;参数调整不够灵活&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;卡尔曼滤波器原理&#34;&gt;&lt;a href=&#34;#卡尔曼滤波器原理&#34; class=&#34;headerlink&#34; title=&#34;卡尔曼滤波器原理&#34;&gt;&lt;/a&gt;卡尔曼滤波器原理&lt;/h2&gt;&lt;p&gt;卡尔曼滤波器基于以下模型：&lt;/p&gt;"><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2025/10/20/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E7%94%B5%E6%B1%A0%E5%BE%AE%E7%9F%AD%E8%B7%AF%E4%B8%AD%E7%9A%84%E5%8D%A1%E5%B0%94%E6%9B%BC%E6%BB%A4%E6%B3%A2/&t=电量计 -- 卡尔曼滤波在电池内部短路漏电流检测中的应用"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> 菜单</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> 目录</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> 分享</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> 返回顶部</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2026
+    cursorhu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"复制到粘贴板！\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "复制成功！");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+</body>
+</html>

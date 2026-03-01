@@ -1,28 +1,12 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang=zh>
 <head>
-  <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
-<meta name="theme-color" content="#222">
-<meta name="generator" content="Hexo 8.0.0">
-  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
-  <link rel="icon" type="image/png" sizes="32x32" href="/images/my_icon/favicon-32x32.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="/images/my_icon/favicon-16x16.ico">
-  <link rel="mask-icon" href="/images/logo.svg" color="#222">
-  <link rel="manifest" href="/images/my_icon/manifest.json">
-  <meta name="msapplication-config" content="/images/my_icon/browserconfig.xml">
-
-<link rel="stylesheet" href="/css/main.css">
-
-<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Noto+Serif+SC|Roboto/css?family=Noto Serif SC:300,300italic,400,400italic,700,700italic|Roboto:300,300italic,400,400italic,700,700italic&display=swap&subset=latin,latin-ext">
-<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
-
-<script id="hexo-configurations">
-    var NexT = window.NexT || {};
-    var CONFIG = {"hostname":"cursorhu.github.io","root":"/","scheme":"Pisces","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
-  </script>
-
-  <meta name="description" content="本文将从以下几个方面来阐述信号: (1) 信号的基本知识(2) 信号生命周期与处理过程分析(3) 基本的信号处理函数(4) 保护临界区不被中断(5) 信号的继承与执行(6) 实时信号中锁的研究 第一部分: 信号的基本知识1.信号本质:信号的本质是软件层次上对中断的一种模拟。它是一种异步通信的处理机制，事实上，进程并不知道信号何时到来。 2.信号来源(1)程序错误，如非法访问内存(2)外部信号，如按">
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="本文将从以下几个方面来阐述信号: (1) 信号的基本知识(2) 信号生命周期与处理过程分析(3) 基本的信号处理函数(4) 保护临界区不被中断(5) 信号的继承与执行(6) 实时信号中锁的研究 第一部分: 信号的基本知识1.信号本质:信号的本质是软件层次上对中断的一种模拟。它是一种异步通信的处理机制，事实上，进程并不知道信号何时到来。 2.信号来源(1)程序错误，如非法访问内存(2)外部信号，如按">
 <meta property="og:type" content="article">
 <meta property="og:title" content="浅谈Linux的Signal信号">
 <meta property="og:url" content="https://cursorhu.github.io/2020/11/08/%E6%B5%85%E8%B0%88Linux%E7%9A%84Signal%E4%BF%A1%E5%8F%B7/index.html">
@@ -34,230 +18,165 @@
 <meta property="article:author" content="cursorhu">
 <meta property="article:tag" content="linux">
 <meta name="twitter:card" content="summary">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>浅谈Linux的Signal信号</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
 
-<link rel="canonical" href="https://cursorhu.github.io/2020/11/08/%E6%B5%85%E8%B0%88Linux%E7%9A%84Signal%E4%BF%A1%E5%8F%B7/">
+
+    <!-- Umami Analytics -->
 
 
-<script id="page-configurations">
-  // https://hexo.io/docs/variables.html
-  CONFIG.page = {
-    sidebar: "",
-    isHome : false,
-    isPost : true,
-    lang   : 'zh-CN'
-  };
-</script>
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
 
-  <title>浅谈Linux的Signal信号 | ThinkNotes</title>
-  
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+<meta name="generator" content="Hexo 8.0.0"></head>
 
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="顶部" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="上一篇" href="/2020/11/15/%E6%B5%85%E8%B0%88Linux%E8%BF%9B%E7%A8%8B%E7%9A%84%E5%86%85%E5%AD%98%E5%88%86%E5%B8%83%E5%92%8C%E8%BF%9B%E7%A8%8BIPC/"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="下一篇" href="/2020/11/08/%E6%B5%85%E8%B0%88C-%E7%9A%84RAII%E6%9C%BA%E5%88%B6/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="返回顶部" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="分享文章" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">上一篇</span>
+      <span id="i-next" class="info" style="display:none;">下一篇</span>
+      <span id="i-top" class="info" style="display:none;">返回顶部</span>
+      <span id="i-share" class="info" style="display:none;">分享文章</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2020/11/08/%E6%B5%85%E8%B0%88Linux%E7%9A%84Signal%E4%BF%A1%E5%8F%B7/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2020/11/08/%E6%B5%85%E8%B0%88Linux%E7%9A%84Signal%E4%BF%A1%E5%8F%B7/&text=浅谈Linux的Signal信号"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2020/11/08/%E6%B5%85%E8%B0%88Linux%E7%9A%84Signal%E4%BF%A1%E5%8F%B7/&title=浅谈Linux的Signal信号"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2020/11/08/%E6%B5%85%E8%B0%88Linux%E7%9A%84Signal%E4%BF%A1%E5%8F%B7/&is_video=false&description=浅谈Linux的Signal信号"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=浅谈Linux的Signal信号&body=Check out this article: https://cursorhu.github.io/2020/11/08/%E6%B5%85%E8%B0%88Linux%E7%9A%84Signal%E4%BF%A1%E5%8F%B7/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2020/11/08/%E6%B5%85%E8%B0%88Linux%E7%9A%84Signal%E4%BF%A1%E5%8F%B7/&title=浅谈Linux的Signal信号"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2020/11/08/%E6%B5%85%E8%B0%88Linux%E7%9A%84Signal%E4%BF%A1%E5%8F%B7/&title=浅谈Linux的Signal信号"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2020/11/08/%E6%B5%85%E8%B0%88Linux%E7%9A%84Signal%E4%BF%A1%E5%8F%B7/&title=浅谈Linux的Signal信号"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2020/11/08/%E6%B5%85%E8%B0%88Linux%E7%9A%84Signal%E4%BF%A1%E5%8F%B7/&title=浅谈Linux的Signal信号"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2020/11/08/%E6%B5%85%E8%B0%88Linux%E7%9A%84Signal%E4%BF%A1%E5%8F%B7/&name=浅谈Linux的Signal信号&description=&lt;p&gt;本文将从以下几个方面来阐述信号:&lt;/p&gt;
+&lt;p&gt;(1) 信号的基本知识&lt;br&gt;(2) 信号生命周期与处理过程分析&lt;br&gt;(3) 基本的信号处理函数&lt;br&gt;(4) 保护临界区不被中断&lt;br&gt;(5) 信号的继承与执行&lt;br&gt;(6) 实时信号中锁的研究&lt;/p&gt;
+&lt;h1 id=&#34;第一部分-信号的基本知识&#34;&gt;&lt;a href=&#34;#第一部分-信号的基本知识&#34; class=&#34;headerlink&#34; title=&#34;第一部分: 信号的基本知识&#34;&gt;&lt;/a&gt;第一部分: 信号的基本知识&lt;/h1&gt;&lt;h2 id=&#34;1-信号本质&#34;&gt;&lt;a href=&#34;#1-信号本质&#34; class=&#34;headerlink&#34; title=&#34;1.信号本质:&#34;&gt;&lt;/a&gt;1.信号本质:&lt;/h2&gt;&lt;p&gt;信号的本质是软件层次上对中断的一种模拟。它是一种异步通信的处理机制，事实上，进程并不知道信号何时到来。&lt;/p&gt;
+&lt;h2 id=&#34;2-信号来源&#34;&gt;&lt;a href=&#34;#2-信号来源&#34; class=&#34;headerlink&#34; title=&#34;2.信号来源&#34;&gt;&lt;/a&gt;2.信号来源&lt;/h2&gt;&lt;p&gt;(1)程序错误，如非法访问内存&lt;br&gt;(2)外部信号，如按下了CTRL+C&lt;br&gt;(3)通过kill或sigqueue向另外一个进程发送信号&lt;/p&gt;
+&lt;h2 id=&#34;3-信号种类&#34;&gt;&lt;a href=&#34;#3-信号种类&#34; class=&#34;headerlink&#34; title=&#34;3.信号种类&#34;&gt;&lt;/a&gt;3.信号种类&lt;/h2&gt;&lt;p&gt;信号分为可靠信号与不可靠信号,可靠信号又称为实时信号，非可靠信号又称为非实时信号。&lt;br&gt;信号代码从1到32是不可靠信号,不可靠信号主要有以下问题:&lt;br&gt;(1)每次信号处理完之后，就会恢复成默认处理，这可能是调用者不希望看到的&lt;br&gt;(2)存在信号丢失的问题&lt;br&gt;现在的Linux对信号机制进行了改进，因此，不可靠信号主要是指信号丢失&lt;br&gt;信号代码从SIGRTMIN到SIGRTMAX之间的信号是可靠信号。可靠信号不存在丢失，由sigqueue发送，可靠信号支持排队。&lt;/p&gt;
+&lt;p&gt;可靠信号注册机制:&lt;br&gt;内核每收到一个可靠信号都会去注册这个信号，在信号的未决信号链中分配sigqueue结构，因此，不会存在信号丢失的问题。&lt;/p&gt;"><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2020/11/08/%E6%B5%85%E8%B0%88Linux%E7%9A%84Signal%E4%BF%A1%E5%8F%B7/&t=浅谈Linux的Signal信号"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
 
-
-
-
-
-  <noscript>
-  <style>
-  .use-motion .brand,
-  .use-motion .menu-item,
-  .sidebar-inner,
-  .use-motion .post-block,
-  .use-motion .pagination,
-  .use-motion .comments,
-  .use-motion .post-header,
-  .use-motion .post-body,
-  .use-motion .collection-header { opacity: initial; }
-
-  .use-motion .site-title,
-  .use-motion .site-subtitle {
-    opacity: initial;
-    top: initial;
-  }
-
-  .use-motion .logo-line-before i { left: initial; }
-  .use-motion .logo-line-after i { right: initial; }
-  </style>
-</noscript>
-
-</head>
-
-<body itemscope itemtype="http://schema.org/WebPage">
-  <div class="container use-motion">
-    <div class="headband"></div>
-
-    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
-      <div class="header-inner"><div class="site-brand-container">
-  <div class="site-nav-toggle">
-    <div class="toggle" aria-label="切换导航栏">
-      <span class="toggle-line toggle-line-first"></span>
-      <span class="toggle-line toggle-line-middle"></span>
-      <span class="toggle-line toggle-line-last"></span>
     </div>
-  </div>
-
-  <div class="site-meta">
-
-    <a href="/" class="brand" rel="start">
-      <span class="logo-line-before"><i></i></span>
-      <h1 class="site-title">ThinkNotes</h1>
-      <span class="logo-line-after"><i></i></span>
-    </a>
-      <p class="site-subtitle" itemprop="description">Simple is not easy | 化繁为简，知易行难</p>
-  </div>
-
-  <div class="site-nav-right">
-    <div class="toggle popup-trigger">
-        <i class="fa fa-search fa-fw fa-lg"></i>
-    </div>
-  </div>
-</div>
-
-
-
-
-<nav class="site-nav">
-  <ul id="menu" class="main-menu menu">
-        <li class="menu-item menu-item-home">
-
-    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
-
-  </li>
-        <li class="menu-item menu-item-tags">
-
-    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
-
-  </li>
-        <li class="menu-item menu-item-categories">
-
-    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
-
-  </li>
-        <li class="menu-item menu-item-archives">
-
-    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
-
-  </li>
-        <li class="menu-item menu-item-about">
-
-    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于我</a>
-
-  </li>
-      <li class="menu-item menu-item-search">
-        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
-        </a>
-      </li>
-  </ul>
-</nav>
-
-
-
-  <div class="search-pop-overlay">
-    <div class="popup search-popup">
-        <div class="search-header">
-  <span class="search-icon">
-    <i class="fa fa-search"></i>
-  </span>
-  <div class="search-input-container">
-    <input autocomplete="off" autocapitalize="off"
-           placeholder="搜索..." spellcheck="false"
-           type="search" class="search-input">
-  </div>
-  <span class="popup-btn-close">
-    <i class="fa fa-times-circle"></i>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E7%AC%AC%E4%B8%80%E9%83%A8%E5%88%86-%E4%BF%A1%E5%8F%B7%E7%9A%84%E5%9F%BA%E6%9C%AC%E7%9F%A5%E8%AF%86"><span class="toc-number">1.</span> <span class="toc-text">第一部分: 信号的基本知识</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E4%BF%A1%E5%8F%B7%E6%9C%AC%E8%B4%A8"><span class="toc-number">1.1.</span> <span class="toc-text">1.信号本质:</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-%E4%BF%A1%E5%8F%B7%E6%9D%A5%E6%BA%90"><span class="toc-number">1.2.</span> <span class="toc-text">2.信号来源</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-%E4%BF%A1%E5%8F%B7%E7%A7%8D%E7%B1%BB"><span class="toc-number">1.3.</span> <span class="toc-text">3.信号种类</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-%E4%BF%A1%E5%8F%B7%E5%93%8D%E5%BA%94%E7%9A%84%E6%96%B9%E5%BC%8F"><span class="toc-number">1.4.</span> <span class="toc-text">4.信号响应的方式</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E7%AC%AC%E4%BA%8C%E9%83%A8%E5%88%86-%E4%BF%A1%E5%8F%B7%E7%9A%84%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F%E4%B8%8E%E5%A4%84%E7%90%86%E8%BF%87%E7%A8%8B%E5%88%86%E6%9E%90"><span class="toc-number">2.</span> <span class="toc-text">第二部分: 信号的生命周期与处理过程分析</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E4%BF%A1%E5%8F%B7%E7%9A%84%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F"><span class="toc-number">2.1.</span> <span class="toc-text">1. 信号的生命周期</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-%E4%BF%A1%E5%8F%B7%E5%A4%84%E7%90%86%E5%87%BD%E6%95%B0%E7%9A%84%E8%BF%87%E7%A8%8B"><span class="toc-number">2.2.</span> <span class="toc-text">2. 信号处理函数的过程:</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E7%AC%AC%E4%B8%89%E9%83%A8%E5%88%86-%E5%9F%BA%E6%9C%AC%E7%9A%84%E4%BF%A1%E5%8F%B7%E5%A4%84%E7%90%86%E5%87%BD%E6%95%B0"><span class="toc-number">3.</span> <span class="toc-text">第三部分: 基本的信号处理函数</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E4%BF%A1%E5%8F%B7%E6%93%8D%E4%BD%9C"><span class="toc-number">3.1.</span> <span class="toc-text">1. 信号操作</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-%E4%BF%A1%E5%8F%B7%E5%A4%84%E7%90%86%E5%87%BD%E6%95%B0"><span class="toc-number">3.2.</span> <span class="toc-text">2. 信号处理函数</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%A4%BA%E4%BE%8B1-sigaction%E5%87%BD%E6%95%B0%E7%9A%84%E7%94%A8%E6%B3%95"><span class="toc-number">3.3.</span> <span class="toc-text">示例1: sigaction函数的用法</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%A4%BA%E4%BE%8B2-sigqueue%E5%90%91%E6%9C%AC%E8%BF%9B%E7%A8%8B%E5%8F%91%E9%80%81%E6%95%B0%E6%8D%AE%E7%9A%84%E4%BF%A1%E5%8F%B7"><span class="toc-number">3.4.</span> <span class="toc-text">示例2: sigqueue向本进程发送数据的信号</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%A4%BA%E4%BE%8B3-%E4%B8%80%E4%B8%AA%E8%BF%9B%E7%A8%8B%E5%90%91%E5%8F%A6%E5%A4%96%E4%B8%80%E4%B8%AA%E8%BF%9B%E7%A8%8B%E5%8F%91%E9%80%81%E4%BF%A1%E5%8F%B7%EF%BC%8C%E5%B9%B6%E6%90%BA%E5%B8%A6%E4%BF%A1%E6%81%AF"><span class="toc-number">3.5.</span> <span class="toc-text">示例3: 一个进程向另外一个进程发送信号，并携带信息</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%A4%BA%E4%BE%8B4-sigpending%E7%9A%84%E7%94%A8%E6%B3%95"><span class="toc-number">3.6.</span> <span class="toc-text">示例4: sigpending的用法</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E7%AC%AC%E5%9B%9B%E9%83%A8%E5%88%86-%E4%BF%9D%E6%8A%A4%E4%B8%B4%E7%95%8C%E5%8C%BA%E4%B8%8D%E8%A2%AB%E4%B8%AD%E6%96%AD"><span class="toc-number">4.</span> <span class="toc-text">第四部分: 保护临界区不被中断</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E5%87%BD%E6%95%B0%E7%9A%84%E5%8F%AF%E9%87%8D%E5%85%A5%E6%80%A7"><span class="toc-number">4.1.</span> <span class="toc-text">1. 函数的可重入性</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-%E4%BF%9D%E6%8A%A4%E4%B8%B4%E7%95%8C%E5%8C%BA%E4%B8%8D%E8%A2%AB%E4%B8%AD%E6%96%AD"><span class="toc-number">4.2.</span> <span class="toc-text">2. 保护临界区不被中断</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E7%AC%AC%E4%BA%94%E9%83%A8%E5%88%86-%E4%BF%A1%E5%8F%B7%E7%9A%84%E7%BB%A7%E6%89%BF%E4%B8%8E%E6%89%A7%E8%A1%8C"><span class="toc-number">5.</span> <span class="toc-text">第五部分: 信号的继承与执行</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E7%AC%AC%E5%85%AD%E9%83%A8%E5%88%86-%E5%AE%9E%E6%97%B6%E4%BF%A1%E5%8F%B7%E4%B8%AD%E9%94%81%E7%9A%84%E7%A0%94%E7%A9%B6"><span class="toc-number">6.</span> <span class="toc-text">第六部分: 实时信号中锁的研究</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E4%BF%A1%E5%8F%B7%E5%A4%84%E7%90%86%E5%87%BD%E6%95%B0%E4%B8%8E%E4%B8%BB%E5%87%BD%E6%95%B0%E4%B9%8B%E9%97%B4%E7%9A%84%E6%AD%BB%E9%94%81"><span class="toc-number">6.1.</span> <span class="toc-text">1. 信号处理函数与主函数之间的死锁</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-%E5%88%A9%E7%94%A8%E6%B5%8B%E8%AF%95%E9%94%81%E8%A7%A3%E5%86%B3%E6%AD%BB%E9%94%81"><span class="toc-number">6.2.</span> <span class="toc-text">2. 利用测试锁解决死锁</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-%E5%88%A9%E7%94%A8%E5%8F%8C%E7%BA%BF%E7%A8%8B%E6%9D%A5%E8%A7%A3%E5%86%B3%E4%B8%BB%E5%87%BD%E6%95%B0%E4%B8%8E%E4%BF%A1%E5%8F%B7%E5%A4%84%E7%90%86%E5%87%BD%E6%95%B0%E6%AD%BB%E9%94%81"><span class="toc-number">6.3.</span> <span class="toc-text">3. 利用双线程来解决主函数与信号处理函数死锁</span></a></li></ol></li></ol>
+      </div>
+    
   </span>
 </div>
-<div id="search-result">
-  <div id="no-result">
-    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
-  </div>
-</div>
 
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        浅谈Linux的Signal信号
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">cursorhu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2020-11-08T10:53:03.000Z" class="dt-published" itemprop="datePublished">2020-11-08</time>
+        
+      
     </div>
-  </div>
 
-</div>
-    </header>
-
-    
-  <div class="back-to-top">
-    <i class="fa fa-arrow-up"></i>
-    <span>0%</span>
-  </div>
-
-
-    <main class="main">
-      <div class="main-inner">
-        <div class="content-wrap">
-          
-
-          <div class="content post posts-expand">
-            
-
-    
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://cursorhu.github.io/2020/11/08/%E6%B5%85%E8%B0%88Linux%E7%9A%84Signal%E4%BF%A1%E5%8F%B7/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.jpg">
-      <meta itemprop="name" content="cursorhu">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="ThinkNotes">
-    </span>
-      <header class="post-header">
-        <h1 class="post-title" itemprop="name headline">
-          浅谈Linux的Signal信号
-        </h1>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2020-11-08 18:53:03" itemprop="dateCreated datePublished" datetime="2020-11-08T18:53:03+08:00">2020-11-08</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2024-04-26 16:13:35" itemprop="dateModified" datetime="2024-04-26T16:13:35+08:00">2024-04-26</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/linux/" itemprop="url" rel="index"><span itemprop="name">linux</span></a>
-                </span>
-            </span>
-
-          
-            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
-              <span class="post-meta-item-icon">
-                <i class="fa fa-eye"></i>
-              </span>
-              <span class="post-meta-item-text">阅读次数：</span>
-              <span id="busuanzi_value_page_pv"></span>
-            </span>
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
 
       
-        <p>本文将从以下几个方面来阐述信号:</p>
+    <div class="article-category">
+        <i class="fa-solid fa-archive"></i>
+        <a class="category-link" href="/categories/linux/">linux</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/linux/" rel="tag">linux</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <p>本文将从以下几个方面来阐述信号:</p>
 <p>(1) 信号的基本知识<br>(2) 信号生命周期与处理过程分析<br>(3) 基本的信号处理函数<br>(4) 保护临界区不被中断<br>(5) 信号的继承与执行<br>(6) 实时信号中锁的研究</p>
 <h1 id="第一部分-信号的基本知识"><a href="#第一部分-信号的基本知识" class="headerlink" title="第一部分: 信号的基本知识"></a>第一部分: 信号的基本知识</h1><h2 id="1-信号本质"><a href="#1-信号本质" class="headerlink" title="1.信号本质:"></a>1.信号本质:</h2><p>信号的本质是软件层次上对中断的一种模拟。它是一种异步通信的处理机制，事实上，进程并不知道信号何时到来。</p>
 <h2 id="2-信号来源"><a href="#2-信号来源" class="headerlink" title="2.信号来源"></a>2.信号来源</h2><p>(1)程序错误，如非法访问内存<br>(2)外部信号，如按下了CTRL+C<br>(3)通过kill或sigqueue向另外一个进程发送信号</p>
@@ -833,236 +752,160 @@ void myhandler(int signo,siginfo_t *si,void *vcontext){
 <p>解释一下:<br>在主线线程中阻塞了SIGUSR1信号,首先让子线程睡眠3秒，目的让主线程先运行，然后当主线程访问临界资源时，让线程sleep(10),在这期间，子线程发送信号，此时子线程会去处理信号，而主线程依旧平行的运行，子线程被阻止信号处理函数的sem_wait处，等待主线程10后，信号处理函数得到锁，然后进行临界资源的访问。这就解决了主函数与信号处理函数之间的死锁问题。</p>
 <p>扩展: 如果有多个信号到达时，还可以用多线程来处理多个信号，从而达到并行的目的，这个很好实现的，可以尝试一下。</p>
 
-    </div>
-
-    
-    
-    
-
-      <footer class="post-footer">
-          <div class="post-tags">
-              <a href="/tags/linux/" rel="tag"># linux</a>
-          </div>
-
-        
-
-
-        
-    <div class="post-nav">
-      <div class="post-nav-item">
-    <a href="/2020/11/08/%E6%B5%85%E8%B0%88C-%E7%9A%84RAII%E6%9C%BA%E5%88%B6/" rel="prev" title="浅谈C++的RAII机制">
-      <i class="fa fa-chevron-left"></i> 浅谈C++的RAII机制
-    </a></div>
-      <div class="post-nav-item">
-    <a href="/2020/11/15/%E6%B5%85%E8%B0%88Linux%E8%BF%9B%E7%A8%8B%E7%9A%84%E5%86%85%E5%AD%98%E5%88%86%E5%B8%83%E5%92%8C%E8%BF%9B%E7%A8%8BIPC/" rel="next" title="浅谈Linux进程的内存分布和进程IPC">
-      浅谈Linux进程的内存分布和进程IPC <i class="fa fa-chevron-right"></i>
-    </a></div>
-    </div>
-      </footer>
-    
-  </article>
-  
-  
-  
-
-
-
-          </div>
-          
-
-<script>
-  window.addEventListener('tabs:register', () => {
-    let { activeClass } = CONFIG.comments;
-    if (CONFIG.comments.storage) {
-      activeClass = localStorage.getItem('comments_active') || activeClass;
-    }
-    if (activeClass) {
-      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
-      if (activeTab) {
-        activeTab.click();
-      }
-    }
-  });
-  if (CONFIG.comments.storage) {
-    window.addEventListener('tabs:click', event => {
-      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
-      let commentClass = event.target.classList[1];
-      localStorage.setItem('comments_active', commentClass);
-    });
-  }
-</script>
-
-        </div>
-          
-  
-  <div class="toggle sidebar-toggle">
-    <span class="toggle-line toggle-line-first"></span>
-    <span class="toggle-line toggle-line-middle"></span>
-    <span class="toggle-line toggle-line-last"></span>
   </div>
+</article>
 
-  <aside class="sidebar">
-    <div class="sidebar-inner">
 
-      <ul class="sidebar-nav motion-element">
-        <li class="sidebar-nav-toc">
-          文章目录
-        </li>
-        <li class="sidebar-nav-overview">
-          站点概览
-        </li>
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">首页</a></li>
+        
+          <li><a href="/about/">关于</a></li>
+        
+          <li><a href="/archives/">归档</a></li>
+        
+          <li><a href="/tags/">标签</a></li>
+        
+          <li><a href="/categories/">分类</a></li>
+        
+          <li><a href="/search/">搜索</a></li>
+        
+          <li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li>
+        
       </ul>
+    </div>
 
-      <!--noindex-->
-      <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E4%B8%80%E9%83%A8%E5%88%86-%E4%BF%A1%E5%8F%B7%E7%9A%84%E5%9F%BA%E6%9C%AC%E7%9F%A5%E8%AF%86"><span class="nav-number">1.</span> <span class="nav-text">第一部分: 信号的基本知识</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E4%BF%A1%E5%8F%B7%E6%9C%AC%E8%B4%A8"><span class="nav-number">1.1.</span> <span class="nav-text">1.信号本质:</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-%E4%BF%A1%E5%8F%B7%E6%9D%A5%E6%BA%90"><span class="nav-number">1.2.</span> <span class="nav-text">2.信号来源</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-%E4%BF%A1%E5%8F%B7%E7%A7%8D%E7%B1%BB"><span class="nav-number">1.3.</span> <span class="nav-text">3.信号种类</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-%E4%BF%A1%E5%8F%B7%E5%93%8D%E5%BA%94%E7%9A%84%E6%96%B9%E5%BC%8F"><span class="nav-number">1.4.</span> <span class="nav-text">4.信号响应的方式</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E4%BA%8C%E9%83%A8%E5%88%86-%E4%BF%A1%E5%8F%B7%E7%9A%84%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F%E4%B8%8E%E5%A4%84%E7%90%86%E8%BF%87%E7%A8%8B%E5%88%86%E6%9E%90"><span class="nav-number">2.</span> <span class="nav-text">第二部分: 信号的生命周期与处理过程分析</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E4%BF%A1%E5%8F%B7%E7%9A%84%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F"><span class="nav-number">2.1.</span> <span class="nav-text">1. 信号的生命周期</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-%E4%BF%A1%E5%8F%B7%E5%A4%84%E7%90%86%E5%87%BD%E6%95%B0%E7%9A%84%E8%BF%87%E7%A8%8B"><span class="nav-number">2.2.</span> <span class="nav-text">2. 信号处理函数的过程:</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E4%B8%89%E9%83%A8%E5%88%86-%E5%9F%BA%E6%9C%AC%E7%9A%84%E4%BF%A1%E5%8F%B7%E5%A4%84%E7%90%86%E5%87%BD%E6%95%B0"><span class="nav-number">3.</span> <span class="nav-text">第三部分: 基本的信号处理函数</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E4%BF%A1%E5%8F%B7%E6%93%8D%E4%BD%9C"><span class="nav-number">3.1.</span> <span class="nav-text">1. 信号操作</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-%E4%BF%A1%E5%8F%B7%E5%A4%84%E7%90%86%E5%87%BD%E6%95%B0"><span class="nav-number">3.2.</span> <span class="nav-text">2. 信号处理函数</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%A4%BA%E4%BE%8B1-sigaction%E5%87%BD%E6%95%B0%E7%9A%84%E7%94%A8%E6%B3%95"><span class="nav-number">3.3.</span> <span class="nav-text">示例1: sigaction函数的用法</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%A4%BA%E4%BE%8B2-sigqueue%E5%90%91%E6%9C%AC%E8%BF%9B%E7%A8%8B%E5%8F%91%E9%80%81%E6%95%B0%E6%8D%AE%E7%9A%84%E4%BF%A1%E5%8F%B7"><span class="nav-number">3.4.</span> <span class="nav-text">示例2: sigqueue向本进程发送数据的信号</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%A4%BA%E4%BE%8B3-%E4%B8%80%E4%B8%AA%E8%BF%9B%E7%A8%8B%E5%90%91%E5%8F%A6%E5%A4%96%E4%B8%80%E4%B8%AA%E8%BF%9B%E7%A8%8B%E5%8F%91%E9%80%81%E4%BF%A1%E5%8F%B7%EF%BC%8C%E5%B9%B6%E6%90%BA%E5%B8%A6%E4%BF%A1%E6%81%AF"><span class="nav-number">3.5.</span> <span class="nav-text">示例3: 一个进程向另外一个进程发送信号，并携带信息</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%A4%BA%E4%BE%8B4-sigpending%E7%9A%84%E7%94%A8%E6%B3%95"><span class="nav-number">3.6.</span> <span class="nav-text">示例4: sigpending的用法</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E5%9B%9B%E9%83%A8%E5%88%86-%E4%BF%9D%E6%8A%A4%E4%B8%B4%E7%95%8C%E5%8C%BA%E4%B8%8D%E8%A2%AB%E4%B8%AD%E6%96%AD"><span class="nav-number">4.</span> <span class="nav-text">第四部分: 保护临界区不被中断</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E5%87%BD%E6%95%B0%E7%9A%84%E5%8F%AF%E9%87%8D%E5%85%A5%E6%80%A7"><span class="nav-number">4.1.</span> <span class="nav-text">1. 函数的可重入性</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-%E4%BF%9D%E6%8A%A4%E4%B8%B4%E7%95%8C%E5%8C%BA%E4%B8%8D%E8%A2%AB%E4%B8%AD%E6%96%AD"><span class="nav-number">4.2.</span> <span class="nav-text">2. 保护临界区不被中断</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E4%BA%94%E9%83%A8%E5%88%86-%E4%BF%A1%E5%8F%B7%E7%9A%84%E7%BB%A7%E6%89%BF%E4%B8%8E%E6%89%A7%E8%A1%8C"><span class="nav-number">5.</span> <span class="nav-text">第五部分: 信号的继承与执行</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E5%85%AD%E9%83%A8%E5%88%86-%E5%AE%9E%E6%97%B6%E4%BF%A1%E5%8F%B7%E4%B8%AD%E9%94%81%E7%9A%84%E7%A0%94%E7%A9%B6"><span class="nav-number">6.</span> <span class="nav-text">第六部分: 实时信号中锁的研究</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E4%BF%A1%E5%8F%B7%E5%A4%84%E7%90%86%E5%87%BD%E6%95%B0%E4%B8%8E%E4%B8%BB%E5%87%BD%E6%95%B0%E4%B9%8B%E9%97%B4%E7%9A%84%E6%AD%BB%E9%94%81"><span class="nav-number">6.1.</span> <span class="nav-text">1. 信号处理函数与主函数之间的死锁</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-%E5%88%A9%E7%94%A8%E6%B5%8B%E8%AF%95%E9%94%81%E8%A7%A3%E5%86%B3%E6%AD%BB%E9%94%81"><span class="nav-number">6.2.</span> <span class="nav-text">2. 利用测试锁解决死锁</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-%E5%88%A9%E7%94%A8%E5%8F%8C%E7%BA%BF%E7%A8%8B%E6%9D%A5%E8%A7%A3%E5%86%B3%E4%B8%BB%E5%87%BD%E6%95%B0%E4%B8%8E%E4%BF%A1%E5%8F%B7%E5%A4%84%E7%90%86%E5%87%BD%E6%95%B0%E6%AD%BB%E9%94%81"><span class="nav-number">6.3.</span> <span class="nav-text">3. 利用双线程来解决主函数与信号处理函数死锁</span></a></li></ol></li></ol></div>
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E7%AC%AC%E4%B8%80%E9%83%A8%E5%88%86-%E4%BF%A1%E5%8F%B7%E7%9A%84%E5%9F%BA%E6%9C%AC%E7%9F%A5%E8%AF%86"><span class="toc-number">1.</span> <span class="toc-text">第一部分: 信号的基本知识</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E4%BF%A1%E5%8F%B7%E6%9C%AC%E8%B4%A8"><span class="toc-number">1.1.</span> <span class="toc-text">1.信号本质:</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-%E4%BF%A1%E5%8F%B7%E6%9D%A5%E6%BA%90"><span class="toc-number">1.2.</span> <span class="toc-text">2.信号来源</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-%E4%BF%A1%E5%8F%B7%E7%A7%8D%E7%B1%BB"><span class="toc-number">1.3.</span> <span class="toc-text">3.信号种类</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-%E4%BF%A1%E5%8F%B7%E5%93%8D%E5%BA%94%E7%9A%84%E6%96%B9%E5%BC%8F"><span class="toc-number">1.4.</span> <span class="toc-text">4.信号响应的方式</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E7%AC%AC%E4%BA%8C%E9%83%A8%E5%88%86-%E4%BF%A1%E5%8F%B7%E7%9A%84%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F%E4%B8%8E%E5%A4%84%E7%90%86%E8%BF%87%E7%A8%8B%E5%88%86%E6%9E%90"><span class="toc-number">2.</span> <span class="toc-text">第二部分: 信号的生命周期与处理过程分析</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E4%BF%A1%E5%8F%B7%E7%9A%84%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F"><span class="toc-number">2.1.</span> <span class="toc-text">1. 信号的生命周期</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-%E4%BF%A1%E5%8F%B7%E5%A4%84%E7%90%86%E5%87%BD%E6%95%B0%E7%9A%84%E8%BF%87%E7%A8%8B"><span class="toc-number">2.2.</span> <span class="toc-text">2. 信号处理函数的过程:</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E7%AC%AC%E4%B8%89%E9%83%A8%E5%88%86-%E5%9F%BA%E6%9C%AC%E7%9A%84%E4%BF%A1%E5%8F%B7%E5%A4%84%E7%90%86%E5%87%BD%E6%95%B0"><span class="toc-number">3.</span> <span class="toc-text">第三部分: 基本的信号处理函数</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E4%BF%A1%E5%8F%B7%E6%93%8D%E4%BD%9C"><span class="toc-number">3.1.</span> <span class="toc-text">1. 信号操作</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-%E4%BF%A1%E5%8F%B7%E5%A4%84%E7%90%86%E5%87%BD%E6%95%B0"><span class="toc-number">3.2.</span> <span class="toc-text">2. 信号处理函数</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%A4%BA%E4%BE%8B1-sigaction%E5%87%BD%E6%95%B0%E7%9A%84%E7%94%A8%E6%B3%95"><span class="toc-number">3.3.</span> <span class="toc-text">示例1: sigaction函数的用法</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%A4%BA%E4%BE%8B2-sigqueue%E5%90%91%E6%9C%AC%E8%BF%9B%E7%A8%8B%E5%8F%91%E9%80%81%E6%95%B0%E6%8D%AE%E7%9A%84%E4%BF%A1%E5%8F%B7"><span class="toc-number">3.4.</span> <span class="toc-text">示例2: sigqueue向本进程发送数据的信号</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%A4%BA%E4%BE%8B3-%E4%B8%80%E4%B8%AA%E8%BF%9B%E7%A8%8B%E5%90%91%E5%8F%A6%E5%A4%96%E4%B8%80%E4%B8%AA%E8%BF%9B%E7%A8%8B%E5%8F%91%E9%80%81%E4%BF%A1%E5%8F%B7%EF%BC%8C%E5%B9%B6%E6%90%BA%E5%B8%A6%E4%BF%A1%E6%81%AF"><span class="toc-number">3.5.</span> <span class="toc-text">示例3: 一个进程向另外一个进程发送信号，并携带信息</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%A4%BA%E4%BE%8B4-sigpending%E7%9A%84%E7%94%A8%E6%B3%95"><span class="toc-number">3.6.</span> <span class="toc-text">示例4: sigpending的用法</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E7%AC%AC%E5%9B%9B%E9%83%A8%E5%88%86-%E4%BF%9D%E6%8A%A4%E4%B8%B4%E7%95%8C%E5%8C%BA%E4%B8%8D%E8%A2%AB%E4%B8%AD%E6%96%AD"><span class="toc-number">4.</span> <span class="toc-text">第四部分: 保护临界区不被中断</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E5%87%BD%E6%95%B0%E7%9A%84%E5%8F%AF%E9%87%8D%E5%85%A5%E6%80%A7"><span class="toc-number">4.1.</span> <span class="toc-text">1. 函数的可重入性</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-%E4%BF%9D%E6%8A%A4%E4%B8%B4%E7%95%8C%E5%8C%BA%E4%B8%8D%E8%A2%AB%E4%B8%AD%E6%96%AD"><span class="toc-number">4.2.</span> <span class="toc-text">2. 保护临界区不被中断</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E7%AC%AC%E4%BA%94%E9%83%A8%E5%88%86-%E4%BF%A1%E5%8F%B7%E7%9A%84%E7%BB%A7%E6%89%BF%E4%B8%8E%E6%89%A7%E8%A1%8C"><span class="toc-number">5.</span> <span class="toc-text">第五部分: 信号的继承与执行</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E7%AC%AC%E5%85%AD%E9%83%A8%E5%88%86-%E5%AE%9E%E6%97%B6%E4%BF%A1%E5%8F%B7%E4%B8%AD%E9%94%81%E7%9A%84%E7%A0%94%E7%A9%B6"><span class="toc-number">6.</span> <span class="toc-text">第六部分: 实时信号中锁的研究</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E4%BF%A1%E5%8F%B7%E5%A4%84%E7%90%86%E5%87%BD%E6%95%B0%E4%B8%8E%E4%B8%BB%E5%87%BD%E6%95%B0%E4%B9%8B%E9%97%B4%E7%9A%84%E6%AD%BB%E9%94%81"><span class="toc-number">6.1.</span> <span class="toc-text">1. 信号处理函数与主函数之间的死锁</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-%E5%88%A9%E7%94%A8%E6%B5%8B%E8%AF%95%E9%94%81%E8%A7%A3%E5%86%B3%E6%AD%BB%E9%94%81"><span class="toc-number">6.2.</span> <span class="toc-text">2. 利用测试锁解决死锁</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-%E5%88%A9%E7%94%A8%E5%8F%8C%E7%BA%BF%E7%A8%8B%E6%9D%A5%E8%A7%A3%E5%86%B3%E4%B8%BB%E5%87%BD%E6%95%B0%E4%B8%8E%E4%BF%A1%E5%8F%B7%E5%A4%84%E7%90%86%E5%87%BD%E6%95%B0%E6%AD%BB%E9%94%81"><span class="toc-number">6.3.</span> <span class="toc-text">3. 利用双线程来解决主函数与信号处理函数死锁</span></a></li></ol></li></ol>
       </div>
-      <!--/noindex-->
+    
 
-      <div class="site-overview-wrap sidebar-panel">
-        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
-    <img class="site-author-image" itemprop="image" alt="cursorhu"
-      src="/images/avatar.jpg">
-  <p class="site-author-name" itemprop="name">cursorhu</p>
-  <div class="site-description" itemprop="description"></div>
-</div>
-<div class="site-state-wrap motion-element">
-  <nav class="site-state">
-      <div class="site-state-item site-state-posts">
-          <a href="/archives/">
-        
-          <span class="site-state-item-count">112</span>
-          <span class="site-state-item-name">日志</span>
-        </a>
-      </div>
-      <div class="site-state-item site-state-categories">
-            <a href="/categories/">
-          
-        <span class="site-state-item-count">32</span>
-        <span class="site-state-item-name">分类</span></a>
-      </div>
-      <div class="site-state-item site-state-tags">
-            <a href="/tags/">
-          
-        <span class="site-state-item-count">53</span>
-        <span class="site-state-item-name">标签</span></a>
-      </div>
-  </nav>
-</div>
-  <div class="links-of-author motion-element">
-      <span class="links-of-author-item">
-        <a href="https://github.com/cursorhu" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;cursorhu" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
-      </span>
-      <span class="links-of-author-item">
-        <a href="mailto:cursorhu@outlook.com" title="E-Mail → mailto:cursorhu@outlook.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
-      </span>
-  </div>
-
-
-
-      </div>
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2020/11/08/%E6%B5%85%E8%B0%88Linux%E7%9A%84Signal%E4%BF%A1%E5%8F%B7/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2020/11/08/%E6%B5%85%E8%B0%88Linux%E7%9A%84Signal%E4%BF%A1%E5%8F%B7/&text=浅谈Linux的Signal信号"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2020/11/08/%E6%B5%85%E8%B0%88Linux%E7%9A%84Signal%E4%BF%A1%E5%8F%B7/&title=浅谈Linux的Signal信号"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2020/11/08/%E6%B5%85%E8%B0%88Linux%E7%9A%84Signal%E4%BF%A1%E5%8F%B7/&is_video=false&description=浅谈Linux的Signal信号"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=浅谈Linux的Signal信号&body=Check out this article: https://cursorhu.github.io/2020/11/08/%E6%B5%85%E8%B0%88Linux%E7%9A%84Signal%E4%BF%A1%E5%8F%B7/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2020/11/08/%E6%B5%85%E8%B0%88Linux%E7%9A%84Signal%E4%BF%A1%E5%8F%B7/&title=浅谈Linux的Signal信号"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2020/11/08/%E6%B5%85%E8%B0%88Linux%E7%9A%84Signal%E4%BF%A1%E5%8F%B7/&title=浅谈Linux的Signal信号"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2020/11/08/%E6%B5%85%E8%B0%88Linux%E7%9A%84Signal%E4%BF%A1%E5%8F%B7/&title=浅谈Linux的Signal信号"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2020/11/08/%E6%B5%85%E8%B0%88Linux%E7%9A%84Signal%E4%BF%A1%E5%8F%B7/&title=浅谈Linux的Signal信号"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2020/11/08/%E6%B5%85%E8%B0%88Linux%E7%9A%84Signal%E4%BF%A1%E5%8F%B7/&name=浅谈Linux的Signal信号&description=&lt;p&gt;本文将从以下几个方面来阐述信号:&lt;/p&gt;
+&lt;p&gt;(1) 信号的基本知识&lt;br&gt;(2) 信号生命周期与处理过程分析&lt;br&gt;(3) 基本的信号处理函数&lt;br&gt;(4) 保护临界区不被中断&lt;br&gt;(5) 信号的继承与执行&lt;br&gt;(6) 实时信号中锁的研究&lt;/p&gt;
+&lt;h1 id=&#34;第一部分-信号的基本知识&#34;&gt;&lt;a href=&#34;#第一部分-信号的基本知识&#34; class=&#34;headerlink&#34; title=&#34;第一部分: 信号的基本知识&#34;&gt;&lt;/a&gt;第一部分: 信号的基本知识&lt;/h1&gt;&lt;h2 id=&#34;1-信号本质&#34;&gt;&lt;a href=&#34;#1-信号本质&#34; class=&#34;headerlink&#34; title=&#34;1.信号本质:&#34;&gt;&lt;/a&gt;1.信号本质:&lt;/h2&gt;&lt;p&gt;信号的本质是软件层次上对中断的一种模拟。它是一种异步通信的处理机制，事实上，进程并不知道信号何时到来。&lt;/p&gt;
+&lt;h2 id=&#34;2-信号来源&#34;&gt;&lt;a href=&#34;#2-信号来源&#34; class=&#34;headerlink&#34; title=&#34;2.信号来源&#34;&gt;&lt;/a&gt;2.信号来源&lt;/h2&gt;&lt;p&gt;(1)程序错误，如非法访问内存&lt;br&gt;(2)外部信号，如按下了CTRL+C&lt;br&gt;(3)通过kill或sigqueue向另外一个进程发送信号&lt;/p&gt;
+&lt;h2 id=&#34;3-信号种类&#34;&gt;&lt;a href=&#34;#3-信号种类&#34; class=&#34;headerlink&#34; title=&#34;3.信号种类&#34;&gt;&lt;/a&gt;3.信号种类&lt;/h2&gt;&lt;p&gt;信号分为可靠信号与不可靠信号,可靠信号又称为实时信号，非可靠信号又称为非实时信号。&lt;br&gt;信号代码从1到32是不可靠信号,不可靠信号主要有以下问题:&lt;br&gt;(1)每次信号处理完之后，就会恢复成默认处理，这可能是调用者不希望看到的&lt;br&gt;(2)存在信号丢失的问题&lt;br&gt;现在的Linux对信号机制进行了改进，因此，不可靠信号主要是指信号丢失&lt;br&gt;信号代码从SIGRTMIN到SIGRTMAX之间的信号是可靠信号。可靠信号不存在丢失，由sigqueue发送，可靠信号支持排队。&lt;/p&gt;
+&lt;p&gt;可靠信号注册机制:&lt;br&gt;内核每收到一个可靠信号都会去注册这个信号，在信号的未决信号链中分配sigqueue结构，因此，不会存在信号丢失的问题。&lt;/p&gt;"><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2020/11/08/%E6%B5%85%E8%B0%88Linux%E7%9A%84Signal%E4%BF%A1%E5%8F%B7/&t=浅谈Linux的Signal信号"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
 
     </div>
-  </aside>
-  <div id="sidebar-dimmer"></div>
 
-
-      </div>
-    </main>
-
-    <footer class="footer">
-      <div class="footer-inner">
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> 菜单</a>
         
-
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> 目录</a>
         
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> 分享</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> 返回顶部</a>
+    </div>
 
-<div class="copyright">
-  
-  &copy; 
-  <span itemprop="copyrightYear">2025</span>
-  <span class="with-love">
-    <i class="fa fa-heart"></i>
-  </span>
-  <span class="author" itemprop="copyrightHolder">cursorhu</span>
-</div>
-
-
-
-        
-<div class="busuanzi-count">
-  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
-    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
-      <span class="post-meta-item-icon">
-        <i class="fa fa-user"></i>
-      </span>
-      <span class="site-uv" title="总访客量">
-        <span id="busuanzi_value_site_uv"></span>
-      </span>
-    </span>
-    <span class="post-meta-divider">|</span>
-    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
-      <span class="post-meta-item-icon">
-        <i class="fa fa-eye"></i>
-      </span>
-      <span class="site-pv" title="总访问量">
-        <span id="busuanzi_value_site_pv"></span>
-      </span>
-    </span>
-</div>
-
-
-
-
-
-
-
-
-      </div>
-    </footer>
   </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2026
+    cursorhu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
 
   
-  <script src="/lib/anime.min.js"></script>
-  <script src="/lib/velocity/velocity.min.js"></script>
-  <script src="/lib/velocity/velocity.ui.min.js"></script>
-
-<script src="/js/utils.js"></script>
-
-<script src="/js/motion.js"></script>
-
-
-<script src="/js/schemes/pisces.js"></script>
-
-
-<script src="/js/next-boot.js"></script>
-
-
-
-
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
   
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"复制到粘贴板！\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "复制成功！");
+      e.clearSelection();
+    })
+  })
+  </script>
 
 
+<script src="/js/main.js"></script>
 
+<!-- search -->
 
-  
-<script src="/js/local-search.js"></script>
+<!-- Baidu Analytics -->
 
+<!-- Cloudflare Analytics -->
 
+<!-- Disqus Comments -->
 
+<!-- utterances Comments -->
 
-
-
-
-
-
-
-
-
-
-  
-
-  
-
-  
 </body>
 </html>
