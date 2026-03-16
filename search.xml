@@ -6535,19 +6535,6 @@ void CmyMFCDlg::CloseLogFile()
       </tags>
   </entry>
   <entry>
-    <title>NVMe设备的Firmware Update全栈分析（一）：基于Windows Storport环境</title>
-    <url>/2022/11/30/NVMe%E8%AE%BE%E5%A4%87%E7%9A%84Firmware%20Update%E5%85%A8%E6%A0%88%E5%88%86%E6%9E%90%EF%BC%88%E4%B8%80%EF%BC%89%EF%BC%9A%E5%9F%BA%E4%BA%8EWindows%20Storport%E7%8E%AF%E5%A2%83/</url>
-    <content><![CDATA[<h2 id="1-1-Windows-Storport-Driver环境下的NVMe设备Firmware-Update"><a href="#1-1-Windows-Storport-Driver环境下的NVMe设备Firmware-Update" class="headerlink" title="1.1 Windows Storport Driver环境下的NVMe设备Firmware Update"></a>1.1 Windows Storport Driver环境下的NVMe设备Firmware Update</h2><p>Windows系统下，NVMe设备的Firmware Update都是基于以下Microsoft API文档 ：</p>
-<p><a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/storage/upgrading-firmware-for-an-nvme-device">upgrading-firmware-for-an-nvme-device</a></p>
-]]></content>
-      <categories>
-        <category>NVMe</category>
-      </categories>
-      <tags>
-        <tag>NVMe</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>Python使用笔记</title>
     <url>/2023/10/07/Python%E9%85%8D%E7%BD%AE%E7%AC%94%E8%AE%B0/</url>
     <content><![CDATA[<h1 id="pip-install换源"><a href="#pip-install换源" class="headerlink" title="pip install换源"></a>pip install换源</h1><p>pip install，有的包一直timeout无法安装</p>
@@ -8006,50 +7993,6 @@ void CmyMFCDlg::CloseLogFile()
       </categories>
       <tags>
         <tag>STM32</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>UEFI开发（二）</title>
-    <url>/2024/08/30/UEFI%E5%BC%80%E5%8F%91%EF%BC%88%E4%BA%8C%EF%BC%89/</url>
-    <content><![CDATA[<h1 id="UEFI开发（二）"><a href="#UEFI开发（二）" class="headerlink" title="UEFI开发（二）"></a>UEFI开发（二）</h1><h2 id="Library库"><a href="#Library库" class="headerlink" title="Library库"></a>Library库</h2><p><a href="https://blog.csdn.net/weixin_45279063/article/details/115324601">https://blog.csdn.net/weixin_45279063/article/details/115324601</a></p>
-<p>以后面要用到的DEBUG库为例：</p>
-<p>库的调用方是MdeModulePkg下的某个INF模块，被调用方是MdePkg库（这个属于基础库很常用）</p>
-<ol>
-<li>调用方的INF中要导入库模块的dec和要用到的LibraryClasses</li>
-</ol>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">[Packages]</span><br><span class="line">  MdePkg/MdePkg.dec #这里包含了库模块MdePkg的dec声明，获取到MdePkg所有对外开放的库接口</span><br><span class="line">  MdeModulePkg/MdeModulePkg.dec #这是调用方模块</span><br><span class="line"></span><br><span class="line">[LibraryClasses]</span><br><span class="line">  DevicePathLib</span><br><span class="line">  UefiBootServicesTableLib</span><br><span class="line">  UefiRuntimeServicesTableLib</span><br><span class="line">  MemoryAllocationLib</span><br><span class="line">  BaseMemoryLib</span><br><span class="line">  UefiLib</span><br><span class="line">  BaseLib</span><br><span class="line">  UefiDriverEntryPoint</span><br><span class="line">  DebugLib #这里导入了MdePkg库的DebugLib类（头文件），类似其他语言的import或者include namespace</span><br><span class="line">  PcdLib</span><br></pre></td></tr></table></figure>
-
-<ol start="2">
-<li>调用方的c代码中可以直接include库的头文件（不需要用相对地址包含头文件）</li>
-</ol>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">#include &lt;Library/DebugLib.h&gt;</span><br></pre></td></tr></table></figure>
-
-<ol start="3">
-<li>调用方使用库的函数体DEBUG();</li>
-</ol>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">DEBUG((DEBUG_INFO, &quot;Initializing XXX controller in slot %d\n&quot;, Slot));</span><br><span class="line"></span><br><span class="line">Status = InitController(PciIo, Slot);</span><br><span class="line">if (EFI_ERROR(Status))</span><br><span class="line">&#123;</span><br><span class="line">    DEBUG((DEBUG_ERROR, &quot;Failed to switch Host to PCIe mode: %r\n&quot;, Status));</span><br><span class="line">    return Status;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h2 id="DEBUG打印"><a href="#DEBUG打印" class="headerlink" title="DEBUG打印"></a>DEBUG打印</h2><p><a href="https://github.com/tianocore/tianocore.github.io/wiki/EDK-II-Debugging">https://github.com/tianocore/tianocore.github.io/wiki/EDK-II-Debugging</a></p>
-<p>在使用DEBUG INFO的MdeModulePkg模块的dsc中，声明DEBUG库的全局变量PcdDebugPropertyMask和PcdDebugPrintErrorLevel，指定支持INFO级别打印，否则默认只会打印DEBUG(ERROR)</p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">[PcdsFixedAtBuild]</span><br><span class="line"># refer to https://github.com/tianocore/tianocore.github.io/wiki/EDK-II-Debugging</span><br><span class="line">  gEfiMdePkgTokenSpaceGuid.PcdDebugPropertyMask|0x0f</span><br><span class="line">  gEfiMdePkgTokenSpaceGuid.PcdDebugPrintErrorLevel|0x80000040</span><br></pre></td></tr></table></figure>
-
-<p>再编译MdeModulePkg inf，输出的efi可见INFO级别的打印生效。</p>
-<h2 id="UTF8中文报错"><a href="#UTF8中文报错" class="headerlink" title="UTF8中文报错"></a>UTF8中文报错</h2><p>问题log：</p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">C:\edk2\MdeModulePkg\Bus\Pci\SdMmcPciHcDxe\BayhubHost.h(1): error C2220: the following warning is treated as an error</span><br><span class="line">C:\edk2\MdeModulePkg\Bus\Pci\SdMmcPciHcDxe\BayhubHost.h(1): warning C4819: The file contains a character that cannot be represented in the current code page (936). Save the file in Unicode format to prevent data loss</span><br></pre></td></tr></table></figure>
-
-<p>错误信息指出：<br>警告C4819被当作错误处理<br>文件包含无法在当前代码页(936，即中文GBK编码)中表示的字符</p>
-<p>解决方法</p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">使用Notepad++重新保存文件:</span><br><span class="line">打开文件，编码选择&quot;UTF-8 with signature (UTF-8-BOM)&quot;或者&quot;UTF-8&quot;</span><br><span class="line">保存文件</span><br></pre></td></tr></table></figure>
-
-<p>原因：</p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">文件有非ASCII字符（特别是在注释中）</span><br><span class="line">有时文件的首行可能有不可见的BOM（字节顺序标记）或其他特殊字符</span><br></pre></td></tr></table></figure>
-
-]]></content>
-      <categories>
-        <category>UEFI开发</category>
-      </categories>
-      <tags>
-        <tag>UEFI</tag>
       </tags>
   </entry>
   <entry>
@@ -21687,8 +21630,8 @@ clean:								#清理规则，删除client、server和中间文件
       </tags>
   </entry>
   <entry>
-    <title>Windows平台NVMe设备固件升级工具开发（二）：MFC GUI架构与多平台适配</title>
-    <url>/2026/03/16/Windows%E5%B9%B3%E5%8F%B0NVMe%E8%AE%BE%E5%A4%87%E5%9B%BA%E4%BB%B6%E5%8D%87%E7%BA%A7%E5%B7%A5%E5%85%B7%E5%BC%80%E5%8F%91_02_MFC_GUI%E6%9E%B6%E6%9E%84%E4%B8%8E%E5%A4%9A%E5%B9%B3%E5%8F%B0%E9%80%82%E9%85%8D/</url>
+    <title>NVMe-eMMC Bridge 芯片固件开发（九）：Windows平台NVMe设备固件升级工具：MFC GUI架构与多平台适配</title>
+    <url>/2026/03/16/NVMe-eMMC-Bridge%E8%8A%AF%E7%89%87%E5%9B%BA%E4%BB%B6_09_Windows%E5%B9%B3%E5%8F%B0NVMe%E8%AE%BE%E5%A4%87%E5%9B%BA%E4%BB%B6%E5%8D%87%E7%BA%A7%E5%B7%A5%E5%85%B7/</url>
     <content><![CDATA[<h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><p>本文档以 <strong>BayHub BH799 NVMe-eMMC Bridge 芯片</strong> 的 Windows 固件升级工具为实例，系统讲解：</p>
 <ol>
 <li><strong>MFC GUI 架构设计</strong>：对话框分层、控件通信机制、日志系统</li>
@@ -21837,6 +21780,50 @@ clean:								#清理规则，删除client、server和中间文件
         <tag>Windows</tag>
         <tag>Intel RST</tag>
         <tag>存储驱动</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>UEFI开发（二）Library库和调试打印方法</title>
+    <url>/2024/08/30/UEFI%E5%BC%80%E5%8F%91%EF%BC%88%E4%BA%8C%EF%BC%89Library%E5%BA%93%E5%92%8C%E8%B0%83%E8%AF%95%E6%89%93%E5%8D%B0%E6%96%B9%E6%B3%95/</url>
+    <content><![CDATA[<h1 id="UEFI开发（二）"><a href="#UEFI开发（二）" class="headerlink" title="UEFI开发（二）"></a>UEFI开发（二）</h1><h2 id="Library库"><a href="#Library库" class="headerlink" title="Library库"></a>Library库</h2><p><a href="https://blog.csdn.net/weixin_45279063/article/details/115324601">https://blog.csdn.net/weixin_45279063/article/details/115324601</a></p>
+<p>以后面要用到的DEBUG库为例：</p>
+<p>库的调用方是MdeModulePkg下的某个INF模块，被调用方是MdePkg库（这个属于基础库很常用）</p>
+<ol>
+<li>调用方的INF中要导入库模块的dec和要用到的LibraryClasses</li>
+</ol>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">[Packages]</span><br><span class="line">  MdePkg/MdePkg.dec #这里包含了库模块MdePkg的dec声明，获取到MdePkg所有对外开放的库接口</span><br><span class="line">  MdeModulePkg/MdeModulePkg.dec #这是调用方模块</span><br><span class="line"></span><br><span class="line">[LibraryClasses]</span><br><span class="line">  DevicePathLib</span><br><span class="line">  UefiBootServicesTableLib</span><br><span class="line">  UefiRuntimeServicesTableLib</span><br><span class="line">  MemoryAllocationLib</span><br><span class="line">  BaseMemoryLib</span><br><span class="line">  UefiLib</span><br><span class="line">  BaseLib</span><br><span class="line">  UefiDriverEntryPoint</span><br><span class="line">  DebugLib #这里导入了MdePkg库的DebugLib类（头文件），类似其他语言的import或者include namespace</span><br><span class="line">  PcdLib</span><br></pre></td></tr></table></figure>
+
+<ol start="2">
+<li>调用方的c代码中可以直接include库的头文件（不需要用相对地址包含头文件）</li>
+</ol>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">#include &lt;Library/DebugLib.h&gt;</span><br></pre></td></tr></table></figure>
+
+<ol start="3">
+<li>调用方使用库的函数体DEBUG();</li>
+</ol>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">DEBUG((DEBUG_INFO, &quot;Initializing XXX controller in slot %d\n&quot;, Slot));</span><br><span class="line"></span><br><span class="line">Status = InitController(PciIo, Slot);</span><br><span class="line">if (EFI_ERROR(Status))</span><br><span class="line">&#123;</span><br><span class="line">    DEBUG((DEBUG_ERROR, &quot;Failed to switch Host to PCIe mode: %r\n&quot;, Status));</span><br><span class="line">    return Status;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="DEBUG打印"><a href="#DEBUG打印" class="headerlink" title="DEBUG打印"></a>DEBUG打印</h2><p><a href="https://github.com/tianocore/tianocore.github.io/wiki/EDK-II-Debugging">https://github.com/tianocore/tianocore.github.io/wiki/EDK-II-Debugging</a></p>
+<p>在使用DEBUG INFO的MdeModulePkg模块的dsc中，声明DEBUG库的全局变量PcdDebugPropertyMask和PcdDebugPrintErrorLevel，指定支持INFO级别打印，否则默认只会打印DEBUG(ERROR)</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">[PcdsFixedAtBuild]</span><br><span class="line"># refer to https://github.com/tianocore/tianocore.github.io/wiki/EDK-II-Debugging</span><br><span class="line">  gEfiMdePkgTokenSpaceGuid.PcdDebugPropertyMask|0x0f</span><br><span class="line">  gEfiMdePkgTokenSpaceGuid.PcdDebugPrintErrorLevel|0x80000040</span><br></pre></td></tr></table></figure>
+
+<p>再编译MdeModulePkg inf，输出的efi可见INFO级别的打印生效。</p>
+<h2 id="UTF8中文报错"><a href="#UTF8中文报错" class="headerlink" title="UTF8中文报错"></a>UTF8中文报错</h2><p>问题log：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">C:\edk2\MdeModulePkg\Bus\Pci\SdMmcPciHcDxe\BayhubHost.h(1): error C2220: the following warning is treated as an error</span><br><span class="line">C:\edk2\MdeModulePkg\Bus\Pci\SdMmcPciHcDxe\BayhubHost.h(1): warning C4819: The file contains a character that cannot be represented in the current code page (936). Save the file in Unicode format to prevent data loss</span><br></pre></td></tr></table></figure>
+
+<p>错误信息指出：<br>警告C4819被当作错误处理<br>文件包含无法在当前代码页(936，即中文GBK编码)中表示的字符</p>
+<p>解决方法</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">使用Notepad++重新保存文件:</span><br><span class="line">打开文件，编码选择&quot;UTF-8 with signature (UTF-8-BOM)&quot;或者&quot;UTF-8&quot;</span><br><span class="line">保存文件</span><br></pre></td></tr></table></figure>
+
+<p>原因：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">文件有非ASCII字符（特别是在注释中）</span><br><span class="line">有时文件的首行可能有不可见的BOM（字节顺序标记）或其他特殊字符</span><br></pre></td></tr></table></figure>
+
+]]></content>
+      <categories>
+        <category>UEFI开发</category>
+      </categories>
+      <tags>
+        <tag>UEFI</tag>
       </tags>
   </entry>
 </search>
