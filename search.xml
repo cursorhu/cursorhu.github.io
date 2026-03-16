@@ -21630,7 +21630,7 @@ clean:								#清理规则，删除client、server和中间文件
       </tags>
   </entry>
   <entry>
-    <title>NVMe-eMMC Bridge 芯片固件开发（九）：Windows平台NVMe设备固件升级工具：MFC GUI架构与多平台适配</title>
+    <title>NVMe-eMMC Bridge 芯片固件开发（九）：Windows平台NVMe设备固件升级工具</title>
     <url>/2026/03/16/NVMe-eMMC-Bridge%E8%8A%AF%E7%89%87%E5%9B%BA%E4%BB%B6_09_Windows%E5%B9%B3%E5%8F%B0NVMe%E8%AE%BE%E5%A4%87%E5%9B%BA%E4%BB%B6%E5%8D%87%E7%BA%A7%E5%B7%A5%E5%85%B7/</url>
     <content><![CDATA[<h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><p>本文档以 <strong>BayHub BH799 NVMe-eMMC Bridge 芯片</strong> 的 Windows 固件升级工具为实例，系统讲解：</p>
 <ol>
@@ -21771,7 +21771,7 @@ clean:								#清理规则，删除client、server和中间文件
 ]]></content>
       <categories>
         <category>Windows开发</category>
-        <category>存储控制</category>
+        <category>存储控制器</category>
       </categories>
       <tags>
         <tag>MFC</tag>
@@ -21824,6 +21824,337 @@ clean:								#清理规则，删除client、server和中间文件
       </categories>
       <tags>
         <tag>UEFI</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>电量计 -- BMS升级的移植演进：从SPI直控到I2C桥接</title>
+    <url>/2026/03/17/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20BMS%E5%8D%87%E7%BA%A7%E7%9A%84%E7%A7%BB%E6%A4%8D%E6%BC%94%E8%BF%9B%EF%BC%9ASD7001%E5%9B%BA%E4%BB%B6%E5%8D%87%E7%BA%A7%E4%BB%8ESPI%E7%9B%B4%E6%8E%A7%E5%88%B0I2C%E6%A1%A5%E6%8E%A5/</url>
+    <content><![CDATA[<h1 id="芯片架构演进：SD7001固件升级从SPI直控到I2C桥接"><a href="#芯片架构演进：SD7001固件升级从SPI直控到I2C桥接" class="headerlink" title="芯片架构演进：SD7001固件升级从SPI直控到I2C桥接"></a>芯片架构演进：SD7001固件升级从SPI直控到I2C桥接</h1><h2 id="写在前面"><a href="#写在前面" class="headerlink" title="写在前面"></a>写在前面</h2><p>在上一篇文章中，我们详细介绍了BST7001电量计芯片的固件升级方案，那是一种<strong>直接访问Flash寄存器</strong>的模式——MCU通过I2C直接读写芯片内部的Flash寄存器，就像直接打开芯片的”后门”一样简单。</p>
+<p>但技术不会止步不前。新一代SD7001芯片采用了完全不同的架构：<strong>内置SPI Flash控制器</strong>，因为其采用更大的256KB Flash，固件升级需要通过SPI控制器这个”中介”来完成。</p>
+<p>本文将深入解析SD7001的固件升级方案，带你理解芯片架构演进的逻辑，以及如何在新的约束下实现可靠的固件烧录。</p>
+<h2 id="一、架构变革：从”直接访问”到”间接访问”"><a href="#一、架构变革：从”直接访问”到”间接访问”" class="headerlink" title="一、架构变革：从”直接访问”到”间接访问”"></a>一、架构变革：从”直接访问”到”间接访问”</h2><h3 id="1-1-BST7001-vs-SD7001：架构对比"><a href="#1-1-BST7001-vs-SD7001：架构对比" class="headerlink" title="1.1 BST7001 vs SD7001：架构对比"></a>1.1 BST7001 vs SD7001：架构对比</h3><p>先上图，直观感受两种架构的差异：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                         BST7001 架构 (旧方案)                               │</span><br><span class="line">├─────────────────────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                                             │</span><br><span class="line">│   MCU(I2C 0x18)  ──────────────────────────────────────────▶  BST7001      │</span><br><span class="line">│                           │                                                │</span><br><span class="line">│                           │  I2C/SMBus                                     │</span><br><span class="line">│                           │                                                │</span><br><span class="line">│                           ▼                                                │</span><br><span class="line">│                 ┌─────────────────────┐                                    │</span><br><span class="line">│                 │   Flash寄存器        │  ◀── 直接读写                       │</span><br><span class="line">│                 │   0x7000 - 0x700A   │      固件就暴露在总线上了            │</span><br><span class="line">│                 └─────────────────────┘                                    │</span><br><span class="line">│                                                                             │</span><br><span class="line">└─────────────────────────────────────────────────────────────────────────────┘</span><br><span class="line"></span><br><span class="line">┌─────────────────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                         SD7001 架构 (新方案)                               │</span><br><span class="line">├─────────────────────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                                             │</span><br><span class="line">│   MCU(I2C 0x30)  ──────────────────────────────────────────▶  SD7001        │</span><br><span class="line">│                           │                                                │</span><br><span class="line">│                           │  I2C/SMBus (带PEC校验)                         │</span><br><span class="line">│                           │                                                │</span><br><span class="line">│                           ▼                                                │</span><br><span class="line">│                 ┌─────────────────────┐                                    │</span><br><span class="line">│                 │   SPI控制器         │  ◀── 需要通过&quot;中介&quot;                   │</span><br><span class="line">│                 │  0x400070xx        │      发命令操作                        │</span><br><span class="line">│                 └─────────┬──────────┘                                    │</span><br><span class="line">│                           │                                                │</span><br><span class="line">│                           ▼                                                │</span><br><span class="line">│                 ┌─────────────────────┐                                    │</span><br><span class="line">│                 │   内部SPI Flash    │  ◀── 真正的数据存储                    │</span><br><span class="line">│                 │   (64KB)           │      隐藏起来了                       │</span><br><span class="line">│                 └─────────────────────┘                                    │</span><br><span class="line">│                                                                             │</span><br><span class="line">└─────────────────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<h3 id="1-2-为什么要”多此一举”？"><a href="#1-2-为什么要”多此一举”？" class="headerlink" title="1.2 为什么要”多此一举”？"></a>1.2 为什么要”多此一举”？</h3><p>这个问题值得深入思考。增加SPI控制器层看似增加了复杂度，但实际上：</p>
+<ol>
+<li><strong>安全性提升</strong>：Flash不再直接暴露在I2C总线上，需要通过控制器验证和转换</li>
+<li><strong>标准化接口</strong>：SPI Flash是通用存储单元，方案成熟、易于替换</li>
+<li><strong>读写优化</strong>：控制器可以做缓存、ECC校验等高级功能</li>
+<li><strong>功耗管理</strong>：可以独立控制Flash电源域</li>
+</ol>
+<h2 id="二、SD7001升级方案：关键差异点"><a href="#二、SD7001升级方案：关键差异点" class="headerlink" title="二、SD7001升级方案：关键差异点"></a>二、SD7001升级方案：关键差异点</h2><h3 id="2-1-核心差异一览"><a href="#2-1-核心差异一览" class="headerlink" title="2.1 核心差异一览"></a>2.1 核心差异一览</h3><table>
+<thead>
+<tr>
+<th>特性</th>
+<th>BST7001 (旧)</th>
+<th>SD7001 (新)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>I2C地址</td>
+<td>0x18</td>
+<td>0x30</td>
+</tr>
+<tr>
+<td>Flash访问方式</td>
+<td>直接寄存器</td>
+<td>SPI控制器</td>
+</tr>
+<tr>
+<td>页大小</td>
+<td>128字节</td>
+<td>256字节</td>
+</tr>
+<tr>
+<td>擦除单位</td>
+<td>Page</td>
+<td>Sector (4KB)</td>
+</tr>
+<tr>
+<td>数据传输</td>
+<td>128B直写</td>
+<td>128B→256B聚合</td>
+</tr>
+<tr>
+<td>PEC校验</td>
+<td>可选</td>
+<td>必须</td>
+</tr>
+</tbody></table>
+<h3 id="2-2-最大的挑战：256-vs-128"><a href="#2-2-最大的挑战：256-vs-128" class="headerlink" title="2.2 最大的挑战：256 vs 128"></a>2.2 最大的挑战：256 vs 128</h3><p>这是SD7001升级方案中最棘手的问题：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">上位机发送: 128字节/包  ◀── USB传输效率最优</span><br><span class="line">SPI Flash要求: 256字节/页 ◀── Flash物理特性</span><br><span class="line"></span><br><span class="line">矛盾：如何用128字节的&quot;水桶&quot;装满256字节的&quot;水池&quot;？</span><br></pre></td></tr></table></figure>
+
+<p><strong>解决方案：数据聚合</strong></p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 伪代码示意</span></span><br><span class="line"><span class="type">uint8_t</span> page_buf[<span class="number">256</span>];  <span class="comment">// 256字节页缓冲区</span></span><br><span class="line"><span class="type">uint16_t</span> page_filled = <span class="number">0</span>;  <span class="comment">// 已填充字节数</span></span><br><span class="line"></span><br><span class="line"><span class="type">void</span> <span class="title function_">write_chunk</span><span class="params">(<span class="type">uint8_t</span> *data, <span class="type">uint16_t</span> len)</span> &#123;</span><br><span class="line">    <span class="comment">// 1. 把新数据拷贝到缓冲区</span></span><br><span class="line">    <span class="built_in">memcpy</span>(page_buf + page_filled, data, len);</span><br><span class="line">    page_filled += len;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 2. 缓冲区满了？写入Flash</span></span><br><span class="line">    <span class="keyword">if</span> (page_filled &gt;= <span class="number">256</span>) &#123;</span><br><span class="line">        spi_page_program(page_addr, page_buf, <span class="number">256</span>);</span><br><span class="line">        page_filled = <span class="number">0</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-3-固件地址映射：非线性的挑战"><a href="#2-3-固件地址映射：非线性的挑战" class="headerlink" title="2.3 固件地址映射：非线性的挑战"></a>2.3 固件地址映射：非线性的挑战</h3><p>SD7001的Flash布局与BST7001不同，固件bin文件的偏移地址需要转换：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">USB固件格式:</span><br><span class="line">┌────────────────┬────────────────┐</span><br><span class="line">│  0x00000       │  Code Area     │  (约48KB)</span><br><span class="line">│  0xC3FF        │                │</span><br><span class="line">├────────────────┼────────────────┤</span><br><span class="line">│  0xC400        │  Data Area     │  (约8KB)</span><br><span class="line">│  0xF3FF        │                │</span><br><span class="line">└────────────────┴────────────────┘</span><br><span class="line"></span><br><span class="line">SPI Flash物理地址:</span><br><span class="line">┌────────────────┬────────────────┐</span><br><span class="line">│  0x1000        │  Code Area     │  ← 偏移0x0 映射到 0x1000</span><br><span class="line">│  0xC3FF        │                │</span><br><span class="line">├────────────────┼────────────────┤</span><br><span class="line">│  0xD400        │  Data Area     │  ← 偏移0xC400 映射到 0xD400</span><br><span class="line">│  0xF3FF        │                │</span><br><span class="line">└────────────────┴────────────────┘</span><br><span class="line"></span><br><span class="line">地址转换公式:</span><br><span class="line">if (offset &lt; 0xC400) &#123;</span><br><span class="line">    spi_addr = 0x1000 + offset;           // 代码区</span><br><span class="line">&#125; else &#123;</span><br><span class="line">    spi_addr = 0xD400 + (offset - 0xC400); // 数据区</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="三、通信协议：I2C-PEC校验"><a href="#三、通信协议：I2C-PEC校验" class="headerlink" title="三、通信协议：I2C + PEC校验"></a>三、通信协议：I2C + PEC校验</h2><h3 id="3-1-为什么要PEC？"><a href="#3-1-为什么要PEC？" class="headerlink" title="3.1 为什么要PEC？"></a>3.1 为什么要PEC？</h3><p>PEC（Packet Error Checking）是SMBus协议的一种CRC-8校验机制。在SD7001方案中，<strong>每个I2C写操作都必须带PEC</strong>，否则芯片会拒绝执行：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">┌─────────────────────────────────────────────┐</span><br><span class="line">│            I2C写操作格式 (带PEC)             │</span><br><span class="line">├─────────────────────────────────────────────┤</span><br><span class="line">│                                             │</span><br><span class="line">│  [DeviceAddr][Reg] [Data_Hi] [Data_Lo] [PEC]│</span><br><span class="line">│      1 byte     1 byte      2 bytes    1    │</span><br><span class="line">│                                             │</span><br><span class="line">│  PEC = CRC8(DeviceAddr&lt;&lt;1, Reg, Data...)   │</span><br><span class="line">│                                             │</span><br><span class="line">└─────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<p>这增加了通信的可靠性，但也让驱动开发变得更加复杂。</p>
+<h3 id="3-2-寄存器映射"><a href="#3-2-寄存器映射" class="headerlink" title="3.2 寄存器映射"></a>3.2 寄存器映射</h3><p>SD7001通过I2C寄存器控制SPI控制器：</p>
+<table>
+<thead>
+<tr>
+<th>寄存器</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>0x11</td>
+<td>解锁密码1 (0x6318)</td>
+</tr>
+<tr>
+<td>0x12</td>
+<td>解锁密码2 (0x6303&#x3D;enable)</td>
+</tr>
+<tr>
+<td>0x20</td>
+<td>AHB模式控制</td>
+</tr>
+<tr>
+<td>0x21</td>
+<td>Remap控制</td>
+</tr>
+<tr>
+<td>0x22</td>
+<td>CRC控制 (0x0111&#x3D;禁用)</td>
+</tr>
+<tr>
+<td>0x29</td>
+<td>SPI外部访问开关</td>
+</tr>
+<tr>
+<td>0x01</td>
+<td>地址低16位</td>
+</tr>
+<tr>
+<td>0x02</td>
+<td>地址高16位</td>
+</tr>
+<tr>
+<td>0x0F</td>
+<td>数据访问命令</td>
+</tr>
+</tbody></table>
+<h3 id="3-3-32位寄存器访问"><a href="#3-3-32位寄存器访问" class="headerlink" title="3.3 32位寄存器访问"></a>3.3 32位寄存器访问</h3><p>SPI控制器是32位的，需要分步操作：</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 写4字节到SPI控制器寄存器 (例如 0x40007018)</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">block_4bytes_write</span><span class="params">(<span class="type">uint32_t</span> addr, <span class="type">uint32_t</span> val)</span> &#123;</span><br><span class="line">    <span class="comment">// 1. 设置低16位地址</span></span><br><span class="line">    write_word(<span class="number">0x01</span>, addr &amp; <span class="number">0xFFFF</span>);</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 2. 设置高16位地址</span></span><br><span class="line">    write_word(<span class="number">0x02</span>, (addr &gt;&gt; <span class="number">16</span>) &amp; <span class="number">0xFFFF</span>);</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 3. 写入数据 (通过0x0F，带PEC)</span></span><br><span class="line">    block_write(<span class="number">0x0F</span>, &amp;val, <span class="number">4</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="四、升级流程：五步走"><a href="#四、升级流程：五步走" class="headerlink" title="四、升级流程：五步走"></a>四、升级流程：五步走</h2><h3 id="4-1-完整序列"><a href="#4-1-完整序列" class="headerlink" title="4.1 完整序列"></a>4.1 完整序列</h3><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────┐</span><br><span class="line">│ Step 1: I2C解锁                                           │</span><br><span class="line">├─────────────────────────────────────────────────────────────┤</span><br><span class="line">│  1.1 WriteWord(0x11, 0x6318)      ← 密码1                   │</span><br><span class="line">│  1.2 WriteWord(0x12, 0x6303)      ← 启用AHB                 │</span><br><span class="line">│  1.3 WriteWord(0x20, 0x8001) ×2  ← 进入编程模式            │</span><br><span class="line">└─────────────────────────────────────────────────────────────┘</span><br><span class="line">                            │</span><br><span class="line">                            ▼</span><br><span class="line">┌─────────────────────────────────────────────────────────────┐</span><br><span class="line">│ Step 2: 禁用系统CRC                                        │</span><br><span class="line">├─────────────────────────────────────────────────────────────┤</span><br><span class="line">│  2.1 WriteWord(0x22, 0x0111)      ← 禁用CRC，否则会阻止编程  │</span><br><span class="line">└─────────────────────────────────────────────────────────────┘</span><br><span class="line">                            │</span><br><span class="line">                            ▼</span><br><span class="line">┌─────────────────────────────────────────────────────────────┐</span><br><span class="line">│ Step 3: SPI Remap                                          │</span><br><span class="line">├─────────────────────────────────────────────────────────────┤</span><br><span class="line">│  3.1 WriteWord(0x21, 0x1000)      ← Remap配置              │</span><br><span class="line">│  3.2 WriteWord(0x21, 0)           ← 执行Remap              │</span><br><span class="line">│  3.3 WriteWord(0x29, 0x02)        ← 启用SPI外部访问         │</span><br><span class="line">│  3.4 Block4BytesWrite(0x40007030, 0xABCD)                  │</span><br><span class="line">│  3.5 WriteWord(0x29, 0)           ← 禁用SPI外部访问         │</span><br><span class="line">└─────────────────────────────────────────────────────────────┘</span><br><span class="line">                            │</span><br><span class="line">                            ▼</span><br><span class="line">┌─────────────────────────────────────────────────────────────┐</span><br><span class="line">│ Step 4: SPI Flash初始化                                    │</span><br><span class="line">├─────────────────────────────────────────────────────────────┤</span><br><span class="line">│  4.1 PowerOn: 配置时钟，等待就绪                            │</span><br><span class="line">│  4.2 Enable Buffer: 启用写入缓冲(加速)                     │</span><br><span class="line">│  4.3 ModeSwitch: 切换到SPI模式                              │</span><br><span class="line">│  4.4 Wakeup: 唤醒Flash                                     │</span><br><span class="line">│  4.5 Reset: 复位Flash                                      │</span><br><span class="line">│  4.6 ProgramUnlock: 解锁编程                                │</span><br><span class="line">└─────────────────────────────────────────────────────────────┘</span><br><span class="line">                            │</span><br><span class="line">                            ▼</span><br><span class="line">┌─────────────────────────────────────────────────────────────┐</span><br><span class="line">│ Step 5: 擦除 → 编程 → 完成                                  │</span><br><span class="line">├─────────────────────────────────────────────────────────────┤</span><br><span class="line">│  5.1 擦除: 按4KB扇区擦除Code Area和Data Area               │</span><br><span class="line">│  5.2 编程: 128B聚合→256B页写入                            │</span><br><span class="line">│  5.3 完成: 恢复寄存器 + Remap跳转                          │</span><br><span class="line">└─────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-2-关键函数实现"><a href="#4-2-关键函数实现" class="headerlink" title="4.2 关键函数实现"></a>4.2 关键函数实现</h3><h4 id="SPI等待就绪"><a href="#SPI等待就绪" class="headerlink" title="SPI等待就绪"></a>SPI等待就绪</h4><figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 等待SPI Flash操作完成 (轮询WIP位)</span></span><br><span class="line"><span class="type">sd7001_upg_error_t</span> <span class="title function_">spi_wait_ready</span><span class="params">(<span class="type">uint32_t</span> timeout_ms)</span> &#123;</span><br><span class="line">    <span class="type">uint32_t</span> start = ticker_read();</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">do</span> &#123;</span><br><span class="line">        delay_ms(<span class="number">10</span>);</span><br><span class="line">        wwdt_feeddog();  <span class="comment">// 别忘了喂狗！</span></span><br><span class="line">        </span><br><span class="line">        <span class="type">uint32_t</span> status;</span><br><span class="line">        block_4bytes_read(<span class="number">0x40007018</span>, &amp;status);</span><br><span class="line">        </span><br><span class="line">        <span class="comment">// bit0 = WIP (Write In Progress)</span></span><br><span class="line">        <span class="keyword">if</span> ((status &amp; <span class="number">0x01</span>) == <span class="number">0</span>) &#123;</span><br><span class="line">            <span class="keyword">return</span> SD7001_UPG_OK;</span><br><span class="line">        &#125;</span><br><span class="line">        </span><br><span class="line">        <span class="keyword">if</span> ((ticker_read() - start) &gt; timeout_ms) &#123;</span><br><span class="line">            <span class="keyword">return</span> SD7001_UPG_ERR_TIMEOUT;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125; <span class="keyword">while</span> (<span class="number">1</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="扇区擦除"><a href="#扇区擦除" class="headerlink" title="扇区擦除"></a>扇区擦除</h4><figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 擦除4KB扇区</span></span><br><span class="line"><span class="type">sd7001_upg_error_t</span> <span class="title function_">spi_sector_erase</span><span class="params">(<span class="type">uint32_t</span> sector_addr)</span> &#123;</span><br><span class="line">    <span class="comment">// 1. 等待Flash就绪</span></span><br><span class="line">    spi_wait_ready(<span class="number">100</span>);</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 2. 发送写使能</span></span><br><span class="line">    block_4bytes_write(<span class="number">0x40007020</span>, <span class="number">0</span>);              <span class="comment">// 长度=0</span></span><br><span class="line">    block_4bytes_write(<span class="number">0x40007004</span>, <span class="number">0x06000000</span>);    <span class="comment">// Write Enable命令</span></span><br><span class="line">    block_4bytes_write(<span class="number">0x40007020</span>, <span class="number">2</span>);</span><br><span class="line">    spi_wait_ready(<span class="number">50</span>);</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 3. 发送扇区擦除命令</span></span><br><span class="line">    block_4bytes_write(<span class="number">0x40007008</span>, sector_addr);   <span class="comment">// 目标地址</span></span><br><span class="line">    block_4bytes_write(<span class="number">0x40007020</span>, <span class="number">0</span>);</span><br><span class="line">    block_4bytes_write(<span class="number">0x40007004</span>, <span class="number">0x20080000</span>);    <span class="comment">// Sector Erase命令</span></span><br><span class="line">    block_4bytes_write(<span class="number">0x40007020</span>, <span class="number">2</span>);</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">return</span> spi_wait_ready(<span class="number">400</span>);  <span class="comment">// 扇区擦除较慢</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="五、软件架构：分层设计"><a href="#五、软件架构：分层设计" class="headerlink" title="五、软件架构：分层设计"></a>五、软件架构：分层设计</h2><h3 id="5-1-模块结构"><a href="#5-1-模块结构" class="headerlink" title="5.1 模块结构"></a>5.1 模块结构</h3><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">dev_cps8610.c          # USB回调入口，命令路由</span><br><span class="line">    │</span><br><span class="line">    ├── CFG_ENABLE_FG_UPGRADE = 1 → BST7001 (旧)</span><br><span class="line">    │</span><br><span class="line">    └── CFG_ENABLE_FG_UPGRADE = 2 → SD7001 (新)</span><br><span class="line">            │</span><br><span class="line">            ▼</span><br><span class="line">dev_sd7001_upgrade.c   # SD7001升级实现</span><br><span class="line">    │</span><br><span class="line">    ├── I2C层 (sd7001_write_word, sd7001_block_4bytes_read/write)</span><br><span class="line">    │</span><br><span class="line">    ├── SPI操作层 (sd7001_spi_wait_ready, sd7001_spi_erase, sd7001_spi_program)</span><br><span class="line">    │</span><br><span class="line">    ├── 下载序列 (sd7001_download_start/write_chunk/finish)</span><br><span class="line">    │</span><br><span class="line">    └── 公共API (sd7001_upgrade_process_command)</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-2-上下文结构"><a href="#5-2-上下文结构" class="headerlink" title="5.2 上下文结构"></a>5.2 上下文结构</h3><figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> &#123;</span></span><br><span class="line">    <span class="comment">/* I2C通信 */</span></span><br><span class="line">    <span class="type">int32_t</span> fd_dev_ops;       <span class="comment">// I2C设备句柄</span></span><br><span class="line">    <span class="type">uint8_t</span> i2c_addr;        <span class="comment">// 0x30</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment">/* 状态机 */</span></span><br><span class="line">    <span class="type">sd7001_upg_state_t</span> state;</span><br><span class="line">    <span class="type">sd7001_upg_error_t</span> last_error;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">/* 配置与进度 */</span></span><br><span class="line">    <span class="type">sd7001_upg_config_t</span> config;</span><br><span class="line">    <span class="type">uint32_t</span> bytes_written;</span><br><span class="line">    <span class="type">uint32_t</span> expected_offset;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">/* 页缓冲区 - 128B→256B聚合的关键！ */</span></span><br><span class="line">    <span class="type">uint32_t</span> page_base;       <span class="comment">// 当前页地址</span></span><br><span class="line">    <span class="type">uint16_t</span> page_filled;     <span class="comment">// 已填充字节</span></span><br><span class="line">    <span class="type">uint8_t</span> page_buf[<span class="number">256</span>];    <span class="comment">// 256字节页缓冲</span></span><br><span class="line">&#125; <span class="type">sd7001_upg_ctx_t</span>;</span><br></pre></td></tr></table></figure>
+
+<h2 id="六、地址转换：理解映射逻辑"><a href="#六、地址转换：理解映射逻辑" class="headerlink" title="六、地址转换：理解映射逻辑"></a>六、地址转换：理解映射逻辑</h2><p>这是SD7001方案中最容易出错的地方。固件bin文件的偏移地址是连续的，但SPI Flash的物理地址有”空洞”：</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * USB固件偏移 → SPI Flash物理地址转换</span></span><br><span class="line"><span class="comment"> * </span></span><br><span class="line"><span class="comment"> * 固件bin: [0x0000-C3FF] [C400-...]</span></span><br><span class="line"><span class="comment"> *           ↓              ↓</span></span><br><span class="line"><span class="comment"> * SPI Flash: [0x1000-...]  [0xD400-...]</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="type">static</span> <span class="type">uint32_t</span> <span class="title function_">convert_offset_to_addr</span><span class="params">(<span class="type">uint32_t</span> offset)</span> &#123;</span><br><span class="line">    <span class="keyword">if</span> (offset &lt; <span class="number">0xC400</span>) &#123;</span><br><span class="line">        <span class="comment">// 代码区: 偏移0x0 → 地址0x1000</span></span><br><span class="line">        <span class="keyword">return</span> <span class="number">0x1000</span> + offset;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">// 数据区: 偏移0xC400 → 地址0xD400</span></span><br><span class="line">        <span class="keyword">return</span> <span class="number">0xD400</span> + (offset - <span class="number">0xC400</span>);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="七、调试经验：踩坑记录"><a href="#七、调试经验：踩坑记录" class="headerlink" title="七、调试经验：踩坑记录"></a>七、调试经验：踩坑记录</h2><h3 id="7-1-PEC计算错误"><a href="#7-1-PEC计算错误" class="headerlink" title="7.1 PEC计算错误"></a>7.1 PEC计算错误</h3><p><strong>症状</strong>: 芯片不响应，写操作无效</p>
+<p><strong>排查</strong>: 检查CRC-8计算是否正确， PEC &#x3D; CRC8(设备地址&lt;&lt;1, 寄存器, 数据…)</p>
+<h3 id="7-2-页对齐问题"><a href="#7-2-页对齐问题" class="headerlink" title="7.2 页对齐问题"></a>7.2 页对齐问题</h3><p><strong>症状</strong>: 写入后数据校验失败</p>
+<p><strong>排查</strong>: 确保256字节页写入地址是256的倍数，使用缓冲区聚合解决</p>
+<h3 id="7-3-地址映射错误"><a href="#7-3-地址映射错误" class="headerlink" title="7.3 地址映射错误"></a>7.3 地址映射错误</h3><p><strong>症状</strong>: 代码区写到了数据区，或 vice versa</p>
+<p><strong>排查</strong>: 添加日志打印 <code>offset → addr</code> 转换结果，与预期对比</p>
+<h3 id="7-4-看门狗超时"><a href="#7-4-看门狗超时" class="headerlink" title="7.4 看门狗超时"></a>7.4 看门狗超时</h3><p><strong>症状</strong>: 升级过程中芯片意外复位</p>
+<p><strong>排查</strong>: 在长时间操作（特别是擦除）中定期调用 <code>wwdt_feeddog()</code></p>
+<h2 id="八、架构演进的启示"><a href="#八、架构演进的启示" class="headerlink" title="八、架构演进的启示"></a>八、架构演进的启示</h2><p>回顾BST7001到SD7001的演进，我们可以得到以下启示：</p>
+<ol>
+<li><p><strong>架构选择没有绝对好坏</strong>：直接访问简单但不够安全，间接访问复杂但更灵活</p>
+</li>
+<li><p><strong>兼容性设计</strong>：虽然底层变了，但上层USB命令协议保持一致，降低了上位机的修改成本</p>
+</li>
+<li><p><strong>数据聚合的智慧</strong>：面对”消费级”USB和”工业级”Flash的差异，用缓冲区巧妙化解</p>
+</li>
+<li><p><strong>状态机的重要性</strong>：无论架构如何变，清晰的状态管理始终是可靠性的保障</p>
+</li>
+</ol>
+<h2 id="九、总结"><a href="#九、总结" class="headerlink" title="九、总结"></a>九、总结</h2><p>SD7001的固件升级方案展示了芯片架构演进的一种典型路径：通过引入SPI控制器层，在保持I2C接口不变的同时，实现了更高的安全性和灵活性。虽然驱动开发增加了复杂度（特别是PEC校验和256字节页对齐），但这些代价换来了更好的系统设计。</p>
+<p>理解这些底层差异，对于固件工程师来说是宝贵的经验。当你在实际项目中遇到类似的需求时，希望本文的分析能给你提供思路。</p>
+<hr>
+<p><strong>相关阅读</strong>：</p>
+<ul>
+<li><a href="https://zqb-all.github.io/posts/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20BMS%E5%8D%87%E7%BA%A7%E8%A7%A3%E5%AF%86%EF%BC%9A%E4%BB%8E%E4%B8%8A%E4%BD%8D%E6%9C%BA%E5%88%B0MCU%E7%9A%84%E5%9B%BA%E4%BB%B6%E4%B8%8B%E8%BD%BD%E5%85%A8%E6%B5%81%E7%A8%8B/">电量计 – BMS升级解密：从上位机到MCU的固件下载全流程</a></li>
+<li><a href="https://zqb-all.github.io/posts/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E7%94%B5%E6%B1%A0%E5%BE%AE%E7%9F%AD%E8%B7%AF%E4%B8%AD%E7%9A%84%E5%8D%A1%E5%B0%94%E6%9B%BC%E6%BB%A1%E6%B3%A8/">电量计 – 卡尔曼滤波在电池内部短路漏电流检测中的应用</a></li>
+</ul>
+]]></content>
+      <categories>
+        <category>电量计</category>
+      </categories>
+      <tags>
+        <tag>电量计</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>电量计 -- BMS升级：从上位机到MCU的固件下载全流程</title>
+    <url>/2026/03/16/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20BMS%E5%8D%87%E7%BA%A7%EF%BC%9A%E4%BB%8E%E4%B8%8A%E4%BD%8D%E6%9C%BA%E5%88%B0MCU%E7%9A%84%E5%9B%BA%E4%BB%B6%E4%B8%8B%E8%BD%BD%E5%85%A8%E6%B5%81%E7%A8%8B/</url>
+    <content><![CDATA[<h1 id="BMS升级解密：从上位机到MCU的固件下载全流程"><a href="#BMS升级解密：从上位机到MCU的固件下载全流程" class="headerlink" title="BMS升级解密：从上位机到MCU的固件下载全流程"></a>BMS升级解密：从上位机到MCU的固件下载全流程</h1><h2 id="写在前面"><a href="#写在前面" class="headerlink" title="写在前面"></a>写在前面</h2><p>想象一下：你手中的电动工具、智能手表、甚至是电动汽车，它们内部都有一颗”电池大脑”——电量计芯片。这颗芯片不仅要实时计算电池剩余电量，还要在漫长的使用过程中不断更新自己的”知识库”——固件。那么问题来了：<strong>固件是如何从电脑传入这颗微小芯片的？</strong></p>
+<p>本文将深入解析一款基于USB&#x2F;无线通信的电量计固件升级方案，从架构设计到代码实现。</p>
+<h2 id="一、问题背景：为什么要设计固件升级？"><a href="#一、问题背景：为什么要设计固件升级？" class="headerlink" title="一、问题背景：为什么要设计固件升级？"></a>一、问题背景：为什么要设计固件升级？</h2><h3 id="1-1-固件升级的必要性"><a href="#1-1-固件升级的必要性" class="headerlink" title="1.1 固件升级的必要性"></a>1.1 固件升级的必要性</h3><p>电量计芯片（Fuel Gauge IC）虽然不像手机SOC那样需要频繁更新，但固件升级仍然不可或缺：</p>
+<ul>
+<li><strong>Bug修复</strong>：修正算法中的计算误差，提升电量精度</li>
+<li><strong>功能迭代</strong>：支持新的电池化学体系或通讯协议</li>
+<li><strong>参数优化</strong>：调整充放电曲线、告警阈值等配置</li>
+<li><strong>安全补丁</strong>：修复潜在的安全漏洞</li>
+</ul>
+<h3 id="1-2-升级方案的挑战"><a href="#1-2-升级方案的挑战" class="headerlink" title="1.2 升级方案的挑战"></a>1.2 升级方案的挑战</h3><p>电量计的固件升级面临独特的挑战：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────┐</span><br><span class="line">│                    升级方案的核心矛盾                     │</span><br><span class="line">├─────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                         │</span><br><span class="line">│  ┌───────────────────┐        ┌───────────────────┐    │</span><br><span class="line">│  │   上位机（PC）     │        │  电量计芯片(Embedded)│    │</span><br><span class="line">│  │   - 强大算力       │   ──▶  │   - 资源受限        │    │</span><br><span class="line">│  │   - 丰富接口       │   USB  │   - 独立运行        │    │</span><br><span class="line">│  │   - 大容量存储     │        │   - 可靠性要求高    │    │</span><br><span class="line">│  └───────────────────┘        └───────────────────┘    │</span><br><span class="line">│                                                         │</span><br><span class="line">│  核心问题：如何在资源受限的嵌入式芯片中实现可靠的固件烧录？ │</span><br><span class="line">└─────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<p>本文要介绍的方案，正是为解决这一矛盾而设计的。</p>
+<h2 id="二、系统架构：四级架构的通信模型"><a href="#二、系统架构：四级架构的通信模型" class="headerlink" title="二、系统架构：四级架构的通信模型"></a>二、系统架构：四级架构的通信模型</h2><h3 id="2-1-整体架构图"><a href="#2-1-整体架构图" class="headerlink" title="2.1 整体架构图"></a>2.1 整体架构图</h3><p>先上一张全景图，了解整个升级系统的组成：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                         上位机 (PC Tool)                            │</span><br><span class="line">│   发送命令序列: CONFIG_INFO → BOOT_DOWNLOAD(N次) → BOOT_DOWNLOAD_COMPLETE│</span><br><span class="line">└───────────────────────────────┬─────────────────────────────────────┘</span><br><span class="line">                                │ USB/无线</span><br><span class="line">                                ▼</span><br><span class="line">┌─────────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                        wpb1025 MCU (主控)                          │</span><br><span class="line">│  ┌─────────────────────────────────────────────────────────────┐   │</span><br><span class="line">│  │  dev_cps8610.c - app_fw_update()                           │   │</span><br><span class="line">│  │    └─ 根据command路由到BST7001升级模块                       │   │</span><br><span class="line">│  └─────────────────────────────────────────────────────────────┘   │</span><br><span class="line">└───────────────────────────────┬─────────────────────────────────────┘</span><br><span class="line">                                │ 命令路由</span><br><span class="line">                                ▼</span><br><span class="line">┌─────────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                    dev_bst7001_upgrade.c (升级驱动)                │</span><br><span class="line">│  ┌─────────────────────────────────────────────────────────────┐   │</span><br><span class="line">│  │  bst7001_upgrade_process_command() - 命令处理入口            │   │</span><br><span class="line">│  │    ├─ WL_CMD_GET_ID         → 返回芯片ID                    │   │</span><br><span class="line">│  │    ├─ WL_CMD_CONFIG_INFO    → bst7001_download_start()       │   │</span><br><span class="line">│  │    ├─ WL_CMD_BOOT_DOWNLOAD  → bst7001_write_chunk()         │   │</span><br><span class="line">│  │    ├─ WL_CMD_BOOT_DOWNLOAD_COMPLETE → bst7001_download_finish()│ │</span><br><span class="line">│  │    └─ WL_CMD_PING_STATUS    → 返回当前状态                   │   │</span><br><span class="line">│  └─────────────────────────────────────────────────────────────┘   │</span><br><span class="line">└───────────────────────────────┬─────────────────────────────────────┘</span><br><span class="line">                                │ I2C/SMBus (0x18)</span><br><span class="line">                                ▼</span><br><span class="line">┌─────────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                      BST7001 电量计芯片                             │</span><br><span class="line">│                   (通过I2C进行Flash编程)                            │</span><br><span class="line">└─────────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-2-每一层的职责"><a href="#2-2-每一层的职责" class="headerlink" title="2.2 每一层的职责"></a>2.2 每一层的职责</h3><table>
+<thead>
+<tr>
+<th>层级</th>
+<th>模块</th>
+<th>核心职责</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>L4</td>
+<td>上位机</td>
+<td>固件文件解析、分包、CRC校验、进度显示</td>
+</tr>
+<tr>
+<td>L3</td>
+<td>MCU应用层</td>
+<td>USB数据包解析、命令路由、状态管理</td>
+</tr>
+<tr>
+<td>L2</td>
+<td>升级驱动</td>
+<td>I2C通信、Flash操作、地址映射</td>
+</tr>
+<tr>
+<td>L1</td>
+<td>电量计芯片</td>
+<td>内部Flash编程、参数存储</td>
+</tr>
+</tbody></table>
+<h2 id="三、核心数据结构：命令与状态的载体"><a href="#三、核心数据结构：命令与状态的载体" class="headerlink" title="三、核心数据结构：命令与状态的载体"></a>三、核心数据结构：命令与状态的载体</h2><h3 id="3-1-USB命令协议"><a href="#3-1-USB命令协议" class="headerlink" title="3.1 USB命令协议"></a>3.1 USB命令协议</h3><p>上位机与MCU之间的”语言”是精心设计的USB命令协议：</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="comment">/* USB命令定义 */</span></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">enum</span> &#123;</span></span><br><span class="line">    WL_CMD_GET_ID                    = <span class="number">0x20</span>,  <span class="comment">// 获取芯片ID</span></span><br><span class="line">    WL_CMD_CONFIG_INFO               = <span class="number">0x21</span>,  <span class="comment">// 配置下载信息（固件长度、CRC）</span></span><br><span class="line">    WL_CMD_BOOT_DOWNLOAD             = <span class="number">0x22</span>,  <span class="comment">// 数据包下载</span></span><br><span class="line">    WL_CMD_BOOT_DOWNLOAD_COMPLETE    = <span class="number">0x23</span>,  <span class="comment">// 下载完成</span></span><br><span class="line">    WL_CMD_PING_STATUS               = <span class="number">0x40</span>,  <span class="comment">// 查询状态/进度</span></span><br><span class="line">&#125; <span class="type">wl_command_t</span>;</span><br></pre></td></tr></table></figure>
+
+<p>这些命令构成了升级流程的”动词”，每一条都有明确的语义。</p>
+<h3 id="3-2-配置信息结构"><a href="#3-2-配置信息结构" class="headerlink" title="3.2 配置信息结构"></a>3.2 配置信息结构</h3><figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="comment">/* 配置信息结构 - 告诉MCU要下载多大的固件 */</span></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> &#123;</span></span><br><span class="line">    <span class="type">uint32_t</span> boot_len;       <span class="comment">// 固件总长度</span></span><br><span class="line">    <span class="type">uint32_t</span> boot_crc;       <span class="comment">// 固件CRC校验值</span></span><br><span class="line">    <span class="type">uint32_t</span> firmware_len;   <span class="comment">// (保留)</span></span><br><span class="line">    <span class="type">uint32_t</span> firmware_crc;   <span class="comment">// (保留)</span></span><br><span class="line">&#125; <span class="type">wl_config_info_t</span>;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-3-升级上下文-状态机的”胃”"><a href="#3-3-升级上下文-状态机的”胃”" class="headerlink" title="3.3 升级上下文 - 状态机的”胃”"></a>3.3 升级上下文 - 状态机的”胃”</h3><p>每个升级会话都对应一个上下文结构，它是状态机的”记忆”：</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> &#123;</span></span><br><span class="line">    <span class="comment">/* I2C通信 - 与芯片对话的&quot;电话&quot; */</span></span><br><span class="line">    <span class="type">int32_t</span> fd_dev_ops;              <span class="comment">// I2C设备句柄</span></span><br><span class="line">    <span class="type">uint8_t</span> i2c_addr;                <span class="comment">// I2C地址 (0x18)</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment">/* 状态机 - 升级流程的&quot;进度条&quot; */</span></span><br><span class="line">    <span class="type">bst7001_upg_state_t</span> state;       <span class="comment">// 当前状态</span></span><br><span class="line">    <span class="type">bst7001_upg_error_t</span> last_error;  <span class="comment">// 最后错误</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment">/* 下载进度 - 断点续传的&quot;接力棒&quot; */</span></span><br><span class="line">    <span class="type">uint32_t</span> bytes_written;          <span class="comment">// 已写入字节数</span></span><br><span class="line">    <span class="type">uint32_t</span> expected_offset;        <span class="comment">// 期望的下一个偏移</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment">/* 备份数据 - 防止意外的&quot;救生衣&quot; */</span></span><br><span class="line">    <span class="type">uint8_t</span> info_backup[<span class="number">512</span>];        <span class="comment">// Info区备份</span></span><br><span class="line">&#125; <span class="type">bst7001_upg_ctx_t</span>;</span><br></pre></td></tr></table></figure>
+
+<h2 id="四、USB数据包格式：128字节的艺术"><a href="#四、USB数据包格式：128字节的艺术" class="headerlink" title="四、USB数据包格式：128字节的艺术"></a>四、USB数据包格式：128字节的艺术</h2><h3 id="4-1-BOOT-DOWNLOAD数据包结构"><a href="#4-1-BOOT-DOWNLOAD数据包结构" class="headerlink" title="4.1 BOOT_DOWNLOAD数据包结构"></a>4.1 BOOT_DOWNLOAD数据包结构</h3><p>这是最核心的数据传输格式，设计非常精巧：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">┌────────┬────────┬────────┬─────────────┬─────────────┬──────────────┬─────────┐</span><br><span class="line">│ Header │ Length │ Command│   Address   │  Data Size  │ Data Payload │  CRC16  │</span><br><span class="line">│ 1 byte │ 1 byte │ 1 byte │   4 bytes   │   4 bytes   │  128 bytes   │ 2 bytes │</span><br><span class="line">├────────┼────────┼────────┼─────────────┼─────────────┼──────────────┼─────────┤</span><br><span class="line">│  0x55  │  0x89  │  0x22  │ Little-End  │ Little-End  │  FW Data     │ CRC16   │</span><br><span class="line">└────────┴────────┴────────┴─────────────┴─────────────┴──────────────┴─────────┘</span><br><span class="line"></span><br><span class="line">实际示例:</span><br><span class="line">55 89 22 00 00 00 00 80 00 00 00 [128字节固件数据] 15 3B</span><br><span class="line">         └─Address=0x0─┘ └─Size=128─┘               └CRC16┘</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-2-为什么要这样设计？"><a href="#4-2-为什么要这样设计？" class="headerlink" title="4.2 为什么要这样设计？"></a>4.2 为什么要这样设计？</h3><ul>
+<li><strong>Header (0x55)</strong>：数据包起始标记，用于帧同步</li>
+<li><strong>Length</strong>：整个数据包长度，方便接收方分配缓冲区</li>
+<li><strong>Command</strong>：命令类型，明确本次操作意图</li>
+<li><strong>Address</strong>：Flash目标地址，支持随机写入</li>
+<li><strong>Data Size</strong>：本次传输的数据长度（最大128字节）</li>
+<li><strong>Data Payload</strong>：实际的固件数据</li>
+<li><strong>CRC16</strong>：数据完整性校验</li>
+</ul>
+<h2 id="五、下载流程：五步走战略"><a href="#五、下载流程：五步走战略" class="headerlink" title="五、下载流程：五步走战略"></a>五、下载流程：五步走战略</h2><h3 id="5-1-完整时序图"><a href="#5-1-完整时序图" class="headerlink" title="5.1 完整时序图"></a>5.1 完整时序图</h3><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">上位机                                  MCU (wpb1025)                    BST7001</span><br><span class="line">  │                                         │                               │</span><br><span class="line">  │─── WL_CMD_GET_ID ──────────────────────►│                               │</span><br><span class="line">  │◄── Response (chipid=0x00007001) ────────│                               │</span><br><span class="line">  │                                         │                               │</span><br><span class="line">  │─── WL_CMD_CONFIG_INFO ─────────────────►│                               │</span><br><span class="line">  │    (boot_len, boot_crc)                 │── CPU Hold ──────────────────►│</span><br><span class="line">  │                                         │── Backup Info ───────────────►│</span><br><span class="line">  │                                         │── Remap Eflash ──────────────►│</span><br><span class="line">  │                                         │── Page Erase ────────────────►│</span><br><span class="line">  │◄── (通过PING_STATUS获取结果) ───────────│                               │</span><br><span class="line">  │                                         │                               │</span><br><span class="line">  │─── WL_CMD_BOOT_DOWNLOAD ───────────────►│                               │</span><br><span class="line">  │    (offset=0x0000, data[128], CRC16)    │── Write Block (128B) ────────►│</span><br><span class="line">  │◄── (通过PING_STATUS获取结果) ───────────│                               │</span><br><span class="line">  │                                         │                               │</span><br><span class="line">  │─── WL_CMD_BOOT_DOWNLOAD ───────────────►│                               │</span><br><span class="line">  │    (offset=0x0080, data[128], CRC16)    │── Write Block (128B) ────────►│</span><br><span class="line">  │    ...重复直到全部数据发送完成...        │                               │</span><br><span class="line">  │                                         │                               │</span><br><span class="line">  │─── WL_CMD_BOOT_DOWNLOAD_COMPLETE ──────►│                               │</span><br><span class="line">  │                                         │── Restore Info ──────────────►│</span><br><span class="line">  │                                         │── Remap Eflash ──────────────►│</span><br><span class="line">  │                                         │── Close CADC Int ────────────►│</span><br><span class="line">  │                                         │── Soft Reset ────────────────►│</span><br><span class="line">  │                                         │── Clear CADC Flag ───────────►│</span><br><span class="line">  │                                         │── CPU Run ───────────────────►│</span><br><span class="line">  │◄── Success ─────────────────────────────│                               │</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-2-关键步骤详解"><a href="#5-2-关键步骤详解" class="headerlink" title="5.2 关键步骤详解"></a>5.2 关键步骤详解</h3><h4 id="第一步：CONFIG-INFO-准备工作"><a href="#第一步：CONFIG-INFO-准备工作" class="headerlink" title="第一步：CONFIG_INFO - 准备工作"></a>第一步：CONFIG_INFO - 准备工作</h4><figure class="highlight c"><table><tr><td class="code"><pre><span class="line">bst7001_download_start() &#123;</span><br><span class="line">    <span class="comment">// 1. CPU Hold - 暂停CPU，允许Flash编程</span></span><br><span class="line">    <span class="comment">// 2. Backup Info - 备份Info区数据 (512字节)，防止参数丢失</span></span><br><span class="line">    <span class="comment">// 3. Remap Eflash - 重映射Eflash到可编程区域</span></span><br><span class="line">    <span class="comment">// 4. Page Erase - 擦除目标页 (跳过Log区)</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>为什么要备份Info区？</strong><br>BST7001的Flash中有一个特殊的Info区域，存储了校准参数、序列号等关键数据。擦除整个Flash会导致这些数据丢失，所以在擦除前必须备份，完成后恢复。</p>
+<h4 id="第二步：BOOT-DOWNLOAD-数据传输"><a href="#第二步：BOOT-DOWNLOAD-数据传输" class="headerlink" title="第二步：BOOT_DOWNLOAD - 数据传输"></a>第二步：BOOT_DOWNLOAD - 数据传输</h4><figure class="highlight c"><table><tr><td class="code"><pre><span class="line">bst7001_write_chunk() &#123;</span><br><span class="line">    <span class="comment">// 1. 验证数据包CRC16 - 确保数据未被破坏</span></span><br><span class="line">    <span class="comment">// 2. 检查offset顺序 - 确保无数据包丢失</span></span><br><span class="line">    <span class="comment">// 3. 128字节数据写入Flash (分4次32字节写入RAM，再触发编程)</span></span><br><span class="line">    <span class="comment">// 4. 处理代码区/表区地址跳跃 (0x8400 → 0xD400)</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>地址跳跃是什么意思？</strong><br>Flash地址不是连续的！代码区从0x0000开始，到0x8400结束。然后是Log区（不擦除），接着是表区（从0xD400开始）。写入时需要处理这种”跳跃”。</p>
+<h4 id="第三步：COMPLETE-收尾工作"><a href="#第三步：COMPLETE-收尾工作" class="headerlink" title="第三步：COMPLETE - 收尾工作"></a>第三步：COMPLETE - 收尾工作</h4><figure class="highlight c"><table><tr><td class="code"><pre><span class="line">bst7001_download_finish() &#123;</span><br><span class="line">    <span class="comment">// 1. Restore Info - 恢复修改后的Info区数据</span></span><br><span class="line">    <span class="comment">// 2. Remap Eflash - 重映射Eflash</span></span><br><span class="line">    <span class="comment">// 3. Close CADC Int - 关闭CADC中断</span></span><br><span class="line">    <span class="comment">// 4. Soft Reset - 软复位，让新固件生效</span></span><br><span class="line">    <span class="comment">// 5. Delay 100ms - 等待复位完成</span></span><br><span class="line">    <span class="comment">// 6. Clear CADC Flag - 清除CADC中断标志</span></span><br><span class="line">    <span class="comment">// 7. CPU Run - 恢复CPU运行</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="六、状态机：升级流程的”指挥官”"><a href="#六、状态机：升级流程的”指挥官”" class="headerlink" title="六、状态机：升级流程的”指挥官”"></a>六、状态机：升级流程的”指挥官”</h2><p>固件升级是一个典型的状态机场景，定义清晰的状态和转换关系至关重要：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">        ┌──────────────────┐</span><br><span class="line">        │   IDLE (空闲)    │◄───────────────────────────┐</span><br><span class="line">        └────────┬─────────┘                            │</span><br><span class="line">                 │ CONFIG_INFO                          │</span><br><span class="line">                 ▼                                      │</span><br><span class="line">        ┌──────────────────┐                            │</span><br><span class="line">        │ PREPARING (准备) │ CPU Hold, Backup, Erase    │</span><br><span class="line">        └────────┬─────────┘                            │</span><br><span class="line">                 │ 成功                                  │</span><br><span class="line">                 ▼                                      │</span><br><span class="line">        ┌──────────────────┐                            │</span><br><span class="line">┌──────►│ DOWNLOADING      │ 循环接收BOOT_DOWNLOAD      │</span><br><span class="line">│       │ (下载中)         │                            │</span><br><span class="line">│       └────────┬─────────┘                            │</span><br><span class="line">│                │ BOOT_DOWNLOAD_COMPLETE               │</span><br><span class="line">│                ▼                                      │</span><br><span class="line">│       ┌──────────────────┐                            │</span><br><span class="line">│       │ FINISHING (完成) │ Restore, Reset, Run        │</span><br><span class="line">│       └────────┬─────────┘                            │</span><br><span class="line">│                │ 成功                                  │</span><br><span class="line">│                ▼                                      │</span><br><span class="line">│       ┌──────────────────┐                            │</span><br><span class="line">│       │ COMPLETE (完成)  │────────────────────────────┘</span><br><span class="line">│       └──────────────────┘</span><br><span class="line">│</span><br><span class="line">│ 失败   ┌──────────────────┐</span><br><span class="line">└───────│   ERROR (错误)   │</span><br><span class="line">        └──────────────────┘</span><br></pre></td></tr></table></figure>
+
+<h3 id="状态说明"><a href="#状态说明" class="headerlink" title="状态说明"></a>状态说明</h3><table>
+<thead>
+<tr>
+<th>状态</th>
+<th>含义</th>
+<th>可执行命令</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>IDLE</td>
+<td>初始状态</td>
+<td>CONFIG_INFO</td>
+</tr>
+<tr>
+<td>PREPARING</td>
+<td>准备中（擦除、备份）</td>
+<td>PING_STATUS</td>
+</tr>
+<tr>
+<td>DOWNLOADING</td>
+<td>下载中</td>
+<td>BOOT_DOWNLOAD, PING_STATUS</td>
+</tr>
+<tr>
+<td>FINISHING</td>
+<td>完成中（恢复、复位）</td>
+<td>PING_STATUS</td>
+</tr>
+<tr>
+<td>COMPLETE</td>
+<td>成功完成</td>
+<td>-</td>
+</tr>
+<tr>
+<td>ERROR</td>
+<td>发生错误</td>
+<td>-</td>
+</tr>
+</tbody></table>
+<h2 id="七、Flash地址映射：理解物理布局"><a href="#七、Flash地址映射：理解物理布局" class="headerlink" title="七、Flash地址映射：理解物理布局"></a>七、Flash地址映射：理解物理布局</h2><p>BST7001的Flash布局如下：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">BST7001 Flash 布局:</span><br><span class="line">┌───────────────────┬───────────────────┐</span><br><span class="line">│   0x0000-0x8400   │   代码区 (Code)   │  ← 需要下载</span><br><span class="line">├───────────────────┼───────────────────┤</span><br><span class="line">│   0x8400-0xD400   │   Log区 (跳过)    │  ← 保留，不擦除</span><br><span class="line">├───────────────────┼───────────────────┤</span><br><span class="line">│   0xD400-0xF400   │   表区 (Table)    │  ← 需要下载</span><br><span class="line">├───────────────────┼───────────────────┤</span><br><span class="line">│   0x5000 (512B)   │   Info区          │  ← 备份后恢复</span><br><span class="line">└───────────────────┴───────────────────┘</span><br></pre></td></tr></table></figure>
+
+<p>这种分区设计的考量：</p>
+<ul>
+<li><strong>代码区</strong>：存储主程序固件</li>
+<li><strong>Log区</strong>：存储运行时日志，擦除会丢失重要信息</li>
+<li><strong>表区</strong>：存储查表数据（如电池曲线）</li>
+<li><strong>Info区</strong>：存储校准参数，每个芯片唯一</li>
+</ul>
+<h2 id="八、错误处理：容错与恢复"><a href="#八、错误处理：容错与恢复" class="headerlink" title="八、错误处理：容错与恢复"></a>八、错误处理：容错与恢复</h2><h3 id="8-1-错误码定义"><a href="#8-1-错误码定义" class="headerlink" title="8.1 错误码定义"></a>8.1 错误码定义</h3><figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">enum</span> &#123;</span></span><br><span class="line">    BST7001_UPG_OK           =  <span class="number">0</span>,   <span class="comment">// 成功</span></span><br><span class="line">    BST7001_UPG_ERR_I2C      = <span class="number">-1</span>,   <span class="comment">// I2C通信错误</span></span><br><span class="line">    BST7001_UPG_ERR_PEC      = <span class="number">-2</span>,   <span class="comment">// PEC校验错误</span></span><br><span class="line">    BST7001_UPG_ERR_UNLOCK   = <span class="number">-3</span>,   <span class="comment">// 解锁失败</span></span><br><span class="line">    BST7001_UPG_ERR_ERASE    = <span class="number">-4</span>,   <span class="comment">// 擦除失败</span></span><br><span class="line">    BST7001_UPG_ERR_WRITE    = <span class="number">-5</span>,   <span class="comment">// 写入失败</span></span><br><span class="line">    BST7001_UPG_ERR_CHECKSUM = <span class="number">-6</span>,   <span class="comment">// 校验和错误</span></span><br><span class="line">    BST7001_UPG_ERR_TIMEOUT  = <span class="number">-7</span>,   <span class="comment">// 超时</span></span><br><span class="line">    BST7001_UPG_ERR_PARAM    = <span class="number">-8</span>,   <span class="comment">// 参数错误</span></span><br><span class="line">    BST7001_UPG_ERR_STATE    = <span class="number">-9</span>,   <span class="comment">// 状态错误</span></span><br><span class="line">&#125; <span class="type">bst7001_upg_error_t</span>;</span><br></pre></td></tr></table></figure>
+
+<h3 id="8-2-关键设计：看门狗保护"><a href="#8-2-关键设计：看门狗保护" class="headerlink" title="8.2 关键设计：看门狗保护"></a>8.2 关键设计：看门狗保护</h3><p>在长时间操作中，芯片的看门狗（Watchdog）可能会复位系统。因此需要定期”喂狗”：</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 在每个I2C操作之间调用</span></span><br><span class="line">delay_ms(BST7001_DL_DELAY_MS);</span><br><span class="line">wwdt_feeddog();  <span class="comment">// 喂狗，防止复位</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="九、架构设计亮点"><a href="#九、架构设计亮点" class="headerlink" title="九、架构设计亮点"></a>九、架构设计亮点</h2><h3 id="9-1-分层设计"><a href="#9-1-分层设计" class="headerlink" title="9.1 分层设计"></a>9.1 分层设计</h3><ul>
+<li><strong>命令层</strong>：定义清晰的USB协议</li>
+<li><strong>路由层</strong>：根据配置选择不同芯片的驱动</li>
+<li><strong>驱动层</strong>：实现具体的I2C通信和Flash操作</li>
+</ul>
+<h3 id="9-2-可配置性"><a href="#9-2-可配置性" class="headerlink" title="9.2 可配置性"></a>9.2 可配置性</h3><p>通过宏开关支持不同芯片：</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">define</span> CFG_ENABLE_BST7001_UPGRADE    1   <span class="comment">// 启用BST7001升级功能</span></span></span><br></pre></td></tr></table></figure>
+
+<h3 id="9-3-状态机模式"><a href="#9-3-状态机模式" class="headerlink" title="9.3 状态机模式"></a>9.3 状态机模式</h3><p>同步状态机简化了异步复杂度，每个命令都有明确的前置状态检查。</p>
+<h2 id="十、总结"><a href="#十、总结" class="headerlink" title="十、总结"></a>十、总结</h2><p>本文详细解析了电量计固件升级的全流程，从上位机的USB协议到MCU的状态机管理，再到I2C通信和Flash操作。这个设计方案体现了嵌入式系统的典型设计模式：</p>
+<ol>
+<li><strong>协议驱动</strong>：用清晰的命令集定义升级流程</li>
+<li><strong>状态管理</strong>：用有限状态机控制流程</li>
+<li><strong>分层抽象</strong>：用模块化降低复杂度</li>
+<li><strong>容错设计</strong>：用错误码和喂狗机制保证可靠性</li>
+</ol>
+<p>理解了这些设计思想，你也能应对类似的固件升级需求。下一篇文章，我们将介绍新一代芯片SD7001的升级方案，看看它是如何在BST7001的基础上进行演进和优化的。</p>
+<hr>
+<p><strong>相关阅读</strong>：</p>
+<ul>
+<li><a href="https://zqb-all.github.io/posts/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E7%94%B5%E6%B1%A0%E5%BE%AE%E7%9F%AD%E8%B7%AF%E4%B8%AD%E7%9A%84%E5%8D%A1%E5%B0%94%E6%9B%BC%E6%BB%A1%E6%B3%A8/">电量计 – 卡尔曼滤波在电池内部短路漏电流检测中的应用</a></li>
+<li><a href="https://zqb-all.github.io/posts/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E7%94%B5%E6%B1%A0%E5%BE%AE%E7%9F%AD%E8%B7%AF%E7%9A%84%E7%AE%97%E6%B3%95%E7%A7%BB%E6%A4%8D/">电量计 – 电池微短路的算法移植从STM32主机到电量计IC</a></li>
+</ul>
+]]></content>
+      <categories>
+        <category>电量计</category>
+      </categories>
+      <tags>
+        <tag>电量计</tag>
       </tags>
   </entry>
 </search>
