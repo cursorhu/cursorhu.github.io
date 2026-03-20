@@ -22100,7 +22100,7 @@ clean:								#清理规则，删除client、server和中间文件
       </tags>
   </entry>
   <entry>
-    <title>Win10 Storport DmaRemappingCompatible 阻塞问题调试指南</title>
+    <title>Win10 Storport DmaRemappingCompatible 阻塞问题调试记录</title>
     <url>/2026/03/19/20260319_%E8%B0%83%E8%AF%95%E6%96%B9%E6%B3%95_Win10_Storport_DMAR_%E9%98%BB%E5%A1%9E/</url>
     <content><![CDATA[<h1 id="Win10-Storport-DmaRemappingCompatible-阻塞问题调试记录"><a href="#Win10-Storport-DmaRemappingCompatible-阻塞问题调试记录" class="headerlink" title="Win10 Storport DmaRemappingCompatible 阻塞问题调试记录"></a>Win10 Storport DmaRemappingCompatible 阻塞问题调试记录</h1><p><strong>日期</strong>: 2026-03-19<br><strong>目的</strong>: 调试 Bayhub 驱动在 Win10 上因 DmaRemappingCompatible 导致安装卡死的问题<br><strong>适用</strong>: Windows 10 + Kernel DMA Protection + Storport Miniport</p>
 <hr>
@@ -22109,7 +22109,22 @@ clean:								#清理规则，删除client、server和中间文件
 <li><a href="#12-%E9%A9%B1%E5%8A%A8%E4%B8%AD%E6%BD%9C%E5%9C%A8%E7%9A%84%E5%8D%A1%E6%AD%BB%E7%82%B9">1.2 驱动中潜在的卡死点</a></li>
 <li><a href="#13-%E4%BB%A3%E7%A0%81%E4%BD%8D%E7%BD%AE%E9%80%9F%E6%9F%A5%E8%A1%A8">1.3 代码位置速查表</a></li>
 </ol>
-<h3 id="PART-2：调试方法"><a href="#PART-2：调试方法" class="headerlink" title="PART 2：调试方法"></a>PART 2：调试方法</h3><ol start="4">
+<h3 id="PART-2：调试过程记录"><a href="#PART-2：调试过程记录" class="headerlink" title="PART 2：调试过程记录"></a>PART 2：调试过程记录</h3><p>1.4. <a href="#14-%E8%B0%83%E8%AF%95%E8%BF%87%E7%A8%8B%E8%AE%B0%E5%BD%952026-03-19">1.4 调试过程记录（2026-03-19）</a></p>
+<ul>
+<li><a href="#141-%E9%98%B6%E6%AE%B5%E4%B8%80dfx-%E6%97%A5%E5%BF%97%E5%AF%B9%E6%AF%94%E5%88%86%E6%9E%90">1.4.1 阶段一：DIFx 日志对比分析</a></li>
+<li><a href="#142-%E9%98%B6%E6%AE%B5%E4%BA%8C%E6%B7%BB%E5%8A%A0%E8%B6%85%E6%97%B6%E6%9C%BA%E5%88%B6%E8%A7%A3%E5%86%B3%E5%AE%89%E8%A3%85-hang">1.4.2 阶段二：添加超时机制解决安装 Hang</a></li>
+<li><a href="#143-%E9%98%B6%E6%AE%B5%E4%B8%89windbg-%E6%97%A5%E5%BF%97%E7%A1%AE%E8%AE%A4-api-%E5%A4%B1%E8%B4%A5">1.4.3 阶段三：WinDbg 日志确认 API 失败</a></li>
+<li><a href="#144-%E9%98%B6%E6%AE%B5%E5%9B%9B%E6%94%B9%E7%94%A8-storportallocatedmamemory-api">1.4.4 阶段四：改用 StorPortAllocateDmaMemory API</a></li>
+<li><a href="#145-%E8%B0%83%E8%AF%95%E6%B5%81%E7%A8%8B%E6%80%BB%E7%BB%93">1.4.5 调试流程总结</a></li>
+<li><a href="#146-%E8%B0%83%E8%AF%95%E7%BB%93%E6%9E%9C%E5%88%86%E6%9E%902026-03-20">1.4.6 调试结果分析</a></li>
+<li><a href="#147-%E9%98%B6%E6%AE%B5%E4%BA%94%E6%A3%80%E6%9F%A5-mapbuffers-%E8%AE%BE%E7%BD%AE2026-03-19">1.4.7 阶段五：检查 MapBuffers 设置</a></li>
+<li><a href="#148-%E9%98%B6%E6%AE%B5%E4%B8%83mapbuffers-%E4%BF%AE%E6%94%B9%E6%97%A0%E6%95%88%E7%A1%AE%E8%AE%A4-storport-%E6%A1%86%E6%9E%B6%E9%97%AE%E9%A2%982026-03-19">1.4.8 阶段七：MapBuffers 修改无效，确认 Storport 框架问题</a></li>
+<li><a href="#149-%E9%98%B6%E6%AE%B5%E5%85%ABdmaremappingcompatible2-%E6%B5%8B%E8%AF%952026-03-20">1.4.9 阶段八：DmaRemappingCompatible&#x3D;2 测试</a></li>
+<li><a href="#1410-%E9%98%B6%E6%AE%B5%E4%B9%9Dwin10-vs-win11-%E6%97%A5%E5%BF%97%E5%AF%B9%E6%AF%94%E5%88%86%E6%9E%902026-03-20">1.4.10 阶段九：Win10 vs Win11 日志对比分析</a></li>
+<li><a href="#1411-%E9%98%B6%E6%AE%B5%E5%8D%81%E6%9C%80%E7%BB%88%E7%BB%93%E8%AE%BA2026-03-20">1.4.11 阶段十：最终结论</a></li>
+<li><a href="#1412-%E9%98%B6%E6%AE%B5%E5%8D%81%E4%B8%80irp_mn_start_device-%E6%B7%B1%E5%85%A5%E5%88%86%E6%9E%902026-03-19">1.4.12 阶段十一：IRP_MN_START_DEVICE 深入分析</a></li>
+</ul>
+<h3 id="PART-3：调试方法"><a href="#PART-3：调试方法" class="headerlink" title="PART 3：调试方法"></a>PART 3：调试方法</h3><ol start="5">
 <li><a href="#21-%E5%90%AF%E7%94%A8-driver-install-framework-difx-%E6%97%A5%E5%BF%97">2.1 启用 DIFx 日志</a></li>
 <li><a href="#22-%E5%90%AF%E7%94%A8-storport-%E9%A9%B1%E5%8A%A8%E6%97%A5%E5%BF%97">2.2 启用 Storport 驱动日志</a></li>
 <li><a href="#23-%E5%86%85%E6%A0%B8%E8%B0%83%E8%AF%95-kernel-debugging">2.3 内核调试 (Kernel Debugging)</a></li>
@@ -22996,7 +23011,7 @@ clean:								#清理规则，删除client、server和中间文件
 <li><strong>考虑条件安装</strong>：Win10 使用不同的 INF 配置</li>
 </ol>
 <hr>
-<h1 id="PART-2：调试方法-1"><a href="#PART-2：调试方法-1" class="headerlink" title="PART 2：调试方法"></a>PART 2：调试方法</h1><h2 id="方法-1：启用-Driver-Install-Framework-DIFx-日志"><a href="#方法-1：启用-Driver-Install-Framework-DIFx-日志" class="headerlink" title="方法 1：启用 Driver Install Framework (DIFx) 日志"></a>方法 1：启用 Driver Install Framework (DIFx) 日志</h2><p>DIFx 是 Windows 处理驱动安装的组件，开启详细日志可以看到安装过程中每一步的状态。</p>
+<h1 id="PART-2：调试方法"><a href="#PART-2：调试方法" class="headerlink" title="PART 2：调试方法"></a>PART 2：调试方法</h1><h2 id="方法-1：启用-Driver-Install-Framework-DIFx-日志"><a href="#方法-1：启用-Driver-Install-Framework-DIFx-日志" class="headerlink" title="方法 1：启用 Driver Install Framework (DIFx) 日志"></a>方法 1：启用 Driver Install Framework (DIFx) 日志</h2><p>DIFx 是 Windows 处理驱动安装的组件，开启详细日志可以看到安装过程中每一步的状态。</p>
 <h3 id="1-1-启用-DIFx-日志"><a href="#1-1-启用-DIFx-日志" class="headerlink" title="1.1 启用 DIFx 日志"></a>1.1 启用 DIFx 日志</h3><figure class="highlight powershell"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 方法 A：设置全局 DIFx 日志</span></span><br><span class="line">reg add <span class="string">&quot;HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Setup\LogLevel&quot;</span> /v DIFxDebugSession /t REG_DWORD /d <span class="number">1</span> /f</span><br><span class="line"></span><br><span class="line"><span class="comment"># 或者使用 WPP 日志</span></span><br><span class="line">reg add <span class="string">&quot;HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Debug Print Filter&quot;</span> /v DIFx /t REG_DWORD /d <span class="number">0</span>xFFFFFFFF /f</span><br></pre></td></tr></table></figure>
 
 <h3 id="1-2-查看安装日志"><a href="#1-2-查看安装日志" class="headerlink" title="1.2 查看安装日志"></a>1.2 查看安装日志</h3><figure class="highlight powershell"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 找到 setupapi 日志</span></span><br><span class="line"><span class="built_in">dir</span> <span class="variable">$env:SystemRoot</span>\Inf\setupapi*.log</span><br><span class="line"></span><br><span class="line"><span class="comment"># 默认位置</span></span><br><span class="line"><span class="comment"># C:\Windows\Inf\setupapi.dev.log</span></span><br><span class="line"><span class="comment"># C:\Windows\Inf\setupapi.setup.log</span></span><br></pre></td></tr></table></figure>
