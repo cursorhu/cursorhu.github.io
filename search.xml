@@ -41,64 +41,6 @@
       </tags>
   </entry>
   <entry>
-    <title>Android驱动调试技术</title>
-    <url>/2025/10/23/Android%E9%A9%B1%E5%8A%A8%E8%B0%83%E8%AF%95%E6%8A%80%E6%9C%AF/</url>
-    <content><![CDATA[<h1 id="Android-ADB驱动调试"><a href="#Android-ADB驱动调试" class="headerlink" title="Android ADB驱动调试"></a>Android ADB驱动调试</h1><p>Android嵌入式平台的系统要抓取驱动模块的log，一般不能像Linux系统直接在系统终端内配置，需要通过ADB(Android Debug Bridge)联机调试通道抓log。</p>
-<h2 id="ADB查看kernel-log"><a href="#ADB查看kernel-log" class="headerlink" title="ADB查看kernel log"></a>ADB查看kernel log</h2><h3 id="ADB主机环境安装"><a href="#ADB主机环境安装" class="headerlink" title="ADB主机环境安装"></a>ADB主机环境安装</h3><p>windows主机可通过ADB连接Android板子，登录到开发板的系统root文件目录操作rootfs，并配置和抓取板子的kernel log打印。</p>
-<p>Windows主机装ADB环境需要两个东西：</p>
-<ol>
-<li>安装ADB exe包</li>
-</ol>
-<p>在google andoid下载platform tools，即adb包</p>
-<p><a href="https://www.thecustomdroid.com/google-android-usb-drivers/">https://www.thecustomdroid.com/google-android-usb-drivers/</a></p>
-<ol start="2">
-<li>安装USB-ADB驱动</li>
-</ol>
-<p>不装驱动连接soc板子（启动成功情况下），会有yellow-bang设备</p>
-<p>驱动安装过程：</p>
-<p>（1）右键yellow-bang设备，选择更新驱动 -&gt; “通用串行总线”驱动类 -&gt; 找到WinUSB的ADB设备类驱动，不管警告，安装。</p>
-<p><img src="https://s3.bmp.ovh/imgs/2025/12/24/5bb77b5b45d3fd58.png" alt="图片1"></p>
-<p>（2）安装正常，设备会归为USB类，没有yellowbang</p>
-<p><img src="https://s3.bmp.ovh/imgs/2025/12/24/c8b72005fcbfc3b4.png" alt="图片2"></p>
-<h3 id="使用ADB抓log"><a href="#使用ADB抓log" class="headerlink" title="使用ADB抓log"></a>使用ADB抓log</h3><h3 id="方式1-使用-动态调试（Dynamic-Debug）-和dmesg"><a href="#方式1-使用-动态调试（Dynamic-Debug）-和dmesg" class="headerlink" title="方式1 使用**动态调试（Dynamic Debug）**和dmesg"></a>方式1 使用**动态调试（Dynamic Debug）**和dmesg</h3><p>需要设备已经root，并且adbd以root权限运行（adb root），如果没有root权限，可能只能依赖系统已有的日志输出，或者使用一些不需要root的调试方法（如logcat内核日志，如果系统支持）</p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">#!/bin/bash</span><br><span class="line"># 启用MMC动态调试</span><br><span class="line">adb root</span><br><span class="line">adb wait-for-device</span><br><span class="line"># 挂载debugfs类型(-t)的设备(debugfs)到节点/sys/kernel/debug</span><br><span class="line">adb shell &quot;mount -t debugfs debugfs /sys/kernel/debug&quot;</span><br><span class="line"># 打开mmc模块的动态调试</span><br><span class="line">adb shell &quot;echo &#x27;file drivers/mmc/* +p&#x27; &gt; /sys/kernel/debug/dynamic_debug/control&quot;</span><br><span class="line">adb shell &quot;echo &#x27;module mmc_core +p&#x27; &gt;&gt; /sys/kernel/debug/dynamic_debug/control&quot;</span><br><span class="line">adb shell &quot;echo &#x27;module sdhci +p&#x27; &gt;&gt; /sys/kernel/debug/dynamic_debug/control&quot;</span><br><span class="line"># 设置printk级别</span><br><span class="line">adb shell &quot;echo 7 &gt; /proc/sys/kernel/printk&quot;</span><br><span class="line"># 清除旧日志</span><br><span class="line">adb shell &quot;dmesg -c&quot;</span><br><span class="line"># 开始捕获日志(两种都行)</span><br><span class="line">adb shell &quot;dmesg -w &gt; mmc_log.txt&quot;</span><br><span class="line">adb shell &quot;cat /proc/kmsg&quot; | tee mmc_log.txt</span><br></pre></td></tr></table></figure>
-
-<p>以上很多adb shell命令可以先进入adb shell终端模式里面，之后就可以像linux终端内一样直接输入echo，dmesg命令，最后exit退出adb shell</p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">adb shell</span><br><span class="line">mount -t debugfs debugfs /sys/kernel/debug</span><br><span class="line">echo &#x27;file drivers/mmc/* +p&#x27; &gt; /sys/kernel/debug/dynamic_debug/control</span><br><span class="line">echo &#x27;module mmc_core +p&#x27; &gt;&gt; /sys/kernel/debug/dynamic_debug/control</span><br><span class="line">echo &#x27;module sdhci +p&#x27; &gt;&gt; /sys/kernel/debug/dynamic_debug/control</span><br><span class="line">...</span><br><span class="line">exit</span><br></pre></td></tr></table></figure>
-
-<p>最后<code>adb pull</code>拉取mmc_log.txt</p>
-<p>一个示例：</p>
-<p><img src="https://s3.bmp.ovh/imgs/2025/12/24/280f6d9f0ba628f4.png" alt="图片3"></p>
-<h3 id="方式2-使用kernel-logcat"><a href="#方式2-使用kernel-logcat" class="headerlink" title="方式2 使用kernel logcat"></a>方式2 <strong>使用kernel logcat</strong></h3><p>Android 有自己的日志系统：logcat，可以直接打印日志</p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line"># 查看内核消息</span><br><span class="line">adb logcat -b kernel</span><br><span class="line"># 查看内核日志(-verbose带时间戳，-select关键词)</span><br><span class="line">adb logcat -b kernel -v time -s mmc,sdhci</span><br><span class="line"></span><br><span class="line"># 清除日志并重新开始</span><br><span class="line">adb logcat -c</span><br><span class="line">adb logcat -b kernel -v time</span><br></pre></td></tr></table></figure>
-
-<p>一个示例：</p>
-<p><img src="https://s3.bmp.ovh/imgs/2025/12/24/96c045160a55fe42.png" alt="图片4"></p>
-<h2 id="QA-为什么Android系统不能像Linux一样直接操作shell"><a href="#QA-为什么Android系统不能像Linux一样直接操作shell" class="headerlink" title="QA:为什么Android系统不能像Linux一样直接操作shell"></a>QA:为什么Android系统不能像Linux一样直接操作shell</h2><p><strong>Android和传统Linux主机有着根本不同的设计目标和安全架构</strong></p>
-<ol>
-<li><strong>应用沙箱与权限模型</strong>：每个应用（包括可能运行的Shell应用）都被严格隔离在独立的“沙箱”中，无法直接访问系统日志文件等核心资源。即使你安装了终端模拟器，它本质上也是一个普通应用，权限受到严格限制。</li>
-<li><strong>强化的内核安全（SELinux）</strong>：这是最关键的一层。从Android 5.0开始，系统会强制所有进程（包括拥有root权限的进程）都必须在SELinux的<strong>强制模式（Enforcing）</strong> 下运行。这意味着，即使你通过某种方式获得了<code>root</code>身份，SELinux策略规则（Policy）也会严格规定你这个“root”能做什么、不能做什么，通常禁止直接访问<code>/proc/kmsg</code>或<code>/sys/kernel/debug</code>等调试节点。这回答了之前提到的为什么有时即使使用<code>su</code>命令也无法访问某些节点。</li>
-<li><strong>厂商的深度定制</strong>：为了进一步控制权限，一些设备制造商会在原生Android系统之上增加额外限制。例如，小米的MIUI系统就曾定制限制Shell对“工作空间”用户的访问</li>
-</ol>
-<p>ADB在PC和Android设备之间建立了一个<strong>受控的、权限更高的调试通道</strong></p>
-<ul>
-<li><strong>它是如何工作的</strong>：当设备设置中启用“USB调试”后，设备上的<code>adbd</code>守护进程会以<strong>较高权限</strong>运行（但仍受SELinux策略约束）。通过PC端的ADB命令，你可以执行许多在设备内部Shell中无法直接完成的操作。</li>
-<li><strong>实际应用</strong>：可以使用 <code>adb shell</code> 进入一个功能更强的设备端Shell，然后挂载<code>debugfs</code>或通过<code>dmesg</code>查看内核日志。也可以直接通过 <code>adb logcat</code> 命令抓取系统和应用日志</li>
-</ul>
-<p>如果你想获取完全的访问权限，通常有两种途径：</p>
-<ul>
-<li><strong>在开发阶段</strong>：编译一个<strong>用户调试（userdebug）版本</strong>的系统镜像并刷入设备。这类版本通常会放宽SELinux策略（设为宽容模式<code>Permissive</code>），并默认启用ADB的root访问。</li>
-<li><strong>对已发布设备</strong>：这通常需要<strong>解锁Bootloader</strong>并刷入提供完整<code>root</code>权限的自定义内核或系统，但这会使设备失去官方保修并带来安全风险。</li>
-</ul>
-]]></content>
-      <categories>
-        <category>android</category>
-      </categories>
-      <tags>
-        <tag>android</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>Blog配置 -- Picgo使用ImgurL图床支持国内访问</title>
     <url>/2025/06/02/Blog%E9%85%8D%E7%BD%AE%20--%20Picgo%E4%BD%BF%E7%94%A8ImgurL%E5%9B%BE%E5%BA%8A%E6%94%AF%E6%8C%81%E5%9B%BD%E5%86%85%E8%AE%BF%E9%97%AE/</url>
     <content><![CDATA[<h1 id="Picgo使用ImgurL图床支持国内访问"><a href="#Picgo使用ImgurL图床支持国内访问" class="headerlink" title="Picgo使用ImgurL图床支持国内访问"></a>Picgo使用ImgurL图床支持国内访问</h1><h2 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h2><p>之前我的markdown文章图床是使用picgo+github图床，但是不搭梯子情况下图片无法访问，其他图床如SM.MS也不可用，阿里云之类的性价比低不可持续。使用cnblogs的话taste太差，综合考虑使用国内图床ImgURL(山寨Imgur)。记录环境搭建的一些问题。</p>
@@ -22148,6 +22090,1167 @@ clean:								#清理规则，删除client、server和中间文件
 <ul>
 <li><a href="https://zqb-all.github.io/posts/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E7%94%B5%E6%B1%A0%E5%BE%AE%E7%9F%AD%E8%B7%AF%E4%B8%AD%E7%9A%84%E5%8D%A1%E5%B0%94%E6%9B%BC%E6%BB%A1%E6%B3%A8/">电量计 – 卡尔曼滤波在电池内部短路漏电流检测中的应用</a></li>
 <li><a href="https://zqb-all.github.io/posts/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E7%94%B5%E6%B1%A0%E5%BE%AE%E7%9F%AD%E8%B7%AF%E7%9A%84%E7%AE%97%E6%B3%95%E7%A7%BB%E6%A4%8D/">电量计 – 电池微短路的算法移植从STM32主机到电量计IC</a></li>
+</ul>
+]]></content>
+      <categories>
+        <category>电量计</category>
+      </categories>
+      <tags>
+        <tag>电量计</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Win10 Storport DmaRemappingCompatible 阻塞问题调试指南</title>
+    <url>/2026/03/19/20260319_%E8%B0%83%E8%AF%95%E6%96%B9%E6%B3%95_Win10_Storport_DMAR_%E9%98%BB%E5%A1%9E/</url>
+    <content><![CDATA[<h1 id="Win10-Storport-DmaRemappingCompatible-阻塞问题调试指南"><a href="#Win10-Storport-DmaRemappingCompatible-阻塞问题调试指南" class="headerlink" title="Win10 Storport DmaRemappingCompatible 阻塞问题调试指南"></a>Win10 Storport DmaRemappingCompatible 阻塞问题调试指南</h1><p><strong>日期</strong>: 2026-03-19<br><strong>目的</strong>: 调试 Bayhub 驱动在 Win10 上因 DmaRemappingCompatible 导致安装卡死的问题<br><strong>适用</strong>: Windows 10 + Kernel DMA Protection + Storport Miniport</p>
+<hr>
+<h2 id="目录"><a href="#目录" class="headerlink" title="目录"></a>目录</h2><ol>
+<li><a href="#%E6%96%B9%E6%B3%95-1%E5%90%AF%E7%94%A8-driver-install-framework-difx-%E6%97%A5%E5%BF%97">方法 1：启用 DIFx 日志</a></li>
+<li><a href="#%E6%96%B9%E6%B3%95-2%E5%90%AF%E7%94%A8-storport-%E9%A9%B1%E5%8A%A8%E6%97%A5%E5%BF%97">方法 2：启用 Storport 驱动日志</a></li>
+<li><a href="#%E6%96%B9%E6%B3%95-3%E5%86%85%E6%A0%B8%E8%B0%83%E8%AF%95-kernel-debugging">方法 3：内核调试 (Kernel Debugging)</a></li>
+<li><a href="#%E6%96%B9%E6%B3%95-4etw-%E8%B7%9F%E8%B8%AA">方法 4：ETW 跟踪</a></li>
+<li><a href="#%E6%96%B9%E6%B3%95-5process-monitor-%E7%9B%91%E6%8E%A7-inf-%E5%A4%84%E7%90%86">方法 5：Process Monitor 监控</a></li>
+<li><a href="#%E6%96%B9%E6%B3%95-6%E6%A3%80%E6%9F%A5-storport-%E4%B8%8E-acpidmar-%E8%A1%A8%E7%9A%84%E4%BA%A4%E4%BA%92">方法 6：检查 ACPI&#x2F;DMAR 表</a></li>
+<li><a href="#%E6%8E%A8%E8%8D%90%E8%B0%83%E8%AF%95%E9%A1%BA%E5%BA%8F">推荐调试顺序</a></li>
+<li><a href="#windbg-%E5%85%B3%E9%94%AE%E6%96%AD%E7%82%B9%E8%84%9A%E6%9C%AC">WinDbg 关键断点脚本</a></li>
+<li><a href="#%E5%88%86%E6%9E%90%E6%9B%B4%E6%96%B01%E5%8D%A1%E6%AD%BB%E6%97%B6%E6%9C%BA%E5%88%86%E6%9E%90-2026-03-19">分析更新：卡死时机分析</a></li>
+<li><a href="#%E5%88%86%E6%9E%90%E6%9B%B4%E6%96%B02%E9%A9%B1%E5%8A%A8%E4%B8%AD%E6%BD%9C%E5%9C%A8%E7%9A%84%E5%8D%A1%E6%AD%BB%E7%82%B9-2026-03-19">分析更新：驱动中潜在的卡死点</a></li>
+<li><a href="#%E5%88%86%E6%9E%90%E6%9B%B4%E6%96%B03%E4%BB%A3%E7%A0%81%E4%BD%8D%E7%BD%AE%E9%80%9F%E6%9F%A5%E8%A1%A8-2026-03-19">分析更新：代码位置速查表</a></li>
+</ol>
+<hr>
+<h2 id="分析更新-1：卡死时机分析-2026-03-19"><a href="#分析更新-1：卡死时机分析-2026-03-19" class="headerlink" title="分析更新 1：卡死时机分析 (2026-03-19)"></a>分析更新 1：卡死时机分析 (2026-03-19)</h2><h3 id="1-1-原始结论-vs-新分析"><a href="#1-1-原始结论-vs-新分析" class="headerlink" title="1.1 原始结论 vs 新分析"></a>1.1 原始结论 vs 新分析</h3><table>
+<thead>
+<tr>
+<th>分析角度</th>
+<th>原始结论</th>
+<th>当前分析</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>卡死时机</strong></td>
+<td>安装阶段（pnputil执行期间），驱动.sys尚未加载</td>
+<td>可能不准确，<strong>需要Win10 setupapi.log验证</strong></td>
+</tr>
+<tr>
+<td><strong>驱动代码</strong></td>
+<td>完全不执行</td>
+<td>如果卡死在Starting device之后，驱动代码可能执行</td>
+</tr>
+<tr>
+<td><strong>根因位置</strong></td>
+<td>Storport框架处理DmaRemappingCompatible</td>
+<td>Storport框架或驱动DMA初始化代码</td>
+</tr>
+</tbody></table>
+<h3 id="1-2-结论来源分析"><a href="#1-2-结论来源分析" class="headerlink" title="1.2 结论来源分析"></a>1.2 结论来源分析</h3><p>原始分析基于以下假设：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">pnputil -add-driver bhtsddr.inf</span><br><span class="line">         │</span><br><span class="line">         ├─ INF 解析（将 DmaRemappingCompatible=1 写入注册表）</span><br><span class="line">         ├─ PnP 枚举（设备发现）</span><br><span class="line">         ├─ AddService（注册服务，驱动 .sys 尚未加载！）← 关键点</span><br><span class="line">         └─ ??? → Windows Storport 框架处理 DMA remapping 策略 → 卡死</span><br></pre></td></tr></table></figure>
+
+<p><strong>假设依据</strong>：</p>
+<ol>
+<li><code>pnputil</code> 是用户态程序</li>
+<li>在 <code>AddService</code> 阶段，驱动 <code>.sys</code> 只是被注册为服务，尚未真正加载</li>
+<li>因此驱动代码不会执行</li>
+</ol>
+<p><strong>问题</strong>：<strong>我们没有 Win10 实际卡死时的 setupapi.dev.log</strong>，这个结论是推断而非实证。</p>
+<h3 id="1-3-从-Win11-日志的观察"><a href="#1-3-从-Win11-日志的观察" class="headerlink" title="1.3 从 Win11 日志的观察"></a>1.3 从 Win11 日志的观察</h3><p>从 Win11 setupapi.log 的正常安装日志：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">19:55:15.259  Install Device: Starting device &#x27;PCI\VEN_1217&amp;DEV_9860...&#x27;</span><br><span class="line">19:55:15.259  Install Device: Starting device completed.</span><br><span class="line">19:55:15.259  !!! Device not started: Device has problem: 0x37 (CM_PROB_CONSOLE_LOCKED)</span><br></pre></td></tr></table></figure>
+
+<p><strong>关键观察</strong>：</p>
+<ol>
+<li><code>Starting device</code> 和 <code>completed</code> 之间<strong>几乎没有时间间隔</strong>（同一毫秒）</li>
+<li>Win11 上驱动加载&#x2F;初始化是<strong>快速完成</strong>的</li>
+<li>设备未启动原因是 <code>CM_PROB_CONSOLE_LOCKED</code>（控制台锁定），<strong>不是驱动错误</strong></li>
+</ol>
+<h3 id="1-4-需要确认的关键问题"><a href="#1-4-需要确认的关键问题" class="headerlink" title="1.4 需要确认的关键问题"></a>1.4 需要确认的关键问题</h3><p>要确认 Win10 卡死点，<strong>必须</strong>：</p>
+<ol>
+<li>在 Win10 上<strong>先开启 setupapi.dev.log</strong></li>
+<li>执行驱动安装</li>
+<li>观察日志最后一条记录</li>
+</ol>
+<p><strong>可能的卡死场景</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>场景</th>
+<th>日志表现</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>场景A</strong></td>
+<td>日志停在 <code>Starting device</code> 之前</td>
+<td>PnP 框架卡死，驱动未加载</td>
+</tr>
+<tr>
+<td><strong>场景B</strong></td>
+<td>日志停在 <code>Starting device</code> 之后，很久才有结果</td>
+<td>驱动代码卡死</td>
+</tr>
+<tr>
+<td><strong>场景C</strong></td>
+<td>日志显示 <code>Starting device completed</code> 但无后续</td>
+<td>PnP后续流程卡死</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="分析更新-2：驱动中潜在的卡死点-2026-03-19"><a href="#分析更新-2：驱动中潜在的卡死点-2026-03-19" class="headerlink" title="分析更新 2：驱动中潜在的卡死点 (2026-03-19)"></a>分析更新 2：驱动中潜在的卡死点 (2026-03-19)</h2><blockquote>
+<p>如果 Win10 卡死确实发生在驱动加载后（场景B），以下代码位置是潜在的卡死点。</p>
+</blockquote>
+<h3 id="2-1-驱动加载时序图"><a href="#2-1-驱动加载时序图" class="headerlink" title="2.1 驱动加载时序图"></a>2.1 驱动加载时序图</h3><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">DriverEntry (line 2675, winscsientry.c)</span><br><span class="line">    ↓</span><br><span class="line">StorPortInitialize (line 2908, winscsientry.c)</span><br><span class="line">    ↓</span><br><span class="line">Storport 框架加载 .sys 到内存</span><br><span class="line">    ↓</span><br><span class="line">scsi_HwFindAdapter (line 989, winscsientry.c) ← 第一个被调用的 Hw 函数</span><br><span class="line">    ↓</span><br><span class="line">os_alloc_dma_buffer (line 1208, winscsientry.c)</span><br><span class="line">    ↓</span><br><span class="line">StorPortGetUncachedExtension ← 关键 API（winapi.c:2020）</span><br><span class="line">    ↓</span><br><span class="line">StorHwPassiveInitialize (line 370, winscsientry.c) ← 被动初始化回调</span><br><span class="line">    ↓</span><br><span class="line">scsi_HwInitialize (line 488, winscsientry.c)</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-2-潜在卡死点详细分析"><a href="#2-2-潜在卡死点详细分析" class="headerlink" title="2.2 潜在卡死点详细分析"></a>2.2 潜在卡死点详细分析</h3><h4 id="卡死点-A：scsi-HwFindAdapter-中的-DMA-缓冲区分配（高优先级）"><a href="#卡死点-A：scsi-HwFindAdapter-中的-DMA-缓冲区分配（高优先级）" class="headerlink" title="卡死点 A：scsi_HwFindAdapter 中的 DMA 缓冲区分配（高优先级）"></a>卡死点 A：<code>scsi_HwFindAdapter</code> 中的 DMA 缓冲区分配（高优先级）</h4><p><strong>文件位置</strong>：<code>SDSTORDriver/sdstor/windows_os/winscsientry.c:1186-1215</code></p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="comment">// line 1186-1215: 循环分配 DMA 缓冲区</span></span><br><span class="line"><span class="keyword">while</span>(<span class="number">1</span>)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">if</span>(pdev_ext-&gt;dump_mode == FALSE)</span><br><span class="line">    &#123;</span><br><span class="line">        buf_size += MIN_DMA_API_BUF_SIZE + DMA_BUF_ALIGN_SIZE;</span><br><span class="line">        <span class="keyword">if</span>(buf_size &lt; (MIN_DMA_API_BUF_SIZE + MAX_NODE_BUF_SIZE))</span><br><span class="line">        &#123;</span><br><span class="line">            DbgErr(<span class="string">&quot;dma buffer less than min(0x%x),so Failed\n&quot;</span>, ...);</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    ret = os_alloc_dma_buffer(pdev_ext, ConfigInfo, buf_size, &amp;pdev_ext-&gt;dma_buff);</span><br><span class="line">    <span class="keyword">if</span>(TRUE == ret) <span class="keyword">break</span>;</span><br><span class="line">    buf_size = buf_size / <span class="number">2</span>;  <span class="comment">// 减小需求重试</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>调用的底层函数</strong> (<code>SDSTORDriver/sdstor/windows_os/winapi.c:2004-2030</code>)：</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="type">bool</span> <span class="title function_">os_alloc_dma_buffer</span><span class="params">(<span class="type">void</span> * pdx, <span class="type">void</span> * ctx, u32 nbytes, <span class="type">dma_desc_buf_t</span> * pdma)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">for</span>(retry = <span class="number">1</span>; retry &lt; <span class="number">10</span>; retry++)</span><br><span class="line">    &#123;</span><br><span class="line">        pdma-&gt;va = (OS_PortSetGetUncacheedExtension(pdx, ConfigInfo, pdma-&gt;len));</span><br><span class="line">        <span class="comment">//  ↑</span></span><br><span class="line">        <span class="comment">// 这个宏在不同 OS 版本可能映射到：</span></span><br><span class="line">        <span class="comment">//   - ScsiPortGetUncachedExtension (ScsiPort模式)</span></span><br><span class="line">        <span class="comment">//   - StorPortGetUncachedExtension (Storport模式)</span></span><br><span class="line">        <span class="keyword">if</span>(pdma-&gt;va == <span class="literal">NULL</span>) &#123;</span><br><span class="line">            DbgInfo(..., <span class="string">&quot;GetUncachedExtension() failed!!!,retry %d\n&quot;</span>, retry);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">else</span> <span class="keyword">break</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span>(pdma-&gt;va == <span class="literal">NULL</span>) &#123;</span><br><span class="line">        DbgErr(<span class="string">&quot;GetUncachedExtension(%xh) failed!!!\n&quot;</span>, pdma-&gt;len);</span><br><span class="line">        <span class="keyword">return</span> FALSE;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>卡死原因分析</strong>：</p>
+<ul>
+<li>当 INF 声明了 <code>DmaRemappingCompatible=1</code></li>
+<li><code>StorPortGetUncachedExtension</code> 会尝试分配符合 IOMMU&#x2F;DMAR 要求的缓冲区</li>
+<li><strong>在 Win10 上</strong>，这个过程可能触发同步等待（例如等待 IOMMU 响应）</li>
+<li>如果 IOMMU 无响应或超时机制不完善 → 整个调用卡死</li>
+</ul>
+<h4 id="卡死点-B：StorHwPassiveInitialize-中的-PowerFx-初始化（中优先级）"><a href="#卡死点-B：StorHwPassiveInitialize-中的-PowerFx-初始化（中优先级）" class="headerlink" title="卡死点 B：StorHwPassiveInitialize 中的 PowerFx 初始化（中优先级）"></a>卡死点 B：<code>StorHwPassiveInitialize</code> 中的 PowerFx 初始化（中优先级）</h4><p><strong>文件位置</strong>：<code>SDSTORDriver/sdstor/windows_os/winscsientry.c:370-453</code></p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line">BOOLEAN <span class="title function_">StorHwPassiveInitialize</span><span class="params">(IN PVOID DeviceExtension)</span></span><br><span class="line">&#123;</span><br><span class="line">    ...</span><br><span class="line">    <span class="comment">// line 396: 获取 D3Cold 支持</span></span><br><span class="line">    status = StorPortGetD3ColdSupport(DeviceExtension, <span class="literal">NULL</span>, &amp;enableD3Cold);</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    <span class="comment">// line 430: 初始化 PowerFx</span></span><br><span class="line">    status = StorPortInitializePoFxPower(DeviceExtension, <span class="literal">NULL</span>,</span><br><span class="line">        (PSTOR_POFX_DEVICE)(&amp;(pdx-&gt;os.AdptPoFxDevice)), &amp;enableD3Cold);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span>(status != STOR_STATUS_SUCCESS)</span><br><span class="line">    &#123;</span><br><span class="line">        pdx-&gt;os.StateFlags.PoFxEnabled = FALSE;</span><br><span class="line">        pdx-&gt;os.StateFlags.PoFxActive = FALSE;</span><br><span class="line">        <span class="keyword">goto</span> Exit;  <span class="comment">// ← 失败时跳过后续</span></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// register success</span></span><br><span class="line">    win_rtd3_req_wait_wake(pdx);  <span class="comment">// ← 注意这个函数</span></span><br><span class="line"></span><br><span class="line">    pdx-&gt;os.StateFlags.PoFxEnabled = TRUE;</span><br><span class="line">    pdx-&gt;os.StateFlags.PoFxActive = TRUE;</span><br><span class="line">Exit:</span><br><span class="line">    <span class="keyword">return</span> TRUE;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>卡死原因分析</strong>：</p>
+<ul>
+<li><code>StorPortInitializePoFxPower</code> 是 Power Management Framework 初始化</li>
+<li>在 Win10 上可能与 DMA remapping 初始化有依赖关系</li>
+<li>如果 DMA remapping 初始化未完成，PowerFx 可能等待</li>
+</ul>
+<h4 id="卡死点-C：Storport-框架的-DMA-Remapping-初始化（根本原因）"><a href="#卡死点-C：Storport-框架的-DMA-Remapping-初始化（根本原因）" class="headerlink" title="卡死点 C：Storport 框架的 DMA Remapping 初始化（根本原因）"></a>卡死点 C：Storport 框架的 DMA Remapping 初始化（根本原因）</h4><p><strong>这是最可能的根因位置</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">bayhub 驱动声明 DmaRemappingCompatible=1</span><br><span class="line">    ↓</span><br><span class="line">Storport 框架读取该注册表键</span><br><span class="line">    ↓</span><br><span class="line">Storport 尝试以 &quot;DMA remapping 兼容&quot; 模式初始化 DMA 子系统</span><br><span class="line">    ↓</span><br><span class="line">在 Win10 上，这个初始化可能需要：</span><br><span class="line">    - 与 IOMMU/VT-d 进行 ACPI 表查询</span><br><span class="line">    - 验证 DMA 路径</span><br><span class="line">    - 建立 IOVA 映射</span><br><span class="line">    ↓</span><br><span class="line">如果任何步骤在 Win10 上超时或死锁 → 整个驱动加载卡死</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-3-为什么-Win11-不卡死？"><a href="#2-3-为什么-Win11-不卡死？" class="headerlink" title="2.3 为什么 Win11 不卡死？"></a>2.3 为什么 Win11 不卡死？</h3><table>
+<thead>
+<tr>
+<th>方面</th>
+<th>Win10</th>
+<th>Win11</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>DMA Remapping 框架</td>
+<td>较旧，可能有 bug 或不完整</td>
+<td>更新，修复了多个问题</td>
+</tr>
+<tr>
+<td><code>DmaRemappingCompatible</code> 处理</td>
+<td>可能同步等待</td>
+<td>异步或修复了</td>
+</tr>
+<tr>
+<td>IOMMU 集成</td>
+<td>松散耦合</td>
+<td>紧密集成</td>
+</tr>
+<tr>
+<td>DMA 缓冲区分配</td>
+<td>可能阻塞</td>
+<td>非阻塞</td>
+</tr>
+</tbody></table>
+<h3 id="2-4-建议的调试方向"><a href="#2-4-建议的调试方向" class="headerlink" title="2.4 建议的调试方向"></a>2.4 建议的调试方向</h3><h4 id="步骤1：确认卡死场景（最优先）"><a href="#步骤1：确认卡死场景（最优先）" class="headerlink" title="步骤1：确认卡死场景（最优先）"></a>步骤1：确认卡死场景（最优先）</h4><p>在 Win10 上执行以下步骤：</p>
+<ol>
+<li><strong>先开启 setupapi.dev.log</strong></li>
+<li>执行驱动安装</li>
+<li>检查日志最后记录</li>
+</ol>
+<p>根据日志结果确定是场景A、B还是C。</p>
+<h4 id="步骤2：如果确认是驱动加载后卡死（场景B）"><a href="#步骤2：如果确认是驱动加载后卡死（场景B）" class="headerlink" title="步骤2：如果确认是驱动加载后卡死（场景B）"></a>步骤2：如果确认是驱动加载后卡死（场景B）</h4><p>在 <code>os_alloc_dma_buffer</code> 入口添加调试打印：</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="type">bool</span> <span class="title function_">os_alloc_dma_buffer</span><span class="params">(<span class="type">void</span> * pdx, <span class="type">void</span> * ctx, u32 nbytes, <span class="type">dma_desc_buf_t</span> * pdma)</span></span><br><span class="line">&#123;</span><br><span class="line">    DbgInfo(MODULE_OS_API, FEATURE_DRIVER_INIT, NOT_TO_RAM,</span><br><span class="line">            <span class="string">&quot;[DEBUG] Enter os_alloc_dma_buffer, size=0x%x\n&quot;</span>, nbytes);</span><br><span class="line">    <span class="comment">// ... 原有代码 ...</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>验证卡在哪一次 <code>StorPortGetUncachedExtension</code> 调用。</p>
+<h4 id="步骤3：临时规避尝试"><a href="#步骤3：临时规避尝试" class="headerlink" title="步骤3：临时规避尝试"></a>步骤3：临时规避尝试</h4><p>如果时间紧迫，可以尝试：</p>
+<ol>
+<li><p><strong>禁用 DMA 缓冲区分配</strong>：</p>
+<ul>
+<li>在 <code>scsi_HwFindAdapter</code> 中注释掉 <code>os_alloc_dma_buffer</code> 调用</li>
+<li>如果不分配 DMA 缓冲区就不卡死 → 确认是 DMA 相关问题</li>
+</ul>
+</li>
+<li><p><strong>临时移除 DmaRemappingCompatible</strong>：</p>
+<ul>
+<li>修改 INF 将值设为 0</li>
+<li>验证卡死是否消失</li>
+</ul>
+</li>
+</ol>
+<hr>
+<h2 id="分析更新-3：代码位置速查表-2026-03-19"><a href="#分析更新-3：代码位置速查表-2026-03-19" class="headerlink" title="分析更新 3：代码位置速查表 (2026-03-19)"></a>分析更新 3：代码位置速查表 (2026-03-19)</h2><h3 id="3-1-驱动加载相关函数"><a href="#3-1-驱动加载相关函数" class="headerlink" title="3.1 驱动加载相关函数"></a>3.1 驱动加载相关函数</h3><table>
+<thead>
+<tr>
+<th>函数名</th>
+<th>文件:行号</th>
+<th>功能</th>
+<th>卡死风险</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>DriverEntry</code></td>
+<td><code>winscsientry.c:2675</code></td>
+<td>驱动入口点</td>
+<td>低</td>
+</tr>
+<tr>
+<td><code>scsi_HwFindAdapter</code></td>
+<td><code>winscsientry.c:989</code></td>
+<td>适配器查找和初始化</td>
+<td><strong>高</strong></td>
+</tr>
+<tr>
+<td><code>os_alloc_dma_buffer</code></td>
+<td><code>winapi.c:2004</code></td>
+<td>DMA缓冲区分配</td>
+<td><strong>最高</strong></td>
+</tr>
+<tr>
+<td><code>StorHwPassiveInitialize</code></td>
+<td><code>winscsientry.c:370</code></td>
+<td>被动初始化回调</td>
+<td>中</td>
+</tr>
+<tr>
+<td><code>scsi_HwInitialize</code></td>
+<td><code>winscsientry.c:488</code></td>
+<td>硬件初始化</td>
+<td>低</td>
+</tr>
+</tbody></table>
+<h3 id="3-2-DMA-相关-API"><a href="#3-2-DMA-相关-API" class="headerlink" title="3.2 DMA 相关 API"></a>3.2 DMA 相关 API</h3><table>
+<thead>
+<tr>
+<th>API</th>
+<th>说明</th>
+<th>与DMAR的关系</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>StorPortGetUncachedExtension</code></td>
+<td>分配公共缓冲区</td>
+<td><strong>关键</strong>：在DMAR环境下分配符合要求的缓冲区</td>
+</tr>
+<tr>
+<td><code>StorPortAllocateDmaMemory</code></td>
+<td>分配DMA内存</td>
+<td>返回IOVA而非PA</td>
+</tr>
+<tr>
+<td><code>StorPortMapDmaTransfer</code></td>
+<td>DMA映射传输</td>
+<td>使用IOVA</td>
+</tr>
+<tr>
+<td><code>StorPortGetD3ColdSupport</code></td>
+<td>查询D3Cold支持</td>
+<td>可能与DMAR交互</td>
+</tr>
+<tr>
+<td><code>StorPortInitializePoFxPower</code></td>
+<td>PowerFx初始化</td>
+<td>可能与DMAR有依赖</td>
+</tr>
+</tbody></table>
+<h3 id="3-3-关键代码片段"><a href="#3-3-关键代码片段" class="headerlink" title="3.3 关键代码片段"></a>3.3 关键代码片段</h3><p><strong>关键点1：<code>Dma64BitAddresses</code> 配置</strong> (<code>winscsientry.c:1133-1148</code>)</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="keyword">if</span>(SCSI_DMA64_SYSTEM_SUPPORTED == ConfigInfo-&gt;Dma64BitAddresses &amp;&amp;</span><br><span class="line">   (dma_address_range_mode) &amp;&amp;</span><br><span class="line">   ((pdev_ext-&gt;host.chip_type == CHIP_SEAEAGLE2) ||</span><br><span class="line">    (pdev_ext-&gt;host.chip_type == CHIP_GG8) ||</span><br><span class="line">    (pdev_ext-&gt;host.chip_type == CHIP_ALBATROSS)) &amp;&amp;</span><br><span class="line">   (pdev_ext-&gt;dump_mode == FALSE))</span><br><span class="line">&#123;</span><br><span class="line">    ConfigInfo-&gt;Dma32BitAddresses = FALSE;</span><br><span class="line">    ConfigInfo-&gt;Dma64BitAddresses = SCSI_DMA64_MINIPORT_SUPPORTED;</span><br><span class="line">    DbgInfo(MODULE_OS_ENTRY, FEATURE_DRIVER_INIT, NOT_TO_RAM, <span class="string">&quot;cfg 64bit address\n&quot;</span>);</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">else</span></span><br><span class="line">&#123;</span><br><span class="line">    cfg_dma_addr_range_dec(pdev_ext-&gt;cfg, <span class="number">0</span>);</span><br><span class="line">    ConfigInfo-&gt;Dma32BitAddresses = TRUE;</span><br><span class="line">    DbgInfo(MODULE_OS_ENTRY, FEATURE_DRIVER_INIT, NOT_TO_RAM, <span class="string">&quot;cfg 32bit address\n&quot;</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>关键点2：<code>MapBuffers</code> 配置</strong> (<code>winscsientry.c:1239-1245</code>)</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="keyword">if</span>(FALSE == cfg_dma_need_sdma_like_buffer(pdev_ext-&gt;cfg-&gt;host_item.test_dma_mode_setting.dma_mode))</span><br><span class="line">    ConfigInfo-&gt;MapBuffers = STOR_MAP_NON_READ_WRITE_BUFFERS;</span><br><span class="line"><span class="keyword">else</span></span><br><span class="line">    ConfigInfo-&gt;MapBuffers = STOR_MAP_ALL_BUFFERS_INCLUDING_READ_WRITE;</span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span>(pdev_ext-&gt;dump_mode == TRUE)</span><br><span class="line">    ConfigInfo-&gt;MapBuffers = STOR_MAP_NON_READ_WRITE_BUFFERS;</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="方法-1：启用-Driver-Install-Framework-DIFx-日志"><a href="#方法-1：启用-Driver-Install-Framework-DIFx-日志" class="headerlink" title="方法 1：启用 Driver Install Framework (DIFx) 日志"></a>方法 1：启用 Driver Install Framework (DIFx) 日志</h2><p>DIFx 是 Windows 处理驱动安装的组件，开启详细日志可以看到安装过程中每一步的状态。</p>
+<h3 id="1-1-启用-DIFx-日志"><a href="#1-1-启用-DIFx-日志" class="headerlink" title="1.1 启用 DIFx 日志"></a>1.1 启用 DIFx 日志</h3><figure class="highlight powershell"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 方法 A：设置全局 DIFx 日志</span></span><br><span class="line">reg add <span class="string">&quot;HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Setup\LogLevel&quot;</span> /v DIFxDebugSession /t REG_DWORD /d <span class="number">1</span> /f</span><br><span class="line"></span><br><span class="line"><span class="comment"># 或者使用 WPP 日志</span></span><br><span class="line">reg add <span class="string">&quot;HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Debug Print Filter&quot;</span> /v DIFx /t REG_DWORD /d <span class="number">0</span>xFFFFFFFF /f</span><br></pre></td></tr></table></figure>
+
+<h3 id="1-2-查看安装日志"><a href="#1-2-查看安装日志" class="headerlink" title="1.2 查看安装日志"></a>1.2 查看安装日志</h3><figure class="highlight powershell"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 找到 setupapi 日志</span></span><br><span class="line"><span class="built_in">dir</span> <span class="variable">$env:SystemRoot</span>\Inf\setupapi*.log</span><br><span class="line"></span><br><span class="line"><span class="comment"># 默认位置</span></span><br><span class="line"><span class="comment"># C:\Windows\Inf\setupapi.dev.log</span></span><br><span class="line"><span class="comment"># C:\Windows\Inf\setupapi.setup.log</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="1-3-日志内容解读"><a href="#1-3-日志内容解读" class="headerlink" title="1.3 日志内容解读"></a>1.3 日志内容解读</h3><p>日志中搜索关键字：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">&gt;&gt;&gt;  [InstallHInfSection]</span><br><span class="line">&gt;&gt;&gt;  [AddService]</span><br><span class="line">&gt;&gt;&gt;  [DmaRemappingCompatible]</span><br></pre></td></tr></table></figure>
+
+<p>观察：</p>
+<ul>
+<li>哪个 AddReg 最后执行</li>
+<li>是否有错误代码</li>
+<li>卡在哪一步</li>
+</ul>
+<hr>
+<h2 id="方法-2：启用-Storport-驱动日志"><a href="#方法-2：启用-Storport-驱动日志" class="headerlink" title="方法 2：启用 Storport 驱动日志"></a>方法 2：启用 Storport 驱动日志</h2><p>Storport.sys 有内置的跟踪功能。</p>
+<h3 id="2-1-启用-Storport-日志"><a href="#2-1-启用-Storport-日志" class="headerlink" title="2.1 启用 Storport 日志"></a>2.1 启用 Storport 日志</h3><figure class="highlight powershell"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 启用 Storport 日志（需要管理员权限）</span></span><br><span class="line">reg add <span class="string">&quot;HKLM\SYSTEM\CurrentControlSet\Services\Storport\Parameters&quot;</span> /v EnableTracing /t REG_DWORD /d <span class="number">1</span> /f</span><br><span class="line">reg add <span class="string">&quot;HKLM\SYSTEM\CurrentControlSet\Services\Storport\Parameters&quot;</span> /v TraceLevel /t REG_DWORD /d <span class="number">0</span>xFF /f</span><br><span class="line"></span><br><span class="line"><span class="comment"># 设置日志缓冲区大小</span></span><br><span class="line">reg add <span class="string">&quot;HKLM\SYSTEM\CurrentControlSet\Services\Storport\Parameters&quot;</span> /v TraceFileSize /t REG_DWORD /d <span class="number">0</span>x100000 /f</span><br><span class="line"></span><br><span class="line"><span class="comment"># 重启生效</span></span><br><span class="line">shutdown /<span class="built_in">r</span> /t <span class="number">0</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="2-2-使用-tracelog-捕获"><a href="#2-2-使用-tracelog-捕获" class="headerlink" title="2.2 使用 tracelog 捕获"></a>2.2 使用 tracelog 捕获</h3><figure class="highlight powershell"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 创建跟踪会话</span></span><br><span class="line">tracelog <span class="literal">-start</span> StorportTrace <span class="literal">-guid</span> <span class="comment">#d836db6b-0e4f-440b-8e73-d5d0a8c3e81d -level 0xFF -flag 0xFF -f storport.etl</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 执行安装</span></span><br><span class="line">pnputil <span class="literal">-add-driver</span> bhtsddr.inf <span class="literal">-install</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 停止跟踪</span></span><br><span class="line">tracelog <span class="literal">-stop</span> StorportTrace</span><br><span class="line"></span><br><span class="line"><span class="comment"># 转换格式</span></span><br><span class="line">traceview storport.etl</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-3-查看事件日志"><a href="#2-3-查看事件日志" class="headerlink" title="2.3 查看事件日志"></a>2.3 查看事件日志</h3><figure class="highlight powershell"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 打开事件查看器并导航到</span></span><br><span class="line"><span class="comment"># 应用程序和服务日志 &gt; Microsoft &gt; Windows &gt; PartDebug</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 或使用 PowerShell</span></span><br><span class="line"><span class="built_in">Get-WinEvent</span> <span class="literal">-LogName</span> <span class="string">&quot;Microsoft-Windows-PartDebug/Operational&quot;</span> <span class="literal">-MaxEvents</span> <span class="number">50</span></span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="方法-3：内核调试-Kernel-Debugging"><a href="#方法-3：内核调试-Kernel-Debugging" class="headerlink" title="方法 3：内核调试 (Kernel Debugging)"></a>方法 3：内核调试 (Kernel Debugging)</h2><p>这是最有效的方法，可以观察到卡死的具体位置和调用栈。</p>
+<h3 id="3-1-设置双机调试环境"><a href="#3-1-设置双机调试环境" class="headerlink" title="3.1 设置双机调试环境"></a>3.1 设置双机调试环境</h3><h4 id="目标机-Win10-设置"><a href="#目标机-Win10-设置" class="headerlink" title="目标机 (Win10) 设置"></a>目标机 (Win10) 设置</h4><figure class="highlight powershell"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 启用调试模式</span></span><br><span class="line">bcdedit /debug on</span><br><span class="line"></span><br><span class="line"><span class="comment"># 串口调试（推荐）</span></span><br><span class="line">bcdedit /dbgsettings serial debugport:<span class="number">1</span> baudrate:<span class="number">115200</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 或网络调试（Win10 1607+）</span></span><br><span class="line">bcdedit /debug on</span><br><span class="line">bcdedit /<span class="built_in">set</span> debugtype network</span><br><span class="line">bcdedit /<span class="built_in">set</span> dbgtransport <span class="number">1</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 验证设置</span></span><br><span class="line">bcdedit /dbgsettings</span><br><span class="line"></span><br><span class="line"><span class="comment"># 重启</span></span><br><span class="line">shutdown /<span class="built_in">r</span> /t <span class="number">0</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="主机-WinDbg-设置"><a href="#主机-WinDbg-设置" class="headerlink" title="主机 (WinDbg) 设置"></a>主机 (WinDbg) 设置</h4><figure class="highlight powershell"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 串口连接</span></span><br><span class="line">windbg <span class="literal">-k</span> com:port=COM1,baud=<span class="number">115200</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 网络连接（需要目标机 IP）</span></span><br><span class="line">windbg <span class="literal">-k</span> net:port=<span class="number">50000</span>,key=xxx.xxx.xxx.xxx</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-2-加载符号"><a href="#3-2-加载符号" class="headerlink" title="3.2 加载符号"></a>3.2 加载符号</h3><figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="comment">// WinDbg 中设置符号路径</span></span><br><span class="line">.sympath srv*c:\symbols*https:<span class="comment">//msdl.microsoft.com/download/symbols</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 重新加载</span></span><br><span class="line">.reload</span><br><span class="line"></span><br><span class="line"><span class="comment">// 加载 Storport 符号</span></span><br><span class="line">.reload /f storport.sys</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-3-关键断点位置"><a href="#3-3-关键断点位置" class="headerlink" title="3.3 关键断点位置"></a>3.3 关键断点位置</h3><h4 id="注册表读取相关"><a href="#注册表读取相关" class="headerlink" title="注册表读取相关"></a>注册表读取相关</h4><figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="comment">// DmaRemappingCompatible 被读取</span></span><br><span class="line">bp storport!StorPortRegistryQueryDword</span><br><span class="line"></span><br><span class="line"><span class="comment">// 注册表查询入口</span></span><br><span class="line">bp storport!StorPortReadRegistry</span><br><span class="line"></span><br><span class="line"><span class="comment">// 设置断点并输出信息</span></span><br><span class="line">bp storport!StorPortRegistryQueryDword <span class="string">&quot;kv;r;g&quot;</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="DMA-Remapping-初始化"><a href="#DMA-Remapping-初始化" class="headerlink" title="DMA Remapping 初始化"></a>DMA Remapping 初始化</h4><figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="comment">// DMA setup 入口</span></span><br><span class="line">bp storport!StorPortDmaSetup</span><br><span class="line"></span><br><span class="line"><span class="comment">// DMA 初始化</span></span><br><span class="line">bp storport!StorPortInitializeDma</span><br><span class="line"></span><br><span class="line"><span class="comment">// DMA 分配</span></span><br><span class="line">bp storport!StorPortAllocateDmaMemory</span><br><span class="line"></span><br><span class="line"><span class="comment">// 公共缓冲区和 DMA</span></span><br><span class="line">bp storport!StorPortDmaMapTransfer</span><br></pre></td></tr></table></figure>
+
+<h4 id="PnP-安装相关"><a href="#PnP-安装相关" class="headerlink" title="PnP 安装相关"></a>PnP 安装相关</h4><figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="comment">// PnP 处理程序</span></span><br><span class="line">bp storport!StorPortPnPHandler</span><br><span class="line"></span><br><span class="line"><span class="comment">// 设备添加</span></span><br><span class="line">bp storport!StorPortDeviceAdd</span><br><span class="line"></span><br><span class="line"><span class="comment">// PnP dispatch</span></span><br><span class="line">bp storport!StorPortDispatchPnp</span><br><span class="line"></span><br><span class="line"><span class="comment">// IRP 处理</span></span><br><span class="line">bp storport!StorPortDispatch</span><br></pre></td></tr></table></figure>
+
+<h4 id="可能阻塞的位置"><a href="#可能阻塞的位置" class="headerlink" title="可能阻塞的位置"></a>可能阻塞的位置</h4><figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 等待相关</span></span><br><span class="line">bp storport!KeWaitForSingleObject</span><br><span class="line">bp storport!KeWaitForMutexObject</span><br><span class="line">bp storport!KeWaitForMultipleObjects</span><br><span class="line"></span><br><span class="line"><span class="comment">// 同步对象</span></span><br><span class="line">bp storport!ExAcquireFastMutex</span><br><span class="line">bp storport!ExReleaseFastMutex</span><br><span class="line"></span><br><span class="line"><span class="comment">// 事件</span></span><br><span class="line">bp storport!KeSetEvent</span><br><span class="line">bp storport!KeClearEvent</span><br></pre></td></tr></table></figure>
+
+<h4 id="DMAR-IOMMU-相关"><a href="#DMAR-IOMMU-相关" class="headerlink" title="DMAR&#x2F;IOMMU 相关"></a>DMAR&#x2F;IOMMU 相关</h4><figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="comment">// DMA remapping 设备</span></span><br><span class="line">bp storport!StorPortDMARemapDevice</span><br><span class="line"></span><br><span class="line"><span class="comment">// DMA 对齐查询</span></span><br><span class="line">bp storport!StorPortQueryDmaAlignment</span><br><span class="line"></span><br><span class="line"><span class="comment">// IOVA 相关</span></span><br><span class="line">bp storport!StorPortMapDmaTransfer</span><br><span class="line">bp storport!StorPortUnmapDmaTransfer</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-4-诊断命令"><a href="#3-4-诊断命令" class="headerlink" title="3.4 诊断命令"></a>3.4 诊断命令</h3><h4 id="查看卡住的线程和进程"><a href="#查看卡住的线程和进程" class="headerlink" title="查看卡住的线程和进程"></a>查看卡住的线程和进程</h4><figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 查看所有进程</span></span><br><span class="line">!process <span class="number">0</span> <span class="number">0</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 查看当前进程</span></span><br><span class="line">!process</span><br><span class="line"></span><br><span class="line"><span class="comment">// 找到 pnputil 进程</span></span><br><span class="line">!process pnputil.exe</span><br><span class="line"></span><br><span class="line"><span class="comment">// 查看所有线程</span></span><br><span class="line">!thread</span><br><span class="line"></span><br><span class="line"><span class="comment">// 查看特定线程的调用栈</span></span><br><span class="line">~* k</span><br><span class="line"></span><br><span class="line"><span class="comment">// 查看挂起的线程</span></span><br><span class="line">!locks</span><br><span class="line"></span><br><span class="line"><span class="comment">// 查看 dispatcher 对象</span></span><br><span class="line">!locks -v</span><br></pre></td></tr></table></figure>
+
+<h4 id="查看-IRP"><a href="#查看-IRP" class="headerlink" title="查看 IRP"></a>查看 IRP</h4><figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 查看挂起的 IRP</span></span><br><span class="line">!irpfind</span><br><span class="line"></span><br><span class="line"><span class="comment">// 查看特定进程的 IRP</span></span><br><span class="line">!process &lt;process address&gt;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 查看设备栈</span></span><br><span class="line">!devstack &lt;device object&gt;</span><br></pre></td></tr></table></figure>
+
+<h4 id="查看-DMA-信息"><a href="#查看-DMA-信息" class="headerlink" title="查看 DMA 信息"></a>查看 DMA 信息</h4><figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="comment">// DMA 相关 IOCTL</span></span><br><span class="line">!ioctldma</span><br><span class="line"></span><br><span class="line"><span class="comment">// 查看设备扩展</span></span><br><span class="line">!devobj &lt;device address&gt;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 查看适配器</span></span><br><span class="line">!adapters</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-5-使用脚本自动设置断点"><a href="#3-5-使用脚本自动设置断点" class="headerlink" title="3.5 使用脚本自动设置断点"></a>3.5 使用脚本自动设置断点</h3><p>创建一个 <code>storport_debug.txt</code> 文件：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">.echo ========================================</span><br><span class="line">.echo Storport DmaRemappingCompatible Debug</span><br><span class="line">.echo ========================================</span><br><span class="line"></span><br><span class="line">.echo Setting breakpoints...</span><br><span class="line"></span><br><span class="line">bp storport!StorPortRegistryQueryDword &quot;.echo Registry Query; kv; g&quot;</span><br><span class="line">bp storport!StorPortDmaSetup &quot;.echo DMA Setup; kv; g&quot;</span><br><span class="line">bp storport!StorPortDeviceAdd &quot;.echo Device Add; kv; g&quot;</span><br><span class="line">bp storport!StorPortDispatchPnp &quot;.echo PnP Dispatch; kv; g&quot;</span><br><span class="line">bp storport!KeWaitForSingleObject &quot;.echo Wait; kv; g&quot;</span><br><span class="line"></span><br><span class="line">.echo Breakpoints set. Run &#x27;g&#x27; to start.</span><br></pre></td></tr></table></figure>
+
+<p>在 WinDbg 中加载：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">$$&gt;a&lt; storport_debug.txt</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="方法-4：ETW-跟踪"><a href="#方法-4：ETW-跟踪" class="headerlink" title="方法 4：ETW 跟踪"></a>方法 4：ETW 跟踪</h2><p>使用 Windows 事件跟踪 (ETW) 捕获详细的安装过程。</p>
+<h3 id="4-1-使用-tracelog"><a href="#4-1-使用-tracelog" class="headerlink" title="4.1 使用 tracelog"></a>4.1 使用 tracelog</h3><figure class="highlight powershell"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 创建 ETW 跟踪会话</span></span><br><span class="line"><span class="variable">$sessionName</span> = <span class="string">&quot;StorportDebug&quot;</span></span><br><span class="line"><span class="variable">$tracePath</span> = <span class="string">&quot;<span class="variable">$env:TEMP</span>\storport_trace.etl&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 删除旧的跟踪会话（如果存在）</span></span><br><span class="line">logman stop <span class="literal">-n</span> <span class="variable">$sessionName</span> <span class="literal">-ets</span> <span class="literal">-ErrorAction</span> SilentlyContinue</span><br><span class="line">logman delete <span class="literal">-n</span> <span class="variable">$sessionName</span> <span class="literal">-ets</span> <span class="literal">-ErrorAction</span> SilentlyContinue</span><br><span class="line"></span><br><span class="line"><span class="comment"># 创建跟踪</span></span><br><span class="line">logman create trace <span class="literal">-n</span> <span class="variable">$sessionName</span> <span class="literal">-o</span> <span class="variable">$tracePath</span> <span class="literal">-ets</span> <span class="operator">-f</span> bin <span class="literal">-max</span> <span class="number">100</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 添加 Storport 提供者 (Provider GUID)</span></span><br><span class="line"><span class="variable">$storportGuid</span> = <span class="string">&quot;&#123;d836db6b-0e4f-440b-8e73-d5d0a8c3e81d&#125;&quot;</span></span><br><span class="line">logman update trace <span class="literal">-n</span> <span class="variable">$sessionName</span> <span class="literal">-p</span> <span class="variable">$storportGuid</span> <span class="number">0</span>xFFFFFFFF <span class="number">0</span>xFF <span class="literal">-ets</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 添加 Microsoft-Windows-Kernel-Storport 提供者</span></span><br><span class="line"><span class="variable">$kernelStorportGuid</span> = <span class="string">&quot;&#123;c63a8d34-2a39-4b9d-9cf6-85bfd3f9221c&#125;&quot;</span></span><br><span class="line">logman update trace <span class="literal">-n</span> <span class="variable">$sessionName</span> <span class="literal">-p</span> <span class="variable">$kernelStorportGuid</span> <span class="number">0</span>xFFFFFFFF <span class="number">0</span>xFF <span class="literal">-ets</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 启动跟踪</span></span><br><span class="line">logman <span class="built_in">start</span> <span class="literal">-n</span> <span class="variable">$sessionName</span> <span class="literal">-ets</span></span><br><span class="line"></span><br><span class="line"><span class="built_in">Write-Host</span> <span class="string">&quot;ETW tracing started. Now run: pnputil -add-driver bhtsddr.inf -install&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 等待安装完成或超时</span></span><br><span class="line"><span class="built_in">Start-Sleep</span> <span class="literal">-Seconds</span> <span class="number">60</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 停止跟踪</span></span><br><span class="line">logman stop <span class="literal">-session</span> <span class="variable">$sessionName</span> <span class="literal">-ets</span></span><br><span class="line"></span><br><span class="line"><span class="built_in">Write-Host</span> <span class="string">&quot;Tracing stopped. Output: <span class="variable">$tracePath</span>&quot;</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="4-2-使用-WPR-Windows-Performance-Recorder"><a href="#4-2-使用-WPR-Windows-Performance-Recorder" class="headerlink" title="4.2 使用 WPR (Windows Performance Recorder)"></a>4.2 使用 WPR (Windows Performance Recorder)</h3><figure class="highlight powershell"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 使用 WPR 捕获</span></span><br><span class="line">wpr <span class="literal">-start</span> GeneralProfile <span class="literal">-filemode</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 执行安装</span></span><br><span class="line">pnputil <span class="literal">-add-driver</span> bhtsddr.inf <span class="literal">-install</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 等待</span></span><br><span class="line"><span class="built_in">Start-Sleep</span> <span class="literal">-Seconds</span> <span class="number">30</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 停止</span></span><br><span class="line">wpr <span class="literal">-stop</span> install_trace.etl</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-3-分析-ETW-跟踪"><a href="#4-3-分析-ETW-跟踪" class="headerlink" title="4.3 分析 ETW 跟踪"></a>4.3 分析 ETW 跟踪</h3><figure class="highlight powershell"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 使用 tracerpt 转换</span></span><br><span class="line">tracerpt <span class="variable">$tracePath</span> <span class="literal">-o</span> etw_output <span class="literal">-all</span> <span class="operator">-f</span> html</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看 CSV 格式</span></span><br><span class="line">tracerpt <span class="variable">$tracePath</span> <span class="literal">-of</span> CSV <span class="literal">-o</span> events.csv</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看 XML 格式</span></span><br><span class="line">tracerpt <span class="variable">$tracePath</span> <span class="literal">-of</span> XML <span class="literal">-o</span> events.xml</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-4-使用-TraceView"><a href="#4-4-使用-TraceView" class="headerlink" title="4.4 使用 TraceView"></a>4.4 使用 TraceView</h3><figure class="highlight powershell"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 打开 TraceView</span></span><br><span class="line">traceview <span class="variable">$tracePath</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 或使用 tracefmt</span></span><br><span class="line">tracefmt <span class="variable">$tracePath</span> <span class="literal">-o</span> formatted.txt</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="方法-5：Process-Monitor-监控-INF-处理"><a href="#方法-5：Process-Monitor-监控-INF-处理" class="headerlink" title="方法 5：Process Monitor 监控 INF 处理"></a>方法 5：Process Monitor 监控 INF 处理</h2><p>使用 Process Monitor 监控注册表和文件操作。</p>
+<h3 id="5-1-下载和设置"><a href="#5-1-下载和设置" class="headerlink" title="5.1 下载和设置"></a>5.1 下载和设置</h3><ol>
+<li>下载 <a href="https://docs.microsoft.com/en-us/sysinternals/downloads/procmon">Process Monitor</a></li>
+<li>以管理员身份运行</li>
+</ol>
+<h3 id="5-2-过滤器设置"><a href="#5-2-过滤器设置" class="headerlink" title="5.2 过滤器设置"></a>5.2 过滤器设置</h3><p>设置以下过滤器：</p>
+<table>
+<thead>
+<tr>
+<th>过滤器类型</th>
+<th>条件</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Process Name</td>
+<td>is</td>
+<td>pnputil.exe</td>
+</tr>
+<tr>
+<td>Operation</td>
+<td>begins with</td>
+<td>Registry</td>
+</tr>
+<tr>
+<td>或</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Operation</td>
+<td>begins with</td>
+<td>File</td>
+</tr>
+</tbody></table>
+<h3 id="5-3-观察要点"><a href="#5-3-观察要点" class="headerlink" title="5.3 观察要点"></a>5.3 观察要点</h3><ol>
+<li><p><strong>最后写入的注册表键</strong></p>
+<ul>
+<li>查找 <code>DmaRemappingCompatible</code> 相关键</li>
+<li>找到最后成功完成的操作</li>
+</ul>
+</li>
+<li><p><strong>挂起的操作</strong></p>
+<ul>
+<li>是否有状态为 “Pending” 或 “Timeout” 的操作</li>
+<li>查找长时间无响应的注册表查询</li>
+</ul>
+</li>
+<li><p><strong>循环等待</strong></p>
+<ul>
+<li>是否反复查询同一键</li>
+<li>是否有 “Name Not Found” 后重试</li>
+</ul>
+</li>
+</ol>
+<h3 id="5-4-导出日志"><a href="#5-4-导出日志" class="headerlink" title="5.4 导出日志"></a>5.4 导出日志</h3><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">File &gt; Export &gt; CSV</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="方法-6：检查-Storport-与-ACPI-DMAR-表的交互"><a href="#方法-6：检查-Storport-与-ACPI-DMAR-表的交互" class="headerlink" title="方法 6：检查 Storport 与 ACPI&#x2F;DMAR 表的交互"></a>方法 6：检查 Storport 与 ACPI&#x2F;DMAR 表的交互</h2><p>问题可能出在 Storport 查询 DMAR 表时的超时。</p>
+<h3 id="6-1-检查-DMAR-表"><a href="#6-1-检查-DMAR-表" class="headerlink" title="6.1 检查 DMAR 表"></a>6.1 检查 DMAR 表</h3><figure class="highlight powershell"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 使用 RWEverything 查看 ACPI 表</span></span><br><span class="line"><span class="comment"># 下载: http://rweverything.com/</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 或使用 acpiview (WDK 工具)</span></span><br><span class="line"><span class="string">&quot;C:\Program Files (x86)\Windows Kits\10\Tools\x64\acpiview\acpiview.exe&quot;</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="6-2-查看-ACPI-表内容"><a href="#6-2-查看-ACPI-表内容" class="headerlink" title="6.2 查看 ACPI 表内容"></a>6.2 查看 ACPI 表内容</h3><figure class="highlight powershell"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 查看 DMAR 表</span></span><br><span class="line"><span class="comment"># 使用 Intel System Debugger 或直接读取内存</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 检查 ACPI 表是否存在</span></span><br><span class="line"><span class="comment"># C:\Windows\System32\ACPI Tables\ 目录</span></span><br><span class="line"><span class="built_in">dir</span> <span class="string">&quot;C:\Windows\System32\ACPI Tables\&quot;</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="6-3-WinDbg-中检查-DMA-remapping-状态"><a href="#6-3-WinDbg-中检查-DMA-remapping-状态" class="headerlink" title="6.3 WinDbg 中检查 DMA remapping 状态"></a>6.3 WinDbg 中检查 DMA remapping 状态</h3><figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 检查 IOMMU 状态</span></span><br><span class="line">!ioctldma</span><br><span class="line"></span><br><span class="line"><span class="comment">// 查看 DMA remapping 引擎</span></span><br><span class="line">!dx -r1 *(<span class="type">unsigned</span> <span class="type">int</span>*)<span class="number">0xFFFFF80004000000</span>  <span class="comment">// 地址需根据实际</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 查看设备扩展</span></span><br><span class="line">!devobj bhtsddr</span><br><span class="line"></span><br><span class="line"><span class="comment">// 查看适配器对象</span></span><br><span class="line">!adapters</span><br></pre></td></tr></table></figure>
+
+<h3 id="6-4-检查-DMA-方法"><a href="#6-4-检查-DMA-方法" class="headerlink" title="6.4 检查 _DMA 方法"></a>6.4 检查 _DMA 方法</h3><figure class="highlight powershell"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 使用 ACPI_INFO 或 DeviceTree 工具</span></span><br><span class="line"><span class="comment"># 检查设备的 _DMA ACPI 方法是否返回正确值</span></span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="推荐调试顺序"><a href="#推荐调试顺序" class="headerlink" title="推荐调试顺序"></a>推荐调试顺序</h2><table>
+<thead>
+<tr>
+<th>顺序</th>
+<th>方法</th>
+<th>难度</th>
+<th>能获得的信息</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td><strong>DIFx 日志</strong></td>
+<td>低</td>
+<td>安装卡在哪一步</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>Process Monitor</strong></td>
+<td>低</td>
+<td>注册表操作卡在哪</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>ETW 跟踪</strong></td>
+<td>中</td>
+<td>Storport 内部的调用序列</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>Storport 日志</strong></td>
+<td>中</td>
+<td>驱动级别的详细信息</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>内核调试 (WinDbg)</strong></td>
+<td>高</td>
+<td>最详细信息：调用栈、阻塞位置</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="WinDbg-关键断点脚本"><a href="#WinDbg-关键断点脚本" class="headerlink" title="WinDbg 关键断点脚本"></a>WinDbg 关键断点脚本</h2><p>创建一个完整的调试脚本来捕获所有关键信息：</p>
+<figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line">; storport_dmar_debug.txt</span><br><span class="line">; WinDbg 脚本 - Storport DmaRemappingCompatible 调试</span><br><span class="line"></span><br><span class="line">.block &#123;</span><br><span class="line">    .echo ============================================</span><br><span class="line">    .echo Storport DmaRemappingCompatible Debug Script</span><br><span class="line">    .echo ============================================</span><br><span class="line">    .echo </span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">; 设置符号</span><br><span class="line">.symfix c:\symbols</span><br><span class="line">.sympath+ c:\symbols</span><br><span class="line">.reload /f storport.sys</span><br><span class="line"></span><br><span class="line">; 保存初始状态</span><br><span class="line">.echo [INIT] Saving initial state...</span><br><span class="line"></span><br><span class="line">; ========== 断点设置 ==========</span><br><span class="line"></span><br><span class="line">; <span class="number">1.</span> 注册表读取 - DmaRemappingCompatible</span><br><span class="line">.echo [BP1] Setting bp on StorPortRegistryQueryDword...</span><br><span class="line">bp /<span class="number">1</span> storport!StorPortRegistryQueryDword <span class="string">&quot;kv; .echo === REGISTRY QUERY ===; g&quot;</span></span><br><span class="line"></span><br><span class="line">; <span class="number">2.</span> DMA 初始化</span><br><span class="line">.echo [BP2] Setting bp on StorPortDmaSetup...</span><br><span class="line">bp /<span class="number">1</span> storport!StorPortDmaSetup <span class="string">&quot;kv; .echo === DMA SETUP ===; g&quot;</span></span><br><span class="line"></span><br><span class="line">; <span class="number">3.</span> DMA 内存分配</span><br><span class="line">.echo [BP3] Setting bp on StorPortAllocateDmaMemory...</span><br><span class="line">bp /<span class="number">1</span> storport!StorPortAllocateDmaMemory <span class="string">&quot;kv; .echo === DMA ALLOC ===; g&quot;</span></span><br><span class="line"></span><br><span class="line">; <span class="number">4.</span> PnP 设备添加</span><br><span class="line">.echo [BP4] Setting bp on StorPortDeviceAdd...</span><br><span class="line">bp /<span class="number">1</span> storport!StorPortDeviceAdd <span class="string">&quot;kv; .echo === DEVICE ADD ===; g&quot;</span></span><br><span class="line"></span><br><span class="line">; <span class="number">5.</span> PnP Dispatch</span><br><span class="line">.echo [BP5] Setting bp on StorPortDispatchPnp...</span><br><span class="line">bp /<span class="number">1</span> storport!StorPortDispatchPnp <span class="string">&quot;kv; .echo === PNP DISPATCH ===; g&quot;</span></span><br><span class="line"></span><br><span class="line">; <span class="number">6.</span> 等待调用 - 可能阻塞的位置</span><br><span class="line">.echo [BP6] Setting bp on KeWaitForSingleObject...</span><br><span class="line">bp /<span class="number">1</span> storport!KeWaitForSingleObject <span class="string">&quot;kv; .echo === WAIT DETECTED ===; !thread; g&quot;</span></span><br><span class="line"></span><br><span class="line">; <span class="number">7.</span> Mutex 等待</span><br><span class="line">.echo [BP7] Setting bp on KeWaitForMutexObject...</span><br><span class="line">bp /<span class="number">1</span> storport!KeWaitForMutexObject <span class="string">&quot;kv; .echo === MUTEX WAIT ===; !thread; g&quot;</span></span><br><span class="line"></span><br><span class="line">; ========== 启动调试 ==========</span><br><span class="line"></span><br><span class="line">.echo</span><br><span class="line">.echo ============================================</span><br><span class="line">.echo All breakpoints set. Current threads:</span><br><span class="line">.echo ============================================</span><br><span class="line">~* k</span><br><span class="line"></span><br><span class="line">.echo</span><br><span class="line">.echo ============================================</span><br><span class="line">.echo Type <span class="string">&#x27;g&#x27;</span> to start debugging.</span><br><span class="line">.echo If hang occurs, press Ctrl+Break to <span class="keyword">break</span>.</span><br><span class="line">.echo ============================================</span><br></pre></td></tr></table></figure>
+
+<h3 id="使用方法"><a href="#使用方法" class="headerlink" title="使用方法"></a>使用方法</h3><figure class="highlight powershell"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 在 WinDbg 中加载脚本</span></span><br><span class="line"><span class="variable">$</span><span class="variable">$</span>&gt;a&lt; storport_dmar_debug.txt</span><br><span class="line"></span><br><span class="line"><span class="comment"># 或者</span></span><br><span class="line">.cmd /c <span class="string">&quot;echo <span class="variable">$</span><span class="variable">$</span>&gt;a&lt; storport_dmar_debug.txt&quot;</span> | windbg <span class="literal">-c</span> <span class="string">&quot;<span class="variable">$</span><span class="variable">$</span>&gt;a&lt; storport_dmar_debug.txt&quot;</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="备用脚本（简化版）"><a href="#备用脚本（简化版）" class="headerlink" title="备用脚本（简化版）"></a>备用脚本（简化版）</h3><p>如果上述脚本过于详细，使用简化版：</p>
+<figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line">; quick_debug.txt</span><br><span class="line">bp storport!StorPortDeviceAdd <span class="string">&quot;kv; g&quot;</span></span><br><span class="line">bp storport!KeWaitForSingleObject <span class="string">&quot;kv; !locks; !thread; g&quot;</span></span><br><span class="line">g</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="常见问题排查清单"><a href="#常见问题排查清单" class="headerlink" title="常见问题排查清单"></a>常见问题排查清单</h2><h3 id="安装阶段卡死"><a href="#安装阶段卡死" class="headerlink" title="安装阶段卡死"></a>安装阶段卡死</h3><ul>
+<li><input disabled="" type="checkbox"> DIFx 日志是否记录到最后一步</li>
+<li><input disabled="" type="checkbox"> Process Monitor 显示最后访问的注册表键</li>
+<li><input disabled="" type="checkbox"> 断点是否命中</li>
+</ul>
+<h3 id="内核调试无响应"><a href="#内核调试无响应" class="headerlink" title="内核调试无响应"></a>内核调试无响应</h3><ul>
+<li><input disabled="" type="checkbox"> 串口连接是否正常</li>
+<li><input disabled="" type="checkbox"> 波特率是否匹配</li>
+<li><input disabled="" type="checkbox"> 目标机是否正确进入调试模式</li>
+</ul>
+<h3 id="符号加载失败"><a href="#符号加载失败" class="headerlink" title="符号加载失败"></a>符号加载失败</h3><ul>
+<li><input disabled="" type="checkbox"> 网络连接是否正常</li>
+<li><input disabled="" type="checkbox"> 尝试使用本地缓存</li>
+<li><input disabled="" type="checkbox"> 使用 <code>.symfix</code> 和 <code>.reload</code></li>
+</ul>
+<h3 id="ETW-跟踪为空"><a href="#ETW-跟踪为空" class="headerlink" title="ETW 跟踪为空"></a>ETW 跟踪为空</h3><ul>
+<li><input disabled="" type="checkbox"> 检查 Provider GUID 是否正确</li>
+<li><input disabled="" type="checkbox"> 使用 <code>logman query -ets</code> 查看活动会话</li>
+<li><input disabled="" type="checkbox"> 确认管理员权限</li>
+</ul>
+<hr>
+<h2 id="获取帮助"><a href="#获取帮助" class="headerlink" title="获取帮助"></a>获取帮助</h2><h3 id="相关文档"><a href="#相关文档" class="headerlink" title="相关文档"></a>相关文档</h3><ul>
+<li><a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/storage/storport-driver-logging">Storport Driver Logging</a></li>
+<li><a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/">Kernel Debugging using WinDbg</a></li>
+<li><a href="https://learn.microsoft.com/en-us/windows/win32/etw/">ETW Documentation</a></li>
+</ul>
+<h3 id="工具下载"><a href="#工具下载" class="headerlink" title="工具下载"></a>工具下载</h3><table>
+<thead>
+<tr>
+<th>工具</th>
+<th>下载链接</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>WinDbg</td>
+<td>Windows SDK</td>
+</tr>
+<tr>
+<td>Process Monitor</td>
+<td><a href="https://docs.microsoft.com/en-us/sysinternals/downloads/procmon">Sysinternals</a></td>
+</tr>
+<tr>
+<td>WPR&#x2F;WPA</td>
+<td>Windows Assessment and Deployment Kit (ADK)</td>
+</tr>
+</tbody></table>
+<hr>
+<p><strong>文档生成</strong>: 2026-03-19<br><strong>适用版本</strong>: Windows 10 (所有版本)</p>
+]]></content>
+      <categories>
+        <category>storport</category>
+      </categories>
+      <tags>
+        <tag>storport</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>DMA Remapping 问题综合分析报告</title>
+    <url>/2026/03/19/20260319_DMA_Remapping_%E7%BB%BC%E5%90%88%E5%88%86%E6%9E%90%E6%8A%A5%E5%91%8A/</url>
+    <content><![CDATA[<h1 id="DMA-Remapping-问题综合分析报告"><a href="#DMA-Remapping-问题综合分析报告" class="headerlink" title="DMA Remapping 问题综合分析报告"></a>DMA Remapping 问题综合分析报告</h1><p><strong>日期</strong>: 2026-03-17<br><strong>版本</strong>: v1.0<br><strong>面向对象</strong>: LCFC、Microsoft<br><strong>问题概述</strong>: Bayhub SD Card Reader 驱动在 Windows 10 上安装时卡死，INF 声明 <code>DmaRemappingCompatible=1</code> 导致 PnP 阶段无响应</p>
+<hr>
+<h2 id="目录"><a href="#目录" class="headerlink" title="目录"></a>目录</h2><ol>
+<li><a href="#1-%E6%89%A7%E8%A1%8C%E6%91%98%E8%A6%81">执行摘要</a></li>
+<li><a href="#2-%E9%97%AE%E9%A2%98%E8%83%8C%E6%99%AF">问题背景</a></li>
+<li><a href="#3-%E8%AF%81%E6%8D%AE%E9%93%BE%E4%B8%8E%E6%A0%B9%E5%9B%A0%E5%88%86%E6%9E%90">证据链与根因分析</a><ul>
+<li><a href="#31-%E5%AE%89%E8%A3%85%E5%8D%A1%E6%AD%BB%E5%8F%91%E7%94%9F%E5%9C%A8%E9%A9%B1%E5%8A%A8%E5%8A%A0%E8%BD%BD%E4%B9%8B%E5%89%8D">3.1 安装卡死发生在驱动加载之前</a></li>
+<li><a href="#32-%E9%A9%B1%E5%8A%A8%E4%BB%A3%E7%A0%81%E6%94%B9%E5%8A%A8%E5%88%86%E6%9E%90">3.2 驱动代码改动分析</a></li>
+<li><a href="#33-inf-%E5%A3%B0%E6%98%8E%E5%AE%8C%E5%85%A8%E7%AC%A6%E5%90%88%E5%BE%AE%E8%BD%AF%E6%96%87%E6%A1%A3">3.3 INF 声明完全符合微软文档</a></li>
+<li><a href="#34-%E5%AE%9E%E6%B5%8B%E6%95%B0%E6%8D%AE%E6%B1%87%E6%80%BB">3.4 实测数据汇总</a></li>
+<li><a href="#35-%E6%A0%B9%E5%9B%A0%E6%8E%A8%E6%96%ADstorport-%E6%A1%86%E6%9E%B6%E5%9C%A8-win10-%E4%B8%8A%E7%9A%84%E5%AE%89%E8%A3%85%E6%97%B6%E9%98%BB%E5%A1%9E">3.5 根因推断：Storport 框架在 Win10 上的安装时阻塞</a></li>
+</ul>
+</li>
+<li><a href="#4-%E4%B8%8E%E7%AB%9E%E5%93%81-realtek-%E7%9A%84%E5%AF%B9%E6%AF%94%E5%88%86%E6%9E%90">与竞品 Realtek 的对比分析</a></li>
+<li><a href="#5-%E7%BB%99%E5%BE%AE%E8%BD%AF%E7%9A%84%E6%8A%80%E6%9C%AF%E6%8A%A5%E5%91%8A%E8%A6%81%E7%82%B9">给微软的技术报告要点</a></li>
+<li><a href="#6-%E5%BB%BA%E8%AE%AE%E6%96%B9%E6%A1%88">建议方案</a></li>
+</ol>
+<hr>
+<h2 id="1-执行摘要"><a href="#1-执行摘要" class="headerlink" title="1. 执行摘要"></a>1. 执行摘要</h2><h3 id="核心结论"><a href="#核心结论" class="headerlink" title="核心结论"></a>核心结论</h3><p><strong>Bayhub 驱动在 Windows 10 上安装卡死的根因不在驱动代码，也不在 INF 写法，而是 Windows 10 Storport 框架在安装&#x2F;PnP 阶段处理 <code>DmaRemappingCompatible</code> 声明时存在同步阻塞行为。</strong></p>
+<h3 id="关键发现"><a href="#关键发现" class="headerlink" title="关键发现"></a>关键发现</h3><table>
+<thead>
+<tr>
+<th>发现项</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>驱动代码无责</strong></td>
+<td>卡死发生在 <code>pnputil</code> 执行期间，此时 <code>bhtsddr.sys</code> 根本未被加载，驱动代码完全不会执行</td>
+</tr>
+<tr>
+<td><strong>INF 写法正确</strong></td>
+<td>Bayhub 的 INF 完全符合微软 “Per-driver opt-in mechanism” 文档要求</td>
+</tr>
+<tr>
+<td><strong>Storport 框架问题</strong></td>
+<td>Win10 对 Storport miniport + <code>DmaRemappingCompatible=1</code> 的组合，在安装阶段存在阻塞</td>
+</tr>
+<tr>
+<td><strong>Win11 无此问题</strong></td>
+<td>同样的驱动和 INF 在 Windows 11 上安装和运行均正常</td>
+</tr>
+<tr>
+<td><strong>竞品 WDF 无此问题</strong></td>
+<td>Realtek 使用相同的 INF 声明模式，因其是 WDF 驱动而非 Storport miniport，Win10 安装正常</td>
+</tr>
+</tbody></table>
+<h3 id="结论"><a href="#结论" class="headerlink" title="结论"></a>结论</h3><p>这不是 Bayhub 驱动代码的 bug，而是 <strong>Windows 10 Storport 框架在安装阶段对声明 DMA remapping 兼容的 miniport 驱动的处理逻辑存在缺陷</strong>。</p>
+<hr>
+<h2 id="2-问题背景"><a href="#2-问题背景" class="headerlink" title="2. 问题背景"></a>2. 问题背景</h2><h3 id="2-1-现象描述"><a href="#2-1-现象描述" class="headerlink" title="2.1 现象描述"></a>2.1 现象描述</h3><p>在 Windows 10（启用 Kernel DMA Protection）系统上，使用 Bayhub SD Card Reader 驱动安装时：</p>
+<ol>
+<li>执行 <code>pnputil -add-driver bhtsddr.inf</code> 后进程无响应</li>
+<li>安装程序卡住不动</li>
+<li>必须强制重启或使用系统恢复选项</li>
+<li>重启后系统可能需要进入诊断模式</li>
+</ol>
+<h3 id="2-2-涉及的系统配置"><a href="#2-2-涉及的系统配置" class="headerlink" title="2.2 涉及的系统配置"></a>2.2 涉及的系统配置</h3><ul>
+<li><strong>操作系统</strong>: Windows 10（所有版本测试均出现）</li>
+<li><strong>关键特性</strong>: Kernel DMA Protection 已启用（Device Guard&#x2F;Credential Guard 相关）</li>
+<li><strong>硬件</strong>: 配备 IOMMU（VT-d）的 Intel&#x2F;AMD 平台</li>
+<li><strong>驱动类型</strong>: Storport miniport</li>
+</ul>
+<h3 id="2-3-问题触发条件"><a href="#2-3-问题触发条件" class="headerlink" title="2.3 问题触发条件"></a>2.3 问题触发条件</h3><p>只要 INF 中声明 <code>DmaRemappingCompatible</code> 为非零值，安装即会卡死：</p>
+<table>
+<thead>
+<tr>
+<th>DmaRemappingCompatible 值</th>
+<th>Win10 安装结果</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>不声明（无此键）</td>
+<td>✅ 能安装（但设备会被策略拦成黄叹号）</td>
+</tr>
+<tr>
+<td>&#x3D; 0</td>
+<td>✅ 能安装（但设备会被策略拦成黄叹号）</td>
+</tr>
+<tr>
+<td>&#x3D; 1</td>
+<td>❌ 安装卡死</td>
+</tr>
+<tr>
+<td>&#x3D; 2</td>
+<td>❌ 安装卡死</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="3-证据链与根因分析"><a href="#3-证据链与根因分析" class="headerlink" title="3. 证据链与根因分析"></a>3. 证据链与根因分析</h2><h3 id="3-1-安装卡死发生在驱动加载之前"><a href="#3-1-安装卡死发生在驱动加载之前" class="headerlink" title="3.1 安装卡死发生在驱动加载之前"></a>3.1 安装卡死发生在驱动加载之前</h3><h4 id="时序分析"><a href="#时序分析" class="headerlink" title="时序分析"></a>时序分析</h4><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">pnputil -add-driver bhtsddr.inf</span><br><span class="line">         │</span><br><span class="line">         ├─ INF 解析（将 DmaRemappingCompatible=1 写入注册表）</span><br><span class="line">         ├─ PnP 枚举（设备发现）</span><br><span class="line">         ├─ AddService（注册服务，驱动 .sys 尚未加载！）</span><br><span class="line">         └─ ??? → Windows Storport 框架处理 DMA remapping 策略 → 卡死</span><br><span class="line">                                              ↑</span><br><span class="line">                                         驱动 .sys 此时尚未被调用！</span><br></pre></td></tr></table></figure>
+
+<p><strong>关键点</strong>：卡死发生在 <code>pnputil</code> 执行期间，此时 <code>bhtsddr.sys</code> 根本没有被 Load 服务或 Start 驱动。驱动代码（包括所有 DMAR 改动）在此阶段<strong>完全不会被执行</strong>。</p>
+<h4 id="结论-1"><a href="#结论-1" class="headerlink" title="结论"></a>结论</h4><p>无论 Bayhub 驱动代码做任何改动（添加、删除、修改），只要 INF 声明了 <code>DmaRemappingCompatible=1</code>，Win10 安装就会卡死。<strong>这证明问题与驱动代码无关。</strong></p>
+<hr>
+<h3 id="3-2-驱动代码改动分析"><a href="#3-2-驱动代码改动分析" class="headerlink" title="3.2 驱动代码改动分析"></a>3.2 驱动代码改动分析</h3><p>Bayhub 驱动在 DMAR 相关的主要改动如下：</p>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>DMAR 相关改动</th>
+<th>触发时机</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>tqsdma.c</code></td>
+<td>SDMA 模式下检测 IOMMU &#x2F; IOVA 直接路径 &#x2F; PIO fallback</td>
+<td><strong>驱动运行时</strong>，IO 请求处理中</td>
+</tr>
+<tr>
+<td><code>tqadma2.c</code></td>
+<td>ADMA2 DMA 描述符通过 <code>StorPortAllocateDmaMemory</code> 分配</td>
+<td><strong>驱动运行时</strong>，IO 请求处理中</td>
+</tr>
+<tr>
+<td><code>tagqueue.c</code></td>
+<td>DMA 描述符分配改用 <code>StorPortAllocateDmaMemory</code></td>
+<td><strong>驱动运行时</strong>，IO 请求处理中</td>
+</tr>
+<tr>
+<td><code>reqmng.c</code></td>
+<td>请求管理中检测 IOMMU 决定 SDMA&#x2F;PIO</td>
+<td><strong>驱动运行时</strong>，IO 请求处理中</td>
+</tr>
+<tr>
+<td><code>host.c</code></td>
+<td>ADMA2 强制模式 &#x2F; DMAR 兼容性注释</td>
+<td><strong>驱动运行时</strong>，IO 请求处理中</td>
+</tr>
+<tr>
+<td><code>cardcommon.c</code></td>
+<td>PIO 模式下跳过 DMA 上下文构建</td>
+<td><strong>驱动运行时</strong>，IO 请求处理中</td>
+</tr>
+</tbody></table>
+<p><strong>无一涉及安装阶段</strong>。所有代码改动都是在 <code>DriverEntry</code> → <code>HwInit</code> → I&#x2F;O 请求处理时才执行。</p>
+<hr>
+<h3 id="3-3-INF-声明完全符合微软文档"><a href="#3-3-INF-声明完全符合微软文档" class="headerlink" title="3.3 INF 声明完全符合微软文档"></a>3.3 INF 声明完全符合微软文档</h3><h4 id="微软文档要求（Per-driver-opt-in-mechanism）"><a href="#微软文档要求（Per-driver-opt-in-mechanism）" class="headerlink" title="微软文档要求（Per-driver opt-in mechanism）"></a>微软文档要求（Per-driver opt-in mechanism）</h4><p>根据微软文档 <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/pci/enabling-dma-remapping-for-device-drivers">Enabling DMA Remapping for Device Drivers</a>：</p>
+<blockquote>
+<p>“Add an INF directive such as the following to the <strong>service installation section</strong>“</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">[MyServiceInstall_AddReg]</span><br><span class="line">HKR,Parameters,DmaRemappingCompatible,0x00010001,1</span><br></pre></td></tr></table></figure></blockquote>
+<h4 id="Bayhub-INF-结构"><a href="#Bayhub-INF-结构" class="headerlink" title="Bayhub INF 结构"></a>Bayhub INF 结构</h4><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">[DriverInstallx64.NT.Services]</span><br><span class="line">AddService = bhtsddr, 0x00000002, DriverServicex64;, EventLogService</span><br><span class="line">                    ↓</span><br><span class="line">[DriverServicex64]                    ← 这就是 &quot;service installation section&quot;</span><br><span class="line">ServiceType    = 1</span><br><span class="line">...</span><br><span class="line">AddReg         = DmaRemappingCompatible_AddReg</span><br><span class="line">                    ↓</span><br><span class="line">[DmaRemappingCompatible_AddReg]</span><br><span class="line">HKR,Parameters,DmaRemappingCompatible,0x00010001,1</span><br></pre></td></tr></table></figure>
+
+<h4 id="逐项合规检查"><a href="#逐项合规检查" class="headerlink" title="逐项合规检查"></a>逐项合规检查</h4><table>
+<thead>
+<tr>
+<th>文档要求</th>
+<th>Bayhub INF</th>
+<th>是否符合</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>位置</strong>: directive 在 service installation section</td>
+<td><code>AddService</code> → <code>[DriverServicex64]</code>（服务安装节）内 <code>AddReg</code></td>
+<td>✅</td>
+</tr>
+<tr>
+<td><strong>HKR</strong>: 服务根路径</td>
+<td><code>HKLM\SYSTEM\CurrentControlSet\Services\bhtsddr</code></td>
+<td>✅</td>
+</tr>
+<tr>
+<td><strong>注册表路径</strong>: <code>Services\&lt;driver&gt;\Parameters\DmaRemappingCompatible</code></td>
+<td><code>...\Services\bhtsddr\Parameters\DmaRemappingCompatible</code></td>
+<td>✅</td>
+</tr>
+<tr>
+<td><strong>取值</strong>: 0&#x2F;1&#x2F;2&#x2F;3</td>
+<td>使用 1 或 2，均为文档允许值</td>
+<td>✅</td>
+</tr>
+<tr>
+<td><strong>适用版本</strong>: up to Windows 11 23H2</td>
+<td>Bayhub 仅使用 per-driver，未使用 per-device RemappingSupported</td>
+<td>✅</td>
+</tr>
+</tbody></table>
+<h4 id="结论-2"><a href="#结论-2" class="headerlink" title="结论"></a>结论</h4><p>Bayhub 的 INF 声明<strong>完全符合</strong>微软文档要求。”上游”（INF 写法）没有问题。</p>
+<hr>
+<h3 id="3-4-实测数据汇总"><a href="#3-4-实测数据汇总" class="headerlink" title="3.4 实测数据汇总"></a>3.4 实测数据汇总</h3><table>
+<thead>
+<tr>
+<th>系统</th>
+<th>INF 设置</th>
+<th>结果</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Win10</td>
+<td>无 DMA remapping 声明</td>
+<td>✅ 能安装</td>
+<td>设备被策略拦成黄叹号</td>
+</tr>
+<tr>
+<td>Win10</td>
+<td>DmaRemappingCompatible &#x3D; <strong>1</strong></td>
+<td>❌ 不能安装</td>
+<td>PnP 卡住，需恢复系统</td>
+</tr>
+<tr>
+<td>Win10</td>
+<td>DmaRemappingCompatible &#x3D; <strong>2</strong></td>
+<td>❌ 不能安装</td>
+<td>PnP 卡住，需恢复系统</td>
+</tr>
+<tr>
+<td>Win10</td>
+<td>DmaRemappingCompatible &#x3D; <strong>0</strong></td>
+<td>✅ 能安装</td>
+<td>设备被策略拦成黄叹号</td>
+</tr>
+<tr>
+<td>Win11</td>
+<td>DmaRemappingCompatible &#x3D; <strong>1</strong></td>
+<td>✅ OK</td>
+<td>安装与运行均正常</td>
+</tr>
+<tr>
+<td>Win11</td>
+<td>DmaRemappingCompatible &#x3D; <strong>2</strong></td>
+<td>✅ OK</td>
+<td>安装与运行均正常</td>
+</tr>
+</tbody></table>
+<p><strong>关键观察</strong>：</p>
+<ul>
+<li>值 2 也卡死 → 说明不是”值 1 太激进”的问题</li>
+<li>Win10 和 Win11 行为不同 → 说明是 OS&#x2F;框架差异，不是驱动问题</li>
+<li>不声明或声明 &#x3D;0 能安装 → 说明安装本身没问题，问题出在”一旦声明兼容就卡死”</li>
+</ul>
+<hr>
+<h3 id="3-5-根因推断：Storport-框架在-Win10-上的安装时阻塞"><a href="#3-5-根因推断：Storport-框架在-Win10-上的安装时阻塞" class="headerlink" title="3.5 根因推断：Storport 框架在 Win10 上的安装时阻塞"></a>3.5 根因推断：Storport 框架在 Win10 上的安装时阻塞</h3><h4 id="触发机制分析"><a href="#触发机制分析" class="headerlink" title="触发机制分析"></a>触发机制分析</h4><p>当 INF 声明 <code>DmaRemappingCompatible</code> 为非零值时：</p>
+<ol>
+<li><strong>PnP 安装时</strong>会检测到该驱动声明支持 DMA remapping</li>
+<li>系统会对该驱动走”DMA remapping 兼容”的安装&#x2F;校验路径</li>
+<li>对 <strong>Storport miniport</strong>，Win10 在此路径中会做：<ul>
+<li>与 Storport 的 DMA remapping 初始化&#x2F;校验交互</li>
+<li>可能与 IOMMU&#x2F;ACPI 表进行同步交互</li>
+</ul>
+</li>
+</ol>
+<h4 id="阻塞假设"><a href="#阻塞假设" class="headerlink" title="阻塞假设"></a>阻塞假设</h4><table>
+<thead>
+<tr>
+<th>假设</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>假设 A</strong></td>
+<td>该路径存在未在 Win10 上充分测试的逻辑（仅针对 Win11 或 Internal 设备）</td>
+</tr>
+<tr>
+<td><strong>假设 B</strong></td>
+<td>存在同步等待但无法完成的场景（例如等待 IOMMU 响应超时）</td>
+</tr>
+<tr>
+<td><strong>假设 C</strong></td>
+<td>存在死锁（与 Storport 调度器或其他 PnP 路径的锁竞争）</td>
+</tr>
+</tbody></table>
+<h4 id="为什么值-2-也卡死"><a href="#为什么值-2-也卡死" class="headerlink" title="为什么值 2 也卡死"></a>为什么值 2 也卡死</h4><p>如果问题是”值 1 太激进”（完全 opt-in），那么值 2（条件 opt-in）应该能避免。但实测显示<strong>值 2 同样卡死</strong>，说明：</p>
+<blockquote>
+<p>不是”声明兼容性程度”的问题，而是<strong>只要声明兼容（非 0），Win10 对 Storport 就会触发会卡住的路径</strong>。</p>
+</blockquote>
+<hr>
+<h2 id="4-与竞品-Realtek-的对比分析"><a href="#4-与竞品-Realtek-的对比分析" class="headerlink" title="4. 与竞品 Realtek 的对比分析"></a>4. 与竞品 Realtek 的对比分析</h2><h3 id="4-1-Realtek-能兼容-Win10"><a href="#4-1-Realtek-能兼容-Win10" class="headerlink" title="4.1 Realtek 能兼容 Win10"></a>4.1 Realtek 能兼容 Win10</h3><table>
+<thead>
+<tr>
+<th>维度</th>
+<th>Bayhub（卡死）</th>
+<th>Realtek（正常）</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>驱动框架</td>
+<td><strong>Storport</strong> miniport</td>
+<td><strong>WDF</strong>（如 MTD）</td>
+</tr>
+<tr>
+<td>DMA 接口</td>
+<td>Storport DMA API</td>
+<td>WDF DMA（框架统一处理）</td>
+</tr>
+<tr>
+<td>INF 声明</td>
+<td>DmaRemappingCompatible&#x3D;1&#x2F;2</td>
+<td>同样 DmaRemappingCompatible&#x3D;1</td>
+</tr>
+<tr>
+<td>Win10 安装</td>
+<td>❌ 卡死</td>
+<td>✅ 正常</td>
+</tr>
+<tr>
+<td>Win11 安装</td>
+<td>✅ 正常</td>
+<td>✅ 正常</td>
+</tr>
+</tbody></table>
+<h3 id="4-2-差异分析"><a href="#4-2-差异分析" class="headerlink" title="4.2 差异分析"></a>4.2 差异分析</h3><ol>
+<li><strong>同一 INF 语义</strong>：Realtek 与 Bayhub 的 INF 结构完全相同，都符合微软文档</li>
+<li><strong>不同点仅在驱动类型</strong>：<ul>
+<li>Realtek：<strong>WDF 驱动</strong> → 安装时触发的 DMA remapping 路径<strong>不阻塞</strong></li>
+<li>Bayhub：<strong>Storport miniport</strong> → 安装时触发的路径<strong>在 Win10 上会阻塞</strong></li>
+</ul>
+</li>
+</ol>
+<h3 id="4-3-推论"><a href="#4-3-推论" class="headerlink" title="4.3 推论"></a>4.3 推论</h3><p>“Realtek 可以兼容 Win10”并不说明 Bayhub 的 INF 有问题，而是说明：</p>
+<blockquote>
+<p><strong>问题出在 Win10 对 Storport + DMA remapping 声明 的安装时处理</strong>，而不是出在”是否声明 compatible”本身。</p>
+</blockquote>
+<p>WDF 框架在安装阶段不会触发同样的同步阻塞，或者触发的是不同的代码路径。</p>
+<hr>
+<h2 id="5-给微软的技术报告要点"><a href="#5-给微软的技术报告要点" class="headerlink" title="5. 给微软的技术报告要点"></a>5. 给微软的技术报告要点</h2><h3 id="5-1-问题定性"><a href="#5-1-问题定性" class="headerlink" title="5.1 问题定性"></a>5.1 问题定性</h3><p><strong>不是</strong>：Bayhub 驱动代码 DMAR 改动导致安装兼容性问题。<br><strong>而是</strong>：Windows Storport 框架在 Win10 上，对声明了 <code>DmaRemappingCompatible=1</code> 的 miniport 驱动，在安装&#x2F;PnP 阶段存在阻塞行为。</p>
+<h3 id="5-2-复现步骤"><a href="#5-2-复现步骤" class="headerlink" title="5.2 复现步骤"></a>5.2 复现步骤</h3><ol>
+<li>在 Windows 10（启用 Kernel DMA Protection&#x2F;IOMMU）上</li>
+<li>使用声明了 <code>DmaRemappingCompatible=1</code> 的 INF 安装 Storport miniport 驱动</li>
+<li>执行 <code>pnputil -add-driver &lt;inf&gt;</code></li>
+<li>观察：pnputil 进程无响应，安装无法完成</li>
+</ol>
+<h3 id="5-3-预期行为-vs-实际行为"><a href="#5-3-预期行为-vs-实际行为" class="headerlink" title="5.3 预期行为 vs 实际行为"></a>5.3 预期行为 vs 实际行为</h3><table>
+<thead>
+<tr>
+<th>项目</th>
+<th>预期</th>
+<th>实际</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>安装结果</td>
+<td>安装成功，设备正常枚举</td>
+<td>pnputil 卡住不动，机器需重启&#x2F;恢复</td>
+</tr>
+<tr>
+<td>INF 符合性</td>
+<td>完全符合 per-driver 文档要求</td>
+<td>✅ 符合</td>
+</tr>
+<tr>
+<td>驱动类型</td>
+<td>无特殊要求</td>
+<td>Storport miniport</td>
+</tr>
+</tbody></table>
+<h3 id="5-4-对比证据"><a href="#5-4-对比证据" class="headerlink" title="5.4 对比证据"></a>5.4 对比证据</h3><ul>
+<li>竞品 <strong>WDF 驱动</strong>以相同 INF 声明在 Win10 上可正常安装</li>
+<li>相同驱动和 INF 在 <strong>Windows 11</strong> 上可正常安装和运行</li>
+<li>说明问题不在 INF，在于 <strong>Storport 框架 + Win10</strong> 的组合</li>
+</ul>
+<h3 id="5-5-具体请求"><a href="#5-5-具体请求" class="headerlink" title="5.5 具体请求"></a>5.5 具体请求</h3><ol>
+<li>确认 Win10 上 Storport 框架在安装阶段对声明了 <code>DmaRemappingCompatible</code> 的 miniport 的处理逻辑</li>
+<li>确认是否存在已知的同步阻塞或计划修复</li>
+<li>如无修复计划，提供针对 Storport miniport 在 Win10 上的安装时规避方法</li>
+</ol>
+<hr>
+<h2 id="6-建议方案"><a href="#6-建议方案" class="headerlink" title="6. 建议方案"></a>6. 建议方案</h2><h3 id="6-1-短期方案：Win10-安装包使用不声明-DmaRemappingCompatible-的-INF"><a href="#6-1-短期方案：Win10-安装包使用不声明-DmaRemappingCompatible-的-INF" class="headerlink" title="6.1 短期方案：Win10 安装包使用不声明 DmaRemappingCompatible 的 INF"></a>6.1 短期方案：Win10 安装包使用不声明 DmaRemappingCompatible 的 INF</h3><p><strong>做法</strong>：</p>
+<ul>
+<li>Win10 安装包使用 <code>DmaRemappingCompatible</code> 不存在或等于 0 的 INF</li>
+<li>安装可正常完成</li>
+<li>设备会因 Kernel DMA Protection 被策略拦成黄叹号（block all）</li>
+</ul>
+<p><strong>优点</strong>：</p>
+<ul>
+<li>安装可完成，用户不会遇到卡死</li>
+<li>与微软的报告并行进行</li>
+</ul>
+<p><strong>缺点</strong>：</p>
+<ul>
+<li>Win10 上设备功能受限</li>
+<li>需要维护两份 INF 或通过条件安装逻辑区分</li>
+</ul>
+<h3 id="6-2-长期方案：等待微软修复或提供方案"><a href="#6-2-长期方案：等待微软修复或提供方案" class="headerlink" title="6.2 长期方案：等待微软修复或提供方案"></a>6.2 长期方案：等待微软修复或提供方案</h3><ul>
+<li>向微软报告 Storport 框架问题</li>
+<li>等待微软确认根因并提供修复或官方说明</li>
+</ul>
+<h3 id="6-3-方案对比"><a href="#6-3-方案对比" class="headerlink" title="6.3 方案对比"></a>6.3 方案对比</h3><table>
+<thead>
+<tr>
+<th>方案</th>
+<th>工作量</th>
+<th>风险</th>
+<th>价值</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>A. 继续调试驱动代码</td>
+<td>高（驱动庞大，无关路径）</td>
+<td>低（但无意义）</td>
+<td>低（结论早已确定）</td>
+</tr>
+<tr>
+<td>B. 回滚 DMAR 改动后测试</td>
+<td>中</td>
+<td>中</td>
+<td>低（只能排除驱动代码，无法定位根因）</td>
+</tr>
+<tr>
+<td><strong>C. Win10 使用不声明 compatible 的 INF</strong></td>
+<td><strong>低</strong></td>
+<td><strong>低</strong></td>
+<td><strong>中（解决眼前问题）</strong></td>
+</tr>
+<tr>
+<td><strong>D. 向微软报告 Storport 框架问题</strong></td>
+<td><strong>低</strong></td>
+<td><strong>低</strong></td>
+<td><strong>高（可能推动 OS 修复）</strong></td>
+</tr>
+</tbody></table>
+<p><strong>推荐</strong>：方案 C（短期折中）+ 方案 D（向微软报告框架问题）</p>
+<hr>
+<h2 id="附录-A：微软文档参考"><a href="#附录-A：微软文档参考" class="headerlink" title="附录 A：微软文档参考"></a>附录 A：微软文档参考</h2><p><strong>文档</strong>: <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/pci/enabling-dma-remapping-for-device-drivers">Enabling DMA Remapping for Device Drivers</a></p>
+<h3 id="Per-driver-opt-in-mechanism-关键要求"><a href="#Per-driver-opt-in-mechanism-关键要求" class="headerlink" title="Per-driver opt-in mechanism 关键要求"></a>Per-driver opt-in mechanism 关键要求</h3><ol>
+<li><strong>位置</strong>: 在 service installation section 中添加 AddReg 指令</li>
+<li><strong>注册表路径</strong>: <code>HKLM\SYSTEM\CurrentControlSet\Services\&lt;driver name&gt;\Parameters\DmaRemappingCompatible</code></li>
+<li><strong>取值说明</strong>:<ul>
+<li>0: 不兼容（默认）</li>
+<li>1: 完全兼容（opt-in）</li>
+<li>2: 仅在设备为外部设备或 Driver Verifier 启用时兼容</li>
+<li>3: 保留</li>
+</ul>
+</li>
+<li><strong>适用版本</strong>: Windows versions up to Windows 11 23H2</li>
+<li><strong>24H2+ 行为</strong>: per-device <code>RemappingSupported</code> 会覆盖 per-driver <code>DmaRemappingCompatible</code>；若未设置 per-device，则 per-driver 键仍有效</li>
+</ol>
+<hr>
+<h2 id="附录-B：实测日志摘要"><a href="#附录-B：实测日志摘要" class="headerlink" title="附录 B：实测日志摘要"></a>附录 B：实测日志摘要</h2><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">[Win10 + DmaRemappingCompatible=1]</span><br><span class="line">pnputil -add-driver bhtsddr.inf</span><br><span class="line">-&gt; 进程无响应</span><br><span class="line">-&gt; 等待 5 分钟后手动重启</span><br><span class="line">-&gt; 系统进入恢复/诊断模式</span><br><span class="line"></span><br><span class="line">[Win10 + DmaRemappingCompatible 不存在]</span><br><span class="line">pnputil -add-driver bhtsddr.inf</span><br><span class="line">-&gt; 安装成功</span><br><span class="line">-&gt; 设备管理器显示黄叹号，状态: &quot;device blocked by policy&quot;</span><br><span class="line"></span><br><span class="line">[Win11 + DmaRemappingCompatible=1]</span><br><span class="line">pnputil -add-driver bhtsddr.inf</span><br><span class="line">-&gt; 安装成功</span><br><span class="line">-&gt; 设备正常工作</span><br></pre></td></tr></table></figure>
+
+<hr>
+<p><strong>文档生成</strong>: 2026-03-17<br><strong>编写单位</strong>: Bayhub Technology<br><strong>文档版本</strong>: v1.0</p>
+]]></content>
+      <categories>
+        <category>storport</category>
+      </categories>
+      <tags>
+        <tag>storport</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Android ADB调试基础</title>
+    <url>/2025/10/23/Android%20ADB%E8%B0%83%E8%AF%95%E5%9F%BA%E7%A1%80/</url>
+    <content><![CDATA[<h1 id="Android-ADB驱动调试"><a href="#Android-ADB驱动调试" class="headerlink" title="Android ADB驱动调试"></a>Android ADB驱动调试</h1><p>Android嵌入式平台的系统要抓取驱动模块的log，一般不能像Linux系统直接在系统终端内配置，需要通过ADB(Android Debug Bridge)联机调试通道抓log。</p>
+<h2 id="ADB查看kernel-log"><a href="#ADB查看kernel-log" class="headerlink" title="ADB查看kernel log"></a>ADB查看kernel log</h2><h3 id="ADB主机环境安装"><a href="#ADB主机环境安装" class="headerlink" title="ADB主机环境安装"></a>ADB主机环境安装</h3><p>windows主机可通过ADB连接Android板子，登录到开发板的系统root文件目录操作rootfs，并配置和抓取板子的kernel log打印。</p>
+<p>Windows主机装ADB环境需要两个东西：</p>
+<ol>
+<li>安装ADB exe包</li>
+</ol>
+<p>在google andoid下载platform tools，即adb包</p>
+<p><a href="https://www.thecustomdroid.com/google-android-usb-drivers/">https://www.thecustomdroid.com/google-android-usb-drivers/</a></p>
+<ol start="2">
+<li>安装USB-ADB驱动</li>
+</ol>
+<p>不装驱动连接soc板子（启动成功情况下），会有yellow-bang设备</p>
+<p>驱动安装过程：</p>
+<p>（1）右键yellow-bang设备，选择更新驱动 -&gt; “通用串行总线”驱动类 -&gt; 找到WinUSB的ADB设备类驱动，不管警告，安装。</p>
+<p><img src="https://s3.bmp.ovh/imgs/2025/12/24/5bb77b5b45d3fd58.png" alt="图片1"></p>
+<p>（2）安装正常，设备会归为USB类，没有yellowbang</p>
+<p><img src="https://s3.bmp.ovh/imgs/2025/12/24/c8b72005fcbfc3b4.png" alt="图片2"></p>
+<h3 id="使用ADB抓log"><a href="#使用ADB抓log" class="headerlink" title="使用ADB抓log"></a>使用ADB抓log</h3><h3 id="方式1-使用-动态调试（Dynamic-Debug）-和dmesg"><a href="#方式1-使用-动态调试（Dynamic-Debug）-和dmesg" class="headerlink" title="方式1 使用**动态调试（Dynamic Debug）**和dmesg"></a>方式1 使用**动态调试（Dynamic Debug）**和dmesg</h3><p>需要设备已经root，并且adbd以root权限运行（adb root），如果没有root权限，可能只能依赖系统已有的日志输出，或者使用一些不需要root的调试方法（如logcat内核日志，如果系统支持）</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">#!/bin/bash</span><br><span class="line"># 启用MMC动态调试</span><br><span class="line">adb root</span><br><span class="line">adb wait-for-device</span><br><span class="line"># 挂载debugfs类型(-t)的设备(debugfs)到节点/sys/kernel/debug</span><br><span class="line">adb shell &quot;mount -t debugfs debugfs /sys/kernel/debug&quot;</span><br><span class="line"># 打开mmc模块的动态调试</span><br><span class="line">adb shell &quot;echo &#x27;file drivers/mmc/* +p&#x27; &gt; /sys/kernel/debug/dynamic_debug/control&quot;</span><br><span class="line">adb shell &quot;echo &#x27;module mmc_core +p&#x27; &gt;&gt; /sys/kernel/debug/dynamic_debug/control&quot;</span><br><span class="line">adb shell &quot;echo &#x27;module sdhci +p&#x27; &gt;&gt; /sys/kernel/debug/dynamic_debug/control&quot;</span><br><span class="line"># 设置printk级别</span><br><span class="line">adb shell &quot;echo 7 &gt; /proc/sys/kernel/printk&quot;</span><br><span class="line"># 清除旧日志</span><br><span class="line">adb shell &quot;dmesg -c&quot;</span><br><span class="line"># 开始捕获日志(两种都行)</span><br><span class="line">adb shell &quot;dmesg -w &gt; mmc_log.txt&quot;</span><br><span class="line">adb shell &quot;cat /proc/kmsg&quot; | tee mmc_log.txt</span><br></pre></td></tr></table></figure>
+
+<p>以上很多adb shell命令可以先进入adb shell终端模式里面，之后就可以像linux终端内一样直接输入echo，dmesg命令，最后exit退出adb shell</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">adb shell</span><br><span class="line">mount -t debugfs debugfs /sys/kernel/debug</span><br><span class="line">echo &#x27;file drivers/mmc/* +p&#x27; &gt; /sys/kernel/debug/dynamic_debug/control</span><br><span class="line">echo &#x27;module mmc_core +p&#x27; &gt;&gt; /sys/kernel/debug/dynamic_debug/control</span><br><span class="line">echo &#x27;module sdhci +p&#x27; &gt;&gt; /sys/kernel/debug/dynamic_debug/control</span><br><span class="line">...</span><br><span class="line">exit</span><br></pre></td></tr></table></figure>
+
+<p>最后<code>adb pull</code>拉取mmc_log.txt</p>
+<p>一个示例：</p>
+<p><img src="https://s3.bmp.ovh/imgs/2025/12/24/280f6d9f0ba628f4.png" alt="图片3"></p>
+<h3 id="方式2-使用kernel-logcat"><a href="#方式2-使用kernel-logcat" class="headerlink" title="方式2 使用kernel logcat"></a>方式2 <strong>使用kernel logcat</strong></h3><p>Android 有自己的日志系统：logcat，可以直接打印日志</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line"># 查看内核消息</span><br><span class="line">adb logcat -b kernel</span><br><span class="line"># 查看内核日志(-verbose带时间戳，-select关键词)</span><br><span class="line">adb logcat -b kernel -v time -s mmc,sdhci</span><br><span class="line"></span><br><span class="line"># 清除日志并重新开始</span><br><span class="line">adb logcat -c</span><br><span class="line">adb logcat -b kernel -v time</span><br></pre></td></tr></table></figure>
+
+<p>一个示例：</p>
+<p><img src="https://s3.bmp.ovh/imgs/2025/12/24/96c045160a55fe42.png" alt="图片4"></p>
+<h2 id="QA-为什么Android系统不能像Linux一样直接操作shell"><a href="#QA-为什么Android系统不能像Linux一样直接操作shell" class="headerlink" title="QA:为什么Android系统不能像Linux一样直接操作shell"></a>QA:为什么Android系统不能像Linux一样直接操作shell</h2><p><strong>Android和传统Linux主机有着根本不同的设计目标和安全架构</strong></p>
+<ol>
+<li><strong>应用沙箱与权限模型</strong>：每个应用（包括可能运行的Shell应用）都被严格隔离在独立的“沙箱”中，无法直接访问系统日志文件等核心资源。即使你安装了终端模拟器，它本质上也是一个普通应用，权限受到严格限制。</li>
+<li><strong>强化的内核安全（SELinux）</strong>：这是最关键的一层。从Android 5.0开始，系统会强制所有进程（包括拥有root权限的进程）都必须在SELinux的<strong>强制模式（Enforcing）</strong> 下运行。这意味着，即使你通过某种方式获得了<code>root</code>身份，SELinux策略规则（Policy）也会严格规定你这个“root”能做什么、不能做什么，通常禁止直接访问<code>/proc/kmsg</code>或<code>/sys/kernel/debug</code>等调试节点。这回答了之前提到的为什么有时即使使用<code>su</code>命令也无法访问某些节点。</li>
+<li><strong>厂商的深度定制</strong>：为了进一步控制权限，一些设备制造商会在原生Android系统之上增加额外限制。例如，小米的MIUI系统就曾定制限制Shell对“工作空间”用户的访问</li>
+</ol>
+<p>ADB在PC和Android设备之间建立了一个<strong>受控的、权限更高的调试通道</strong></p>
+<ul>
+<li><strong>它是如何工作的</strong>：当设备设置中启用“USB调试”后，设备上的<code>adbd</code>守护进程会以<strong>较高权限</strong>运行（但仍受SELinux策略约束）。通过PC端的ADB命令，你可以执行许多在设备内部Shell中无法直接完成的操作。</li>
+<li><strong>实际应用</strong>：可以使用 <code>adb shell</code> 进入一个功能更强的设备端Shell，然后挂载<code>debugfs</code>或通过<code>dmesg</code>查看内核日志。也可以直接通过 <code>adb logcat</code> 命令抓取系统和应用日志</li>
+</ul>
+<p>如果你想获取完全的访问权限，通常有两种途径：</p>
+<ul>
+<li><strong>在开发阶段</strong>：编译一个<strong>用户调试（userdebug）版本</strong>的系统镜像并刷入设备。这类版本通常会放宽SELinux策略（设为宽容模式<code>Permissive</code>），并默认启用ADB的root访问。</li>
+<li><strong>对已发布设备</strong>：这通常需要<strong>解锁Bootloader</strong>并刷入提供完整<code>root</code>权限的自定义内核或系统，但这会使设备失去官方保修并带来安全风险。</li>
+</ul>
+]]></content>
+      <categories>
+        <category>android</category>
+      </categories>
+      <tags>
+        <tag>android</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>电量计 -- BMS升级的移植演进：从SPI直控到I2C桥接</title>
+    <url>/2026/03/17/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E8%8A%AF%E7%89%87%E6%9E%B6%E6%9E%84%E6%BC%94%E8%BF%9B%EF%BC%9ASD7001%E5%9B%BA%E4%BB%B6%E5%8D%87%E7%BA%A7%E4%BB%8ESPI%E7%9B%B4%E6%8E%A7%E5%88%B0I2C%E6%A1%A5%E6%8E%A5/</url>
+    <content><![CDATA[<h1 id="芯片架构演进：SD7001固件升级从SPI直控到I2C桥接"><a href="#芯片架构演进：SD7001固件升级从SPI直控到I2C桥接" class="headerlink" title="芯片架构演进：SD7001固件升级从SPI直控到I2C桥接"></a>芯片架构演进：SD7001固件升级从SPI直控到I2C桥接</h1><h2 id="写在前面"><a href="#写在前面" class="headerlink" title="写在前面"></a>写在前面</h2><p>在上一篇文章中，我们详细介绍了BST7001电量计芯片的固件升级方案，那是一种<strong>直接访问Flash寄存器</strong>的模式——MCU通过I2C直接读写芯片内部的Flash寄存器，就像直接打开芯片的”后门”一样简单。</p>
+<p>但技术不会止步不前。新一代SD7001芯片采用了完全不同的架构：<strong>内置SPI Flash控制器</strong>，因为其采用更大的256KB Flash，固件升级需要通过SPI控制器这个”中介”来完成。</p>
+<p>本文将深入解析SD7001的固件升级方案，带你理解芯片架构演进的逻辑，以及如何在新的约束下实现可靠的固件烧录。</p>
+<h2 id="一、架构变革：从”直接访问”到”间接访问”"><a href="#一、架构变革：从”直接访问”到”间接访问”" class="headerlink" title="一、架构变革：从”直接访问”到”间接访问”"></a>一、架构变革：从”直接访问”到”间接访问”</h2><h3 id="1-1-BST7001-vs-SD7001：架构对比"><a href="#1-1-BST7001-vs-SD7001：架构对比" class="headerlink" title="1.1 BST7001 vs SD7001：架构对比"></a>1.1 BST7001 vs SD7001：架构对比</h3><p>先上图，直观感受两种架构的差异：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                         BST7001 架构 (旧方案)                               │</span><br><span class="line">├─────────────────────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                                             │</span><br><span class="line">│   MCU(I2C 0x18)  ──────────────────────────────────────────▶  BST7001      │</span><br><span class="line">│                           │                                                │</span><br><span class="line">│                           │  I2C/SMBus                                     │</span><br><span class="line">│                           │                                                │</span><br><span class="line">│                           ▼                                                │</span><br><span class="line">│                 ┌─────────────────────┐                                    │</span><br><span class="line">│                 │   Flash寄存器        │  ◀── 直接读写                       │</span><br><span class="line">│                 │   0x7000 - 0x700A   │      固件就暴露在总线上了            │</span><br><span class="line">│                 └─────────────────────┘                                    │</span><br><span class="line">│                                                                             │</span><br><span class="line">└─────────────────────────────────────────────────────────────────────────────┘</span><br><span class="line"></span><br><span class="line">┌─────────────────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                         SD7001 架构 (新方案)                               │</span><br><span class="line">├─────────────────────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                                             │</span><br><span class="line">│   MCU(I2C 0x30)  ──────────────────────────────────────────▶  SD7001        │</span><br><span class="line">│                           │                                                │</span><br><span class="line">│                           │  I2C/SMBus (带PEC校验)                         │</span><br><span class="line">│                           │                                                │</span><br><span class="line">│                           ▼                                                │</span><br><span class="line">│                 ┌─────────────────────┐                                    │</span><br><span class="line">│                 │   SPI控制器         │  ◀── 需要通过&quot;中介&quot;                   │</span><br><span class="line">│                 │  0x400070xx        │      发命令操作                        │</span><br><span class="line">│                 └─────────┬──────────┘                                    │</span><br><span class="line">│                           │                                                │</span><br><span class="line">│                           ▼                                                │</span><br><span class="line">│                 ┌─────────────────────┐                                    │</span><br><span class="line">│                 │   内部SPI Flash    │  ◀── 真正的数据存储                    │</span><br><span class="line">│                 │   (64KB)           │      隐藏起来了                       │</span><br><span class="line">│                 └─────────────────────┘                                    │</span><br><span class="line">│                                                                             │</span><br><span class="line">└─────────────────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<h3 id="1-2-为什么要”多此一举”？"><a href="#1-2-为什么要”多此一举”？" class="headerlink" title="1.2 为什么要”多此一举”？"></a>1.2 为什么要”多此一举”？</h3><p>这个问题值得深入思考。增加SPI控制器层看似增加了复杂度，但实际上：</p>
+<ol>
+<li><strong>安全性提升</strong>：Flash不再直接暴露在I2C总线上，需要通过控制器验证和转换</li>
+<li><strong>标准化接口</strong>：SPI Flash是通用存储单元，方案成熟、易于替换</li>
+<li><strong>读写优化</strong>：控制器可以做缓存、ECC校验等高级功能</li>
+<li><strong>功耗管理</strong>：可以独立控制Flash电源域</li>
+</ol>
+<h2 id="二、SD7001升级方案：关键差异点"><a href="#二、SD7001升级方案：关键差异点" class="headerlink" title="二、SD7001升级方案：关键差异点"></a>二、SD7001升级方案：关键差异点</h2><h3 id="2-1-核心差异一览"><a href="#2-1-核心差异一览" class="headerlink" title="2.1 核心差异一览"></a>2.1 核心差异一览</h3><table>
+<thead>
+<tr>
+<th>特性</th>
+<th>BST7001 (旧)</th>
+<th>SD7001 (新)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>I2C地址</td>
+<td>0x18</td>
+<td>0x30</td>
+</tr>
+<tr>
+<td>Flash访问方式</td>
+<td>直接寄存器</td>
+<td>SPI控制器</td>
+</tr>
+<tr>
+<td>页大小</td>
+<td>128字节</td>
+<td>256字节</td>
+</tr>
+<tr>
+<td>擦除单位</td>
+<td>Page</td>
+<td>Sector (4KB)</td>
+</tr>
+<tr>
+<td>数据传输</td>
+<td>128B直写</td>
+<td>128B→256B聚合</td>
+</tr>
+<tr>
+<td>PEC校验</td>
+<td>可选</td>
+<td>必须</td>
+</tr>
+</tbody></table>
+<h3 id="2-2-最大的挑战：256-vs-128"><a href="#2-2-最大的挑战：256-vs-128" class="headerlink" title="2.2 最大的挑战：256 vs 128"></a>2.2 最大的挑战：256 vs 128</h3><p>这是SD7001升级方案中最棘手的问题：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">上位机发送: 128字节/包  ◀── USB传输效率最优</span><br><span class="line">SPI Flash要求: 256字节/页 ◀── Flash物理特性</span><br><span class="line"></span><br><span class="line">矛盾：如何用128字节的&quot;水桶&quot;装满256字节的&quot;水池&quot;？</span><br></pre></td></tr></table></figure>
+
+<p><strong>解决方案：数据聚合</strong></p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 伪代码示意</span></span><br><span class="line"><span class="type">uint8_t</span> page_buf[<span class="number">256</span>];  <span class="comment">// 256字节页缓冲区</span></span><br><span class="line"><span class="type">uint16_t</span> page_filled = <span class="number">0</span>;  <span class="comment">// 已填充字节数</span></span><br><span class="line"></span><br><span class="line"><span class="type">void</span> <span class="title function_">write_chunk</span><span class="params">(<span class="type">uint8_t</span> *data, <span class="type">uint16_t</span> len)</span> &#123;</span><br><span class="line">    <span class="comment">// 1. 把新数据拷贝到缓冲区</span></span><br><span class="line">    <span class="built_in">memcpy</span>(page_buf + page_filled, data, len);</span><br><span class="line">    page_filled += len;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 2. 缓冲区满了？写入Flash</span></span><br><span class="line">    <span class="keyword">if</span> (page_filled &gt;= <span class="number">256</span>) &#123;</span><br><span class="line">        spi_page_program(page_addr, page_buf, <span class="number">256</span>);</span><br><span class="line">        page_filled = <span class="number">0</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-3-固件地址映射：非线性的挑战"><a href="#2-3-固件地址映射：非线性的挑战" class="headerlink" title="2.3 固件地址映射：非线性的挑战"></a>2.3 固件地址映射：非线性的挑战</h3><p>SD7001的Flash布局与BST7001不同，固件bin文件的偏移地址需要转换：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">USB固件格式:</span><br><span class="line">┌────────────────┬────────────────┐</span><br><span class="line">│  0x00000       │  Code Area     │  (约48KB) → SPI 0x300+offset</span><br><span class="line">│  0xC3FF        │                │</span><br><span class="line">├────────────────┼────────────────┤</span><br><span class="line">│  0xC400        │  Data Area     │  (约8KB) → SPI 0xD400+(offset-0xC400)</span><br><span class="line">│  0xF3FF        │                │</span><br><span class="line">└────────────────┴────────────────┘</span><br><span class="line"></span><br><span class="line">SPI Flash物理地址 (参考C#常量):</span><br><span class="line">┌────────────────┬────────────────┐</span><br><span class="line">│  0x0300        │  Code Area     │  ← 偏移0x0 映射到 0x300</span><br><span class="line">│  0xC3FF        │                │</span><br><span class="line">├────────────────┬────────────────┤</span><br><span class="line">│  0xD400        │  Data Area     │  ← 偏移0xC400 映射到 0xD400</span><br><span class="line">│  0xF3FF        │                │</span><br><span class="line">└────────────────┴────────────────┘</span><br><span class="line"></span><br><span class="line">地址转换公式 (修正后):</span><br><span class="line">if (offset &lt; 0xC400) &#123;</span><br><span class="line">    spi_addr = 0x300 + offset;              // 代码区 (原错误: 0x1000)</span><br><span class="line">&#125; else &#123;</span><br><span class="line">    spi_addr = 0xD400 + (offset - 0xC400);  // 数据区</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="三、通信协议：I2C-PEC校验"><a href="#三、通信协议：I2C-PEC校验" class="headerlink" title="三、通信协议：I2C + PEC校验"></a>三、通信协议：I2C + PEC校验</h2><h3 id="3-1-为什么要PEC？"><a href="#3-1-为什么要PEC？" class="headerlink" title="3.1 为什么要PEC？"></a>3.1 为什么要PEC？</h3><p>PEC（Packet Error Checking）是SMBus协议的一种CRC-8校验机制。在SD7001方案中，<strong>每个I2C写操作都必须带PEC</strong>，否则芯片会拒绝执行：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">┌─────────────────────────────────────────────┐</span><br><span class="line">│            I2C写操作格式 (带PEC)             │</span><br><span class="line">├─────────────────────────────────────────────┤</span><br><span class="line">│                                             │</span><br><span class="line">│  [DeviceAddr][Reg] [Data_Hi] [Data_Lo] [PEC]│</span><br><span class="line">│      1 byte     1 byte      2 bytes    1    │</span><br><span class="line">│                                             │</span><br><span class="line">│  PEC = CRC8(DeviceAddr&lt;&lt;1, Reg, Data...)   │</span><br><span class="line">│                                             │</span><br><span class="line">└─────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<p>这增加了通信的可靠性，但也让驱动开发变得更加复杂。</p>
+<h3 id="3-2-寄存器映射"><a href="#3-2-寄存器映射" class="headerlink" title="3.2 寄存器映射"></a>3.2 寄存器映射</h3><p>SD7001通过I2C寄存器控制SPI控制器：</p>
+<table>
+<thead>
+<tr>
+<th>寄存器</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>0x11</td>
+<td>解锁密码1 (0x6318)</td>
+</tr>
+<tr>
+<td>0x12</td>
+<td>解锁密码2 (0x6303&#x3D;enable)</td>
+</tr>
+<tr>
+<td>0x20</td>
+<td>AHB模式控制</td>
+</tr>
+<tr>
+<td>0x21</td>
+<td>Remap控制</td>
+</tr>
+<tr>
+<td>0x22</td>
+<td>CRC控制 (0x0111&#x3D;禁用)</td>
+</tr>
+<tr>
+<td>0x29</td>
+<td>SPI外部访问开关</td>
+</tr>
+<tr>
+<td>0x01</td>
+<td>地址低16位</td>
+</tr>
+<tr>
+<td>0x02</td>
+<td>地址高16位</td>
+</tr>
+<tr>
+<td>0x0F</td>
+<td>数据访问命令</td>
+</tr>
+</tbody></table>
+<h3 id="3-3-32位寄存器访问"><a href="#3-3-32位寄存器访问" class="headerlink" title="3.3 32位寄存器访问"></a>3.3 32位寄存器访问</h3><p>SPI控制器是32位的，需要分步操作：</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 写4字节到SPI控制器寄存器 (例如 0x40007018)</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">block_4bytes_write</span><span class="params">(<span class="type">uint32_t</span> addr, <span class="type">uint32_t</span> val)</span> &#123;</span><br><span class="line">    <span class="comment">// 1. 设置低16位地址</span></span><br><span class="line">    write_word(<span class="number">0x01</span>, addr &amp; <span class="number">0xFFFF</span>);</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 2. 设置高16位地址</span></span><br><span class="line">    write_word(<span class="number">0x02</span>, (addr &gt;&gt; <span class="number">16</span>) &amp; <span class="number">0xFFFF</span>);</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 3. 写入数据 (通过0x0F，带PEC)</span></span><br><span class="line">    block_write(<span class="number">0x0F</span>, &amp;val, <span class="number">4</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="四、升级流程：五步走"><a href="#四、升级流程：五步走" class="headerlink" title="四、升级流程：五步走"></a>四、升级流程：五步走</h2><h3 id="4-1-完整序列"><a href="#4-1-完整序列" class="headerlink" title="4.1 完整序列"></a>4.1 完整序列</h3><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────┐</span><br><span class="line">│ Step 1: I2C解锁                                           │</span><br><span class="line">├─────────────────────────────────────────────────────────────┤</span><br><span class="line">│  1.1 WriteWord(0x11, 0x6318)      ← 密码1                   │</span><br><span class="line">│  1.2 WriteWord(0x12, 0x6303)      ← 启用AHB                 │</span><br><span class="line">│  1.3 WriteWord(0x20, 0x8001) ×2  ← 进入编程模式            │</span><br><span class="line">└─────────────────────────────────────────────────────────────┘</span><br><span class="line">                            │</span><br><span class="line">                            ▼</span><br><span class="line">┌─────────────────────────────────────────────────────────────┐</span><br><span class="line">│ Step 2: 禁用系统CRC                                        │</span><br><span class="line">├─────────────────────────────────────────────────────────────┤</span><br><span class="line">│  2.1 WriteWord(0x22, 0x0111)      ← 禁用CRC，否则会阻止编程  │</span><br><span class="line">└─────────────────────────────────────────────────────────────┘</span><br><span class="line">                            │</span><br><span class="line">                            ▼</span><br><span class="line">┌─────────────────────────────────────────────────────────────┐</span><br><span class="line">│ Step 3: SPI Remap                                          │</span><br><span class="line">├─────────────────────────────────────────────────────────────┤</span><br><span class="line">│  3.1 WriteWord(0x21, 0x1000)      ← Remap配置              │</span><br><span class="line">│  3.2 WriteWord(0x21, 0)           ← 执行Remap              │</span><br><span class="line">│  3.3 WriteWord(0x29, 0x02)        ← 启用SPI外部访问         │</span><br><span class="line">│  3.4 Block4BytesWrite(0x40007030, 0xABCD)                  │</span><br><span class="line">│  3.5 WriteWord(0x29, 0)           ← 禁用SPI外部访问         │</span><br><span class="line">└─────────────────────────────────────────────────────────────┘</span><br><span class="line">                            │</span><br><span class="line">                            ▼</span><br><span class="line">┌─────────────────────────────────────────────────────────────┐</span><br><span class="line">│ Step 4: SPI Flash初始化                                    │</span><br><span class="line">├─────────────────────────────────────────────────────────────┤</span><br><span class="line">│  4.1 PowerOn: 配置时钟，等待就绪                            │</span><br><span class="line">│  4.2 Enable Buffer: 启用写入缓冲(加速)                     │</span><br><span class="line">│  4.3 ModeSwitch: 切换到SPI模式                              │</span><br><span class="line">│  4.4 Wakeup: 唤醒Flash                                     │</span><br><span class="line">│  4.5 Reset: 复位Flash                                      │</span><br><span class="line">│  4.6 ProgramUnlock: 解锁编程                                │</span><br><span class="line">└─────────────────────────────────────────────────────────────┘</span><br><span class="line">                            │</span><br><span class="line">                            ▼</span><br><span class="line">┌─────────────────────────────────────────────────────────────┐</span><br><span class="line">│ Step 5: 擦除 → 编程 → 完成                                  │</span><br><span class="line">├─────────────────────────────────────────────────────────────┤</span><br><span class="line">│  5.1 擦除: 按4KB扇区擦除Code Area和Data Area               │</span><br><span class="line">│  5.2 编程: 128B聚合→256B页写入                            │</span><br><span class="line">│  5.3 完成: 恢复寄存器 + Remap跳转                          │</span><br><span class="line">└─────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-2-关键函数实现"><a href="#4-2-关键函数实现" class="headerlink" title="4.2 关键函数实现"></a>4.2 关键函数实现</h3><h4 id="SPI等待就绪"><a href="#SPI等待就绪" class="headerlink" title="SPI等待就绪"></a>SPI等待就绪</h4><figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 等待SPI Flash操作完成 (轮询WIP位)</span></span><br><span class="line"><span class="type">sd7001_upg_error_t</span> <span class="title function_">spi_wait_ready</span><span class="params">(<span class="type">uint32_t</span> timeout_ms)</span> &#123;</span><br><span class="line">    <span class="type">uint32_t</span> start = ticker_read();</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">do</span> &#123;</span><br><span class="line">        delay_ms(<span class="number">10</span>);</span><br><span class="line">        wwdt_feeddog();  <span class="comment">// 别忘了喂狗！</span></span><br><span class="line">        </span><br><span class="line">        <span class="type">uint32_t</span> status;</span><br><span class="line">        block_4bytes_read(<span class="number">0x40007018</span>, &amp;status);</span><br><span class="line">        </span><br><span class="line">        <span class="comment">// bit0 = WIP (Write In Progress)</span></span><br><span class="line">        <span class="keyword">if</span> ((status &amp; <span class="number">0x01</span>) == <span class="number">0</span>) &#123;</span><br><span class="line">            <span class="keyword">return</span> SD7001_UPG_OK;</span><br><span class="line">        &#125;</span><br><span class="line">        </span><br><span class="line">        <span class="keyword">if</span> ((ticker_read() - start) &gt; timeout_ms) &#123;</span><br><span class="line">            <span class="keyword">return</span> SD7001_UPG_ERR_TIMEOUT;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125; <span class="keyword">while</span> (<span class="number">1</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="扇区擦除"><a href="#扇区擦除" class="headerlink" title="扇区擦除"></a>扇区擦除</h4><figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 擦除4KB扇区</span></span><br><span class="line"><span class="type">sd7001_upg_error_t</span> <span class="title function_">spi_sector_erase</span><span class="params">(<span class="type">uint32_t</span> sector_addr)</span> &#123;</span><br><span class="line">    <span class="comment">// 1. 等待Flash就绪</span></span><br><span class="line">    spi_wait_ready(<span class="number">100</span>);</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 2. 发送写使能</span></span><br><span class="line">    block_4bytes_write(<span class="number">0x40007020</span>, <span class="number">0</span>);              <span class="comment">// 长度=0</span></span><br><span class="line">    block_4bytes_write(<span class="number">0x40007004</span>, <span class="number">0x06000000</span>);    <span class="comment">// Write Enable命令</span></span><br><span class="line">    block_4bytes_write(<span class="number">0x40007020</span>, <span class="number">2</span>);</span><br><span class="line">    spi_wait_ready(<span class="number">50</span>);</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 3. 发送扇区擦除命令</span></span><br><span class="line">    block_4bytes_write(<span class="number">0x40007008</span>, sector_addr);   <span class="comment">// 目标地址</span></span><br><span class="line">    block_4bytes_write(<span class="number">0x40007020</span>, <span class="number">0</span>);</span><br><span class="line">    block_4bytes_write(<span class="number">0x40007004</span>, <span class="number">0x20080000</span>);    <span class="comment">// Sector Erase命令</span></span><br><span class="line">    block_4bytes_write(<span class="number">0x40007020</span>, <span class="number">2</span>);</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">return</span> spi_wait_ready(<span class="number">400</span>);  <span class="comment">// 扇区擦除较慢</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="五、软件架构：分层设计"><a href="#五、软件架构：分层设计" class="headerlink" title="五、软件架构：分层设计"></a>五、软件架构：分层设计</h2><h3 id="5-1-模块结构"><a href="#5-1-模块结构" class="headerlink" title="5.1 模块结构"></a>5.1 模块结构</h3><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">dev_cps8610.c          # USB回调入口，命令路由</span><br><span class="line">    │</span><br><span class="line">    ├── CFG_ENABLE_FG_UPGRADE = 1 → BST7001 (旧)</span><br><span class="line">    │</span><br><span class="line">    └── CFG_ENABLE_FG_UPGRADE = 2 → SD7001 (新)</span><br><span class="line">            │</span><br><span class="line">            ▼</span><br><span class="line">dev_sd7001_upgrade.c   # SD7001升级实现</span><br><span class="line">    │</span><br><span class="line">    ├── I2C层 (sd7001_write_word, sd7001_block_4bytes_read/write)</span><br><span class="line">    │</span><br><span class="line">    ├── SPI操作层 (sd7001_spi_wait_ready, sd7001_spi_erase, sd7001_spi_program)</span><br><span class="line">    │</span><br><span class="line">    ├── 下载序列 (sd7001_download_start/write_chunk/finish)</span><br><span class="line">    │</span><br><span class="line">    └── 公共API (sd7001_upgrade_process_command)</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-2-上下文结构"><a href="#5-2-上下文结构" class="headerlink" title="5.2 上下文结构"></a>5.2 上下文结构</h3><figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> &#123;</span></span><br><span class="line">    <span class="comment">/* I2C通信 */</span></span><br><span class="line">    <span class="type">int32_t</span> fd_dev_ops;       <span class="comment">// I2C设备句柄</span></span><br><span class="line">    <span class="type">uint8_t</span> i2c_addr;        <span class="comment">// 0x30</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment">/* 状态机 */</span></span><br><span class="line">    <span class="type">sd7001_upg_state_t</span> state;</span><br><span class="line">    <span class="type">sd7001_upg_error_t</span> last_error;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">/* 配置与进度 */</span></span><br><span class="line">    <span class="type">sd7001_upg_config_t</span> config;</span><br><span class="line">    <span class="type">uint32_t</span> bytes_written;</span><br><span class="line">    <span class="type">uint32_t</span> expected_offset;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">/* 页缓冲区 - 128B→256B聚合的关键！ */</span></span><br><span class="line">    <span class="type">uint32_t</span> page_base;       <span class="comment">// 当前页地址</span></span><br><span class="line">    <span class="type">uint16_t</span> page_filled;     <span class="comment">// 已填充字节</span></span><br><span class="line">    <span class="type">uint8_t</span> page_buf[<span class="number">256</span>];    <span class="comment">// 256字节页缓冲</span></span><br><span class="line">&#125; <span class="type">sd7001_upg_ctx_t</span>;</span><br></pre></td></tr></table></figure>
+
+<h2 id="六、地址转换：理解映射逻辑"><a href="#六、地址转换：理解映射逻辑" class="headerlink" title="六、地址转换：理解映射逻辑"></a>六、地址转换：理解映射逻辑</h2><p>这是SD7001方案中最容易出错的地方。固件bin文件的偏移地址是连续的，但SPI Flash的物理地址有”空洞”：</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * USB固件偏移 → SPI Flash物理地址转换</span></span><br><span class="line"><span class="comment"> * </span></span><br><span class="line"><span class="comment"> * 固件bin: [0x0000-C3FF] [C400-...]</span></span><br><span class="line"><span class="comment"> *           ↓              ↓</span></span><br><span class="line"><span class="comment"> * SPI Flash: [0x1000-...]  [0xD400-...]</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="type">static</span> <span class="type">uint32_t</span> <span class="title function_">convert_offset_to_addr</span><span class="params">(<span class="type">uint32_t</span> offset)</span> &#123;</span><br><span class="line">    <span class="keyword">if</span> (offset &lt; <span class="number">0xC400</span>) &#123;</span><br><span class="line">        <span class="comment">// 代码区: 偏移0x0 → 地址0x1000</span></span><br><span class="line">        <span class="keyword">return</span> <span class="number">0x1000</span> + offset;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">// 数据区: 偏移0xC400 → 地址0xD400</span></span><br><span class="line">        <span class="keyword">return</span> <span class="number">0xD400</span> + (offset - <span class="number">0xC400</span>);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="七、调试经验：踩坑记录"><a href="#七、调试经验：踩坑记录" class="headerlink" title="七、调试经验：踩坑记录"></a>七、调试经验：踩坑记录</h2><h3 id="7-1-PEC计算错误"><a href="#7-1-PEC计算错误" class="headerlink" title="7.1 PEC计算错误"></a>7.1 PEC计算错误</h3><p><strong>症状</strong>: 芯片不响应，写操作无效</p>
+<p><strong>排查</strong>: 检查CRC-8计算是否正确， PEC &#x3D; CRC8(设备地址&lt;&lt;1, 寄存器, 数据…)</p>
+<h3 id="7-2-页对齐问题"><a href="#7-2-页对齐问题" class="headerlink" title="7.2 页对齐问题"></a>7.2 页对齐问题</h3><p><strong>症状</strong>: 写入后数据校验失败</p>
+<p><strong>排查</strong>: 确保256字节页写入地址是256的倍数，使用缓冲区聚合解决</p>
+<h3 id="7-3-地址映射错误"><a href="#7-3-地址映射错误" class="headerlink" title="7.3 地址映射错误"></a>7.3 地址映射错误</h3><p><strong>症状</strong>: 代码区写到了数据区，或 vice versa</p>
+<p><strong>排查</strong>: 添加日志打印 <code>offset → addr</code> 转换结果，与预期对比</p>
+<h3 id="7-4-看门狗超时"><a href="#7-4-看门狗超时" class="headerlink" title="7.4 看门狗超时"></a>7.4 看门狗超时</h3><p><strong>症状</strong>: 升级过程中芯片意外复位</p>
+<p><strong>排查</strong>: 在长时间操作（特别是擦除）中定期调用 <code>wwdt_feeddog()</code></p>
+<h2 id="八、架构演进的启示"><a href="#八、架构演进的启示" class="headerlink" title="八、架构演进的启示"></a>八、架构演进的启示</h2><p>回顾BST7001到SD7001的演进，我们可以得到以下启示：</p>
+<ol>
+<li><p><strong>架构选择没有绝对好坏</strong>：直接访问简单但不够安全，间接访问复杂但更灵活</p>
+</li>
+<li><p><strong>兼容性设计</strong>：虽然底层变了，但上层USB命令协议保持一致，降低了上位机的修改成本</p>
+</li>
+<li><p><strong>数据聚合的智慧</strong>：面对”消费级”USB和”工业级”Flash的差异，用缓冲区巧妙化解</p>
+</li>
+<li><p><strong>状态机的重要性</strong>：无论架构如何变，清晰的状态管理始终是可靠性的保障</p>
+</li>
+</ol>
+<h2 id="九、总结"><a href="#九、总结" class="headerlink" title="九、总结"></a>九、总结</h2><p>SD7001的固件升级方案展示了芯片架构演进的一种典型路径：通过引入SPI控制器层，在保持I2C接口不变的同时，实现了更高的安全性和灵活性。虽然驱动开发增加了复杂度（特别是PEC校验和256字节页对齐），但这些代价换来了更好的系统设计。</p>
+<p>理解这些底层差异，对于固件工程师来说是宝贵的经验。当你在实际项目中遇到类似的需求时，希望本文的分析能给你提供思路。</p>
+<hr>
+<p><strong>相关阅读</strong>：</p>
+<ul>
+<li><a href="https://zqb-all.github.io/posts/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20BMS%E5%8D%87%E7%BA%A7%E8%A7%A3%E5%AF%86%EF%BC%9A%E4%BB%8E%E4%B8%8A%E4%BD%8D%E6%9C%BA%E5%88%B0MCU%E7%9A%84%E5%9B%BA%E4%BB%B6%E4%B8%8B%E8%BD%BD%E5%85%A8%E6%B5%81%E7%A8%8B/">电量计 – BMS升级解密：从上位机到MCU的固件下载全流程</a></li>
+<li><a href="https://zqb-all.github.io/posts/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E7%94%B5%E6%B1%A0%E5%BE%AE%E7%9F%AD%E8%B7%AF%E4%B8%AD%E7%9A%84%E5%8D%A1%E5%B0%94%E6%9B%BC%E6%BB%A1%E6%B3%A8/">电量计 – 卡尔曼滤波在电池内部短路漏电流检测中的应用</a></li>
 </ul>
 ]]></content>
       <categories>

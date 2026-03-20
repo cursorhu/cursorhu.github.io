@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="DMA Remapping 问题综合分析报告日期: 2026-03-17版本: v1.0面向对象: LCFC、Microsoft问题概述: Bayhub SD Card Reader 驱动在 Windows 10 上安装时卡死，INF 声明 DmaRemappingCompatible&#x3D;1 导致 PnP 阶段无响应  目录 执行摘要 问题背景 证据链与根因分析 3.1 安装卡死发生在驱动加载之前">
+<meta property="og:type" content="article">
+<meta property="og:title" content="DMA Remapping 问题综合分析报告">
+<meta property="og:url" content="https://cursorhu.github.io/2026/03/19/20260319_DMA_Remapping_%E7%BB%BC%E5%90%88%E5%88%86%E6%9E%90%E6%8A%A5%E5%91%8A/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="DMA Remapping 问题综合分析报告日期: 2026-03-17版本: v1.0面向对象: LCFC、Microsoft问题概述: Bayhub SD Card Reader 驱动在 Windows 10 上安装时卡死，INF 声明 DmaRemappingCompatible&#x3D;1 导致 PnP 阶段无响应  目录 执行摘要 问题背景 证据链与根因分析 3.1 安装卡死发生在驱动加载之前">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-03-19T10:00:00.000Z">
+<meta property="article:modified_time" content="2026-03-20T03:06:39.357Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="storport">
+<meta name="twitter:card" content="summary">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>DMA Remapping 问题综合分析报告</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+<meta name="generator" content="Hexo 8.0.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="顶部" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="上一篇" href="/2026/03/19/20260319_%E8%B0%83%E8%AF%95%E6%96%B9%E6%B3%95_Win10_Storport_DMAR_%E9%98%BB%E5%A1%9E/"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="下一篇" href="/2026/03/17/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20BMS%E5%8D%87%E7%BA%A7%E7%9A%84%E7%A7%BB%E6%A4%8D%E6%BC%94%E8%BF%9B%EF%BC%9ASD7001%E5%9B%BA%E4%BB%B6%E5%8D%87%E7%BA%A7%E4%BB%8ESPI%E7%9B%B4%E6%8E%A7%E5%88%B0I2C%E6%A1%A5%E6%8E%A5/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="返回顶部" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="分享文章" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">上一篇</span>
+      <span id="i-next" class="info" style="display:none;">下一篇</span>
+      <span id="i-top" class="info" style="display:none;">返回顶部</span>
+      <span id="i-share" class="info" style="display:none;">分享文章</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/03/19/20260319_DMA_Remapping_%E7%BB%BC%E5%90%88%E5%88%86%E6%9E%90%E6%8A%A5%E5%91%8A/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/03/19/20260319_DMA_Remapping_%E7%BB%BC%E5%90%88%E5%88%86%E6%9E%90%E6%8A%A5%E5%91%8A/&text=DMA Remapping 问题综合分析报告"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/03/19/20260319_DMA_Remapping_%E7%BB%BC%E5%90%88%E5%88%86%E6%9E%90%E6%8A%A5%E5%91%8A/&title=DMA Remapping 问题综合分析报告"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/03/19/20260319_DMA_Remapping_%E7%BB%BC%E5%90%88%E5%88%86%E6%9E%90%E6%8A%A5%E5%91%8A/&is_video=false&description=DMA Remapping 问题综合分析报告"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=DMA Remapping 问题综合分析报告&body=Check out this article: https://cursorhu.github.io/2026/03/19/20260319_DMA_Remapping_%E7%BB%BC%E5%90%88%E5%88%86%E6%9E%90%E6%8A%A5%E5%91%8A/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/03/19/20260319_DMA_Remapping_%E7%BB%BC%E5%90%88%E5%88%86%E6%9E%90%E6%8A%A5%E5%91%8A/&title=DMA Remapping 问题综合分析报告"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/03/19/20260319_DMA_Remapping_%E7%BB%BC%E5%90%88%E5%88%86%E6%9E%90%E6%8A%A5%E5%91%8A/&title=DMA Remapping 问题综合分析报告"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/03/19/20260319_DMA_Remapping_%E7%BB%BC%E5%90%88%E5%88%86%E6%9E%90%E6%8A%A5%E5%91%8A/&title=DMA Remapping 问题综合分析报告"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/03/19/20260319_DMA_Remapping_%E7%BB%BC%E5%90%88%E5%88%86%E6%9E%90%E6%8A%A5%E5%91%8A/&title=DMA Remapping 问题综合分析报告"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/03/19/20260319_DMA_Remapping_%E7%BB%BC%E5%90%88%E5%88%86%E6%9E%90%E6%8A%A5%E5%91%8A/&name=DMA Remapping 问题综合分析报告&description=&lt;h1 id=&#34;DMA-Remapping-问题综合分析报告&#34;&gt;&lt;a href=&#34;#DMA-Remapping-问题综合分析报告&#34; class=&#34;headerlink&#34; title=&#34;DMA Remapping 问题综合分析报告&#34;&gt;&lt;/a&gt;DMA Remapping 问题综合分析报告&lt;/h1&gt;&lt;p&gt;&lt;strong&gt;日期&lt;/strong&gt;: 2026-03-17&lt;br&gt;&lt;strong&gt;版本&lt;/strong&gt;: v1.0&lt;br&gt;&lt;strong&gt;面向对象&lt;/strong&gt;: LCFC、Microsoft&lt;br&gt;&lt;strong&gt;问题概述&lt;/strong&gt;: Bayhub SD Card Reader 驱动在 Windows 10 上安装时卡死，INF 声明 &lt;code&gt;DmaRemappingCompatible=1&lt;/code&gt; 导致 PnP 阶段无响应&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;目录&#34;&gt;&lt;a href=&#34;#目录&#34; class=&#34;headerlink&#34; title=&#34;目录&#34;&gt;&lt;/a&gt;目录&lt;/h2&gt;&lt;ol&gt;
+&lt;li&gt;&lt;a href=&#34;#1-%E6%89%A7%E8%A1%8C%E6%91%98%E8%A6%81&#34;&gt;执行摘要&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;#2-%E9%97%AE%E9%A2%98%E8%83%8C%E6%99%AF&#34;&gt;问题背景&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;#3-%E8%AF%81%E6%8D%AE%E9%93%BE%E4%B8%8E%E6%A0%B9%E5%9B%A0%E5%88%86%E6%9E%90&#34;&gt;证据链与根因分析&lt;/a&gt;&lt;ul&gt;
+&lt;li&gt;&lt;a href=&#34;#31-%E5%AE%89%E8%A3%85%E5%8D%A1%E6%AD%BB%E5%8F%91%E7%94%9F%E5%9C%A8%E9%A9%B1%E5%8A%A8%E5%8A%A0%E8%BD%BD%E4%B9%8B%E5%89%8D&#34;&gt;3.1 安装卡死发生在驱动加载之前&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;#32-%E9%A9%B1%E5%8A%A8%E4%BB%A3%E7%A0%81%E6%94%B9%E5%8A%A8%E5%88%86%E6%9E%90&#34;&gt;3.2 驱动代码改动分析&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;#33-inf-%E5%A3%B0%E6%98%8E%E5%AE%8C%E5%85%A8%E7%AC%A6%E5%90%88%E5%BE%AE%E8%BD%AF%E6%96%87%E6%A1%A3&#34;&gt;3.3 INF 声明完全符合微软文档&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;#34-%E5%AE%9E%E6%B5%8B%E6%95%B0%E6%8D%AE%E6%B1%87%E6%80%BB&#34;&gt;3.4 实测数据汇总&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;#35-%E6%A0%B9%E5%9B%A0%E6%8E%A8%E6%96%ADstorport-%E6%A1%86%E6%9E%B6%E5%9C%A8-win10-%E4%B8%8A%E7%9A%84%E5%AE%89%E8%A3%85%E6%97%B6%E9%98%BB%E5%A1%9E&#34;&gt;3.5 根因推断：Storport 框架在 Win10 上的安装时阻塞&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;#4-%E4%B8%8E%E7%AB%9E%E5%93%81-realtek-%E7%9A%84%E5%AF%B9%E6%AF%94%E5%88%86%E6%9E%90&#34;&gt;与竞品 Realtek 的对比分析&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;#5-%E7%BB%99%E5%BE%AE%E8%BD%AF%E7%9A%84%E6%8A%80%E6%9C%AF%E6%8A%A5%E5%91%8A%E8%A6%81%E7%82%B9&#34;&gt;给微软的技术报告要点&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;#6-%E5%BB%BA%E8%AE%AE%E6%96%B9%E6%A1%88&#34;&gt;建议方案&lt;/a&gt;&lt;/li&gt;
+&lt;/ol&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;1-执行摘要&#34;&gt;&lt;a href=&#34;#1-执行摘要&#34; class=&#34;headerlink&#34; title=&#34;1. 执行摘要&#34;&gt;&lt;/a&gt;1. 执行摘要&lt;/h2&gt;&lt;h3 id=&#34;核心结论&#34;&gt;&lt;a href=&#34;#核心结论&#34; class=&#34;headerlink&#34; title=&#34;核心结论&#34;&gt;&lt;/a&gt;核心结论&lt;/h3&gt;&lt;p&gt;&lt;strong&gt;Bayhub 驱动在 Windows 10 上安装卡死的根因不在驱动代码，也不在 INF 写法，而是 Windows 10 Storport 框架在安装&amp;#x2F;PnP 阶段处理 &lt;code&gt;DmaRemappingCompatible&lt;/code&gt; 声明时存在同步阻塞行为。&lt;/strong&gt;&lt;/p&gt;
+&lt;h3 id=&#34;关键发现&#34;&gt;&lt;a href=&#34;#关键发现&#34; class=&#34;headerlink&#34; title=&#34;关键发现&#34;&gt;&lt;/a&gt;关键发现&lt;/h3&gt;"><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/03/19/20260319_DMA_Remapping_%E7%BB%BC%E5%90%88%E5%88%86%E6%9E%90%E6%8A%A5%E5%91%8A/&t=DMA Remapping 问题综合分析报告"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#DMA-Remapping-%E9%97%AE%E9%A2%98%E7%BB%BC%E5%90%88%E5%88%86%E6%9E%90%E6%8A%A5%E5%91%8A"><span class="toc-number">1.</span> <span class="toc-text">DMA Remapping 问题综合分析报告</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%9B%AE%E5%BD%95"><span class="toc-number">1.1.</span> <span class="toc-text">目录</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E6%89%A7%E8%A1%8C%E6%91%98%E8%A6%81"><span class="toc-number">1.2.</span> <span class="toc-text">1. 执行摘要</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%A0%B8%E5%BF%83%E7%BB%93%E8%AE%BA"><span class="toc-number">1.2.1.</span> <span class="toc-text">核心结论</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%B3%E9%94%AE%E5%8F%91%E7%8E%B0"><span class="toc-number">1.2.2.</span> <span class="toc-text">关键发现</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BB%93%E8%AE%BA"><span class="toc-number">1.2.3.</span> <span class="toc-text">结论</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-%E9%97%AE%E9%A2%98%E8%83%8C%E6%99%AF"><span class="toc-number">1.3.</span> <span class="toc-text">2. 问题背景</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E7%8E%B0%E8%B1%A1%E6%8F%8F%E8%BF%B0"><span class="toc-number">1.3.1.</span> <span class="toc-text">2.1 现象描述</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-%E6%B6%89%E5%8F%8A%E7%9A%84%E7%B3%BB%E7%BB%9F%E9%85%8D%E7%BD%AE"><span class="toc-number">1.3.2.</span> <span class="toc-text">2.2 涉及的系统配置</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-%E9%97%AE%E9%A2%98%E8%A7%A6%E5%8F%91%E6%9D%A1%E4%BB%B6"><span class="toc-number">1.3.3.</span> <span class="toc-text">2.3 问题触发条件</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-%E8%AF%81%E6%8D%AE%E9%93%BE%E4%B8%8E%E6%A0%B9%E5%9B%A0%E5%88%86%E6%9E%90"><span class="toc-number">1.4.</span> <span class="toc-text">3. 证据链与根因分析</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E5%AE%89%E8%A3%85%E5%8D%A1%E6%AD%BB%E5%8F%91%E7%94%9F%E5%9C%A8%E9%A9%B1%E5%8A%A8%E5%8A%A0%E8%BD%BD%E4%B9%8B%E5%89%8D"><span class="toc-number">1.4.1.</span> <span class="toc-text">3.1 安装卡死发生在驱动加载之前</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%97%B6%E5%BA%8F%E5%88%86%E6%9E%90"><span class="toc-number">1.4.1.1.</span> <span class="toc-text">时序分析</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%BB%93%E8%AE%BA-1"><span class="toc-number">1.4.1.2.</span> <span class="toc-text">结论</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E9%A9%B1%E5%8A%A8%E4%BB%A3%E7%A0%81%E6%94%B9%E5%8A%A8%E5%88%86%E6%9E%90"><span class="toc-number">1.4.2.</span> <span class="toc-text">3.2 驱动代码改动分析</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-INF-%E5%A3%B0%E6%98%8E%E5%AE%8C%E5%85%A8%E7%AC%A6%E5%90%88%E5%BE%AE%E8%BD%AF%E6%96%87%E6%A1%A3"><span class="toc-number">1.4.3.</span> <span class="toc-text">3.3 INF 声明完全符合微软文档</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%BE%AE%E8%BD%AF%E6%96%87%E6%A1%A3%E8%A6%81%E6%B1%82%EF%BC%88Per-driver-opt-in-mechanism%EF%BC%89"><span class="toc-number">1.4.3.1.</span> <span class="toc-text">微软文档要求（Per-driver opt-in mechanism）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Bayhub-INF-%E7%BB%93%E6%9E%84"><span class="toc-number">1.4.3.2.</span> <span class="toc-text">Bayhub INF 结构</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E9%80%90%E9%A1%B9%E5%90%88%E8%A7%84%E6%A3%80%E6%9F%A5"><span class="toc-number">1.4.3.3.</span> <span class="toc-text">逐项合规检查</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%BB%93%E8%AE%BA-2"><span class="toc-number">1.4.3.4.</span> <span class="toc-text">结论</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-4-%E5%AE%9E%E6%B5%8B%E6%95%B0%E6%8D%AE%E6%B1%87%E6%80%BB"><span class="toc-number">1.4.4.</span> <span class="toc-text">3.4 实测数据汇总</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-5-%E6%A0%B9%E5%9B%A0%E6%8E%A8%E6%96%AD%EF%BC%9AStorport-%E6%A1%86%E6%9E%B6%E5%9C%A8-Win10-%E4%B8%8A%E7%9A%84%E5%AE%89%E8%A3%85%E6%97%B6%E9%98%BB%E5%A1%9E"><span class="toc-number">1.4.5.</span> <span class="toc-text">3.5 根因推断：Storport 框架在 Win10 上的安装时阻塞</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E8%A7%A6%E5%8F%91%E6%9C%BA%E5%88%B6%E5%88%86%E6%9E%90"><span class="toc-number">1.4.5.1.</span> <span class="toc-text">触发机制分析</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E9%98%BB%E5%A1%9E%E5%81%87%E8%AE%BE"><span class="toc-number">1.4.5.2.</span> <span class="toc-text">阻塞假设</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E5%80%BC-2-%E4%B9%9F%E5%8D%A1%E6%AD%BB"><span class="toc-number">1.4.5.3.</span> <span class="toc-text">为什么值 2 也卡死</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-%E4%B8%8E%E7%AB%9E%E5%93%81-Realtek-%E7%9A%84%E5%AF%B9%E6%AF%94%E5%88%86%E6%9E%90"><span class="toc-number">1.5.</span> <span class="toc-text">4. 与竞品 Realtek 的对比分析</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-Realtek-%E8%83%BD%E5%85%BC%E5%AE%B9-Win10"><span class="toc-number">1.5.1.</span> <span class="toc-text">4.1 Realtek 能兼容 Win10</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-%E5%B7%AE%E5%BC%82%E5%88%86%E6%9E%90"><span class="toc-number">1.5.2.</span> <span class="toc-text">4.2 差异分析</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-%E6%8E%A8%E8%AE%BA"><span class="toc-number">1.5.3.</span> <span class="toc-text">4.3 推论</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-%E7%BB%99%E5%BE%AE%E8%BD%AF%E7%9A%84%E6%8A%80%E6%9C%AF%E6%8A%A5%E5%91%8A%E8%A6%81%E7%82%B9"><span class="toc-number">1.6.</span> <span class="toc-text">5. 给微软的技术报告要点</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E9%97%AE%E9%A2%98%E5%AE%9A%E6%80%A7"><span class="toc-number">1.6.1.</span> <span class="toc-text">5.1 问题定性</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E5%A4%8D%E7%8E%B0%E6%AD%A5%E9%AA%A4"><span class="toc-number">1.6.2.</span> <span class="toc-text">5.2 复现步骤</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-%E9%A2%84%E6%9C%9F%E8%A1%8C%E4%B8%BA-vs-%E5%AE%9E%E9%99%85%E8%A1%8C%E4%B8%BA"><span class="toc-number">1.6.3.</span> <span class="toc-text">5.3 预期行为 vs 实际行为</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-4-%E5%AF%B9%E6%AF%94%E8%AF%81%E6%8D%AE"><span class="toc-number">1.6.4.</span> <span class="toc-text">5.4 对比证据</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-5-%E5%85%B7%E4%BD%93%E8%AF%B7%E6%B1%82"><span class="toc-number">1.6.5.</span> <span class="toc-text">5.5 具体请求</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6-%E5%BB%BA%E8%AE%AE%E6%96%B9%E6%A1%88"><span class="toc-number">1.7.</span> <span class="toc-text">6. 建议方案</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E7%9F%AD%E6%9C%9F%E6%96%B9%E6%A1%88%EF%BC%9AWin10-%E5%AE%89%E8%A3%85%E5%8C%85%E4%BD%BF%E7%94%A8%E4%B8%8D%E5%A3%B0%E6%98%8E-DmaRemappingCompatible-%E7%9A%84-INF"><span class="toc-number">1.7.1.</span> <span class="toc-text">6.1 短期方案：Win10 安装包使用不声明 DmaRemappingCompatible 的 INF</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E9%95%BF%E6%9C%9F%E6%96%B9%E6%A1%88%EF%BC%9A%E7%AD%89%E5%BE%85%E5%BE%AE%E8%BD%AF%E4%BF%AE%E5%A4%8D%E6%88%96%E6%8F%90%E4%BE%9B%E6%96%B9%E6%A1%88"><span class="toc-number">1.7.2.</span> <span class="toc-text">6.2 长期方案：等待微软修复或提供方案</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E6%96%B9%E6%A1%88%E5%AF%B9%E6%AF%94"><span class="toc-number">1.7.3.</span> <span class="toc-text">6.3 方案对比</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%99%84%E5%BD%95-A%EF%BC%9A%E5%BE%AE%E8%BD%AF%E6%96%87%E6%A1%A3%E5%8F%82%E8%80%83"><span class="toc-number">1.8.</span> <span class="toc-text">附录 A：微软文档参考</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Per-driver-opt-in-mechanism-%E5%85%B3%E9%94%AE%E8%A6%81%E6%B1%82"><span class="toc-number">1.8.1.</span> <span class="toc-text">Per-driver opt-in mechanism 关键要求</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%99%84%E5%BD%95-B%EF%BC%9A%E5%AE%9E%E6%B5%8B%E6%97%A5%E5%BF%97%E6%91%98%E8%A6%81"><span class="toc-number">1.9.</span> <span class="toc-text">附录 B：实测日志摘要</span></a></li></ol></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        DMA Remapping 问题综合分析报告
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">cursorhu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2026-03-19T10:00:00.000Z" class="dt-published" itemprop="datePublished">2026-03-19</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fa-solid fa-archive"></i>
+        <a class="category-link" href="/categories/storport/">storport</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/storport/" rel="tag">storport</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <h1 id="DMA-Remapping-问题综合分析报告"><a href="#DMA-Remapping-问题综合分析报告" class="headerlink" title="DMA Remapping 问题综合分析报告"></a>DMA Remapping 问题综合分析报告</h1><p><strong>日期</strong>: 2026-03-17<br><strong>版本</strong>: v1.0<br><strong>面向对象</strong>: LCFC、Microsoft<br><strong>问题概述</strong>: Bayhub SD Card Reader 驱动在 Windows 10 上安装时卡死，INF 声明 <code>DmaRemappingCompatible=1</code> 导致 PnP 阶段无响应</p>
+<hr>
+<h2 id="目录"><a href="#目录" class="headerlink" title="目录"></a>目录</h2><ol>
+<li><a href="#1-%E6%89%A7%E8%A1%8C%E6%91%98%E8%A6%81">执行摘要</a></li>
+<li><a href="#2-%E9%97%AE%E9%A2%98%E8%83%8C%E6%99%AF">问题背景</a></li>
+<li><a href="#3-%E8%AF%81%E6%8D%AE%E9%93%BE%E4%B8%8E%E6%A0%B9%E5%9B%A0%E5%88%86%E6%9E%90">证据链与根因分析</a><ul>
+<li><a href="#31-%E5%AE%89%E8%A3%85%E5%8D%A1%E6%AD%BB%E5%8F%91%E7%94%9F%E5%9C%A8%E9%A9%B1%E5%8A%A8%E5%8A%A0%E8%BD%BD%E4%B9%8B%E5%89%8D">3.1 安装卡死发生在驱动加载之前</a></li>
+<li><a href="#32-%E9%A9%B1%E5%8A%A8%E4%BB%A3%E7%A0%81%E6%94%B9%E5%8A%A8%E5%88%86%E6%9E%90">3.2 驱动代码改动分析</a></li>
+<li><a href="#33-inf-%E5%A3%B0%E6%98%8E%E5%AE%8C%E5%85%A8%E7%AC%A6%E5%90%88%E5%BE%AE%E8%BD%AF%E6%96%87%E6%A1%A3">3.3 INF 声明完全符合微软文档</a></li>
+<li><a href="#34-%E5%AE%9E%E6%B5%8B%E6%95%B0%E6%8D%AE%E6%B1%87%E6%80%BB">3.4 实测数据汇总</a></li>
+<li><a href="#35-%E6%A0%B9%E5%9B%A0%E6%8E%A8%E6%96%ADstorport-%E6%A1%86%E6%9E%B6%E5%9C%A8-win10-%E4%B8%8A%E7%9A%84%E5%AE%89%E8%A3%85%E6%97%B6%E9%98%BB%E5%A1%9E">3.5 根因推断：Storport 框架在 Win10 上的安装时阻塞</a></li>
+</ul>
+</li>
+<li><a href="#4-%E4%B8%8E%E7%AB%9E%E5%93%81-realtek-%E7%9A%84%E5%AF%B9%E6%AF%94%E5%88%86%E6%9E%90">与竞品 Realtek 的对比分析</a></li>
+<li><a href="#5-%E7%BB%99%E5%BE%AE%E8%BD%AF%E7%9A%84%E6%8A%80%E6%9C%AF%E6%8A%A5%E5%91%8A%E8%A6%81%E7%82%B9">给微软的技术报告要点</a></li>
+<li><a href="#6-%E5%BB%BA%E8%AE%AE%E6%96%B9%E6%A1%88">建议方案</a></li>
+</ol>
+<hr>
+<h2 id="1-执行摘要"><a href="#1-执行摘要" class="headerlink" title="1. 执行摘要"></a>1. 执行摘要</h2><h3 id="核心结论"><a href="#核心结论" class="headerlink" title="核心结论"></a>核心结论</h3><p><strong>Bayhub 驱动在 Windows 10 上安装卡死的根因不在驱动代码，也不在 INF 写法，而是 Windows 10 Storport 框架在安装&#x2F;PnP 阶段处理 <code>DmaRemappingCompatible</code> 声明时存在同步阻塞行为。</strong></p>
+<h3 id="关键发现"><a href="#关键发现" class="headerlink" title="关键发现"></a>关键发现</h3><table>
+<thead>
+<tr>
+<th>发现项</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>驱动代码无责</strong></td>
+<td>卡死发生在 <code>pnputil</code> 执行期间，此时 <code>bhtsddr.sys</code> 根本未被加载，驱动代码完全不会执行</td>
+</tr>
+<tr>
+<td><strong>INF 写法正确</strong></td>
+<td>Bayhub 的 INF 完全符合微软 “Per-driver opt-in mechanism” 文档要求</td>
+</tr>
+<tr>
+<td><strong>Storport 框架问题</strong></td>
+<td>Win10 对 Storport miniport + <code>DmaRemappingCompatible=1</code> 的组合，在安装阶段存在阻塞</td>
+</tr>
+<tr>
+<td><strong>Win11 无此问题</strong></td>
+<td>同样的驱动和 INF 在 Windows 11 上安装和运行均正常</td>
+</tr>
+<tr>
+<td><strong>竞品 WDF 无此问题</strong></td>
+<td>Realtek 使用相同的 INF 声明模式，因其是 WDF 驱动而非 Storport miniport，Win10 安装正常</td>
+</tr>
+</tbody></table>
+<h3 id="结论"><a href="#结论" class="headerlink" title="结论"></a>结论</h3><p>这不是 Bayhub 驱动代码的 bug，而是 <strong>Windows 10 Storport 框架在安装阶段对声明 DMA remapping 兼容的 miniport 驱动的处理逻辑存在缺陷</strong>。</p>
+<hr>
+<h2 id="2-问题背景"><a href="#2-问题背景" class="headerlink" title="2. 问题背景"></a>2. 问题背景</h2><h3 id="2-1-现象描述"><a href="#2-1-现象描述" class="headerlink" title="2.1 现象描述"></a>2.1 现象描述</h3><p>在 Windows 10（启用 Kernel DMA Protection）系统上，使用 Bayhub SD Card Reader 驱动安装时：</p>
+<ol>
+<li>执行 <code>pnputil -add-driver bhtsddr.inf</code> 后进程无响应</li>
+<li>安装程序卡住不动</li>
+<li>必须强制重启或使用系统恢复选项</li>
+<li>重启后系统可能需要进入诊断模式</li>
+</ol>
+<h3 id="2-2-涉及的系统配置"><a href="#2-2-涉及的系统配置" class="headerlink" title="2.2 涉及的系统配置"></a>2.2 涉及的系统配置</h3><ul>
+<li><strong>操作系统</strong>: Windows 10（所有版本测试均出现）</li>
+<li><strong>关键特性</strong>: Kernel DMA Protection 已启用（Device Guard&#x2F;Credential Guard 相关）</li>
+<li><strong>硬件</strong>: 配备 IOMMU（VT-d）的 Intel&#x2F;AMD 平台</li>
+<li><strong>驱动类型</strong>: Storport miniport</li>
+</ul>
+<h3 id="2-3-问题触发条件"><a href="#2-3-问题触发条件" class="headerlink" title="2.3 问题触发条件"></a>2.3 问题触发条件</h3><p>只要 INF 中声明 <code>DmaRemappingCompatible</code> 为非零值，安装即会卡死：</p>
+<table>
+<thead>
+<tr>
+<th>DmaRemappingCompatible 值</th>
+<th>Win10 安装结果</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>不声明（无此键）</td>
+<td>✅ 能安装（但设备会被策略拦成黄叹号）</td>
+</tr>
+<tr>
+<td>&#x3D; 0</td>
+<td>✅ 能安装（但设备会被策略拦成黄叹号）</td>
+</tr>
+<tr>
+<td>&#x3D; 1</td>
+<td>❌ 安装卡死</td>
+</tr>
+<tr>
+<td>&#x3D; 2</td>
+<td>❌ 安装卡死</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="3-证据链与根因分析"><a href="#3-证据链与根因分析" class="headerlink" title="3. 证据链与根因分析"></a>3. 证据链与根因分析</h2><h3 id="3-1-安装卡死发生在驱动加载之前"><a href="#3-1-安装卡死发生在驱动加载之前" class="headerlink" title="3.1 安装卡死发生在驱动加载之前"></a>3.1 安装卡死发生在驱动加载之前</h3><h4 id="时序分析"><a href="#时序分析" class="headerlink" title="时序分析"></a>时序分析</h4><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">pnputil -add-driver bhtsddr.inf</span><br><span class="line">         │</span><br><span class="line">         ├─ INF 解析（将 DmaRemappingCompatible=1 写入注册表）</span><br><span class="line">         ├─ PnP 枚举（设备发现）</span><br><span class="line">         ├─ AddService（注册服务，驱动 .sys 尚未加载！）</span><br><span class="line">         └─ ??? → Windows Storport 框架处理 DMA remapping 策略 → 卡死</span><br><span class="line">                                              ↑</span><br><span class="line">                                         驱动 .sys 此时尚未被调用！</span><br></pre></td></tr></table></figure>
+
+<p><strong>关键点</strong>：卡死发生在 <code>pnputil</code> 执行期间，此时 <code>bhtsddr.sys</code> 根本没有被 Load 服务或 Start 驱动。驱动代码（包括所有 DMAR 改动）在此阶段<strong>完全不会被执行</strong>。</p>
+<h4 id="结论-1"><a href="#结论-1" class="headerlink" title="结论"></a>结论</h4><p>无论 Bayhub 驱动代码做任何改动（添加、删除、修改），只要 INF 声明了 <code>DmaRemappingCompatible=1</code>，Win10 安装就会卡死。<strong>这证明问题与驱动代码无关。</strong></p>
+<hr>
+<h3 id="3-2-驱动代码改动分析"><a href="#3-2-驱动代码改动分析" class="headerlink" title="3.2 驱动代码改动分析"></a>3.2 驱动代码改动分析</h3><p>Bayhub 驱动在 DMAR 相关的主要改动如下：</p>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>DMAR 相关改动</th>
+<th>触发时机</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>tqsdma.c</code></td>
+<td>SDMA 模式下检测 IOMMU &#x2F; IOVA 直接路径 &#x2F; PIO fallback</td>
+<td><strong>驱动运行时</strong>，IO 请求处理中</td>
+</tr>
+<tr>
+<td><code>tqadma2.c</code></td>
+<td>ADMA2 DMA 描述符通过 <code>StorPortAllocateDmaMemory</code> 分配</td>
+<td><strong>驱动运行时</strong>，IO 请求处理中</td>
+</tr>
+<tr>
+<td><code>tagqueue.c</code></td>
+<td>DMA 描述符分配改用 <code>StorPortAllocateDmaMemory</code></td>
+<td><strong>驱动运行时</strong>，IO 请求处理中</td>
+</tr>
+<tr>
+<td><code>reqmng.c</code></td>
+<td>请求管理中检测 IOMMU 决定 SDMA&#x2F;PIO</td>
+<td><strong>驱动运行时</strong>，IO 请求处理中</td>
+</tr>
+<tr>
+<td><code>host.c</code></td>
+<td>ADMA2 强制模式 &#x2F; DMAR 兼容性注释</td>
+<td><strong>驱动运行时</strong>，IO 请求处理中</td>
+</tr>
+<tr>
+<td><code>cardcommon.c</code></td>
+<td>PIO 模式下跳过 DMA 上下文构建</td>
+<td><strong>驱动运行时</strong>，IO 请求处理中</td>
+</tr>
+</tbody></table>
+<p><strong>无一涉及安装阶段</strong>。所有代码改动都是在 <code>DriverEntry</code> → <code>HwInit</code> → I&#x2F;O 请求处理时才执行。</p>
+<hr>
+<h3 id="3-3-INF-声明完全符合微软文档"><a href="#3-3-INF-声明完全符合微软文档" class="headerlink" title="3.3 INF 声明完全符合微软文档"></a>3.3 INF 声明完全符合微软文档</h3><h4 id="微软文档要求（Per-driver-opt-in-mechanism）"><a href="#微软文档要求（Per-driver-opt-in-mechanism）" class="headerlink" title="微软文档要求（Per-driver opt-in mechanism）"></a>微软文档要求（Per-driver opt-in mechanism）</h4><p>根据微软文档 <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/pci/enabling-dma-remapping-for-device-drivers">Enabling DMA Remapping for Device Drivers</a>：</p>
+<blockquote>
+<p>“Add an INF directive such as the following to the <strong>service installation section</strong>“</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">[MyServiceInstall_AddReg]</span><br><span class="line">HKR,Parameters,DmaRemappingCompatible,0x00010001,1</span><br></pre></td></tr></table></figure></blockquote>
+<h4 id="Bayhub-INF-结构"><a href="#Bayhub-INF-结构" class="headerlink" title="Bayhub INF 结构"></a>Bayhub INF 结构</h4><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">[DriverInstallx64.NT.Services]</span><br><span class="line">AddService = bhtsddr, 0x00000002, DriverServicex64;, EventLogService</span><br><span class="line">                    ↓</span><br><span class="line">[DriverServicex64]                    ← 这就是 &quot;service installation section&quot;</span><br><span class="line">ServiceType    = 1</span><br><span class="line">...</span><br><span class="line">AddReg         = DmaRemappingCompatible_AddReg</span><br><span class="line">                    ↓</span><br><span class="line">[DmaRemappingCompatible_AddReg]</span><br><span class="line">HKR,Parameters,DmaRemappingCompatible,0x00010001,1</span><br></pre></td></tr></table></figure>
+
+<h4 id="逐项合规检查"><a href="#逐项合规检查" class="headerlink" title="逐项合规检查"></a>逐项合规检查</h4><table>
+<thead>
+<tr>
+<th>文档要求</th>
+<th>Bayhub INF</th>
+<th>是否符合</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>位置</strong>: directive 在 service installation section</td>
+<td><code>AddService</code> → <code>[DriverServicex64]</code>（服务安装节）内 <code>AddReg</code></td>
+<td>✅</td>
+</tr>
+<tr>
+<td><strong>HKR</strong>: 服务根路径</td>
+<td><code>HKLM\SYSTEM\CurrentControlSet\Services\bhtsddr</code></td>
+<td>✅</td>
+</tr>
+<tr>
+<td><strong>注册表路径</strong>: <code>Services\&lt;driver&gt;\Parameters\DmaRemappingCompatible</code></td>
+<td><code>...\Services\bhtsddr\Parameters\DmaRemappingCompatible</code></td>
+<td>✅</td>
+</tr>
+<tr>
+<td><strong>取值</strong>: 0&#x2F;1&#x2F;2&#x2F;3</td>
+<td>使用 1 或 2，均为文档允许值</td>
+<td>✅</td>
+</tr>
+<tr>
+<td><strong>适用版本</strong>: up to Windows 11 23H2</td>
+<td>Bayhub 仅使用 per-driver，未使用 per-device RemappingSupported</td>
+<td>✅</td>
+</tr>
+</tbody></table>
+<h4 id="结论-2"><a href="#结论-2" class="headerlink" title="结论"></a>结论</h4><p>Bayhub 的 INF 声明<strong>完全符合</strong>微软文档要求。”上游”（INF 写法）没有问题。</p>
+<hr>
+<h3 id="3-4-实测数据汇总"><a href="#3-4-实测数据汇总" class="headerlink" title="3.4 实测数据汇总"></a>3.4 实测数据汇总</h3><table>
+<thead>
+<tr>
+<th>系统</th>
+<th>INF 设置</th>
+<th>结果</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Win10</td>
+<td>无 DMA remapping 声明</td>
+<td>✅ 能安装</td>
+<td>设备被策略拦成黄叹号</td>
+</tr>
+<tr>
+<td>Win10</td>
+<td>DmaRemappingCompatible &#x3D; <strong>1</strong></td>
+<td>❌ 不能安装</td>
+<td>PnP 卡住，需恢复系统</td>
+</tr>
+<tr>
+<td>Win10</td>
+<td>DmaRemappingCompatible &#x3D; <strong>2</strong></td>
+<td>❌ 不能安装</td>
+<td>PnP 卡住，需恢复系统</td>
+</tr>
+<tr>
+<td>Win10</td>
+<td>DmaRemappingCompatible &#x3D; <strong>0</strong></td>
+<td>✅ 能安装</td>
+<td>设备被策略拦成黄叹号</td>
+</tr>
+<tr>
+<td>Win11</td>
+<td>DmaRemappingCompatible &#x3D; <strong>1</strong></td>
+<td>✅ OK</td>
+<td>安装与运行均正常</td>
+</tr>
+<tr>
+<td>Win11</td>
+<td>DmaRemappingCompatible &#x3D; <strong>2</strong></td>
+<td>✅ OK</td>
+<td>安装与运行均正常</td>
+</tr>
+</tbody></table>
+<p><strong>关键观察</strong>：</p>
+<ul>
+<li>值 2 也卡死 → 说明不是”值 1 太激进”的问题</li>
+<li>Win10 和 Win11 行为不同 → 说明是 OS&#x2F;框架差异，不是驱动问题</li>
+<li>不声明或声明 &#x3D;0 能安装 → 说明安装本身没问题，问题出在”一旦声明兼容就卡死”</li>
+</ul>
+<hr>
+<h3 id="3-5-根因推断：Storport-框架在-Win10-上的安装时阻塞"><a href="#3-5-根因推断：Storport-框架在-Win10-上的安装时阻塞" class="headerlink" title="3.5 根因推断：Storport 框架在 Win10 上的安装时阻塞"></a>3.5 根因推断：Storport 框架在 Win10 上的安装时阻塞</h3><h4 id="触发机制分析"><a href="#触发机制分析" class="headerlink" title="触发机制分析"></a>触发机制分析</h4><p>当 INF 声明 <code>DmaRemappingCompatible</code> 为非零值时：</p>
+<ol>
+<li><strong>PnP 安装时</strong>会检测到该驱动声明支持 DMA remapping</li>
+<li>系统会对该驱动走”DMA remapping 兼容”的安装&#x2F;校验路径</li>
+<li>对 <strong>Storport miniport</strong>，Win10 在此路径中会做：<ul>
+<li>与 Storport 的 DMA remapping 初始化&#x2F;校验交互</li>
+<li>可能与 IOMMU&#x2F;ACPI 表进行同步交互</li>
+</ul>
+</li>
+</ol>
+<h4 id="阻塞假设"><a href="#阻塞假设" class="headerlink" title="阻塞假设"></a>阻塞假设</h4><table>
+<thead>
+<tr>
+<th>假设</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>假设 A</strong></td>
+<td>该路径存在未在 Win10 上充分测试的逻辑（仅针对 Win11 或 Internal 设备）</td>
+</tr>
+<tr>
+<td><strong>假设 B</strong></td>
+<td>存在同步等待但无法完成的场景（例如等待 IOMMU 响应超时）</td>
+</tr>
+<tr>
+<td><strong>假设 C</strong></td>
+<td>存在死锁（与 Storport 调度器或其他 PnP 路径的锁竞争）</td>
+</tr>
+</tbody></table>
+<h4 id="为什么值-2-也卡死"><a href="#为什么值-2-也卡死" class="headerlink" title="为什么值 2 也卡死"></a>为什么值 2 也卡死</h4><p>如果问题是”值 1 太激进”（完全 opt-in），那么值 2（条件 opt-in）应该能避免。但实测显示<strong>值 2 同样卡死</strong>，说明：</p>
+<blockquote>
+<p>不是”声明兼容性程度”的问题，而是<strong>只要声明兼容（非 0），Win10 对 Storport 就会触发会卡住的路径</strong>。</p>
+</blockquote>
+<hr>
+<h2 id="4-与竞品-Realtek-的对比分析"><a href="#4-与竞品-Realtek-的对比分析" class="headerlink" title="4. 与竞品 Realtek 的对比分析"></a>4. 与竞品 Realtek 的对比分析</h2><h3 id="4-1-Realtek-能兼容-Win10"><a href="#4-1-Realtek-能兼容-Win10" class="headerlink" title="4.1 Realtek 能兼容 Win10"></a>4.1 Realtek 能兼容 Win10</h3><table>
+<thead>
+<tr>
+<th>维度</th>
+<th>Bayhub（卡死）</th>
+<th>Realtek（正常）</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>驱动框架</td>
+<td><strong>Storport</strong> miniport</td>
+<td><strong>WDF</strong>（如 MTD）</td>
+</tr>
+<tr>
+<td>DMA 接口</td>
+<td>Storport DMA API</td>
+<td>WDF DMA（框架统一处理）</td>
+</tr>
+<tr>
+<td>INF 声明</td>
+<td>DmaRemappingCompatible&#x3D;1&#x2F;2</td>
+<td>同样 DmaRemappingCompatible&#x3D;1</td>
+</tr>
+<tr>
+<td>Win10 安装</td>
+<td>❌ 卡死</td>
+<td>✅ 正常</td>
+</tr>
+<tr>
+<td>Win11 安装</td>
+<td>✅ 正常</td>
+<td>✅ 正常</td>
+</tr>
+</tbody></table>
+<h3 id="4-2-差异分析"><a href="#4-2-差异分析" class="headerlink" title="4.2 差异分析"></a>4.2 差异分析</h3><ol>
+<li><strong>同一 INF 语义</strong>：Realtek 与 Bayhub 的 INF 结构完全相同，都符合微软文档</li>
+<li><strong>不同点仅在驱动类型</strong>：<ul>
+<li>Realtek：<strong>WDF 驱动</strong> → 安装时触发的 DMA remapping 路径<strong>不阻塞</strong></li>
+<li>Bayhub：<strong>Storport miniport</strong> → 安装时触发的路径<strong>在 Win10 上会阻塞</strong></li>
+</ul>
+</li>
+</ol>
+<h3 id="4-3-推论"><a href="#4-3-推论" class="headerlink" title="4.3 推论"></a>4.3 推论</h3><p>“Realtek 可以兼容 Win10”并不说明 Bayhub 的 INF 有问题，而是说明：</p>
+<blockquote>
+<p><strong>问题出在 Win10 对 Storport + DMA remapping 声明 的安装时处理</strong>，而不是出在”是否声明 compatible”本身。</p>
+</blockquote>
+<p>WDF 框架在安装阶段不会触发同样的同步阻塞，或者触发的是不同的代码路径。</p>
+<hr>
+<h2 id="5-给微软的技术报告要点"><a href="#5-给微软的技术报告要点" class="headerlink" title="5. 给微软的技术报告要点"></a>5. 给微软的技术报告要点</h2><h3 id="5-1-问题定性"><a href="#5-1-问题定性" class="headerlink" title="5.1 问题定性"></a>5.1 问题定性</h3><p><strong>不是</strong>：Bayhub 驱动代码 DMAR 改动导致安装兼容性问题。<br><strong>而是</strong>：Windows Storport 框架在 Win10 上，对声明了 <code>DmaRemappingCompatible=1</code> 的 miniport 驱动，在安装&#x2F;PnP 阶段存在阻塞行为。</p>
+<h3 id="5-2-复现步骤"><a href="#5-2-复现步骤" class="headerlink" title="5.2 复现步骤"></a>5.2 复现步骤</h3><ol>
+<li>在 Windows 10（启用 Kernel DMA Protection&#x2F;IOMMU）上</li>
+<li>使用声明了 <code>DmaRemappingCompatible=1</code> 的 INF 安装 Storport miniport 驱动</li>
+<li>执行 <code>pnputil -add-driver &lt;inf&gt;</code></li>
+<li>观察：pnputil 进程无响应，安装无法完成</li>
+</ol>
+<h3 id="5-3-预期行为-vs-实际行为"><a href="#5-3-预期行为-vs-实际行为" class="headerlink" title="5.3 预期行为 vs 实际行为"></a>5.3 预期行为 vs 实际行为</h3><table>
+<thead>
+<tr>
+<th>项目</th>
+<th>预期</th>
+<th>实际</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>安装结果</td>
+<td>安装成功，设备正常枚举</td>
+<td>pnputil 卡住不动，机器需重启&#x2F;恢复</td>
+</tr>
+<tr>
+<td>INF 符合性</td>
+<td>完全符合 per-driver 文档要求</td>
+<td>✅ 符合</td>
+</tr>
+<tr>
+<td>驱动类型</td>
+<td>无特殊要求</td>
+<td>Storport miniport</td>
+</tr>
+</tbody></table>
+<h3 id="5-4-对比证据"><a href="#5-4-对比证据" class="headerlink" title="5.4 对比证据"></a>5.4 对比证据</h3><ul>
+<li>竞品 <strong>WDF 驱动</strong>以相同 INF 声明在 Win10 上可正常安装</li>
+<li>相同驱动和 INF 在 <strong>Windows 11</strong> 上可正常安装和运行</li>
+<li>说明问题不在 INF，在于 <strong>Storport 框架 + Win10</strong> 的组合</li>
+</ul>
+<h3 id="5-5-具体请求"><a href="#5-5-具体请求" class="headerlink" title="5.5 具体请求"></a>5.5 具体请求</h3><ol>
+<li>确认 Win10 上 Storport 框架在安装阶段对声明了 <code>DmaRemappingCompatible</code> 的 miniport 的处理逻辑</li>
+<li>确认是否存在已知的同步阻塞或计划修复</li>
+<li>如无修复计划，提供针对 Storport miniport 在 Win10 上的安装时规避方法</li>
+</ol>
+<hr>
+<h2 id="6-建议方案"><a href="#6-建议方案" class="headerlink" title="6. 建议方案"></a>6. 建议方案</h2><h3 id="6-1-短期方案：Win10-安装包使用不声明-DmaRemappingCompatible-的-INF"><a href="#6-1-短期方案：Win10-安装包使用不声明-DmaRemappingCompatible-的-INF" class="headerlink" title="6.1 短期方案：Win10 安装包使用不声明 DmaRemappingCompatible 的 INF"></a>6.1 短期方案：Win10 安装包使用不声明 DmaRemappingCompatible 的 INF</h3><p><strong>做法</strong>：</p>
+<ul>
+<li>Win10 安装包使用 <code>DmaRemappingCompatible</code> 不存在或等于 0 的 INF</li>
+<li>安装可正常完成</li>
+<li>设备会因 Kernel DMA Protection 被策略拦成黄叹号（block all）</li>
+</ul>
+<p><strong>优点</strong>：</p>
+<ul>
+<li>安装可完成，用户不会遇到卡死</li>
+<li>与微软的报告并行进行</li>
+</ul>
+<p><strong>缺点</strong>：</p>
+<ul>
+<li>Win10 上设备功能受限</li>
+<li>需要维护两份 INF 或通过条件安装逻辑区分</li>
+</ul>
+<h3 id="6-2-长期方案：等待微软修复或提供方案"><a href="#6-2-长期方案：等待微软修复或提供方案" class="headerlink" title="6.2 长期方案：等待微软修复或提供方案"></a>6.2 长期方案：等待微软修复或提供方案</h3><ul>
+<li>向微软报告 Storport 框架问题</li>
+<li>等待微软确认根因并提供修复或官方说明</li>
+</ul>
+<h3 id="6-3-方案对比"><a href="#6-3-方案对比" class="headerlink" title="6.3 方案对比"></a>6.3 方案对比</h3><table>
+<thead>
+<tr>
+<th>方案</th>
+<th>工作量</th>
+<th>风险</th>
+<th>价值</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>A. 继续调试驱动代码</td>
+<td>高（驱动庞大，无关路径）</td>
+<td>低（但无意义）</td>
+<td>低（结论早已确定）</td>
+</tr>
+<tr>
+<td>B. 回滚 DMAR 改动后测试</td>
+<td>中</td>
+<td>中</td>
+<td>低（只能排除驱动代码，无法定位根因）</td>
+</tr>
+<tr>
+<td><strong>C. Win10 使用不声明 compatible 的 INF</strong></td>
+<td><strong>低</strong></td>
+<td><strong>低</strong></td>
+<td><strong>中（解决眼前问题）</strong></td>
+</tr>
+<tr>
+<td><strong>D. 向微软报告 Storport 框架问题</strong></td>
+<td><strong>低</strong></td>
+<td><strong>低</strong></td>
+<td><strong>高（可能推动 OS 修复）</strong></td>
+</tr>
+</tbody></table>
+<p><strong>推荐</strong>：方案 C（短期折中）+ 方案 D（向微软报告框架问题）</p>
+<hr>
+<h2 id="附录-A：微软文档参考"><a href="#附录-A：微软文档参考" class="headerlink" title="附录 A：微软文档参考"></a>附录 A：微软文档参考</h2><p><strong>文档</strong>: <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/pci/enabling-dma-remapping-for-device-drivers">Enabling DMA Remapping for Device Drivers</a></p>
+<h3 id="Per-driver-opt-in-mechanism-关键要求"><a href="#Per-driver-opt-in-mechanism-关键要求" class="headerlink" title="Per-driver opt-in mechanism 关键要求"></a>Per-driver opt-in mechanism 关键要求</h3><ol>
+<li><strong>位置</strong>: 在 service installation section 中添加 AddReg 指令</li>
+<li><strong>注册表路径</strong>: <code>HKLM\SYSTEM\CurrentControlSet\Services\&lt;driver name&gt;\Parameters\DmaRemappingCompatible</code></li>
+<li><strong>取值说明</strong>:<ul>
+<li>0: 不兼容（默认）</li>
+<li>1: 完全兼容（opt-in）</li>
+<li>2: 仅在设备为外部设备或 Driver Verifier 启用时兼容</li>
+<li>3: 保留</li>
+</ul>
+</li>
+<li><strong>适用版本</strong>: Windows versions up to Windows 11 23H2</li>
+<li><strong>24H2+ 行为</strong>: per-device <code>RemappingSupported</code> 会覆盖 per-driver <code>DmaRemappingCompatible</code>；若未设置 per-device，则 per-driver 键仍有效</li>
+</ol>
+<hr>
+<h2 id="附录-B：实测日志摘要"><a href="#附录-B：实测日志摘要" class="headerlink" title="附录 B：实测日志摘要"></a>附录 B：实测日志摘要</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">[Win10 + DmaRemappingCompatible=1]</span><br><span class="line">pnputil -add-driver bhtsddr.inf</span><br><span class="line">-&gt; 进程无响应</span><br><span class="line">-&gt; 等待 5 分钟后手动重启</span><br><span class="line">-&gt; 系统进入恢复/诊断模式</span><br><span class="line"></span><br><span class="line">[Win10 + DmaRemappingCompatible 不存在]</span><br><span class="line">pnputil -add-driver bhtsddr.inf</span><br><span class="line">-&gt; 安装成功</span><br><span class="line">-&gt; 设备管理器显示黄叹号，状态: &quot;device blocked by policy&quot;</span><br><span class="line"></span><br><span class="line">[Win11 + DmaRemappingCompatible=1]</span><br><span class="line">pnputil -add-driver bhtsddr.inf</span><br><span class="line">-&gt; 安装成功</span><br><span class="line">-&gt; 设备正常工作</span><br></pre></td></tr></table></figure>
+
+<hr>
+<p><strong>文档生成</strong>: 2026-03-17<br><strong>编写单位</strong>: Bayhub Technology<br><strong>文档版本</strong>: v1.0</p>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">首页</a></li>
+        
+          <li><a href="/about/">关于</a></li>
+        
+          <li><a href="/archives/">归档</a></li>
+        
+          <li><a href="/tags/">标签</a></li>
+        
+          <li><a href="/categories/">分类</a></li>
+        
+          <li><a href="/search/">搜索</a></li>
+        
+          <li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#DMA-Remapping-%E9%97%AE%E9%A2%98%E7%BB%BC%E5%90%88%E5%88%86%E6%9E%90%E6%8A%A5%E5%91%8A"><span class="toc-number">1.</span> <span class="toc-text">DMA Remapping 问题综合分析报告</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%9B%AE%E5%BD%95"><span class="toc-number">1.1.</span> <span class="toc-text">目录</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E6%89%A7%E8%A1%8C%E6%91%98%E8%A6%81"><span class="toc-number">1.2.</span> <span class="toc-text">1. 执行摘要</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%A0%B8%E5%BF%83%E7%BB%93%E8%AE%BA"><span class="toc-number">1.2.1.</span> <span class="toc-text">核心结论</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%B3%E9%94%AE%E5%8F%91%E7%8E%B0"><span class="toc-number">1.2.2.</span> <span class="toc-text">关键发现</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BB%93%E8%AE%BA"><span class="toc-number">1.2.3.</span> <span class="toc-text">结论</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-%E9%97%AE%E9%A2%98%E8%83%8C%E6%99%AF"><span class="toc-number">1.3.</span> <span class="toc-text">2. 问题背景</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E7%8E%B0%E8%B1%A1%E6%8F%8F%E8%BF%B0"><span class="toc-number">1.3.1.</span> <span class="toc-text">2.1 现象描述</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-%E6%B6%89%E5%8F%8A%E7%9A%84%E7%B3%BB%E7%BB%9F%E9%85%8D%E7%BD%AE"><span class="toc-number">1.3.2.</span> <span class="toc-text">2.2 涉及的系统配置</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-%E9%97%AE%E9%A2%98%E8%A7%A6%E5%8F%91%E6%9D%A1%E4%BB%B6"><span class="toc-number">1.3.3.</span> <span class="toc-text">2.3 问题触发条件</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-%E8%AF%81%E6%8D%AE%E9%93%BE%E4%B8%8E%E6%A0%B9%E5%9B%A0%E5%88%86%E6%9E%90"><span class="toc-number">1.4.</span> <span class="toc-text">3. 证据链与根因分析</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E5%AE%89%E8%A3%85%E5%8D%A1%E6%AD%BB%E5%8F%91%E7%94%9F%E5%9C%A8%E9%A9%B1%E5%8A%A8%E5%8A%A0%E8%BD%BD%E4%B9%8B%E5%89%8D"><span class="toc-number">1.4.1.</span> <span class="toc-text">3.1 安装卡死发生在驱动加载之前</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%97%B6%E5%BA%8F%E5%88%86%E6%9E%90"><span class="toc-number">1.4.1.1.</span> <span class="toc-text">时序分析</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%BB%93%E8%AE%BA-1"><span class="toc-number">1.4.1.2.</span> <span class="toc-text">结论</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E9%A9%B1%E5%8A%A8%E4%BB%A3%E7%A0%81%E6%94%B9%E5%8A%A8%E5%88%86%E6%9E%90"><span class="toc-number">1.4.2.</span> <span class="toc-text">3.2 驱动代码改动分析</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-INF-%E5%A3%B0%E6%98%8E%E5%AE%8C%E5%85%A8%E7%AC%A6%E5%90%88%E5%BE%AE%E8%BD%AF%E6%96%87%E6%A1%A3"><span class="toc-number">1.4.3.</span> <span class="toc-text">3.3 INF 声明完全符合微软文档</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%BE%AE%E8%BD%AF%E6%96%87%E6%A1%A3%E8%A6%81%E6%B1%82%EF%BC%88Per-driver-opt-in-mechanism%EF%BC%89"><span class="toc-number">1.4.3.1.</span> <span class="toc-text">微软文档要求（Per-driver opt-in mechanism）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Bayhub-INF-%E7%BB%93%E6%9E%84"><span class="toc-number">1.4.3.2.</span> <span class="toc-text">Bayhub INF 结构</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E9%80%90%E9%A1%B9%E5%90%88%E8%A7%84%E6%A3%80%E6%9F%A5"><span class="toc-number">1.4.3.3.</span> <span class="toc-text">逐项合规检查</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%BB%93%E8%AE%BA-2"><span class="toc-number">1.4.3.4.</span> <span class="toc-text">结论</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-4-%E5%AE%9E%E6%B5%8B%E6%95%B0%E6%8D%AE%E6%B1%87%E6%80%BB"><span class="toc-number">1.4.4.</span> <span class="toc-text">3.4 实测数据汇总</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-5-%E6%A0%B9%E5%9B%A0%E6%8E%A8%E6%96%AD%EF%BC%9AStorport-%E6%A1%86%E6%9E%B6%E5%9C%A8-Win10-%E4%B8%8A%E7%9A%84%E5%AE%89%E8%A3%85%E6%97%B6%E9%98%BB%E5%A1%9E"><span class="toc-number">1.4.5.</span> <span class="toc-text">3.5 根因推断：Storport 框架在 Win10 上的安装时阻塞</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E8%A7%A6%E5%8F%91%E6%9C%BA%E5%88%B6%E5%88%86%E6%9E%90"><span class="toc-number">1.4.5.1.</span> <span class="toc-text">触发机制分析</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E9%98%BB%E5%A1%9E%E5%81%87%E8%AE%BE"><span class="toc-number">1.4.5.2.</span> <span class="toc-text">阻塞假设</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E5%80%BC-2-%E4%B9%9F%E5%8D%A1%E6%AD%BB"><span class="toc-number">1.4.5.3.</span> <span class="toc-text">为什么值 2 也卡死</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-%E4%B8%8E%E7%AB%9E%E5%93%81-Realtek-%E7%9A%84%E5%AF%B9%E6%AF%94%E5%88%86%E6%9E%90"><span class="toc-number">1.5.</span> <span class="toc-text">4. 与竞品 Realtek 的对比分析</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-Realtek-%E8%83%BD%E5%85%BC%E5%AE%B9-Win10"><span class="toc-number">1.5.1.</span> <span class="toc-text">4.1 Realtek 能兼容 Win10</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-%E5%B7%AE%E5%BC%82%E5%88%86%E6%9E%90"><span class="toc-number">1.5.2.</span> <span class="toc-text">4.2 差异分析</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-%E6%8E%A8%E8%AE%BA"><span class="toc-number">1.5.3.</span> <span class="toc-text">4.3 推论</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-%E7%BB%99%E5%BE%AE%E8%BD%AF%E7%9A%84%E6%8A%80%E6%9C%AF%E6%8A%A5%E5%91%8A%E8%A6%81%E7%82%B9"><span class="toc-number">1.6.</span> <span class="toc-text">5. 给微软的技术报告要点</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E9%97%AE%E9%A2%98%E5%AE%9A%E6%80%A7"><span class="toc-number">1.6.1.</span> <span class="toc-text">5.1 问题定性</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E5%A4%8D%E7%8E%B0%E6%AD%A5%E9%AA%A4"><span class="toc-number">1.6.2.</span> <span class="toc-text">5.2 复现步骤</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-%E9%A2%84%E6%9C%9F%E8%A1%8C%E4%B8%BA-vs-%E5%AE%9E%E9%99%85%E8%A1%8C%E4%B8%BA"><span class="toc-number">1.6.3.</span> <span class="toc-text">5.3 预期行为 vs 实际行为</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-4-%E5%AF%B9%E6%AF%94%E8%AF%81%E6%8D%AE"><span class="toc-number">1.6.4.</span> <span class="toc-text">5.4 对比证据</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-5-%E5%85%B7%E4%BD%93%E8%AF%B7%E6%B1%82"><span class="toc-number">1.6.5.</span> <span class="toc-text">5.5 具体请求</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6-%E5%BB%BA%E8%AE%AE%E6%96%B9%E6%A1%88"><span class="toc-number">1.7.</span> <span class="toc-text">6. 建议方案</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E7%9F%AD%E6%9C%9F%E6%96%B9%E6%A1%88%EF%BC%9AWin10-%E5%AE%89%E8%A3%85%E5%8C%85%E4%BD%BF%E7%94%A8%E4%B8%8D%E5%A3%B0%E6%98%8E-DmaRemappingCompatible-%E7%9A%84-INF"><span class="toc-number">1.7.1.</span> <span class="toc-text">6.1 短期方案：Win10 安装包使用不声明 DmaRemappingCompatible 的 INF</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E9%95%BF%E6%9C%9F%E6%96%B9%E6%A1%88%EF%BC%9A%E7%AD%89%E5%BE%85%E5%BE%AE%E8%BD%AF%E4%BF%AE%E5%A4%8D%E6%88%96%E6%8F%90%E4%BE%9B%E6%96%B9%E6%A1%88"><span class="toc-number">1.7.2.</span> <span class="toc-text">6.2 长期方案：等待微软修复或提供方案</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E6%96%B9%E6%A1%88%E5%AF%B9%E6%AF%94"><span class="toc-number">1.7.3.</span> <span class="toc-text">6.3 方案对比</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%99%84%E5%BD%95-A%EF%BC%9A%E5%BE%AE%E8%BD%AF%E6%96%87%E6%A1%A3%E5%8F%82%E8%80%83"><span class="toc-number">1.8.</span> <span class="toc-text">附录 A：微软文档参考</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Per-driver-opt-in-mechanism-%E5%85%B3%E9%94%AE%E8%A6%81%E6%B1%82"><span class="toc-number">1.8.1.</span> <span class="toc-text">Per-driver opt-in mechanism 关键要求</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%99%84%E5%BD%95-B%EF%BC%9A%E5%AE%9E%E6%B5%8B%E6%97%A5%E5%BF%97%E6%91%98%E8%A6%81"><span class="toc-number">1.9.</span> <span class="toc-text">附录 B：实测日志摘要</span></a></li></ol></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/03/19/20260319_DMA_Remapping_%E7%BB%BC%E5%90%88%E5%88%86%E6%9E%90%E6%8A%A5%E5%91%8A/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/03/19/20260319_DMA_Remapping_%E7%BB%BC%E5%90%88%E5%88%86%E6%9E%90%E6%8A%A5%E5%91%8A/&text=DMA Remapping 问题综合分析报告"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/03/19/20260319_DMA_Remapping_%E7%BB%BC%E5%90%88%E5%88%86%E6%9E%90%E6%8A%A5%E5%91%8A/&title=DMA Remapping 问题综合分析报告"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/03/19/20260319_DMA_Remapping_%E7%BB%BC%E5%90%88%E5%88%86%E6%9E%90%E6%8A%A5%E5%91%8A/&is_video=false&description=DMA Remapping 问题综合分析报告"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=DMA Remapping 问题综合分析报告&body=Check out this article: https://cursorhu.github.io/2026/03/19/20260319_DMA_Remapping_%E7%BB%BC%E5%90%88%E5%88%86%E6%9E%90%E6%8A%A5%E5%91%8A/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/03/19/20260319_DMA_Remapping_%E7%BB%BC%E5%90%88%E5%88%86%E6%9E%90%E6%8A%A5%E5%91%8A/&title=DMA Remapping 问题综合分析报告"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/03/19/20260319_DMA_Remapping_%E7%BB%BC%E5%90%88%E5%88%86%E6%9E%90%E6%8A%A5%E5%91%8A/&title=DMA Remapping 问题综合分析报告"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/03/19/20260319_DMA_Remapping_%E7%BB%BC%E5%90%88%E5%88%86%E6%9E%90%E6%8A%A5%E5%91%8A/&title=DMA Remapping 问题综合分析报告"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/03/19/20260319_DMA_Remapping_%E7%BB%BC%E5%90%88%E5%88%86%E6%9E%90%E6%8A%A5%E5%91%8A/&title=DMA Remapping 问题综合分析报告"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/03/19/20260319_DMA_Remapping_%E7%BB%BC%E5%90%88%E5%88%86%E6%9E%90%E6%8A%A5%E5%91%8A/&name=DMA Remapping 问题综合分析报告&description=&lt;h1 id=&#34;DMA-Remapping-问题综合分析报告&#34;&gt;&lt;a href=&#34;#DMA-Remapping-问题综合分析报告&#34; class=&#34;headerlink&#34; title=&#34;DMA Remapping 问题综合分析报告&#34;&gt;&lt;/a&gt;DMA Remapping 问题综合分析报告&lt;/h1&gt;&lt;p&gt;&lt;strong&gt;日期&lt;/strong&gt;: 2026-03-17&lt;br&gt;&lt;strong&gt;版本&lt;/strong&gt;: v1.0&lt;br&gt;&lt;strong&gt;面向对象&lt;/strong&gt;: LCFC、Microsoft&lt;br&gt;&lt;strong&gt;问题概述&lt;/strong&gt;: Bayhub SD Card Reader 驱动在 Windows 10 上安装时卡死，INF 声明 &lt;code&gt;DmaRemappingCompatible=1&lt;/code&gt; 导致 PnP 阶段无响应&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;目录&#34;&gt;&lt;a href=&#34;#目录&#34; class=&#34;headerlink&#34; title=&#34;目录&#34;&gt;&lt;/a&gt;目录&lt;/h2&gt;&lt;ol&gt;
+&lt;li&gt;&lt;a href=&#34;#1-%E6%89%A7%E8%A1%8C%E6%91%98%E8%A6%81&#34;&gt;执行摘要&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;#2-%E9%97%AE%E9%A2%98%E8%83%8C%E6%99%AF&#34;&gt;问题背景&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;#3-%E8%AF%81%E6%8D%AE%E9%93%BE%E4%B8%8E%E6%A0%B9%E5%9B%A0%E5%88%86%E6%9E%90&#34;&gt;证据链与根因分析&lt;/a&gt;&lt;ul&gt;
+&lt;li&gt;&lt;a href=&#34;#31-%E5%AE%89%E8%A3%85%E5%8D%A1%E6%AD%BB%E5%8F%91%E7%94%9F%E5%9C%A8%E9%A9%B1%E5%8A%A8%E5%8A%A0%E8%BD%BD%E4%B9%8B%E5%89%8D&#34;&gt;3.1 安装卡死发生在驱动加载之前&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;#32-%E9%A9%B1%E5%8A%A8%E4%BB%A3%E7%A0%81%E6%94%B9%E5%8A%A8%E5%88%86%E6%9E%90&#34;&gt;3.2 驱动代码改动分析&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;#33-inf-%E5%A3%B0%E6%98%8E%E5%AE%8C%E5%85%A8%E7%AC%A6%E5%90%88%E5%BE%AE%E8%BD%AF%E6%96%87%E6%A1%A3&#34;&gt;3.3 INF 声明完全符合微软文档&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;#34-%E5%AE%9E%E6%B5%8B%E6%95%B0%E6%8D%AE%E6%B1%87%E6%80%BB&#34;&gt;3.4 实测数据汇总&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;#35-%E6%A0%B9%E5%9B%A0%E6%8E%A8%E6%96%ADstorport-%E6%A1%86%E6%9E%B6%E5%9C%A8-win10-%E4%B8%8A%E7%9A%84%E5%AE%89%E8%A3%85%E6%97%B6%E9%98%BB%E5%A1%9E&#34;&gt;3.5 根因推断：Storport 框架在 Win10 上的安装时阻塞&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;#4-%E4%B8%8E%E7%AB%9E%E5%93%81-realtek-%E7%9A%84%E5%AF%B9%E6%AF%94%E5%88%86%E6%9E%90&#34;&gt;与竞品 Realtek 的对比分析&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;#5-%E7%BB%99%E5%BE%AE%E8%BD%AF%E7%9A%84%E6%8A%80%E6%9C%AF%E6%8A%A5%E5%91%8A%E8%A6%81%E7%82%B9&#34;&gt;给微软的技术报告要点&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;#6-%E5%BB%BA%E8%AE%AE%E6%96%B9%E6%A1%88&#34;&gt;建议方案&lt;/a&gt;&lt;/li&gt;
+&lt;/ol&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;1-执行摘要&#34;&gt;&lt;a href=&#34;#1-执行摘要&#34; class=&#34;headerlink&#34; title=&#34;1. 执行摘要&#34;&gt;&lt;/a&gt;1. 执行摘要&lt;/h2&gt;&lt;h3 id=&#34;核心结论&#34;&gt;&lt;a href=&#34;#核心结论&#34; class=&#34;headerlink&#34; title=&#34;核心结论&#34;&gt;&lt;/a&gt;核心结论&lt;/h3&gt;&lt;p&gt;&lt;strong&gt;Bayhub 驱动在 Windows 10 上安装卡死的根因不在驱动代码，也不在 INF 写法，而是 Windows 10 Storport 框架在安装&amp;#x2F;PnP 阶段处理 &lt;code&gt;DmaRemappingCompatible&lt;/code&gt; 声明时存在同步阻塞行为。&lt;/strong&gt;&lt;/p&gt;
+&lt;h3 id=&#34;关键发现&#34;&gt;&lt;a href=&#34;#关键发现&#34; class=&#34;headerlink&#34; title=&#34;关键发现&#34;&gt;&lt;/a&gt;关键发现&lt;/h3&gt;"><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/03/19/20260319_DMA_Remapping_%E7%BB%BC%E5%90%88%E5%88%86%E6%9E%90%E6%8A%A5%E5%91%8A/&t=DMA Remapping 问题综合分析报告"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> 菜单</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> 目录</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> 分享</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> 返回顶部</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2026
+    cursorhu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"复制到粘贴板！\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "复制成功！");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+</body>
+</html>
