@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="Qcom ARM平台Windows驱动（四）：S4 恢复中断失效与软中断解决方案日期: 2026-03-21系列: Qcom ARM平台Windows驱动开发适用: Windows ARM 驱动开发者、BIOS&#x2F;ACPI 工程师  1. 问题概述1.1 现象描述   项目 描述    问题 S4 Resume (从休眠唤醒) 后，SD 卡插入无法被识别   触发条件 系统从 S4 休眠状">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Qcom ARM平台Windows驱动（四）：S4恢复中断失效与软中断解决方案">
+<meta property="og:url" content="https://cursorhu.github.io/2026/03/21/Qcom_ARM%E5%B9%B3%E5%8F%B0%E9%A9%B1%E5%8A%A8_04_S4%E6%81%A2%E5%A4%8D%E4%B8%AD%E6%96%AD%E5%A4%B1%E6%95%88%E4%B8%8E%E8%BD%AF%E4%B8%AD%E6%96%AD%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="Qcom ARM平台Windows驱动（四）：S4 恢复中断失效与软中断解决方案日期: 2026-03-21系列: Qcom ARM平台Windows驱动开发适用: Windows ARM 驱动开发者、BIOS&#x2F;ACPI 工程师  1. 问题概述1.1 现象描述   项目 描述    问题 S4 Resume (从休眠唤醒) 后，SD 卡插入无法被识别   触发条件 系统从 S4 休眠状">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-03-21T10:00:00.000Z">
+<meta property="article:modified_time" content="2026-03-21T16:23:58.580Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="ACPI">
+<meta property="article:tag" content="Qualcomm">
+<meta property="article:tag" content="S4 Resume">
+<meta property="article:tag" content="Windows 驱动">
+<meta property="article:tag" content="软中断">
+<meta name="twitter:card" content="summary">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>Qcom ARM平台Windows驱动（四）：S4恢复中断失效与软中断解决方案</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+<meta name="generator" content="Hexo 8.0.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="顶部" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="上一篇" href="/2026/03/21/Qcom_ARM%E5%B9%B3%E5%8F%B0%E9%A9%B1%E5%8A%A8_03_S4_Hibernate%E5%BC%82%E5%B8%B8%E5%85%B3%E6%9C%BA%E9%97%AE%E9%A2%98%E5%88%86%E6%9E%90%E4%B8%8E%E4%BF%AE%E5%A4%8D/"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="下一篇" href="/2026/03/21/Storport_SD_Controller%E6%9E%B6%E6%9E%84_01_%E6%8E%A5%E5%8F%A3%E4%B8%8E%E5%9B%9E%E8%B0%83%E6%9C%BA%E5%88%B6/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="返回顶部" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="分享文章" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">上一篇</span>
+      <span id="i-next" class="info" style="display:none;">下一篇</span>
+      <span id="i-top" class="info" style="display:none;">返回顶部</span>
+      <span id="i-share" class="info" style="display:none;">分享文章</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/03/21/Qcom_ARM%E5%B9%B3%E5%8F%B0%E9%A9%B1%E5%8A%A8_04_S4%E6%81%A2%E5%A4%8D%E4%B8%AD%E6%96%AD%E5%A4%B1%E6%95%88%E4%B8%8E%E8%BD%AF%E4%B8%AD%E6%96%AD%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/03/21/Qcom_ARM%E5%B9%B3%E5%8F%B0%E9%A9%B1%E5%8A%A8_04_S4%E6%81%A2%E5%A4%8D%E4%B8%AD%E6%96%AD%E5%A4%B1%E6%95%88%E4%B8%8E%E8%BD%AF%E4%B8%AD%E6%96%AD%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88/&text=Qcom ARM平台Windows驱动（四）：S4恢复中断失效与软中断解决方案"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/03/21/Qcom_ARM%E5%B9%B3%E5%8F%B0%E9%A9%B1%E5%8A%A8_04_S4%E6%81%A2%E5%A4%8D%E4%B8%AD%E6%96%AD%E5%A4%B1%E6%95%88%E4%B8%8E%E8%BD%AF%E4%B8%AD%E6%96%AD%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88/&title=Qcom ARM平台Windows驱动（四）：S4恢复中断失效与软中断解决方案"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/03/21/Qcom_ARM%E5%B9%B3%E5%8F%B0%E9%A9%B1%E5%8A%A8_04_S4%E6%81%A2%E5%A4%8D%E4%B8%AD%E6%96%AD%E5%A4%B1%E6%95%88%E4%B8%8E%E8%BD%AF%E4%B8%AD%E6%96%AD%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88/&is_video=false&description=Qcom ARM平台Windows驱动（四）：S4恢复中断失效与软中断解决方案"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=Qcom ARM平台Windows驱动（四）：S4恢复中断失效与软中断解决方案&body=Check out this article: https://cursorhu.github.io/2026/03/21/Qcom_ARM%E5%B9%B3%E5%8F%B0%E9%A9%B1%E5%8A%A8_04_S4%E6%81%A2%E5%A4%8D%E4%B8%AD%E6%96%AD%E5%A4%B1%E6%95%88%E4%B8%8E%E8%BD%AF%E4%B8%AD%E6%96%AD%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/03/21/Qcom_ARM%E5%B9%B3%E5%8F%B0%E9%A9%B1%E5%8A%A8_04_S4%E6%81%A2%E5%A4%8D%E4%B8%AD%E6%96%AD%E5%A4%B1%E6%95%88%E4%B8%8E%E8%BD%AF%E4%B8%AD%E6%96%AD%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88/&title=Qcom ARM平台Windows驱动（四）：S4恢复中断失效与软中断解决方案"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/03/21/Qcom_ARM%E5%B9%B3%E5%8F%B0%E9%A9%B1%E5%8A%A8_04_S4%E6%81%A2%E5%A4%8D%E4%B8%AD%E6%96%AD%E5%A4%B1%E6%95%88%E4%B8%8E%E8%BD%AF%E4%B8%AD%E6%96%AD%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88/&title=Qcom ARM平台Windows驱动（四）：S4恢复中断失效与软中断解决方案"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/03/21/Qcom_ARM%E5%B9%B3%E5%8F%B0%E9%A9%B1%E5%8A%A8_04_S4%E6%81%A2%E5%A4%8D%E4%B8%AD%E6%96%AD%E5%A4%B1%E6%95%88%E4%B8%8E%E8%BD%AF%E4%B8%AD%E6%96%AD%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88/&title=Qcom ARM平台Windows驱动（四）：S4恢复中断失效与软中断解决方案"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/03/21/Qcom_ARM%E5%B9%B3%E5%8F%B0%E9%A9%B1%E5%8A%A8_04_S4%E6%81%A2%E5%A4%8D%E4%B8%AD%E6%96%AD%E5%A4%B1%E6%95%88%E4%B8%8E%E8%BD%AF%E4%B8%AD%E6%96%AD%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88/&title=Qcom ARM平台Windows驱动（四）：S4恢复中断失效与软中断解决方案"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/03/21/Qcom_ARM%E5%B9%B3%E5%8F%B0%E9%A9%B1%E5%8A%A8_04_S4%E6%81%A2%E5%A4%8D%E4%B8%AD%E6%96%AD%E5%A4%B1%E6%95%88%E4%B8%8E%E8%BD%AF%E4%B8%AD%E6%96%AD%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88/&name=Qcom ARM平台Windows驱动（四）：S4恢复中断失效与软中断解决方案&description=&lt;h1 id=&#34;Qcom-ARM平台Windows驱动（四）：S4-恢复中断失效与软中断解决方案&#34;&gt;&lt;a href=&#34;#Qcom-ARM平台Windows驱动（四）：S4-恢复中断失效与软中断解决方案&#34; class=&#34;headerlink&#34; title=&#34;Qcom ARM平台Windows驱动（四）：S4 恢复中断失效与软中断解决方案&#34;&gt;&lt;/a&gt;Qcom ARM平台Windows驱动（四）：S4 恢复中断失效与软中断解决方案&lt;/h1&gt;&lt;p&gt;&lt;strong&gt;日期&lt;/strong&gt;: 2026-03-21&lt;br&gt;&lt;strong&gt;系列&lt;/strong&gt;: Qcom ARM平台Windows驱动开发&lt;br&gt;&lt;strong&gt;适用&lt;/strong&gt;: Windows ARM 驱动开发者、BIOS&amp;#x2F;ACPI 工程师&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;1-问题概述&#34;&gt;&lt;a href=&#34;#1-问题概述&#34; class=&#34;headerlink&#34; title=&#34;1. 问题概述&#34;&gt;&lt;/a&gt;1. 问题概述&lt;/h2&gt;&lt;h3 id=&#34;1-1-现象描述&#34;&gt;&lt;a href=&#34;#1-1-现象描述&#34; class=&#34;headerlink&#34; title=&#34;1.1 现象描述&#34;&gt;&lt;/a&gt;1.1 现象描述&lt;/h3&gt;&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;项目&lt;/th&gt;
+&lt;th&gt;描述&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;问题&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;S4 Resume (从休眠唤醒) 后，SD 卡插入无法被识别&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;触发条件&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;系统从 S4 休眠状态唤醒后立即插入 SD 卡&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;影响&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;卡插入无响应，用户体验严重下降&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;平台&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;Qualcomm Snapdragon (特定 SOC 版本)&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;&lt;/table&gt;
+&lt;h3 id=&#34;1-2-问题背景&#34;&gt;&lt;a href=&#34;#1-2-问题背景&#34; class=&#34;headerlink&#34; title=&#34;1.2 问题背景&#34;&gt;&lt;/a&gt;1.2 问题背景&lt;/h3&gt;&lt;p&gt;在项目紧急导入阶段（无法及时修改 BIOS），发现高通平台在 S4 恢复后存在硬件中断暂时不可用的问题。为了保证产品按时上市，需要一种&lt;strong&gt;软件层面的应急解决方案&lt;/strong&gt;。&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;2-问题分析&#34;&gt;&lt;a href=&#34;#2-问题分析&#34; class=&#34;headerlink&#34; title=&#34;2. 问题分析&#34;&gt;&lt;/a&gt;2. 问题分析&lt;/h2&gt;"><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/03/21/Qcom_ARM%E5%B9%B3%E5%8F%B0%E9%A9%B1%E5%8A%A8_04_S4%E6%81%A2%E5%A4%8D%E4%B8%AD%E6%96%AD%E5%A4%B1%E6%95%88%E4%B8%8E%E8%BD%AF%E4%B8%AD%E6%96%AD%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88/&t=Qcom ARM平台Windows驱动（四）：S4恢复中断失效与软中断解决方案"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Qcom-ARM%E5%B9%B3%E5%8F%B0Windows%E9%A9%B1%E5%8A%A8%EF%BC%88%E5%9B%9B%EF%BC%89%EF%BC%9AS4-%E6%81%A2%E5%A4%8D%E4%B8%AD%E6%96%AD%E5%A4%B1%E6%95%88%E4%B8%8E%E8%BD%AF%E4%B8%AD%E6%96%AD%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88"><span class="toc-number">1.</span> <span class="toc-text">Qcom ARM平台Windows驱动（四）：S4 恢复中断失效与软中断解决方案</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E9%97%AE%E9%A2%98%E6%A6%82%E8%BF%B0"><span class="toc-number">1.1.</span> <span class="toc-text">1. 问题概述</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-%E7%8E%B0%E8%B1%A1%E6%8F%8F%E8%BF%B0"><span class="toc-number">1.1.1.</span> <span class="toc-text">1.1 现象描述</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-2-%E9%97%AE%E9%A2%98%E8%83%8C%E6%99%AF"><span class="toc-number">1.1.2.</span> <span class="toc-text">1.2 问题背景</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-%E9%97%AE%E9%A2%98%E5%88%86%E6%9E%90"><span class="toc-number">1.2.</span> <span class="toc-text">2. 问题分析</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E7%A1%AC%E4%BB%B6%E4%B8%AD%E6%96%AD%E5%A4%B1%E6%95%88%E5%8E%9F%E5%9B%A0"><span class="toc-number">1.2.1.</span> <span class="toc-text">2.1 硬件中断失效原因</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-Qualcomm-SOC-%E7%89%B9%E5%AE%9A%E9%97%AE%E9%A2%98"><span class="toc-number">1.2.2.</span> <span class="toc-text">2.2 Qualcomm SOC 特定问题</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88%E6%A6%82%E8%BF%B0"><span class="toc-number">1.3.</span> <span class="toc-text">3. 解决方案概述</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E8%BD%AF%E4%B8%AD%E6%96%AD%E6%9C%BA%E5%88%B6"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 软中断机制</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E6%96%B9%E6%A1%88%E4%BC%98%E5%8A%BF"><span class="toc-number">1.3.2.</span> <span class="toc-text">3.2 方案优势</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-ACPI-Notify-%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.4.</span> <span class="toc-text">4. ACPI Notify 实现</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-BIOS-ACPI-%E4%BB%A3%E7%A0%81%E7%A4%BA%E4%BE%8B"><span class="toc-number">1.4.1.</span> <span class="toc-text">4.1 BIOS ACPI 代码示例</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-ACPI-Notify-%E4%BA%8B%E4%BB%B6%E7%A0%81"><span class="toc-number">1.4.2.</span> <span class="toc-text">4.2 ACPI Notify 事件码</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-%E9%A9%B1%E5%8A%A8-Notify-Thread-%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.5.</span> <span class="toc-text">5. 驱动 Notify Thread 实现</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E9%A9%B1%E5%8A%A8%E6%9E%B6%E6%9E%84"><span class="toc-number">1.5.1.</span> <span class="toc-text">5.1 驱动架构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-Notify-Thread-%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.5.2.</span> <span class="toc-text">5.2 Notify Thread 实现</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-%E8%BD%AF%E4%B8%AD%E6%96%AD%E5%8D%A1%E6%8F%92%E5%85%A5%E5%A4%84%E7%90%86"><span class="toc-number">1.5.3.</span> <span class="toc-text">5.3 软中断卡插入处理</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-4-%E8%BD%AF%E4%B8%AD%E6%96%AD%E5%8D%A1%E7%A7%BB%E9%99%A4%E5%A4%84%E7%90%86"><span class="toc-number">1.5.4.</span> <span class="toc-text">5.4 软中断卡移除处理</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6-ACPI-%E8%AE%BE%E5%A4%87%E9%80%9A%E7%9F%A5%E6%B3%A8%E5%86%8C"><span class="toc-number">1.6.</span> <span class="toc-text">6. ACPI 设备通知注册</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E6%B3%A8%E5%86%8C%E8%AE%BE%E5%A4%87%E9%80%9A%E7%9F%A5"><span class="toc-number">1.6.1.</span> <span class="toc-text">6.1 注册设备通知</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E8%AE%BE%E5%A4%87%E9%80%9A%E7%9F%A5%E5%9B%9E%E8%B0%83"><span class="toc-number">1.6.2.</span> <span class="toc-text">6.2 设备通知回调</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#7-%E5%AE%8C%E6%95%B4%E8%BD%AF%E4%B8%AD%E6%96%AD%E5%A4%84%E7%90%86%E6%B5%81%E7%A8%8B"><span class="toc-number">1.7.</span> <span class="toc-text">7. 完整软中断处理流程</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#7-1-%E6%97%B6%E5%BA%8F%E5%9B%BE"><span class="toc-number">1.7.1.</span> <span class="toc-text">7.1 时序图</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-2-%E4%B8%8E%E7%A1%AC%E4%BB%B6%E4%B8%AD%E6%96%AD%E7%9A%84%E5%8D%8F%E5%90%8C"><span class="toc-number">1.7.2.</span> <span class="toc-text">7.2 与硬件中断的协同</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#8-%E8%B0%83%E8%AF%95%E4%B8%8E%E9%AA%8C%E8%AF%81"><span class="toc-number">1.8.</span> <span class="toc-text">8. 调试与验证</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#8-1-%E8%B0%83%E8%AF%95%E6%97%A5%E5%BF%97"><span class="toc-number">1.8.1.</span> <span class="toc-text">8.1 调试日志</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8-2-%E6%B5%8B%E8%AF%95%E7%94%A8%E4%BE%8B"><span class="toc-number">1.8.2.</span> <span class="toc-text">8.2 测试用例</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8-3-%E9%AA%8C%E8%AF%81%E6%B8%85%E5%8D%95"><span class="toc-number">1.8.3.</span> <span class="toc-text">8.3 验证清单</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#9-%E6%96%B9%E6%A1%88%E6%80%BB%E7%BB%93"><span class="toc-number">1.9.</span> <span class="toc-text">9. 方案总结</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#9-1-%E5%AE%9E%E7%8E%B0%E8%A6%81%E7%82%B9"><span class="toc-number">1.9.1.</span> <span class="toc-text">9.1 实现要点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#9-2-%E9%80%82%E7%94%A8%E5%9C%BA%E6%99%AF"><span class="toc-number">1.9.2.</span> <span class="toc-text">9.2 适用场景</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#9-3-%E9%99%90%E5%88%B6"><span class="toc-number">1.9.3.</span> <span class="toc-text">9.3 限制</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#10-%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="toc-number">1.10.</span> <span class="toc-text">10. 参考资料</span></a></li></ol></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        Qcom ARM平台Windows驱动（四）：S4恢复中断失效与软中断解决方案
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">cursorhu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2026-03-21T10:00:00.000Z" class="dt-published" itemprop="datePublished">2026-03-21</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fa-solid fa-archive"></i>
+        <a class="category-link" href="/categories/Qcom-ARM%E5%B9%B3%E5%8F%B0Windows%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91/">Qcom ARM平台Windows驱动开发</a> › <a class="category-link" href="/categories/Qcom-ARM%E5%B9%B3%E5%8F%B0Windows%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91/Bugfix-%E6%A1%88%E4%BE%8B/">Bugfix 案例</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/ACPI/" rel="tag">ACPI</a>, <a class="p-category" href="/tags/Qualcomm/" rel="tag">Qualcomm</a>, <a class="p-category" href="/tags/S4-Resume/" rel="tag">S4 Resume</a>, <a class="p-category" href="/tags/Windows-%E9%A9%B1%E5%8A%A8/" rel="tag">Windows 驱动</a>, <a class="p-category" href="/tags/%E8%BD%AF%E4%B8%AD%E6%96%AD/" rel="tag">软中断</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <h1 id="Qcom-ARM平台Windows驱动（四）：S4-恢复中断失效与软中断解决方案"><a href="#Qcom-ARM平台Windows驱动（四）：S4-恢复中断失效与软中断解决方案" class="headerlink" title="Qcom ARM平台Windows驱动（四）：S4 恢复中断失效与软中断解决方案"></a>Qcom ARM平台Windows驱动（四）：S4 恢复中断失效与软中断解决方案</h1><p><strong>日期</strong>: 2026-03-21<br><strong>系列</strong>: Qcom ARM平台Windows驱动开发<br><strong>适用</strong>: Windows ARM 驱动开发者、BIOS&#x2F;ACPI 工程师</p>
+<hr>
+<h2 id="1-问题概述"><a href="#1-问题概述" class="headerlink" title="1. 问题概述"></a>1. 问题概述</h2><h3 id="1-1-现象描述"><a href="#1-1-现象描述" class="headerlink" title="1.1 现象描述"></a>1.1 现象描述</h3><table>
+<thead>
+<tr>
+<th>项目</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>问题</strong></td>
+<td>S4 Resume (从休眠唤醒) 后，SD 卡插入无法被识别</td>
+</tr>
+<tr>
+<td><strong>触发条件</strong></td>
+<td>系统从 S4 休眠状态唤醒后立即插入 SD 卡</td>
+</tr>
+<tr>
+<td><strong>影响</strong></td>
+<td>卡插入无响应，用户体验严重下降</td>
+</tr>
+<tr>
+<td><strong>平台</strong></td>
+<td>Qualcomm Snapdragon (特定 SOC 版本)</td>
+</tr>
+</tbody></table>
+<h3 id="1-2-问题背景"><a href="#1-2-问题背景" class="headerlink" title="1.2 问题背景"></a>1.2 问题背景</h3><p>在项目紧急导入阶段（无法及时修改 BIOS），发现高通平台在 S4 恢复后存在硬件中断暂时不可用的问题。为了保证产品按时上市，需要一种<strong>软件层面的应急解决方案</strong>。</p>
+<hr>
+<h2 id="2-问题分析"><a href="#2-问题分析" class="headerlink" title="2. 问题分析"></a>2. 问题分析</h2><h3 id="2-1-硬件中断失效原因"><a href="#2-1-硬件中断失效原因" class="headerlink" title="2.1 硬件中断失效原因"></a>2.1 硬件中断失效原因</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                    S4 Resume 中断失效分析                               │</span><br><span class="line">├─────────────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                                      │</span><br><span class="line">│  S4 Resume 过程中的时序:                                             │</span><br><span class="line">│  ────────────────────────────                                        │</span><br><span class="line">│                                                                      │</span><br><span class="line">│  T0: 系统从 S4 唤醒                                                  │</span><br><span class="line">│      │                                                               │</span><br><span class="line">│      ▼                                                               │</span><br><span class="line">│  T1: BIOS/UEFI 初始化                                                │</span><br><span class="line">│      │     • 重新配置 PCIe 控制器                                   │</span><br><span class="line">│      │     • 重新枚举 PCI 设备                                       │</span><br><span class="line">│      │     • 配置 GPIO 中断                                          │</span><br><span class="line">│      ▼                                                               │</span><br><span class="line">│  T2: Windows 电源管理器唤醒                                           │</span><br><span class="line">│      │     • 发送 S0 IRP 到设备栈                                   │</span><br><span class="line">│      │     • 等待设备 IRP_MN_START_DEVICE 完成                       │</span><br><span class="line">│      ▼                                                               │</span><br><span class="line">│  T3: 驱动收到 Start Device                                           │</span><br><span class="line">│      │                                                               │</span><br><span class="line">│      ▼                                                               │</span><br><span class="line">│  T4: ★ 中断可能尚未就绪                                              │</span><br><span class="line">│      │     • GPIO 中断线可能还未正确配置                             │</span><br><span class="line">│      │     • PCIe MSI/MSI-X 可能还未启用                           │</span><br><span class="line">│      │     • 中断延迟通常 100-500ms                                 │</span><br><span class="line">│      ▼                                                               │</span><br><span class="line">│  T5: 用户插入 SD 卡                                                  │</span><br><span class="line">│      │                                                               │</span><br><span class="line">│      ▼                                                               │</span><br><span class="line">│  T6: ★ 卡插入中断未被触发                                            │</span><br><span class="line">│      │     • 硬件中断未就绪                                         │</span><br><span class="line">│      │     • 中断信号被忽略                                         │</span><br><span class="line">│      ▼                                                               │</span><br><span class="line">│  T7: 卡无法识别                                                      │</span><br><span class="line">│                                                                      │</span><br><span class="line">└─────────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-2-Qualcomm-SOC-特定问题"><a href="#2-2-Qualcomm-SOC-特定问题" class="headerlink" title="2.2 Qualcomm SOC 特定问题"></a>2.2 Qualcomm SOC 特定问题</h3><p>根据分析，高通平台在 S4 Resume 后中断失效的可能原因：</p>
+<table>
+<thead>
+<tr>
+<th>可能原因</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>GPIO 配置延迟</strong></td>
+<td>GPIO 中断引脚在 S4 Resume 后需要额外配置时间</td>
+</tr>
+<tr>
+<td><strong>PCIe 恢复延迟</strong></td>
+<td>PCIe 控制器恢复需要较长时间</td>
+</tr>
+<tr>
+<td><strong>电源序列</strong></td>
+<td>中断控制器电源可能晚于 GPIO 电源上电</td>
+</tr>
+<tr>
+<td><strong>固件同步</strong></td>
+<td>SOC 固件和 Windows 启动顺序可能不同步</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="3-解决方案概述"><a href="#3-解决方案概述" class="headerlink" title="3. 解决方案概述"></a>3. 解决方案概述</h2><h3 id="3-1-软中断机制"><a href="#3-1-软中断机制" class="headerlink" title="3.1 软中断机制"></a>3.1 软中断机制</h3><p><strong>核心思路</strong>: 利用 ACPI Notify 机制，在 BIOS 和驱动之间建立”软中断”通道：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                    软中断解决方案架构                                   │</span><br><span class="line">├─────────────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                                      │</span><br><span class="line">│  ┌─────────────────────────────────────────────────────────────┐   │</span><br><span class="line">│  │                        BIOS/ACPI                               │   │</span><br><span class="line">│  │                                                             │   │</span><br><span class="line">│  │  • 检测 SD 卡插入/移除                                        │   │</span><br><span class="line">│  │  • 通过 ACPI Notify 发送事件通知                             │   │</span><br><span class="line">│  │  • _EVT 方法在卡状态变化时被调用                            │   │</span><br><span class="line">│  └─────────────────────────────────────────────────────────────┘   │</span><br><span class="line">│                              │                                        │</span><br><span class="line">│                              │ ACPI Notify                           │</span><br><span class="line">│                              │ (替代硬件中断)                         │</span><br><span class="line">│                              ▼                                        │</span><br><span class="line">│  ┌─────────────────────────────────────────────────────────────┐   │</span><br><span class="line">│  │                    Windows Storage Driver                       │   │</span><br><span class="line">│  │                                                             │   │</span><br><span class="line">│  │  • 监听 ACPI Notify 事件                                    │   │</span><br><span class="line">│  │  • Notify Thread 处理&quot;软中断&quot;                               │   │</span><br><span class="line">│  │  • 与硬件中断处理逻辑一致                                   │   │</span><br><span class="line">│  └─────────────────────────────────────────────────────────────┘   │</span><br><span class="line">│                                                                      │</span><br><span class="line">└─────────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-2-方案优势"><a href="#3-2-方案优势" class="headerlink" title="3.2 方案优势"></a>3.2 方案优势</h3><table>
+<thead>
+<tr>
+<th>优势</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>无需修改驱动核心逻辑</strong></td>
+<td>复用现有卡检测处理代码</td>
+</tr>
+<tr>
+<td><strong>BIOS 主导时序</strong></td>
+<td>BIOS 决定何时发送通知，时序更可控</td>
+</tr>
+<tr>
+<td><strong>兼容性</strong></td>
+<td>同时支持硬件中断和软中断</td>
+</tr>
+<tr>
+<td><strong>快速部署</strong></td>
+<td>只需修改 BIOS + 添加少量驱动代码</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="4-ACPI-Notify-实现"><a href="#4-ACPI-Notify-实现" class="headerlink" title="4. ACPI Notify 实现"></a>4. ACPI Notify 实现</h2><h3 id="4-1-BIOS-ACPI-代码示例"><a href="#4-1-BIOS-ACPI-代码示例" class="headerlink" title="4.1 BIOS ACPI 代码示例"></a>4.1 BIOS ACPI 代码示例</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br></pre></td><td class="code"><pre><span class="line">// SD Card Device (_ADR 定义设备地址)</span><br><span class="line">Device (SDC0)</span><br><span class="line">&#123;</span><br><span class="line">    Name (_ADR, 0x00000000)  // SD Host Controller 地址</span><br><span class="line"></span><br><span class="line">    // 电源管理方法</span><br><span class="line">    Method (_PS0, 0, NotSerialized)  // D0 进入</span><br><span class="line">    &#123;</span><br><span class="line">        // 电源打开后，等待中断控制器就绪</span><br><span class="line">        Sleep(100)  // 100ms 等待</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    Method (_PS3, 0, NotSerialized)  // D3 退出</span><br><span class="line">    &#123;</span><br><span class="line">        // 电源关闭</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    // ★ 关键: 卡插拔事件通知</span><br><span class="line">    Method (_EJ0, 1, NotSerialized)  // 卡弹出</span><br><span class="line">    &#123;</span><br><span class="line">        // 通知驱动卡被移除</span><br><span class="line">        Notify (SDC0, 0x02)  // Device Specific Event</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    // 自定义事件处理</span><br><span class="line">    Name (_PLD, Package () &#123;</span><br><span class="line">        Buffer () &#123; ... &#125;  // 设备物理位置描述</span><br><span class="line">    &#125;)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// SD Card Slot Device (卡槽设备)</span><br><span class="line">Device (SLOT)</span><br><span class="line">&#123;</span><br><span class="line">    Name (_ADR, 0x00010000)  // 卡槽地址</span><br><span class="line"></span><br><span class="line">    // 卡状态变化检测</span><br><span class="line">    Method (_STA, 0, NotSerialized)</span><br><span class="line">    &#123;</span><br><span class="line">        If (\_SB.CARD.Present) &#123;</span><br><span class="line">            Return (0x0F)  // 设备存在且运行</span><br><span class="line">        &#125; Else &#123;</span><br><span class="line">            Return (0x00)  // 设备不存在</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    // 卡插入事件 (★ 软中断触发点)</span><br><span class="line">    Method (_ADR, 0, NotSerialized)</span><br><span class="line">    &#123;</span><br><span class="line">        // 检测到卡插入</span><br><span class="line">        If (\_SB.CARD.Inserted) &#123;</span><br><span class="line">            // 通知操作系统</span><br><span class="line">            Notify (SLOT, 0x81)  // 0x81 = Card Inserted Event</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// 全局卡状态</span><br><span class="line">Device (CARD)</span><br><span class="line">&#123;</span><br><span class="line">    Name (_HID, &quot;CARD0000&quot;)</span><br><span class="line">    Name (_CID, &quot;CARD_STATUS&quot;)</span><br><span class="line"></span><br><span class="line">    // 卡是否存在</span><br><span class="line">    Variable (Present, 0)</span><br><span class="line"></span><br><span class="line">    // GPIO 检测方法</span><br><span class="line">    Method (_CRS, 0, NotSerialized)</span><br><span class="line">    &#123;</span><br><span class="line">        Return (Package () &#123;</span><br><span class="line">            GpioIo (Shared, PullUp, 0, 0, IoRestrictionNone,</span><br><span class="line">                    &quot;\\_SB.GIO0&quot;, 0, ResourceConsumer, ,</span><br><span class="line">                    ) &#123; 71 &#125;  // GPIO 71</span><br><span class="line">        &#125;)</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-2-ACPI-Notify-事件码"><a href="#4-2-ACPI-Notify-事件码" class="headerlink" title="4.2 ACPI Notify 事件码"></a>4.2 ACPI Notify 事件码</h3><table>
+<thead>
+<tr>
+<th>事件码</th>
+<th>含义</th>
+<th>驱动处理</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>0x00</td>
+<td>Bus Check</td>
+<td>检查总线</td>
+</tr>
+<tr>
+<td>0x01</td>
+<td>Device Check</td>
+<td>检查设备</td>
+</tr>
+<tr>
+<td>0x02</td>
+<td>Device Eject</td>
+<td>设备弹出 (卡移除)</td>
+</tr>
+<tr>
+<td>0x80-0x8F</td>
+<td>Device Specific</td>
+<td>厂商自定义事件</td>
+</tr>
+<tr>
+<td><strong>0x81</strong></td>
+<td>Card Inserted</td>
+<td>★ 卡插入 (软中断)</td>
+</tr>
+<tr>
+<td><strong>0x82</strong></td>
+<td>Card Removed</td>
+<td>★ 卡移除 (软中断)</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="5-驱动-Notify-Thread-实现"><a href="#5-驱动-Notify-Thread-实现" class="headerlink" title="5. 驱动 Notify Thread 实现"></a>5. 驱动 Notify Thread 实现</h2><h3 id="5-1-驱动架构"><a href="#5-1-驱动架构" class="headerlink" title="5.1 驱动架构"></a>5.1 驱动架构</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// winscsientry.c - 驱动入口</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 声明 Notify Thread 函数</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">notify_thread_main</span><span class="params">(<span class="type">void</span> *param)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 在 StorHwPassiveInitialize 中创建 Notify Thread</span></span><br><span class="line">BOOLEAN <span class="title function_">StorHwPassiveInitialize</span><span class="params">(IN PVOID DeviceExtension)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">bht_dev_ext_t</span> *pdx = (<span class="type">bht_dev_ext_t</span> *)DeviceExtension;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 1. 创建 Notify Thread (★ 软中断处理线程)</span></span><br><span class="line">    os_create_thread(pdx, &amp;pdx-&gt;os.thread[THREAD_NOTIFY],</span><br><span class="line">                     pdx, notify_thread_main);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 2. 注册 ACPI 设备通知</span></span><br><span class="line">    RegisterForDeviceNotifications(pdx);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> TRUE;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-2-Notify-Thread-实现"><a href="#5-2-Notify-Thread-实现" class="headerlink" title="5.2 Notify Thread 实现"></a>5.2 Notify Thread 实现</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// winscsientry.c - Notify Thread</span></span><br><span class="line"></span><br><span class="line"><span class="type">void</span> <span class="title function_">notify_thread_main</span><span class="params">(<span class="type">void</span> *param)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">bht_dev_ext_t</span> *pdx = (<span class="type">bht_dev_ext_t</span> *)param;</span><br><span class="line"></span><br><span class="line">    DbgInfo(<span class="string">&quot;notify_thread start\n&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 设置线程优先级</span></span><br><span class="line">    os_set_thread_priority(pdx, THREAD_PRIORITY_NORMAL);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 主循环</span></span><br><span class="line">    <span class="keyword">while</span> (!os_thread_should_terminate(pdx))</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="comment">// 等待软中断事件</span></span><br><span class="line">        NTSTATUS status = os_wait_event(</span><br><span class="line">            &amp;pdx-&gt;os.notify_event,</span><br><span class="line">            <span class="number">5000</span>  <span class="comment">// 5 秒超时，防止线程挂死</span></span><br><span class="line">        );</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (status == STATUS_TIMEOUT) &#123;</span><br><span class="line">            <span class="comment">// 超时，继续等待</span></span><br><span class="line">            <span class="keyword">continue</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 处理软中断事件</span></span><br><span class="line">        <span class="keyword">if</span> (pdx-&gt;os.pending_notify != <span class="number">0</span>)</span><br><span class="line">        &#123;</span><br><span class="line">            handle_soft_interrupt(pdx, pdx-&gt;os.pending_notify);</span><br><span class="line">            pdx-&gt;os.pending_notify = <span class="number">0</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    DbgInfo(<span class="string">&quot;notify_thread exit\n&quot;</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 处理软中断</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">handle_soft_interrupt</span><span class="params">(<span class="type">bht_dev_ext_t</span> *pdx, ULONG notify_code)</span></span><br><span class="line">&#123;</span><br><span class="line">    DbgInfo(<span class="string">&quot;handle_soft_interrupt: code=0x%02X\n&quot;</span>, notify_code);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">switch</span> (notify_code)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">case</span> <span class="number">0x81</span>:  <span class="comment">// Card Inserted</span></span><br><span class="line">            DbgInfo(<span class="string">&quot;Soft Interrupt: Card Inserted\n&quot;</span>);</span><br><span class="line">            <span class="comment">// ★ 复用现有卡插入处理逻辑</span></span><br><span class="line">            soft_card_insert_handler(pdx);</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">case</span> <span class="number">0x82</span>:  <span class="comment">// Card Removed</span></span><br><span class="line">            DbgInfo(<span class="string">&quot;Soft Interrupt: Card Removed\n&quot;</span>);</span><br><span class="line">            <span class="comment">// ★ 复用现有卡移除处理逻辑</span></span><br><span class="line">            soft_card_remove_handler(pdx);</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">default</span>:</span><br><span class="line">            DbgInfo(<span class="string">&quot;Unknown notify code: 0x%02X\n&quot;</span>, notify_code);</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-3-软中断卡插入处理"><a href="#5-3-软中断卡插入处理" class="headerlink" title="5.3 软中断卡插入处理"></a>5.3 软中断卡插入处理</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 软中断卡插入处理 (复用 InterruptServiceGpio 逻辑)</span></span><br><span class="line"></span><br><span class="line"><span class="type">void</span> <span class="title function_">soft_card_insert_handler</span><span class="params">(<span class="type">bht_dev_ext_t</span> *pdx)</span></span><br><span class="line">&#123;</span><br><span class="line">    DbgInfo(<span class="string">&quot;Soft card insert handler\n&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 1. 更新卡状态</span></span><br><span class="line">    pdx-&gt;card.card_present = TRUE;</span><br><span class="line">    pdx-&gt;card.card_removed = FALSE;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 2. 确保 Host 电源开启</span></span><br><span class="line">    ven_quirk_main_power_ctrl(&amp;pdx-&gt;host, TRUE);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 3. 增加 PoFx 引用计数</span></span><br><span class="line">    pofx_request_d0(pdx, <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 4. 触发卡初始化任务</span></span><br><span class="line">    <span class="comment">// 与 InterruptServiceGpio 一致的处理</span></span><br><span class="line">    <span class="keyword">if</span> (pdx-&gt;os.task_mgr.tasks[TASK_CARD_CHG].shared_task_cnt == <span class="number">0</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        DbgInfo(<span class="string">&quot;Set TASK_CARD_CHG event\n&quot;</span>);</span><br><span class="line">        os_set_event(pdx, &amp;pdx-&gt;os, EVENT_TASK_OCCUR, TASK_CARD_CHG);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-4-软中断卡移除处理"><a href="#5-4-软中断卡移除处理" class="headerlink" title="5.4 软中断卡移除处理"></a>5.4 软中断卡移除处理</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 软中断卡移除处理</span></span><br><span class="line"></span><br><span class="line"><span class="type">void</span> <span class="title function_">soft_card_remove_handler</span><span class="params">(<span class="type">bht_dev_ext_t</span> *pdx)</span></span><br><span class="line">&#123;</span><br><span class="line">    DbgInfo(<span class="string">&quot;Soft card remove handler\n&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 1. 更新卡状态</span></span><br><span class="line">    pdx-&gt;card.card_present = FALSE;</span><br><span class="line">    pdx-&gt;card.card_removed = TRUE;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 2. 标记需要重新初始化</span></span><br><span class="line">    pdx-&gt;card.initialized_once = FALSE;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 3. 触发卡移除处理任务</span></span><br><span class="line">    <span class="keyword">if</span> (pdx-&gt;os.task_mgr.tasks[TASK_CARD_CHG].shared_task_cnt == <span class="number">0</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        DbgInfo(<span class="string">&quot;Set TASK_CARD_CHG event for removal\n&quot;</span>);</span><br><span class="line">        os_set_event(pdx, &amp;pdx-&gt;os, EVENT_TASK_OCCUR, TASK_CARD_CHG);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="6-ACPI-设备通知注册"><a href="#6-ACPI-设备通知注册" class="headerlink" title="6. ACPI 设备通知注册"></a>6. ACPI 设备通知注册</h2><h3 id="6-1-注册设备通知"><a href="#6-1-注册设备通知" class="headerlink" title="6.1 注册设备通知"></a>6.1 注册设备通知</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 注册 ACPI 设备通知回调</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">RegisterForDeviceNotifications</span><span class="params">(<span class="type">bht_dev_ext_t</span> *pdx)</span></span><br><span class="line">&#123;</span><br><span class="line">    NTSTATUS status;</span><br><span class="line">    PDEVICE_OBJECT device_object;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 获取设备对象</span></span><br><span class="line">    device_object = dev_ext_to_dev_obj(pdx);</span><br><span class="line">    <span class="keyword">if</span> (device_object == <span class="literal">NULL</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        DbgErr(<span class="string">&quot;Get device object failed\n&quot;</span>);</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 设置设备通知回调</span></span><br><span class="line">    status = IoRegisterPlugPlayNotification(</span><br><span class="line">        EventCategoryDeviceInterfaceChange,</span><br><span class="line">        <span class="number">0</span>,                    <span class="comment">// EventCategoryFlags</span></span><br><span class="line">        <span class="literal">NULL</span>,                <span class="comment">// EventCategoryData</span></span><br><span class="line">        pdx-&gt;DriverObject,</span><br><span class="line">        (PNPFN_CALLOUT)DeviceNotifyCallback,</span><br><span class="line">        pdx,</span><br><span class="line">        &amp;pdx-&gt;notify_entry</span><br><span class="line">    );</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (!NT_SUCCESS(status))</span><br><span class="line">    &#123;</span><br><span class="line">        DbgErr(<span class="string">&quot;Register for device notifications failed: 0x%08X\n&quot;</span>, status);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">    &#123;</span><br><span class="line">        DbgInfo(<span class="string">&quot;Device notification registered\n&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="6-2-设备通知回调"><a href="#6-2-设备通知回调" class="headerlink" title="6.2 设备通知回调"></a>6.2 设备通知回调</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 设备通知回调函数</span></span><br><span class="line">NTSTATUS <span class="title function_">DeviceNotifyCallback</span><span class="params">(</span></span><br><span class="line"><span class="params">    PVOID NotificationStructure,</span></span><br><span class="line"><span class="params">    PVOID Context</span></span><br><span class="line"><span class="params">)</span></span><br><span class="line">&#123;</span><br><span class="line">    PDEVICE_INTERFACE_CHANGE_NOTIFICATION notify;</span><br><span class="line">    <span class="type">bht_dev_ext_t</span> *pdx = (<span class="type">bht_dev_ext_t</span> *)Context;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 解析通知结构</span></span><br><span class="line">    notify = (PDEVICE_INTERFACE_CHANGE_NOTIFICATION)NotificationStructure;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 检查是否是 ACPI 设备事件</span></span><br><span class="line">    <span class="keyword">if</span> (notify-&gt;Version != <span class="number">1</span> ||</span><br><span class="line">        notify-&gt;Size != <span class="keyword">sizeof</span>(DEVICE_INTERFACE_CHANGE_NOTIFICATION))</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">return</span> STATUS_SUCCESS;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 检查事件类型</span></span><br><span class="line">    <span class="keyword">if</span> (IsEqualGUID(&amp;notify-&gt;Event, &amp;GUID_DEVICE_INTERFACE_ARRIVAL))</span><br><span class="line">    &#123;</span><br><span class="line">        DbgInfo(<span class="string">&quot;Device interface arrived\n&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> STATUS_SUCCESS;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="7-完整软中断处理流程"><a href="#7-完整软中断处理流程" class="headerlink" title="7. 完整软中断处理流程"></a>7. 完整软中断处理流程</h2><h3 id="7-1-时序图"><a href="#7-1-时序图" class="headerlink" title="7.1 时序图"></a>7.1 时序图</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                    软中断完整处理时序                                     │</span><br><span class="line">├─────────────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                                      │</span><br><span class="line">│  [BIOS/ACPI]        [Windows]        [BH202 Driver]          [SD]  │</span><br><span class="line">│       │                │                │                   │      │</span><br><span class="line">│       │                │                │                   │      │</span><br><span class="line">│       │ S4 Resume      │                │                   │      │</span><br><span class="line">│       │◄──────────────│                │                   │      │</span><br><span class="line">│       │                │                │                   │      │</span><br><span class="line">│       │ Init PCIe     │                │                   │      │</span><br><span class="line">│       │◄──────────────│                │                   │      │</span><br><span class="line">│       │                │                │                   │      │</span><br><span class="line">│       │ Init GPIO     │                │                   │      │</span><br><span class="line">│       │◄──────────────│                │                   │      │</span><br><span class="line">│       │                │                │                   │      │</span><br><span class="line">│       │ 用户插卡      │                │                   │      │</span><br><span class="line">│       │◄──────────────│                │                   │      │</span><br><span class="line">│       │                │                │                   │      │</span><br><span class="line">│       │ 检测卡状态    │                │                   │      │</span><br><span class="line">│       │                │                │                   │      │</span><br><span class="line">│       │ Notify(0x81)  │                │                   │      │</span><br><span class="line">│       │──────────────►│                │                   │      │</span><br><span class="line">│       │                │                │                   │      │</span><br><span class="line">│       │                │ IoCallDriver  │                   │      │</span><br><span class="line">│       │                │──────────────►│                   │      │</span><br><span class="line">│       │                │                │                   │      │</span><br><span class="line">│       │                │                │ notify_event.set │      │</span><br><span class="line">│       │                │                │◄──────────────────│      │</span><br><span class="line">│       │                │                │                   │      │</span><br><span class="line">│       │                │                │ notify_thread     │      │</span><br><span class="line">│       │                │                │  处理软中断       │      │</span><br><span class="line">│       │                │                │        │          │      │</span><br><span class="line">│       │                │                │        ▼          │      │</span><br><span class="line">│       │                │                │ soft_card_insert │      │</span><br><span class="line">│       │                │                │        │          │      │</span><br><span class="line">│       │                │                │        ▼          │      │</span><br><span class="line">│       │                │                │ os_set_event      │      │</span><br><span class="line">│       │                │                │  TASK_CARD_CHG   │      │</span><br><span class="line">│       │                │                │        │          │      │</span><br><span class="line">│       │                │                │        ▼          │      │</span><br><span class="line">│       │                │                │ card_init()      │      │</span><br><span class="line">│       │                │                │        │          │      │</span><br><span class="line">│       │                │                │        ▼          │      │</span><br><span class="line">│       │                │                │   Card Ready!   │      │</span><br><span class="line">│       │                │                │                   │      │</span><br><span class="line">│       ▼                ▼                ▼                   ▼      │</span><br><span class="line">│                                                                      │</span><br><span class="line">└─────────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<h3 id="7-2-与硬件中断的协同"><a href="#7-2-与硬件中断的协同" class="headerlink" title="7.2 与硬件中断的协同"></a>7.2 与硬件中断的协同</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                    双通道卡检测机制                                     │</span><br><span class="line">├─────────────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                                      │</span><br><span class="line">│  ┌─────────────────────────────────────────────────────────────┐   │</span><br><span class="line">│  │                    硬件中断通道 (中断正常时)                    │   │</span><br><span class="line">│  │                                                             │   │</span><br><span class="line">│  │  SD Card Insert ──GPIO──► InterruptServiceGpio ──Event──►│   │</span><br><span class="line">│  │                               thread_main                   │   │</span><br><span class="line">│  │                                                             │   │</span><br><span class="line">│  └─────────────────────────────────────────────────────────────┘   │</span><br><span class="line">│                                                                      │</span><br><span class="line">│  ┌─────────────────────────────────────────────────────────────┐   │</span><br><span class="line">│  │                    软中断通道 (S4 Resume 后) ★                 │   │</span><br><span class="line">│  │                                                             │   │</span><br><span class="line">│  │  SD Card Insert ──ACPI──► Notify Callback ──Event──►      │   │</span><br><span class="line">│  │                             notify_thread                   │   │</span><br><span class="line">│  │                                                             │   │</span><br><span class="line">│  └─────────────────────────────────────────────────────────────┘   │</span><br><span class="line">│                                                                      │</span><br><span class="line">│  两条通道共享处理逻辑:                                                │</span><br><span class="line">│  ───────────────────────                                            │</span><br><span class="line">│  • soft_card_insert_handler()                                       │</span><br><span class="line">│  • soft_card_remove_handler()                                       │</span><br><span class="line">│  • TASK_CARD_CHG 任务处理                                           │</span><br><span class="line">│                                                                      │</span><br><span class="line">└─────────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="8-调试与验证"><a href="#8-调试与验证" class="headerlink" title="8. 调试与验证"></a>8. 调试与验证</h2><h3 id="8-1-调试日志"><a href="#8-1-调试日志" class="headerlink" title="8.1 调试日志"></a>8.1 调试日志</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 添加详细调试日志</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">soft_card_insert_handler</span><span class="params">(<span class="type">bht_dev_ext_t</span> *pdx)</span></span><br><span class="line">&#123;</span><br><span class="line">    DbgInfo(<span class="string">&quot;=== Soft Interrupt: Card Insert ===\n&quot;</span>);</span><br><span class="line">    DbgInfo(<span class="string">&quot;Time: %lld\n&quot;</span>, KeQueryInterruptTime());</span><br><span class="line">    DbgInfo(<span class="string">&quot;Thread ID: %d\n&quot;</span>, PsGetCurrentThreadId());</span><br><span class="line">    DbgInfo(<span class="string">&quot;Current State:\n&quot;</span>);</span><br><span class="line">    DbgInfo(<span class="string">&quot;  card_present: %d\n&quot;</span>, pdx-&gt;card.card_present);</span><br><span class="line">    DbgInfo(<span class="string">&quot;  pofx_active: %d\n&quot;</span>, os_atomic_read(&amp;pdx-&gt;pofx_active));</span><br><span class="line">    DbgInfo(<span class="string">&quot;  pm_state: %d\n&quot;</span>, pdx-&gt;pm_state.current_state);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// ... 处理逻辑 ...</span></span><br><span class="line"></span><br><span class="line">    DbgInfo(<span class="string">&quot;=== Soft Interrupt: Done ===\n&quot;</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="8-2-测试用例"><a href="#8-2-测试用例" class="headerlink" title="8.2 测试用例"></a>8.2 测试用例</h3><table>
+<thead>
+<tr>
+<th>测试项</th>
+<th>操作</th>
+<th>预期结果</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>S4 Resume 插卡</strong></td>
+<td>S4 → Resume → 插卡</td>
+<td>5 秒内识别</td>
+</tr>
+<tr>
+<td><strong>连续插拔</strong></td>
+<td>S4 Resume 后连续插拔</td>
+<td>每次都能识别</td>
+</tr>
+<tr>
+<td><strong>硬件中断恢复</strong></td>
+<td>等待 30 秒后插卡</td>
+<td>硬件中断正常工作</td>
+</tr>
+<tr>
+<td><strong>混合测试</strong></td>
+<td>S4 Resume → 立即插卡 → 等待 → 再插卡</td>
+<td>都正常识别</td>
+</tr>
+</tbody></table>
+<h3 id="8-3-验证清单"><a href="#8-3-验证清单" class="headerlink" title="8.3 验证清单"></a>8.3 验证清单</h3><ul>
+<li><input disabled="" type="checkbox"> S4 Resume 后立即插卡能识别</li>
+<li><input disabled="" type="checkbox"> S4 Resume 后 1 分钟插卡能识别</li>
+<li><input disabled="" type="checkbox"> 硬件中断恢复后工作正常</li>
+<li><input disabled="" type="checkbox"> 无卡时插入不误报</li>
+<li><input disabled="" type="checkbox"> 软中断和硬中断不冲突</li>
+</ul>
+<hr>
+<h2 id="9-方案总结"><a href="#9-方案总结" class="headerlink" title="9. 方案总结"></a>9. 方案总结</h2><h3 id="9-1-实现要点"><a href="#9-1-实现要点" class="headerlink" title="9.1 实现要点"></a>9.1 实现要点</h3><table>
+<thead>
+<tr>
+<th>要点</th>
+<th>实现</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>ACPI Notify</strong></td>
+<td>BIOS 在卡状态变化时发送 Notify 事件</td>
+</tr>
+<tr>
+<td><strong>Notify Thread</strong></td>
+<td>驱动创建独立线程监听软中断</td>
+</tr>
+<tr>
+<td><strong>事件处理</strong></td>
+<td>复用现有卡检测逻辑</td>
+</tr>
+<tr>
+<td><strong>双通道协同</strong></td>
+<td>硬件中断 + 软中断共存</td>
+</tr>
+</tbody></table>
+<h3 id="9-2-适用场景"><a href="#9-2-适用场景" class="headerlink" title="9.2 适用场景"></a>9.2 适用场景</h3><table>
+<thead>
+<tr>
+<th>场景</th>
+<th>是否适用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>高通 S4 Resume 中断失效</strong></td>
+<td>✓ 适用</td>
+</tr>
+<tr>
+<td><strong>其他 SOC 平台中断延迟</strong></td>
+<td>✓ 可能适用</td>
+</tr>
+<tr>
+<td><strong>虚拟化环境中断转发延迟</strong></td>
+<td>✓ 可能适用</td>
+</tr>
+<tr>
+<td><strong>正常硬件中断工作</strong></td>
+<td>✗ 不需要</td>
+</tr>
+</tbody></table>
+<h3 id="9-3-限制"><a href="#9-3-限制" class="headerlink" title="9.3 限制"></a>9.3 限制</h3><table>
+<thead>
+<tr>
+<th>限制</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>需要 BIOS 支持</strong></td>
+<td>需要 BIOS 团队配合</td>
+</tr>
+<tr>
+<td><strong>时序依赖 BIOS</strong></td>
+<td>软中断时机由 BIOS 控制</td>
+</tr>
+<tr>
+<td><strong>兼容性</strong></td>
+<td>不同平台 ACPI Notify 代码可能不同</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="10-参考资料"><a href="#10-参考资料" class="headerlink" title="10. 参考资料"></a>10. 参考资料</h2><ol>
+<li><a target="_blank" rel="noopener" href="https://uefi.org/specs/ACPI/6.5/05_Device_Configuration.html#device-notify">ACPI Device Notify</a></li>
+<li><a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/introduction-to-plug-and-play-notifications">Plug and Play Notifications</a></li>
+<li><a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/gpio/gpio-controller-drivers">GPIO Controller Drivers</a></li>
+<li><a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/acpi-event-notification">ACPI Event Notification</a></li>
+</ol>
+<hr>
+<p><em>文档生成日期: 2026-03-21</em><br><em>问题平台: Qualcomm Snapdragon</em><br><em>解决方案: ACPI Notify + Driver Notify Thread</em></p>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">首页</a></li>
+        
+          <li><a href="/about/">关于</a></li>
+        
+          <li><a href="/archives/">归档</a></li>
+        
+          <li><a href="/tags/">标签</a></li>
+        
+          <li><a href="/categories/">分类</a></li>
+        
+          <li><a href="/search/">搜索</a></li>
+        
+          <li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Qcom-ARM%E5%B9%B3%E5%8F%B0Windows%E9%A9%B1%E5%8A%A8%EF%BC%88%E5%9B%9B%EF%BC%89%EF%BC%9AS4-%E6%81%A2%E5%A4%8D%E4%B8%AD%E6%96%AD%E5%A4%B1%E6%95%88%E4%B8%8E%E8%BD%AF%E4%B8%AD%E6%96%AD%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88"><span class="toc-number">1.</span> <span class="toc-text">Qcom ARM平台Windows驱动（四）：S4 恢复中断失效与软中断解决方案</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E9%97%AE%E9%A2%98%E6%A6%82%E8%BF%B0"><span class="toc-number">1.1.</span> <span class="toc-text">1. 问题概述</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-%E7%8E%B0%E8%B1%A1%E6%8F%8F%E8%BF%B0"><span class="toc-number">1.1.1.</span> <span class="toc-text">1.1 现象描述</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-2-%E9%97%AE%E9%A2%98%E8%83%8C%E6%99%AF"><span class="toc-number">1.1.2.</span> <span class="toc-text">1.2 问题背景</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-%E9%97%AE%E9%A2%98%E5%88%86%E6%9E%90"><span class="toc-number">1.2.</span> <span class="toc-text">2. 问题分析</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E7%A1%AC%E4%BB%B6%E4%B8%AD%E6%96%AD%E5%A4%B1%E6%95%88%E5%8E%9F%E5%9B%A0"><span class="toc-number">1.2.1.</span> <span class="toc-text">2.1 硬件中断失效原因</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-Qualcomm-SOC-%E7%89%B9%E5%AE%9A%E9%97%AE%E9%A2%98"><span class="toc-number">1.2.2.</span> <span class="toc-text">2.2 Qualcomm SOC 特定问题</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88%E6%A6%82%E8%BF%B0"><span class="toc-number">1.3.</span> <span class="toc-text">3. 解决方案概述</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E8%BD%AF%E4%B8%AD%E6%96%AD%E6%9C%BA%E5%88%B6"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 软中断机制</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E6%96%B9%E6%A1%88%E4%BC%98%E5%8A%BF"><span class="toc-number">1.3.2.</span> <span class="toc-text">3.2 方案优势</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-ACPI-Notify-%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.4.</span> <span class="toc-text">4. ACPI Notify 实现</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-BIOS-ACPI-%E4%BB%A3%E7%A0%81%E7%A4%BA%E4%BE%8B"><span class="toc-number">1.4.1.</span> <span class="toc-text">4.1 BIOS ACPI 代码示例</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-ACPI-Notify-%E4%BA%8B%E4%BB%B6%E7%A0%81"><span class="toc-number">1.4.2.</span> <span class="toc-text">4.2 ACPI Notify 事件码</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-%E9%A9%B1%E5%8A%A8-Notify-Thread-%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.5.</span> <span class="toc-text">5. 驱动 Notify Thread 实现</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E9%A9%B1%E5%8A%A8%E6%9E%B6%E6%9E%84"><span class="toc-number">1.5.1.</span> <span class="toc-text">5.1 驱动架构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-Notify-Thread-%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.5.2.</span> <span class="toc-text">5.2 Notify Thread 实现</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-%E8%BD%AF%E4%B8%AD%E6%96%AD%E5%8D%A1%E6%8F%92%E5%85%A5%E5%A4%84%E7%90%86"><span class="toc-number">1.5.3.</span> <span class="toc-text">5.3 软中断卡插入处理</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-4-%E8%BD%AF%E4%B8%AD%E6%96%AD%E5%8D%A1%E7%A7%BB%E9%99%A4%E5%A4%84%E7%90%86"><span class="toc-number">1.5.4.</span> <span class="toc-text">5.4 软中断卡移除处理</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6-ACPI-%E8%AE%BE%E5%A4%87%E9%80%9A%E7%9F%A5%E6%B3%A8%E5%86%8C"><span class="toc-number">1.6.</span> <span class="toc-text">6. ACPI 设备通知注册</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E6%B3%A8%E5%86%8C%E8%AE%BE%E5%A4%87%E9%80%9A%E7%9F%A5"><span class="toc-number">1.6.1.</span> <span class="toc-text">6.1 注册设备通知</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E8%AE%BE%E5%A4%87%E9%80%9A%E7%9F%A5%E5%9B%9E%E8%B0%83"><span class="toc-number">1.6.2.</span> <span class="toc-text">6.2 设备通知回调</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#7-%E5%AE%8C%E6%95%B4%E8%BD%AF%E4%B8%AD%E6%96%AD%E5%A4%84%E7%90%86%E6%B5%81%E7%A8%8B"><span class="toc-number">1.7.</span> <span class="toc-text">7. 完整软中断处理流程</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#7-1-%E6%97%B6%E5%BA%8F%E5%9B%BE"><span class="toc-number">1.7.1.</span> <span class="toc-text">7.1 时序图</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-2-%E4%B8%8E%E7%A1%AC%E4%BB%B6%E4%B8%AD%E6%96%AD%E7%9A%84%E5%8D%8F%E5%90%8C"><span class="toc-number">1.7.2.</span> <span class="toc-text">7.2 与硬件中断的协同</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#8-%E8%B0%83%E8%AF%95%E4%B8%8E%E9%AA%8C%E8%AF%81"><span class="toc-number">1.8.</span> <span class="toc-text">8. 调试与验证</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#8-1-%E8%B0%83%E8%AF%95%E6%97%A5%E5%BF%97"><span class="toc-number">1.8.1.</span> <span class="toc-text">8.1 调试日志</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8-2-%E6%B5%8B%E8%AF%95%E7%94%A8%E4%BE%8B"><span class="toc-number">1.8.2.</span> <span class="toc-text">8.2 测试用例</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8-3-%E9%AA%8C%E8%AF%81%E6%B8%85%E5%8D%95"><span class="toc-number">1.8.3.</span> <span class="toc-text">8.3 验证清单</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#9-%E6%96%B9%E6%A1%88%E6%80%BB%E7%BB%93"><span class="toc-number">1.9.</span> <span class="toc-text">9. 方案总结</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#9-1-%E5%AE%9E%E7%8E%B0%E8%A6%81%E7%82%B9"><span class="toc-number">1.9.1.</span> <span class="toc-text">9.1 实现要点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#9-2-%E9%80%82%E7%94%A8%E5%9C%BA%E6%99%AF"><span class="toc-number">1.9.2.</span> <span class="toc-text">9.2 适用场景</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#9-3-%E9%99%90%E5%88%B6"><span class="toc-number">1.9.3.</span> <span class="toc-text">9.3 限制</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#10-%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="toc-number">1.10.</span> <span class="toc-text">10. 参考资料</span></a></li></ol></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/03/21/Qcom_ARM%E5%B9%B3%E5%8F%B0%E9%A9%B1%E5%8A%A8_04_S4%E6%81%A2%E5%A4%8D%E4%B8%AD%E6%96%AD%E5%A4%B1%E6%95%88%E4%B8%8E%E8%BD%AF%E4%B8%AD%E6%96%AD%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/03/21/Qcom_ARM%E5%B9%B3%E5%8F%B0%E9%A9%B1%E5%8A%A8_04_S4%E6%81%A2%E5%A4%8D%E4%B8%AD%E6%96%AD%E5%A4%B1%E6%95%88%E4%B8%8E%E8%BD%AF%E4%B8%AD%E6%96%AD%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88/&text=Qcom ARM平台Windows驱动（四）：S4恢复中断失效与软中断解决方案"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/03/21/Qcom_ARM%E5%B9%B3%E5%8F%B0%E9%A9%B1%E5%8A%A8_04_S4%E6%81%A2%E5%A4%8D%E4%B8%AD%E6%96%AD%E5%A4%B1%E6%95%88%E4%B8%8E%E8%BD%AF%E4%B8%AD%E6%96%AD%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88/&title=Qcom ARM平台Windows驱动（四）：S4恢复中断失效与软中断解决方案"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/03/21/Qcom_ARM%E5%B9%B3%E5%8F%B0%E9%A9%B1%E5%8A%A8_04_S4%E6%81%A2%E5%A4%8D%E4%B8%AD%E6%96%AD%E5%A4%B1%E6%95%88%E4%B8%8E%E8%BD%AF%E4%B8%AD%E6%96%AD%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88/&is_video=false&description=Qcom ARM平台Windows驱动（四）：S4恢复中断失效与软中断解决方案"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=Qcom ARM平台Windows驱动（四）：S4恢复中断失效与软中断解决方案&body=Check out this article: https://cursorhu.github.io/2026/03/21/Qcom_ARM%E5%B9%B3%E5%8F%B0%E9%A9%B1%E5%8A%A8_04_S4%E6%81%A2%E5%A4%8D%E4%B8%AD%E6%96%AD%E5%A4%B1%E6%95%88%E4%B8%8E%E8%BD%AF%E4%B8%AD%E6%96%AD%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/03/21/Qcom_ARM%E5%B9%B3%E5%8F%B0%E9%A9%B1%E5%8A%A8_04_S4%E6%81%A2%E5%A4%8D%E4%B8%AD%E6%96%AD%E5%A4%B1%E6%95%88%E4%B8%8E%E8%BD%AF%E4%B8%AD%E6%96%AD%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88/&title=Qcom ARM平台Windows驱动（四）：S4恢复中断失效与软中断解决方案"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/03/21/Qcom_ARM%E5%B9%B3%E5%8F%B0%E9%A9%B1%E5%8A%A8_04_S4%E6%81%A2%E5%A4%8D%E4%B8%AD%E6%96%AD%E5%A4%B1%E6%95%88%E4%B8%8E%E8%BD%AF%E4%B8%AD%E6%96%AD%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88/&title=Qcom ARM平台Windows驱动（四）：S4恢复中断失效与软中断解决方案"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/03/21/Qcom_ARM%E5%B9%B3%E5%8F%B0%E9%A9%B1%E5%8A%A8_04_S4%E6%81%A2%E5%A4%8D%E4%B8%AD%E6%96%AD%E5%A4%B1%E6%95%88%E4%B8%8E%E8%BD%AF%E4%B8%AD%E6%96%AD%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88/&title=Qcom ARM平台Windows驱动（四）：S4恢复中断失效与软中断解决方案"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/03/21/Qcom_ARM%E5%B9%B3%E5%8F%B0%E9%A9%B1%E5%8A%A8_04_S4%E6%81%A2%E5%A4%8D%E4%B8%AD%E6%96%AD%E5%A4%B1%E6%95%88%E4%B8%8E%E8%BD%AF%E4%B8%AD%E6%96%AD%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88/&title=Qcom ARM平台Windows驱动（四）：S4恢复中断失效与软中断解决方案"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/03/21/Qcom_ARM%E5%B9%B3%E5%8F%B0%E9%A9%B1%E5%8A%A8_04_S4%E6%81%A2%E5%A4%8D%E4%B8%AD%E6%96%AD%E5%A4%B1%E6%95%88%E4%B8%8E%E8%BD%AF%E4%B8%AD%E6%96%AD%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88/&name=Qcom ARM平台Windows驱动（四）：S4恢复中断失效与软中断解决方案&description=&lt;h1 id=&#34;Qcom-ARM平台Windows驱动（四）：S4-恢复中断失效与软中断解决方案&#34;&gt;&lt;a href=&#34;#Qcom-ARM平台Windows驱动（四）：S4-恢复中断失效与软中断解决方案&#34; class=&#34;headerlink&#34; title=&#34;Qcom ARM平台Windows驱动（四）：S4 恢复中断失效与软中断解决方案&#34;&gt;&lt;/a&gt;Qcom ARM平台Windows驱动（四）：S4 恢复中断失效与软中断解决方案&lt;/h1&gt;&lt;p&gt;&lt;strong&gt;日期&lt;/strong&gt;: 2026-03-21&lt;br&gt;&lt;strong&gt;系列&lt;/strong&gt;: Qcom ARM平台Windows驱动开发&lt;br&gt;&lt;strong&gt;适用&lt;/strong&gt;: Windows ARM 驱动开发者、BIOS&amp;#x2F;ACPI 工程师&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;1-问题概述&#34;&gt;&lt;a href=&#34;#1-问题概述&#34; class=&#34;headerlink&#34; title=&#34;1. 问题概述&#34;&gt;&lt;/a&gt;1. 问题概述&lt;/h2&gt;&lt;h3 id=&#34;1-1-现象描述&#34;&gt;&lt;a href=&#34;#1-1-现象描述&#34; class=&#34;headerlink&#34; title=&#34;1.1 现象描述&#34;&gt;&lt;/a&gt;1.1 现象描述&lt;/h3&gt;&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;项目&lt;/th&gt;
+&lt;th&gt;描述&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;问题&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;S4 Resume (从休眠唤醒) 后，SD 卡插入无法被识别&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;触发条件&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;系统从 S4 休眠状态唤醒后立即插入 SD 卡&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;影响&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;卡插入无响应，用户体验严重下降&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;平台&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;Qualcomm Snapdragon (特定 SOC 版本)&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;&lt;/table&gt;
+&lt;h3 id=&#34;1-2-问题背景&#34;&gt;&lt;a href=&#34;#1-2-问题背景&#34; class=&#34;headerlink&#34; title=&#34;1.2 问题背景&#34;&gt;&lt;/a&gt;1.2 问题背景&lt;/h3&gt;&lt;p&gt;在项目紧急导入阶段（无法及时修改 BIOS），发现高通平台在 S4 恢复后存在硬件中断暂时不可用的问题。为了保证产品按时上市，需要一种&lt;strong&gt;软件层面的应急解决方案&lt;/strong&gt;。&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;2-问题分析&#34;&gt;&lt;a href=&#34;#2-问题分析&#34; class=&#34;headerlink&#34; title=&#34;2. 问题分析&#34;&gt;&lt;/a&gt;2. 问题分析&lt;/h2&gt;"><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/03/21/Qcom_ARM%E5%B9%B3%E5%8F%B0%E9%A9%B1%E5%8A%A8_04_S4%E6%81%A2%E5%A4%8D%E4%B8%AD%E6%96%AD%E5%A4%B1%E6%95%88%E4%B8%8E%E8%BD%AF%E4%B8%AD%E6%96%AD%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88/&t=Qcom ARM平台Windows驱动（四）：S4恢复中断失效与软中断解决方案"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> 菜单</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> 目录</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> 分享</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> 返回顶部</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2026
+    cursorhu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"复制到粘贴板！\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "复制成功！");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+</body>
+</html>

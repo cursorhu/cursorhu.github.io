@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="Storport 驱动 Win10 到 Win11 架构迁移：多线程到单线程多任务日期: 2026-03-08项目: Bayhub SD Host Controller Storport 驱动背景: Windows Storport DDI 限制导致架构重构  目录 背景：DDI 限制与架构挑战 架构对比 核心改动解析 实现细节 共享任务计数器机制 调试与问题排查 参考资料   1. 背景：DDI">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Windows存储驱动开发（五）：Storport驱动Win10到Win11架构迁移">
+<meta property="og:url" content="https://cursorhu.github.io/2026/03/08/Windows%E5%AD%98%E5%82%A8%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91%EF%BC%88%E5%85%AB%EF%BC%89%EF%BC%9AStorport%E9%A9%B1%E5%8A%A8Win10%E5%88%B0Win11%E6%9E%B6%E6%9E%84%E8%BF%81%E7%A7%BB/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="Storport 驱动 Win10 到 Win11 架构迁移：多线程到单线程多任务日期: 2026-03-08项目: Bayhub SD Host Controller Storport 驱动背景: Windows Storport DDI 限制导致架构重构  目录 背景：DDI 限制与架构挑战 架构对比 核心改动解析 实现细节 共享任务计数器机制 调试与问题排查 参考资料   1. 背景：DDI">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-03-08T10:00:00.000Z">
+<meta property="article:modified_time" content="2026-03-21T16:23:58.595Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="Storport">
+<meta property="article:tag" content="Windows 驱动">
+<meta property="article:tag" content="多线程">
+<meta property="article:tag" content="架构设计">
+<meta name="twitter:card" content="summary">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>Windows存储驱动开发（五）：Storport驱动Win10到Win11架构迁移</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+<meta name="generator" content="Hexo 8.0.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="顶部" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="上一篇" href="/2026/03/08/Windows%E5%AD%98%E5%82%A8%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91%EF%BC%88%E4%B8%80%EF%BC%89%EF%BC%9ASD%20Controller%20DMA%20Remapping%E5%AE%8C%E6%95%B4%E6%8A%80%E6%9C%AF%E6%8A%A5%E5%91%8A/"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="下一篇" href="/2026/03/08/Windows%E5%AD%98%E5%82%A8%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91%EF%BC%88%E4%BA%94%EF%BC%89%EF%BC%9AWin10%20Storport%20DmaRemappingCompatible%E9%98%BB%E5%A1%9E%E9%97%AE%E9%A2%98%E8%B0%83%E8%AF%95/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="返回顶部" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="分享文章" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">上一篇</span>
+      <span id="i-next" class="info" style="display:none;">下一篇</span>
+      <span id="i-top" class="info" style="display:none;">返回顶部</span>
+      <span id="i-share" class="info" style="display:none;">分享文章</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/03/08/Windows%E5%AD%98%E5%82%A8%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91%EF%BC%88%E5%85%AB%EF%BC%89%EF%BC%9AStorport%E9%A9%B1%E5%8A%A8Win10%E5%88%B0Win11%E6%9E%B6%E6%9E%84%E8%BF%81%E7%A7%BB/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/03/08/Windows%E5%AD%98%E5%82%A8%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91%EF%BC%88%E5%85%AB%EF%BC%89%EF%BC%9AStorport%E9%A9%B1%E5%8A%A8Win10%E5%88%B0Win11%E6%9E%B6%E6%9E%84%E8%BF%81%E7%A7%BB/&text=Windows存储驱动开发（五）：Storport驱动Win10到Win11架构迁移"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/03/08/Windows%E5%AD%98%E5%82%A8%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91%EF%BC%88%E5%85%AB%EF%BC%89%EF%BC%9AStorport%E9%A9%B1%E5%8A%A8Win10%E5%88%B0Win11%E6%9E%B6%E6%9E%84%E8%BF%81%E7%A7%BB/&title=Windows存储驱动开发（五）：Storport驱动Win10到Win11架构迁移"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/03/08/Windows%E5%AD%98%E5%82%A8%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91%EF%BC%88%E5%85%AB%EF%BC%89%EF%BC%9AStorport%E9%A9%B1%E5%8A%A8Win10%E5%88%B0Win11%E6%9E%B6%E6%9E%84%E8%BF%81%E7%A7%BB/&is_video=false&description=Windows存储驱动开发（五）：Storport驱动Win10到Win11架构迁移"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=Windows存储驱动开发（五）：Storport驱动Win10到Win11架构迁移&body=Check out this article: https://cursorhu.github.io/2026/03/08/Windows%E5%AD%98%E5%82%A8%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91%EF%BC%88%E5%85%AB%EF%BC%89%EF%BC%9AStorport%E9%A9%B1%E5%8A%A8Win10%E5%88%B0Win11%E6%9E%B6%E6%9E%84%E8%BF%81%E7%A7%BB/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/03/08/Windows%E5%AD%98%E5%82%A8%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91%EF%BC%88%E5%85%AB%EF%BC%89%EF%BC%9AStorport%E9%A9%B1%E5%8A%A8Win10%E5%88%B0Win11%E6%9E%B6%E6%9E%84%E8%BF%81%E7%A7%BB/&title=Windows存储驱动开发（五）：Storport驱动Win10到Win11架构迁移"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/03/08/Windows%E5%AD%98%E5%82%A8%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91%EF%BC%88%E5%85%AB%EF%BC%89%EF%BC%9AStorport%E9%A9%B1%E5%8A%A8Win10%E5%88%B0Win11%E6%9E%B6%E6%9E%84%E8%BF%81%E7%A7%BB/&title=Windows存储驱动开发（五）：Storport驱动Win10到Win11架构迁移"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/03/08/Windows%E5%AD%98%E5%82%A8%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91%EF%BC%88%E5%85%AB%EF%BC%89%EF%BC%9AStorport%E9%A9%B1%E5%8A%A8Win10%E5%88%B0Win11%E6%9E%B6%E6%9E%84%E8%BF%81%E7%A7%BB/&title=Windows存储驱动开发（五）：Storport驱动Win10到Win11架构迁移"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/03/08/Windows%E5%AD%98%E5%82%A8%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91%EF%BC%88%E5%85%AB%EF%BC%89%EF%BC%9AStorport%E9%A9%B1%E5%8A%A8Win10%E5%88%B0Win11%E6%9E%B6%E6%9E%84%E8%BF%81%E7%A7%BB/&title=Windows存储驱动开发（五）：Storport驱动Win10到Win11架构迁移"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/03/08/Windows%E5%AD%98%E5%82%A8%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91%EF%BC%88%E5%85%AB%EF%BC%89%EF%BC%9AStorport%E9%A9%B1%E5%8A%A8Win10%E5%88%B0Win11%E6%9E%B6%E6%9E%84%E8%BF%81%E7%A7%BB/&name=Windows存储驱动开发（五）：Storport驱动Win10到Win11架构迁移&description=&lt;h1 id=&#34;Storport-驱动-Win10-到-Win11-架构迁移：多线程到单线程多任务&#34;&gt;&lt;a href=&#34;#Storport-驱动-Win10-到-Win11-架构迁移：多线程到单线程多任务&#34; class=&#34;headerlink&#34; title=&#34;Storport 驱动 Win10 到 Win11 架构迁移：多线程到单线程多任务&#34;&gt;&lt;/a&gt;Storport 驱动 Win10 到 Win11 架构迁移：多线程到单线程多任务&lt;/h1&gt;&lt;p&gt;&lt;strong&gt;日期&lt;/strong&gt;: 2026-03-08&lt;br&gt;&lt;strong&gt;项目&lt;/strong&gt;: Bayhub SD Host Controller Storport 驱动&lt;br&gt;&lt;strong&gt;背景&lt;/strong&gt;: Windows Storport DDI 限制导致架构重构&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;目录&#34;&gt;&lt;a href=&#34;#目录&#34; class=&#34;headerlink&#34; title=&#34;目录&#34;&gt;&lt;/a&gt;目录&lt;/h2&gt;&lt;ol&gt;
+&lt;li&gt;&lt;a href=&#34;#1-%E8%83%8C%E6%99%AFddi-%E9%99%90%E5%88%B6%E4%B8%8E%E6%9E%B6%E6%9E%84%E6%8C%91%E6%88%98&#34;&gt;背景：DDI 限制与架构挑战&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;#2-%E6%9E%B6%E6%9E%84%E5%AF%B9%E6%AF%94&#34;&gt;架构对比&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;#3-%E6%A0%B8%E5%BF%83%E6%94%B9%E5%8A%A8%E8%A7%A3%E6%9E%90&#34;&gt;核心改动解析&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;#4-%E5%AE%9E%E7%8E%B0%E7%BB%86%E8%8A%82&#34;&gt;实现细节&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;#5-%E5%85%B1%E4%BA%AB%E4%BB%BB%E5%8A%A1%E8%AE%A1%E6%95%B0%E5%99%A8%E6%9C%BA%E5%88%B6&#34;&gt;共享任务计数器机制&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;#6-%E8%B0%83%E8%AF%95%E4%B8%8E%E9%97%AE%E9%A2%98%E6%8E%92%E6%9F%A5&#34;&gt;调试与问题排查&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;#7-%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99&#34;&gt;参考资料&lt;/a&gt;&lt;/li&gt;
+&lt;/ol&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;1-背景：DDI-限制与架构挑战&#34;&gt;&lt;a href=&#34;#1-背景：DDI-限制与架构挑战&#34; class=&#34;headerlink&#34; title=&#34;1. 背景：DDI 限制与架构挑战&#34;&gt;&lt;/a&gt;1. 背景：DDI 限制与架构挑战&lt;/h2&gt;&lt;h3 id=&#34;1-1-Storport-HwStorPortProhibitedDDI-规则&#34;&gt;&lt;a href=&#34;#1-1-Storport-HwStorPortProhibitedDDI-规则&#34; class=&#34;headerlink&#34; title=&#34;1.1 Storport HwStorPortProhibitedDDI 规则&#34;&gt;&lt;/a&gt;1.1 Storport HwStorPortProhibitedDDI 规则&lt;/h3&gt;&lt;p&gt;根据 &lt;a href=&#34;https://learn.microsoft.com/zh-cn/windows-hardware/drivers/devtest/storport-hwstorportprohibitedddis&#34;&gt;Microsoft 官方文档&lt;/a&gt;，Storport 微型端口驱动禁止调用大量 WDM DDI 函数：&lt;/p&gt;
+&lt;figure class=&#34;highlight plaintext&#34;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&#34;gutter&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;3&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;4&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;5&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;6&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&#34;code&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;禁止的 DDI 类型：&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;- Ke* 系列（KeWaitForSingleObject, KeInitializeSpinLock 等）&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;- Ex* 系列（ExAllocatePool, ExAcquireFastMutex 等）&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;- Io* 系列（IoCompleteRequest, IoCallDriver 等）&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;- Mm* 系列（MmAllocateNonCachedMemory 等）&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;- Ps* 系列（PsCreateSystemThread 等）&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;"><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/03/08/Windows%E5%AD%98%E5%82%A8%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91%EF%BC%88%E5%85%AB%EF%BC%89%EF%BC%9AStorport%E9%A9%B1%E5%8A%A8Win10%E5%88%B0Win11%E6%9E%B6%E6%9E%84%E8%BF%81%E7%A7%BB/&t=Windows存储驱动开发（五）：Storport驱动Win10到Win11架构迁移"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Storport-%E9%A9%B1%E5%8A%A8-Win10-%E5%88%B0-Win11-%E6%9E%B6%E6%9E%84%E8%BF%81%E7%A7%BB%EF%BC%9A%E5%A4%9A%E7%BA%BF%E7%A8%8B%E5%88%B0%E5%8D%95%E7%BA%BF%E7%A8%8B%E5%A4%9A%E4%BB%BB%E5%8A%A1"><span class="toc-number">1.</span> <span class="toc-text">Storport 驱动 Win10 到 Win11 架构迁移：多线程到单线程多任务</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%9B%AE%E5%BD%95"><span class="toc-number">1.1.</span> <span class="toc-text">目录</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E8%83%8C%E6%99%AF%EF%BC%9ADDI-%E9%99%90%E5%88%B6%E4%B8%8E%E6%9E%B6%E6%9E%84%E6%8C%91%E6%88%98"><span class="toc-number">1.2.</span> <span class="toc-text">1. 背景：DDI 限制与架构挑战</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-Storport-HwStorPortProhibitedDDI-%E8%A7%84%E5%88%99"><span class="toc-number">1.2.1.</span> <span class="toc-text">1.1 Storport HwStorPortProhibitedDDI 规则</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-2-%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%9E%B6%E6%9E%84%E7%9A%84%E9%97%AE%E9%A2%98"><span class="toc-number">1.2.2.</span> <span class="toc-text">1.2 多线程架构的问题</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-3-%E8%BF%81%E7%A7%BB%E7%9B%AE%E6%A0%87"><span class="toc-number">1.2.3.</span> <span class="toc-text">1.3 迁移目标</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-%E6%9E%B6%E6%9E%84%E5%AF%B9%E6%AF%94"><span class="toc-number">1.3.</span> <span class="toc-text">2. 架构对比</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-Win10-%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%9E%B6%E6%9E%84"><span class="toc-number">1.3.1.</span> <span class="toc-text">2.1 Win10 多线程架构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-Win11-%E5%8D%95%E7%BA%BF%E7%A8%8B%E5%A4%9A%E4%BB%BB%E5%8A%A1%E6%9E%B6%E6%9E%84"><span class="toc-number">1.3.2.</span> <span class="toc-text">2.2 Win11 单线程多任务架构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-%E5%85%B3%E9%94%AE%E5%B7%AE%E5%BC%82"><span class="toc-number">1.3.3.</span> <span class="toc-text">2.3 关键差异</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-%E6%A0%B8%E5%BF%83%E6%94%B9%E5%8A%A8%E8%A7%A3%E6%9E%90"><span class="toc-number">1.4.</span> <span class="toc-text">3. 核心改动解析</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E7%A7%BB%E9%99%A4-MultiThread-%E7%BC%96%E8%AF%91%E9%80%89%E9%A1%B9"><span class="toc-number">1.4.1.</span> <span class="toc-text">3.1 移除 MultiThread 编译选项</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E7%AE%80%E5%8C%96%E4%BA%8B%E4%BB%B6%E8%AE%BE%E7%BD%AE-API"><span class="toc-number">1.4.2.</span> <span class="toc-text">3.2 简化事件设置 API</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-%E4%B8%BB%E5%BE%AA%E7%8E%AF%E9%87%8D%E6%9E%84"><span class="toc-number">1.4.3.</span> <span class="toc-text">3.3 主循环重构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-4-%E4%BA%8B%E4%BB%B6%E7%AD%89%E5%BE%85%E6%9C%BA%E5%88%B6"><span class="toc-number">1.4.4.</span> <span class="toc-text">3.4 事件等待机制</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-%E5%AE%9E%E7%8E%B0%E7%BB%86%E8%8A%82"><span class="toc-number">1.5.</span> <span class="toc-text">4. 实现细节</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-%E4%BA%8B%E4%BB%B6%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="toc-number">1.5.1.</span> <span class="toc-text">4.1 事件初始化</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-%E4%BA%8B%E4%BB%B6%E7%B4%A2%E5%BC%95%E6%98%A0%E5%B0%84"><span class="toc-number">1.5.2.</span> <span class="toc-text">4.2 事件索引映射</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-%E7%BA%BF%E7%A8%8B%E6%8C%82%E8%B5%B7-%E6%81%A2%E5%A4%8D"><span class="toc-number">1.5.3.</span> <span class="toc-text">4.3 线程挂起&#x2F;恢复</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-%E5%85%B1%E4%BA%AB%E4%BB%BB%E5%8A%A1%E8%AE%A1%E6%95%B0%E5%99%A8%E6%9C%BA%E5%88%B6"><span class="toc-number">1.6.</span> <span class="toc-text">5. 共享任务计数器机制</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E9%97%AE%E9%A2%98%E8%83%8C%E6%99%AF"><span class="toc-number">1.6.1.</span> <span class="toc-text">5.1 问题背景</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-shared-task-cnt-%E6%9C%BA%E5%88%B6"><span class="toc-number">1.6.2.</span> <span class="toc-text">5.2 shared_task_cnt 机制</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-%E6%9C%BA%E5%88%B6%E5%9B%BE%E8%A7%A3"><span class="toc-number">1.6.3.</span> <span class="toc-text">5.3 机制图解</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6-%E8%B0%83%E8%AF%95%E4%B8%8E%E9%97%AE%E9%A2%98%E6%8E%92%E6%9F%A5"><span class="toc-number">1.7.</span> <span class="toc-text">6. 调试与问题排查</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E5%85%B3%E9%94%AE%E8%B0%83%E8%AF%95%E6%97%A5%E5%BF%97"><span class="toc-number">1.7.1.</span> <span class="toc-text">6.1 关键调试日志</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98"><span class="toc-number">1.7.2.</span> <span class="toc-text">6.2 常见问题</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E9%AA%8C%E8%AF%81%E6%B8%85%E5%8D%95"><span class="toc-number">1.7.3.</span> <span class="toc-text">6.3 验证清单</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#7-%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="toc-number">1.8.</span> <span class="toc-text">7. 参考资料</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#7-1-Microsoft-%E5%AE%98%E6%96%B9%E6%96%87%E6%A1%A3"><span class="toc-number">1.8.1.</span> <span class="toc-text">7.1 Microsoft 官方文档</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-2-Git-Commit-%E4%BF%A1%E6%81%AF"><span class="toc-number">1.8.2.</span> <span class="toc-text">7.2 Git Commit 信息</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-3-%E7%9B%B8%E5%85%B3%E6%96%87%E4%BB%B6"><span class="toc-number">1.8.3.</span> <span class="toc-text">7.3 相关文件</span></a></li></ol></li></ol></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        Windows存储驱动开发（五）：Storport驱动Win10到Win11架构迁移
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">cursorhu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2026-03-08T10:00:00.000Z" class="dt-published" itemprop="datePublished">2026-03-08</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fa-solid fa-archive"></i>
+        <a class="category-link" href="/categories/Windows-%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91/">Windows 驱动开发</a> › <a class="category-link" href="/categories/Windows-%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91/%E5%AD%98%E5%82%A8%E7%B3%BB%E7%BB%9F/">存储系统</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/Storport/" rel="tag">Storport</a>, <a class="p-category" href="/tags/Windows-%E9%A9%B1%E5%8A%A8/" rel="tag">Windows 驱动</a>, <a class="p-category" href="/tags/%E5%A4%9A%E7%BA%BF%E7%A8%8B/" rel="tag">多线程</a>, <a class="p-category" href="/tags/%E6%9E%B6%E6%9E%84%E8%AE%BE%E8%AE%A1/" rel="tag">架构设计</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <h1 id="Storport-驱动-Win10-到-Win11-架构迁移：多线程到单线程多任务"><a href="#Storport-驱动-Win10-到-Win11-架构迁移：多线程到单线程多任务" class="headerlink" title="Storport 驱动 Win10 到 Win11 架构迁移：多线程到单线程多任务"></a>Storport 驱动 Win10 到 Win11 架构迁移：多线程到单线程多任务</h1><p><strong>日期</strong>: 2026-03-08<br><strong>项目</strong>: Bayhub SD Host Controller Storport 驱动<br><strong>背景</strong>: Windows Storport DDI 限制导致架构重构</p>
+<hr>
+<h2 id="目录"><a href="#目录" class="headerlink" title="目录"></a>目录</h2><ol>
+<li><a href="#1-%E8%83%8C%E6%99%AFddi-%E9%99%90%E5%88%B6%E4%B8%8E%E6%9E%B6%E6%9E%84%E6%8C%91%E6%88%98">背景：DDI 限制与架构挑战</a></li>
+<li><a href="#2-%E6%9E%B6%E6%9E%84%E5%AF%B9%E6%AF%94">架构对比</a></li>
+<li><a href="#3-%E6%A0%B8%E5%BF%83%E6%94%B9%E5%8A%A8%E8%A7%A3%E6%9E%90">核心改动解析</a></li>
+<li><a href="#4-%E5%AE%9E%E7%8E%B0%E7%BB%86%E8%8A%82">实现细节</a></li>
+<li><a href="#5-%E5%85%B1%E4%BA%AB%E4%BB%BB%E5%8A%A1%E8%AE%A1%E6%95%B0%E5%99%A8%E6%9C%BA%E5%88%B6">共享任务计数器机制</a></li>
+<li><a href="#6-%E8%B0%83%E8%AF%95%E4%B8%8E%E9%97%AE%E9%A2%98%E6%8E%92%E6%9F%A5">调试与问题排查</a></li>
+<li><a href="#7-%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99">参考资料</a></li>
+</ol>
+<hr>
+<h2 id="1-背景：DDI-限制与架构挑战"><a href="#1-背景：DDI-限制与架构挑战" class="headerlink" title="1. 背景：DDI 限制与架构挑战"></a>1. 背景：DDI 限制与架构挑战</h2><h3 id="1-1-Storport-HwStorPortProhibitedDDI-规则"><a href="#1-1-Storport-HwStorPortProhibitedDDI-规则" class="headerlink" title="1.1 Storport HwStorPortProhibitedDDI 规则"></a>1.1 Storport HwStorPortProhibitedDDI 规则</h3><p>根据 <a target="_blank" rel="noopener" href="https://learn.microsoft.com/zh-cn/windows-hardware/drivers/devtest/storport-hwstorportprohibitedddis">Microsoft 官方文档</a>，Storport 微型端口驱动禁止调用大量 WDM DDI 函数：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">禁止的 DDI 类型：</span><br><span class="line">- Ke* 系列（KeWaitForSingleObject, KeInitializeSpinLock 等）</span><br><span class="line">- Ex* 系列（ExAllocatePool, ExAcquireFastMutex 等）</span><br><span class="line">- Io* 系列（IoCompleteRequest, IoCallDriver 等）</span><br><span class="line">- Mm* 系列（MmAllocateNonCachedMemory 等）</span><br><span class="line">- Ps* 系列（PsCreateSystemThread 等）</span><br></pre></td></tr></table></figure>
+
+<h3 id="1-2-多线程架构的问题"><a href="#1-2-多线程架构的问题" class="headerlink" title="1.2 多线程架构的问题"></a>1.2 多线程架构的问题</h3><p>原 Win10 架构使用 <code>#ifdef MultiThread</code> 启用的多线程模式存在以下问题：</p>
+<table>
+<thead>
+<tr>
+<th>问题</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>线程同步复杂</strong></td>
+<td>需要 <code>KeWaitForSingleObject</code>、<code>KeInitializeMutex</code> 等被禁止的 DDI</td>
+</tr>
+<tr>
+<td><strong>资源竞争</strong></td>
+<td>多线程访问共享资源需要大量锁机制</td>
+</tr>
+<tr>
+<td><strong>Storport 不原生支持</strong></td>
+<td>Storport 设计为单线程回调模型</td>
+</tr>
+<tr>
+<td><strong>调试困难</strong></td>
+<td>线程间 race condition 难以复现</td>
+</tr>
+</tbody></table>
+<h3 id="1-3-迁移目标"><a href="#1-3-迁移目标" class="headerlink" title="1.3 迁移目标"></a>1.3 迁移目标</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">Win10: 多线程架构 (MultiThread)</span><br><span class="line">     ↓ 重构</span><br><span class="line">Win11: 单线程多任务架构 (Single-thread Multi-task)</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="2-架构对比"><a href="#2-架构对比" class="headerlink" title="2. 架构对比"></a>2. 架构对比</h2><h3 id="2-1-Win10-多线程架构"><a href="#2-1-Win10-多线程架构" class="headerlink" title="2.1 Win10 多线程架构"></a>2.1 Win10 多线程架构</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                        Win10 架构                                │</span><br><span class="line">├─────────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                                  │</span><br><span class="line">│  ┌─────────────┐   ┌─────────────┐   ┌─────────────┐          │</span><br><span class="line">│  │ Thread 0    │   │ Thread 1    │   │ Thread N    │          │</span><br><span class="line">│  │ (主线程)    │   │ (Card Init) │   │ (其他)      │          │</span><br><span class="line">│  └──────┬──────┘   └──────┬──────┘   └──────┬──────┘          │</span><br><span class="line">│         │                  │                  │                  │</span><br><span class="line">│         └──────────────────┼──────────────────┘                  │</span><br><span class="line">│                            │                                     │</span><br><span class="line">│                    ┌───────┴───────┐                            │</span><br><span class="line">│                    │  Task Manager │                            │</span><br><span class="line">│                    │  - TASK_CARD_CHG                           │</span><br><span class="line">│                    │  - TASK_TAG_IO                             │</span><br><span class="line">│                    │  - TASK_GEN_IO                             │</span><br><span class="line">│                    │  - ...                                     │</span><br><span class="line">│                    └───────────────┘                            │</span><br><span class="line">│                                                                  │</span><br><span class="line">│  问题: 需要 KeWaitForMultipleObjects 等禁止的 DDI               │</span><br><span class="line">└─────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-2-Win11-单线程多任务架构"><a href="#2-2-Win11-单线程多任务架构" class="headerlink" title="2.2 Win11 单线程多任务架构"></a>2.2 Win11 单线程多任务架构</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                        Win11 架构                                │</span><br><span class="line">├─────────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                                  │</span><br><span class="line">│  ┌─────────────────────────────────────────────────────────────┐│</span><br><span class="line">│  │                    单个主线程                                ││</span><br><span class="line">│  │                                                              ││</span><br><span class="line">│  │   os_wait_event()  ──→  switch(evt)  ──→  process_task()    ││</span><br><span class="line">│  │         │                   │                  │             ││</span><br><span class="line">│  │         │            ┌──────┴──────┐          │             ││</span><br><span class="line">│  │         │            │             │          │             ││</span><br><span class="line">│  │         │      ┌─────┴─────┐ ┌────┴────┐ ┌───┴───┐        ││</span><br><span class="line">│  │         │      │EVENT_CARD │ │EVENT_TAG│ │EVENT_ │ ...     ││</span><br><span class="line">│  │         │      │    _CHG   │ │  _IO   │ │GEN_IO │         ││</span><br><span class="line">│  │         │      └───────────┘ └─────────┘ └───────┘        ││</span><br><span class="line">│  │         │                                                      ││</span><br><span class="line">│  └─────────┼──────────────────────────────────────────────────────┘│</span><br><span class="line">│            │                                                        │</span><br><span class="line">│     ┌──────┴──────┐                                               │</span><br><span class="line">│     │ Event Array │  (StorPort 兼容方式)                           │</span><br><span class="line">│     │ pevt_array[]│                                               │</span><br><span class="line">│     └─────────────┘                                                │</span><br><span class="line">│                                                                  │</span><br><span class="line">└─────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-3-关键差异"><a href="#2-3-关键差异" class="headerlink" title="2.3 关键差异"></a>2.3 关键差异</h3><table>
+<thead>
+<tr>
+<th>维度</th>
+<th>Win10 多线程</th>
+<th>Win11 单线程多任务</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>线程数</strong></td>
+<td>多线程 (MultiThread)</td>
+<td>单线程</td>
+</tr>
+<tr>
+<td><strong>任务调度</strong></td>
+<td>Task Manager + 多事件</td>
+<td>switch-case 直连</td>
+</tr>
+<tr>
+<td><strong>同步原语</strong></td>
+<td>KeWait*, ExAcquire*</td>
+<td>StorPortWaitForSingleObject</td>
+</tr>
+<tr>
+<td><strong>内存分配</strong></td>
+<td>ExAllocatePool</td>
+<td>StorPort* API</td>
+</tr>
+<tr>
+<td><strong>DDI 限制</strong></td>
+<td>违反 Storport DDI</td>
+<td>符合 Storport DDI</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="3-核心改动解析"><a href="#3-核心改动解析" class="headerlink" title="3. 核心改动解析"></a>3. 核心改动解析</h2><h3 id="3-1-移除-MultiThread-编译选项"><a href="#3-1-移除-MultiThread-编译选项" class="headerlink" title="3.1 移除 MultiThread 编译选项"></a>3.1 移除 MultiThread 编译选项</h3><p><strong>Win10 代码</strong> (<code>thread.c</code>):</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">ifdef</span> MultiThread</span></span><br><span class="line">    <span class="keyword">if</span> (card-&gt;card_type == CARD_ERROR)</span><br><span class="line">    &#123;</span><br><span class="line">        result = REQ_RESULT_NO_CARD;</span><br><span class="line">        <span class="keyword">goto</span> <span class="built_in">exit</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">//set card_init event</span></span><br><span class="line">    DbgInfo(MODULE_MAIN_THR, FEATURE_THREAD_TRACE, NOT_TO_RAM, <span class="string">&quot;%s set EVENT_CARD_INIT\n&quot;</span>, __FUNCTION__);</span><br><span class="line">    os_set_event(pdx, &amp;pdx-&gt;os, EVENT_CARD_INIT);</span><br><span class="line"></span><br><span class="line">    <span class="comment">//wait for card_init complete</span></span><br><span class="line">    <span class="keyword">while</span> (pdx-&gt;card.thread_init_card_flag == <span class="number">0</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        StorPortStallExecution(<span class="number">50</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    ...</span><br><span class="line"><span class="meta">#<span class="keyword">else</span></span></span><br><span class="line">    <span class="keyword">if</span> (thread_init_card(pdx, FALSE, TRUE, <span class="number">3</span>) == FALSE)</span><br><span class="line">    &#123;</span><br><span class="line">        result = REQ_RESULT_NO_CARD;</span><br><span class="line">    &#125;</span><br><span class="line"><span class="meta">#<span class="keyword">endif</span> <span class="comment">// MultiThread</span></span></span><br></pre></td></tr></table></figure>
+
+<p><strong>Win11 代码</strong> (移除 <code>#ifdef MultiThread</code>):</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (card-&gt;card_type == CARD_ERROR)</span><br><span class="line">&#123;</span><br><span class="line">    result = REQ_RESULT_NO_CARD;</span><br><span class="line">    <span class="keyword">goto</span> <span class="built_in">exit</span>;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">//set card_init event</span></span><br><span class="line">os_set_event(pdx, &amp;pdx-&gt;os, EVENT_CARD_INIT);</span><br><span class="line"><span class="comment">//wait for card_init complete</span></span><br><span class="line"><span class="keyword">while</span> (pdx-&gt;card.thread_init_card_flag == <span class="number">0</span>)</span><br><span class="line">&#123;</span><br><span class="line">    StorPortStallExecution(<span class="number">50</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-2-简化事件设置-API"><a href="#3-2-简化事件设置-API" class="headerlink" title="3.2 简化事件设置 API"></a>3.2 简化事件设置 API</h3><p><strong>Win10 API 签名</strong>:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 包含 taskid 参数，用于 Task Manager</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">os_set_event</span><span class="params">(<span class="type">void</span> * pdx, os_struct * os, <span class="type">e_event_t</span> event, <span class="type">e_task_t</span> taskid)</span></span><br><span class="line">&#123;</span><br><span class="line">    win_set_task(&amp;os-&gt;task_mgr, taskid, TASK_STATUS_OCCUR);</span><br><span class="line">    p = win_get_evt(&amp;os-&gt;evt_mgr, event);</span><br><span class="line">    <span class="keyword">if</span>(<span class="literal">NULL</span> != p)</span><br><span class="line">    &#123;</span><br><span class="line">        DbgInfo(MODULE_OS_API, FEATURE_THREAD_TRACE, NOT_TO_RAM,</span><br><span class="line">                <span class="string">&quot;%s set evt=%x, taskid=%x\n&quot;</span>, __FUNCTION__, event, taskid);</span><br><span class="line">        StorPortIssueDpc((<span class="type">bht_dev_ext_t</span>*) pdx, &amp;p-&gt;dpc, p, <span class="literal">NULL</span>);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>Win11 API 签名</strong>:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 直接设置事件，无需 Task Manager</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">os_set_event</span><span class="params">(<span class="type">void</span> * pdx, os_struct * os, <span class="type">e_event_t</span> event)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">win_evt_t</span> * p = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">if</span>(os-&gt;dump_mode)</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">    p = win_get_evt(&amp;os-&gt;evt_mgr, event);</span><br><span class="line">    <span class="keyword">if</span>(<span class="literal">NULL</span> != p)</span><br><span class="line">    &#123;</span><br><span class="line">        DbgInfo(MODULE_OS_API, FEATURE_THREAD_TRACE, NOT_TO_RAM,</span><br><span class="line">                <span class="string">&quot;%s set evt %x\n&quot;</span>, __FUNCTION__, event);</span><br><span class="line">        StorPortIssueDpc((<span class="type">bht_dev_ext_t</span>*) pdx, &amp;p-&gt;dpc, p, <span class="literal">NULL</span>);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-3-主循环重构"><a href="#3-3-主循环重构" class="headerlink" title="3.3 主循环重构"></a>3.3 主循环重构</h3><p><strong>Win10 主循环</strong> (Task Manager 模式):</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> <span class="title function_">thread_main</span><span class="params">(<span class="type">void</span> * param)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">bht_dev_ext_t</span> * pdx = (<span class="type">bht_dev_ext_t</span> *)param;</span><br><span class="line">    os_struct * os = &amp;pdx-&gt;os;</span><br><span class="line">    <span class="type">e_event_t</span> evt = EVENT_NONE;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span>(;;)</span><br><span class="line">    &#123;</span><br><span class="line">        evt = os_wait_event(pdx, os);</span><br><span class="line">        os_clear_event((<span class="type">void</span> *) pdx, os, evt);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 处理 task 依次顺序执行，有优先级，index 小的优先处理</span></span><br><span class="line">        <span class="keyword">for</span>(u8 i = <span class="number">0</span>; i &lt; os-&gt;task_mgr.task_cnt; ++i)&#123;</span><br><span class="line">            <span class="keyword">if</span>(os-&gt;task_mgr.tasks[i].status == TASK_STATUS_OCCUR)&#123;</span><br><span class="line">                DbgInfo(MODULE_MAIN_THR, FEATURE_THREAD_TRACE, NOT_TO_RAM,</span><br><span class="line">                        <span class="string">&quot;task processing, task_id=%d\n&quot;</span>, i);</span><br><span class="line"></span><br><span class="line">                os-&gt;task_mgr.tasks[i].status = TASK_STATUS_IDLE;</span><br><span class="line">                <span class="keyword">if</span>(process_task(i, pdx, os))</span><br><span class="line">                    <span class="keyword">goto</span> <span class="built_in">exit</span>; <span class="comment">// special case for terminate thread task</span></span><br><span class="line"></span><br><span class="line">                DbgInfo(MODULE_MAIN_THR, FEATURE_THREAD_TRACE, NOT_TO_RAM,</span><br><span class="line">                        <span class="string">&quot;task done, task_id=%d\n&quot;</span>, i);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"><span class="built_in">exit</span>:</span><br><span class="line">    DbgInfo(MODULE_MAIN_THR, FEATURE_DRIVER_INIT, NOT_TO_RAM, <span class="string">&quot;exit thread_main\n&quot;</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>Win11 主循环</strong> (switch-case 模式):</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> <span class="title function_">thread_main</span><span class="params">(<span class="type">void</span> * param)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">bht_dev_ext_t</span> * pdx = (<span class="type">bht_dev_ext_t</span> *)param;</span><br><span class="line">    os_struct * os = &amp;pdx-&gt;os;</span><br><span class="line">    <span class="type">e_event_t</span> evt = EVENT_NONE;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span>(;;)</span><br><span class="line">    &#123;</span><br><span class="line">        DbgInfo(MODULE_MAIN_THR, FEATURE_THREAD_TRACE, NOT_TO_RAM, <span class="string">&quot;thread wait evt\n&quot;</span>);</span><br><span class="line">        evt = os_wait_event(pdx, os);</span><br><span class="line">        os_clear_event((<span class="type">void</span> *) pdx, os, evt);</span><br><span class="line">        DbgInfo(MODULE_MAIN_THR, FEATURE_THREAD_TRACE, NOT_TO_RAM, <span class="string">&quot;Thr get Event=%d\n&quot;</span>, evt);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">switch</span>(evt)</span><br><span class="line">        &#123;</span><br><span class="line">        <span class="keyword">case</span> EVENT_CARD_CHG:</span><br><span class="line">            os_set_dev_busy(pdx);</span><br><span class="line">            <span class="keyword">if</span>(pdx-&gt;pm_state.rtd3_en &amp;&amp; pdx-&gt;pm_state.rtd3_entered)</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            <span class="keyword">if</span>(pdx-&gt;testcase.test_type == <span class="number">0</span>)</span><br><span class="line">                thread_handle_card_event(pdx);</span><br><span class="line">            <span class="keyword">else</span></span><br><span class="line">                testcase_main(pdx, <span class="number">1</span>);</span><br><span class="line">            os_set_dev_idle(pdx);</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">        <span class="keyword">case</span> EVENT_TERMINATE:</span><br><span class="line">            DbgInfo(MODULE_MAIN_THR, FEATURE_THREAD_TRACE, TO_RAM, <span class="string">&quot;terminal task\n&quot;</span>);</span><br><span class="line">            <span class="keyword">goto</span> <span class="built_in">exit</span>;</span><br><span class="line">        <span class="keyword">case</span> EVENT_TAG_IO:</span><br><span class="line">            calc_thr_start(&amp;pdx-&gt;tick);</span><br><span class="line">            thread_tag_io(pdx);</span><br><span class="line">            DbgInfo(MODULE_MAIN_THR, FEATURE_RW_TRACE, NOT_TO_RAM, <span class="string">&quot;rw evt task\n&quot;</span>);</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">        <span class="keyword">case</span> EVENT_GEN_IO:</span><br><span class="line">            thread_gen_io(pdx);</span><br><span class="line">            DbgInfo(MODULE_MAIN_THR, FEATURE_IOCTL_TRACE, NOT_TO_RAM, <span class="string">&quot;io_ctl task\n&quot;</span>);</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">        <span class="comment">// ... 其他事件处理</span></span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        DbgInfo(MODULE_MAIN_THR, FEATURE_THREAD_TRACE, NOT_TO_RAM, <span class="string">&quot;Thr done Event=%d\n&quot;</span>, evt);</span><br><span class="line">    &#125;</span><br><span class="line"><span class="built_in">exit</span>:</span><br><span class="line">    DbgInfo(MODULE_MAIN_THR, FEATURE_DRIVER_INIT, NOT_TO_RAM, <span class="string">&quot;exit thread\n&quot;</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-4-事件等待机制"><a href="#3-4-事件等待机制" class="headerlink" title="3.4 事件等待机制"></a>3.4 事件等待机制</h3><p><strong>Win11 改进的事件等待</strong>:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">e_event_t</span> <span class="title function_">os_wait_event</span><span class="params">(<span class="type">void</span> * pdx, os_struct * os)</span></span><br><span class="line">&#123;</span><br><span class="line">    u32 i;</span><br><span class="line">    LARGE_INTEGER time_out;</span><br><span class="line">    <span class="type">evt_mgr_t</span> * mgr = &amp;os-&gt;evt_mgr;</span><br><span class="line"></span><br><span class="line">    time_out.QuadPart = <span class="number">0</span>;  <span class="comment">// 立即返回模式</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span>(os-&gt;dump_mode)</span><br><span class="line">        <span class="keyword">return</span> EVENT_NONE;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">do</span> &#123;</span><br><span class="line">        <span class="keyword">for</span> (i = <span class="number">0</span>; i &lt; mgr-&gt;evt_cnt; i++)</span><br><span class="line">        &#123;</span><br><span class="line">            ret = StorPortWaitForSingleObject((<span class="type">bht_dev_ext_t</span>*)pdx,</span><br><span class="line">                                              mgr-&gt;pevt_array[i], FALSE, &amp;time_out);</span><br><span class="line">            <span class="keyword">if</span> (ret == STOR_STATUS_SUCCESS)</span><br><span class="line">                <span class="keyword">goto</span> <span class="built_in">exit</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">// thread sleep 1 ms，避免 CPU 忙等</span></span><br><span class="line">        os_sleep(pdx, <span class="number">1</span>);</span><br><span class="line">    &#125; <span class="keyword">while</span> (<span class="number">1</span>);</span><br><span class="line"></span><br><span class="line"><span class="built_in">exit</span>:</span><br><span class="line">    <span class="comment">// 根据索引映射回事件类型</span></span><br><span class="line">    <span class="keyword">switch</span>(i)</span><br><span class="line">    &#123;</span><br><span class="line">    <span class="keyword">case</span> EVT_WAIT_CARD_CHG:    <span class="keyword">return</span> EVENT_CARD_CHG;</span><br><span class="line">    <span class="keyword">case</span> EVT_WAIT_CARD_INIT:    <span class="keyword">return</span> EVENT_CARD_INIT;</span><br><span class="line">    <span class="keyword">case</span> EVT_WAIT_RW_REQUEST:   <span class="keyword">return</span> EVENT_TAG_IO;</span><br><span class="line">    <span class="keyword">case</span> EVT_WAIT_IOCTL_REQUEST:<span class="keyword">return</span> EVENT_GEN_IO;</span><br><span class="line">    <span class="keyword">case</span> EVT_WAIT_RUNTIME_D3:   <span class="keyword">return</span> EVENT_RUNTIME_D3;</span><br><span class="line">    <span class="keyword">case</span> EVT_WAIT_AUTO_TIMER:   <span class="keyword">return</span> EVENT_AUTO_TIMER;</span><br><span class="line">    <span class="keyword">case</span> EVT_WAIT_SDIO:        <span class="keyword">return</span> EVENT_SDIO;</span><br><span class="line">    <span class="keyword">case</span> EVT_WAIT_PENDING:      <span class="keyword">return</span> EVENT_PENDING;</span><br><span class="line">    <span class="keyword">case</span> EVT_WAIT_TERMINAL:     <span class="keyword">return</span> EVENT_TERMINATE;</span><br><span class="line">    <span class="keyword">default</span>:                     <span class="keyword">return</span> EVENT_NONE;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="4-实现细节"><a href="#4-实现细节" class="headerlink" title="4. 实现细节"></a>4. 实现细节</h2><h3 id="4-1-事件初始化"><a href="#4-1-事件初始化" class="headerlink" title="4.1 事件初始化"></a>4.1 事件初始化</h3><p><strong>Win11 简化的事件管理器初始化</strong>:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">void</span> <span class="title function_">win_init_event_mgr</span><span class="params">(<span class="type">bht_dev_ext_t</span>* pdx, <span class="type">evt_mgr_t</span> *mgr)</span></span><br><span class="line">&#123;</span><br><span class="line">    DbgInfo(MODULE_OS_API, FEATURE_DRIVER_INIT, NOT_TO_RAM, <span class="string">&quot;Enter %s\n&quot;</span>, __FUNCTION__);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 1. clean mgr</span></span><br><span class="line">    os_memset(mgr, <span class="number">0</span>, <span class="keyword">sizeof</span>(<span class="type">evt_mgr_t</span>));</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 2. init all evt - 直接初始化所有事件</span></span><br><span class="line">    win_init_event(pdx, mgr, win_get_evt(mgr, EVENT_CARD_CHG));</span><br><span class="line">    win_init_event(pdx, mgr, win_get_evt(mgr, EVENT_CARD_INIT));</span><br><span class="line">    win_init_event(pdx, mgr, win_get_evt(mgr, EVENT_TAG_IO));</span><br><span class="line">    win_init_event(pdx, mgr, win_get_evt(mgr, EVENT_GEN_IO));</span><br><span class="line">    win_init_event(pdx, mgr, win_get_evt(mgr, EVENT_RUNTIME_D3));</span><br><span class="line">    win_init_event(pdx, mgr, win_get_evt(mgr, EVENT_AUTO_TIMER));</span><br><span class="line">    win_init_event(pdx, mgr, win_get_evt(mgr, EVENT_PENDING));</span><br><span class="line">    win_init_event(pdx, mgr, win_get_evt(mgr, EVENT_TERMINATE));</span><br><span class="line">    win_init_event(pdx, mgr, win_get_evt(mgr, EVENT_SDIO));</span><br><span class="line"></span><br><span class="line">    DbgInfo(MODULE_OS_API, FEATURE_DRIVER_INIT, NOT_TO_RAM, <span class="string">&quot;Exit %s\n&quot;</span>, __FUNCTION__);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>Win10 移除的 Task Manager 初始化</strong> (Win11 不再需要):</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Win10 代码 - Win11 已移除</span></span><br><span class="line"><span class="type">static</span> <span class="type">void</span> <span class="title function_">win_init_task_mgr</span><span class="params">(<span class="type">bht_dev_ext_t</span>* pdx, <span class="type">task_mgr_t</span> *mgr)</span></span><br><span class="line">&#123;</span><br><span class="line">    os_memset(mgr, <span class="number">0</span>, <span class="keyword">sizeof</span>(<span class="type">task_mgr_t</span>));</span><br><span class="line">    <span class="comment">// 此顺序要和 enum TASK_XXX 一致，且决定 main_thread 处理 task 的优先级</span></span><br><span class="line">    win_init_task(pdx, mgr, win_get_task(mgr, TASK_CARD_CHG));</span><br><span class="line">    win_init_task(pdx, mgr, win_get_task(mgr, TASK_TERMINATE));</span><br><span class="line">    win_init_task(pdx, mgr, win_get_task(mgr, TASK_PENDING));</span><br><span class="line">    win_init_task(pdx, mgr, win_get_task(mgr, TASK_TAG_IO));</span><br><span class="line">    win_init_task(pdx, mgr, win_get_task(mgr, TASK_GEN_IO));</span><br><span class="line">    win_init_task(pdx, mgr, win_get_task(mgr, TASK_RUNTIME_D3));</span><br><span class="line">    win_init_task(pdx, mgr, win_get_task(mgr, TASK_AUTO_TIMER));</span><br><span class="line">    win_init_task(pdx, mgr, win_get_task(mgr, TASK_SDIO));</span><br><span class="line">    win_init_task(pdx, mgr, win_get_task(mgr, TASK_CAMOD_POLL_CARD_CHG));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-2-事件索引映射"><a href="#4-2-事件索引映射" class="headerlink" title="4.2 事件索引映射"></a>4.2 事件索引映射</h3><p><strong>Win11 显式的事件索引映射</strong>:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">win_evt_t</span> * <span class="title function_">win_get_evt</span><span class="params">(<span class="type">evt_mgr_t</span> *mgr, <span class="type">e_event_t</span> event)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">int</span> idx = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">switch</span>(event)</span><br><span class="line">    &#123;</span><br><span class="line">    <span class="keyword">case</span> EVENT_CARD_CHG:      idx = <span class="number">0</span>; <span class="keyword">break</span>;</span><br><span class="line">    <span class="keyword">case</span> EVENT_CARD_INIT:    idx = <span class="number">1</span>; <span class="keyword">break</span>;</span><br><span class="line">    <span class="keyword">case</span> EVENT_TAG_IO:       idx = <span class="number">2</span>; <span class="keyword">break</span>;</span><br><span class="line">    <span class="keyword">case</span> EVENT_GEN_IO:        idx = <span class="number">3</span>; <span class="keyword">break</span>;</span><br><span class="line">    <span class="keyword">case</span> EVENT_RUNTIME_D3:    idx = <span class="number">4</span>; <span class="keyword">break</span>;</span><br><span class="line">    <span class="keyword">case</span> EVENT_AUTO_TIMER:    idx = <span class="number">5</span>; <span class="keyword">break</span>;</span><br><span class="line">    <span class="keyword">case</span> EVENT_PENDING:       idx = <span class="number">6</span>; <span class="keyword">break</span>;</span><br><span class="line">    <span class="keyword">case</span> EVENT_TERMINATE:     idx = <span class="number">7</span>; <span class="keyword">break</span>;</span><br><span class="line">    <span class="keyword">case</span> EVENT_SDIO:          idx = <span class="number">8</span>; <span class="keyword">break</span>;</span><br><span class="line">    <span class="keyword">default</span>:</span><br><span class="line">        DbgErr(<span class="string">&quot;%s undefine evtID:%xh\n&quot;</span>, __FUNCTION__, event);</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">NULL</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> &amp;mgr-&gt;evts[idx];</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-3-线程挂起-恢复"><a href="#4-3-线程挂起-恢复" class="headerlink" title="4.3 线程挂起&#x2F;恢复"></a>4.3 线程挂起&#x2F;恢复</h3><p><strong>Win11 线程控制</strong>:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">bool</span> <span class="title function_">os_pending_thread</span><span class="params">(<span class="type">void</span> * pdx, <span class="type">bool</span> pending)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">    os-&gt;thread[<span class="number">1</span>].pending_lock = FALSE;  <span class="comment">// 注意：使用 thread[1] 而非 thread[0]</span></span><br><span class="line">    <span class="keyword">if</span>(TRUE == pending)</span><br><span class="line">    &#123;</span><br><span class="line">        ret = FALSE;</span><br><span class="line">        os_init_completion(pdx, &amp;os-&gt;thread[<span class="number">0</span>].break_pending);</span><br><span class="line">        os-&gt;thread[<span class="number">1</span>].freeze = TRUE;</span><br><span class="line">        os_set_event(pdx, os, EVENT_PENDING);</span><br><span class="line">        <span class="keyword">while</span>(i--)</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="keyword">if</span>(TRUE == os-&gt;thread[<span class="number">1</span>].pending_lock)</span><br><span class="line">            &#123;</span><br><span class="line">                ret = TRUE;</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">    &#123;</span><br><span class="line">        os_finish_completion(pdx, &amp;os-&gt;thread[<span class="number">0</span>].break_pending);</span><br><span class="line">        os-&gt;thread[<span class="number">1</span>].freeze = FALSE;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="5-共享任务计数器机制"><a href="#5-共享任务计数器机制" class="headerlink" title="5. 共享任务计数器机制"></a>5. 共享任务计数器机制</h2><h3 id="5-1-问题背景"><a href="#5-1-问题背景" class="headerlink" title="5.1 问题背景"></a>5.1 问题背景</h3><p>卡插拔事件 (<code>EVENT_CARD_CHG</code>) 可能同时包含”插入”和”拔出”两种应用场景，需要确保两种情况都被处理。</p>
+<h3 id="5-2-shared-task-cnt-机制"><a href="#5-2-shared-task-cnt-机制" class="headerlink" title="5.2 shared_task_cnt 机制"></a>5.2 shared_task_cnt 机制</h3><p><strong>数据结构</strong>:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span>&#123;</span></span><br><span class="line">    u8  status;</span><br><span class="line">    u32 id;</span><br><span class="line">    u8 shared_task_cnt;  <span class="comment">// 共享任务计数器</span></span><br><span class="line">&#125; <span class="type">win_task_t</span>;</span><br></pre></td></tr></table></figure>
+
+<p><strong>设置任务时递增计数</strong>:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">void</span> <span class="title function_">win_set_task</span><span class="params">(<span class="type">task_mgr_t</span> *mgr, <span class="type">e_task_t</span> taskid, u8 status)</span></span><br><span class="line">&#123;</span><br><span class="line">    mgr-&gt;tasks[taskid].status = status;</span><br><span class="line">    mgr-&gt;tasks[taskid].shared_task_cnt++;  <span class="comment">// 共享任务计数 +1</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>处理任务时递减计数并重入</strong>:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 处理 task 依次顺序执行，有优先级</span></span><br><span class="line"><span class="keyword">for</span>(u8 i = <span class="number">0</span>; i &lt; os-&gt;task_mgr.task_cnt; ++i)&#123;</span><br><span class="line">    <span class="keyword">if</span>(os-&gt;task_mgr.tasks[i].status == TASK_STATUS_OCCUR &amp;&amp;</span><br><span class="line">       os-&gt;task_mgr.tasks[i].shared_task_cnt != <span class="number">0</span>)&#123;</span><br><span class="line">        DbgInfo(MODULE_MAIN_THR, FEATURE_THREAD_TRACE, NOT_TO_RAM,</span><br><span class="line">                <span class="string">&quot;task processing, task_id=%d\n&quot;</span>, i);</span><br><span class="line"></span><br><span class="line">        os-&gt;task_mgr.tasks[i].status = TASK_STATUS_OCCUR;  <span class="comment">// 保持 OCCUR 状态</span></span><br><span class="line">        os-&gt;task_mgr.tasks[i].shared_task_cnt--;  <span class="comment">// 计数 -1</span></span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span>(process_task(i, pdx, os))</span><br><span class="line">            <span class="keyword">goto</span> <span class="built_in">exit</span>;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* CARD_CHANGE 包括两种应用情况：插入卡和拔出卡</span></span><br><span class="line"><span class="comment">         * 如果同一事件中发生这两种情况，任务被两种情况共享</span></span><br><span class="line"><span class="comment">         * 必须再次处理 CARD_CHANGE</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        <span class="keyword">if</span>(os-&gt;task_mgr.tasks[i].shared_task_cnt != <span class="number">0</span>)</span><br><span class="line">            i--;  <span class="comment">// 重新处理该任务</span></span><br><span class="line"></span><br><span class="line">        DbgInfo(MODULE_MAIN_THR, FEATURE_THREAD_TRACE, NOT_TO_RAM,</span><br><span class="line">                <span class="string">&quot;task done, task_id=%d\n&quot;</span>, i);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-3-机制图解"><a href="#5-3-机制图解" class="headerlink" title="5.3 机制图解"></a>5.3 机制图解</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">场景：卡在一次中断中被拔出又插入</span><br><span class="line"></span><br><span class="line">中断处理:</span><br><span class="line">    ↓</span><br><span class="line">os_set_task(TASK_CARD_CHG) → shared_task_cnt = 1</span><br><span class="line">    ↓</span><br><span class="line">os_set_task(TASK_CARD_CHG) → shared_task_cnt = 2  (再次设置同一任务)</span><br><span class="line">    ↓</span><br><span class="line">主循环处理:</span><br><span class="line">    ↓</span><br><span class="line">第一次处理 TASK_CARD_CHG:</span><br><span class="line">    - shared_task_cnt: 2 → 1</span><br><span class="line">    - 处理完成后检查: cnt != 0, i-- 重新处理</span><br><span class="line">    ↓</span><br><span class="line">第二次处理 TASK_CARD_CHG:</span><br><span class="line">    - shared_task_cnt: 1 → 0</span><br><span class="line">    - 处理完成后检查: cnt == 0, 不重入</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="6-调试与问题排查"><a href="#6-调试与问题排查" class="headerlink" title="6. 调试与问题排查"></a>6. 调试与问题排查</h2><h3 id="6-1-关键调试日志"><a href="#6-1-关键调试日志" class="headerlink" title="6.1 关键调试日志"></a>6.1 关键调试日志</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 事件设置</span></span><br><span class="line">DbgInfo(MODULE_OS_API, FEATURE_THREAD_TRACE, NOT_TO_RAM,</span><br><span class="line">        <span class="string">&quot;%s set evt %x\n&quot;</span>, __FUNCTION__, event);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 事件等待</span></span><br><span class="line">DbgInfo(MODULE_OS_API, FEATURE_THREAD_TRACE, NOT_TO_RAM,</span><br><span class="line">        <span class="string">&quot;%s wait evt done %x\n&quot;</span>, __FUNCTION__, i);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 事件处理</span></span><br><span class="line">DbgInfo(MODULE_MAIN_THR, FEATURE_THREAD_TRACE, NOT_TO_RAM,</span><br><span class="line">        <span class="string">&quot;Thr get Event=%d\n&quot;</span>, evt);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 任务处理</span></span><br><span class="line">DbgInfo(MODULE_MAIN_THR, FEATURE_THREAD_TRACE, NOT_TO_RAM,</span><br><span class="line">        <span class="string">&quot;task processing, task_id=%d\n&quot;</span>, i);</span><br></pre></td></tr></table></figure>
+
+<h3 id="6-2-常见问题"><a href="#6-2-常见问题" class="headerlink" title="6.2 常见问题"></a>6.2 常见问题</h3><table>
+<thead>
+<tr>
+<th>问题</th>
+<th>可能原因</th>
+<th>解决方案</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>事件不触发</td>
+<td><code>StorPortIssueDpc</code> 未正确调用</td>
+<td>检查 <code>win_get_evt</code> 返回值</td>
+</tr>
+<tr>
+<td>事件丢失</td>
+<td>同一事件快速触发两次</td>
+<td>启用 <code>shared_task_cnt</code></td>
+</tr>
+<tr>
+<td>线程死锁</td>
+<td>在事件处理中调用 <code>StorPortWaitForSingleObject</code></td>
+<td>避免阻塞调用</td>
+</tr>
+<tr>
+<td>CPU 100%</td>
+<td><code>os_wait_event</code> 无 <code>os_sleep</code></td>
+<td>添加适当延迟</td>
+</tr>
+</tbody></table>
+<h3 id="6-3-验证清单"><a href="#6-3-验证清单" class="headerlink" title="6.3 验证清单"></a>6.3 验证清单</h3><ul>
+<li><input disabled="" type="checkbox"> 确认移除了所有 <code>#ifdef MultiThread</code> 分支</li>
+<li><input disabled="" type="checkbox"> 确认所有 <code>os_set_event</code> 调用使用新签名</li>
+<li><input disabled="" type="checkbox"> 确认 <code>thread_main</code> 使用 switch-case 而非 task manager</li>
+<li><input disabled="" type="checkbox"> 确认 <code>shared_task_cnt</code> 正确处理共享事件</li>
+<li><input disabled="" type="checkbox"> 确认没有调用禁止的 DDI 函数</li>
+</ul>
+<hr>
+<h2 id="7-参考资料"><a href="#7-参考资料" class="headerlink" title="7. 参考资料"></a>7. 参考资料</h2><h3 id="7-1-Microsoft-官方文档"><a href="#7-1-Microsoft-官方文档" class="headerlink" title="7.1 Microsoft 官方文档"></a>7.1 Microsoft 官方文档</h3><ul>
+<li><a target="_blank" rel="noopener" href="https://learn.microsoft.com/zh-cn/windows-hardware/drivers/devtest/storport-hwstorportprohibitedddis">HwStorPortProhibitedDDI 规则</a></li>
+<li><a target="_blank" rel="noopener" href="https://learn.microsoft.com/zh-cn/windows-hardware/drivers/storage/storport-driver">Storport 驱动概述</a></li>
+<li><a target="_blank" rel="noopener" href="https://learn.microsoft.com/zh-cn/windows-hardware/drivers/ddi/storport/nf-storport-storportwaitforsingleobject">StorPortWaitForSingleObject</a></li>
+</ul>
+<h3 id="7-2-Git-Commit-信息"><a href="#7-2-Git-Commit-信息" class="headerlink" title="7.2 Git Commit 信息"></a>7.2 Git Commit 信息</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">commit 906a83c5bd7ae70f0cd2e9649c377d9931e335ab</span><br><span class="line">Merge: f827ec2 e91fae5</span><br><span class="line">Author: thomas.hu &lt;thomas.hu@bayhubtech.com&gt;</span><br><span class="line">Date:   Fri May 20 10:54:36 2022 +0800</span><br><span class="line"></span><br><span class="line">    merge multi-thread issue fix solution: use one event to handle multiple tasks.</span><br><span class="line"></span><br><span class="line">Git Tag: gg8-master20220520 → storport_win11_20220428</span><br></pre></td></tr></table></figure>
+
+<h3 id="7-3-相关文件"><a href="#7-3-相关文件" class="headerlink" title="7.3 相关文件"></a>7.3 相关文件</h3><table>
+<thead>
+<tr>
+<th>文件</th>
+<th>改动说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>SDSTORDriver/sdstor/main/thread.c</code></td>
+<td>主线程事件处理重构</td>
+</tr>
+<tr>
+<td><code>SDSTORDriver/sdstor/windows_os/winapi.c</code></td>
+<td>事件 API 简化</td>
+</tr>
+<tr>
+<td><code>SDSTORDriver/sdstor/windows_os/winapi.h</code></td>
+<td>task 结构体修改</td>
+</tr>
+</tbody></table>
+<hr>
+<p><em>文档生成日期: 2026-03-20</em><br><em>版本: 1.0</em></p>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">首页</a></li>
+        
+          <li><a href="/about/">关于</a></li>
+        
+          <li><a href="/archives/">归档</a></li>
+        
+          <li><a href="/tags/">标签</a></li>
+        
+          <li><a href="/categories/">分类</a></li>
+        
+          <li><a href="/search/">搜索</a></li>
+        
+          <li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Storport-%E9%A9%B1%E5%8A%A8-Win10-%E5%88%B0-Win11-%E6%9E%B6%E6%9E%84%E8%BF%81%E7%A7%BB%EF%BC%9A%E5%A4%9A%E7%BA%BF%E7%A8%8B%E5%88%B0%E5%8D%95%E7%BA%BF%E7%A8%8B%E5%A4%9A%E4%BB%BB%E5%8A%A1"><span class="toc-number">1.</span> <span class="toc-text">Storport 驱动 Win10 到 Win11 架构迁移：多线程到单线程多任务</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%9B%AE%E5%BD%95"><span class="toc-number">1.1.</span> <span class="toc-text">目录</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E8%83%8C%E6%99%AF%EF%BC%9ADDI-%E9%99%90%E5%88%B6%E4%B8%8E%E6%9E%B6%E6%9E%84%E6%8C%91%E6%88%98"><span class="toc-number">1.2.</span> <span class="toc-text">1. 背景：DDI 限制与架构挑战</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-Storport-HwStorPortProhibitedDDI-%E8%A7%84%E5%88%99"><span class="toc-number">1.2.1.</span> <span class="toc-text">1.1 Storport HwStorPortProhibitedDDI 规则</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-2-%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%9E%B6%E6%9E%84%E7%9A%84%E9%97%AE%E9%A2%98"><span class="toc-number">1.2.2.</span> <span class="toc-text">1.2 多线程架构的问题</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-3-%E8%BF%81%E7%A7%BB%E7%9B%AE%E6%A0%87"><span class="toc-number">1.2.3.</span> <span class="toc-text">1.3 迁移目标</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-%E6%9E%B6%E6%9E%84%E5%AF%B9%E6%AF%94"><span class="toc-number">1.3.</span> <span class="toc-text">2. 架构对比</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-Win10-%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%9E%B6%E6%9E%84"><span class="toc-number">1.3.1.</span> <span class="toc-text">2.1 Win10 多线程架构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-Win11-%E5%8D%95%E7%BA%BF%E7%A8%8B%E5%A4%9A%E4%BB%BB%E5%8A%A1%E6%9E%B6%E6%9E%84"><span class="toc-number">1.3.2.</span> <span class="toc-text">2.2 Win11 单线程多任务架构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-%E5%85%B3%E9%94%AE%E5%B7%AE%E5%BC%82"><span class="toc-number">1.3.3.</span> <span class="toc-text">2.3 关键差异</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-%E6%A0%B8%E5%BF%83%E6%94%B9%E5%8A%A8%E8%A7%A3%E6%9E%90"><span class="toc-number">1.4.</span> <span class="toc-text">3. 核心改动解析</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E7%A7%BB%E9%99%A4-MultiThread-%E7%BC%96%E8%AF%91%E9%80%89%E9%A1%B9"><span class="toc-number">1.4.1.</span> <span class="toc-text">3.1 移除 MultiThread 编译选项</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E7%AE%80%E5%8C%96%E4%BA%8B%E4%BB%B6%E8%AE%BE%E7%BD%AE-API"><span class="toc-number">1.4.2.</span> <span class="toc-text">3.2 简化事件设置 API</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-%E4%B8%BB%E5%BE%AA%E7%8E%AF%E9%87%8D%E6%9E%84"><span class="toc-number">1.4.3.</span> <span class="toc-text">3.3 主循环重构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-4-%E4%BA%8B%E4%BB%B6%E7%AD%89%E5%BE%85%E6%9C%BA%E5%88%B6"><span class="toc-number">1.4.4.</span> <span class="toc-text">3.4 事件等待机制</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-%E5%AE%9E%E7%8E%B0%E7%BB%86%E8%8A%82"><span class="toc-number">1.5.</span> <span class="toc-text">4. 实现细节</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-%E4%BA%8B%E4%BB%B6%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="toc-number">1.5.1.</span> <span class="toc-text">4.1 事件初始化</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-%E4%BA%8B%E4%BB%B6%E7%B4%A2%E5%BC%95%E6%98%A0%E5%B0%84"><span class="toc-number">1.5.2.</span> <span class="toc-text">4.2 事件索引映射</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-%E7%BA%BF%E7%A8%8B%E6%8C%82%E8%B5%B7-%E6%81%A2%E5%A4%8D"><span class="toc-number">1.5.3.</span> <span class="toc-text">4.3 线程挂起&#x2F;恢复</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-%E5%85%B1%E4%BA%AB%E4%BB%BB%E5%8A%A1%E8%AE%A1%E6%95%B0%E5%99%A8%E6%9C%BA%E5%88%B6"><span class="toc-number">1.6.</span> <span class="toc-text">5. 共享任务计数器机制</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E9%97%AE%E9%A2%98%E8%83%8C%E6%99%AF"><span class="toc-number">1.6.1.</span> <span class="toc-text">5.1 问题背景</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-shared-task-cnt-%E6%9C%BA%E5%88%B6"><span class="toc-number">1.6.2.</span> <span class="toc-text">5.2 shared_task_cnt 机制</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-%E6%9C%BA%E5%88%B6%E5%9B%BE%E8%A7%A3"><span class="toc-number">1.6.3.</span> <span class="toc-text">5.3 机制图解</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6-%E8%B0%83%E8%AF%95%E4%B8%8E%E9%97%AE%E9%A2%98%E6%8E%92%E6%9F%A5"><span class="toc-number">1.7.</span> <span class="toc-text">6. 调试与问题排查</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E5%85%B3%E9%94%AE%E8%B0%83%E8%AF%95%E6%97%A5%E5%BF%97"><span class="toc-number">1.7.1.</span> <span class="toc-text">6.1 关键调试日志</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98"><span class="toc-number">1.7.2.</span> <span class="toc-text">6.2 常见问题</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E9%AA%8C%E8%AF%81%E6%B8%85%E5%8D%95"><span class="toc-number">1.7.3.</span> <span class="toc-text">6.3 验证清单</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#7-%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="toc-number">1.8.</span> <span class="toc-text">7. 参考资料</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#7-1-Microsoft-%E5%AE%98%E6%96%B9%E6%96%87%E6%A1%A3"><span class="toc-number">1.8.1.</span> <span class="toc-text">7.1 Microsoft 官方文档</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-2-Git-Commit-%E4%BF%A1%E6%81%AF"><span class="toc-number">1.8.2.</span> <span class="toc-text">7.2 Git Commit 信息</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-3-%E7%9B%B8%E5%85%B3%E6%96%87%E4%BB%B6"><span class="toc-number">1.8.3.</span> <span class="toc-text">7.3 相关文件</span></a></li></ol></li></ol></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/03/08/Windows%E5%AD%98%E5%82%A8%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91%EF%BC%88%E5%85%AB%EF%BC%89%EF%BC%9AStorport%E9%A9%B1%E5%8A%A8Win10%E5%88%B0Win11%E6%9E%B6%E6%9E%84%E8%BF%81%E7%A7%BB/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/03/08/Windows%E5%AD%98%E5%82%A8%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91%EF%BC%88%E5%85%AB%EF%BC%89%EF%BC%9AStorport%E9%A9%B1%E5%8A%A8Win10%E5%88%B0Win11%E6%9E%B6%E6%9E%84%E8%BF%81%E7%A7%BB/&text=Windows存储驱动开发（五）：Storport驱动Win10到Win11架构迁移"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/03/08/Windows%E5%AD%98%E5%82%A8%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91%EF%BC%88%E5%85%AB%EF%BC%89%EF%BC%9AStorport%E9%A9%B1%E5%8A%A8Win10%E5%88%B0Win11%E6%9E%B6%E6%9E%84%E8%BF%81%E7%A7%BB/&title=Windows存储驱动开发（五）：Storport驱动Win10到Win11架构迁移"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/03/08/Windows%E5%AD%98%E5%82%A8%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91%EF%BC%88%E5%85%AB%EF%BC%89%EF%BC%9AStorport%E9%A9%B1%E5%8A%A8Win10%E5%88%B0Win11%E6%9E%B6%E6%9E%84%E8%BF%81%E7%A7%BB/&is_video=false&description=Windows存储驱动开发（五）：Storport驱动Win10到Win11架构迁移"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=Windows存储驱动开发（五）：Storport驱动Win10到Win11架构迁移&body=Check out this article: https://cursorhu.github.io/2026/03/08/Windows%E5%AD%98%E5%82%A8%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91%EF%BC%88%E5%85%AB%EF%BC%89%EF%BC%9AStorport%E9%A9%B1%E5%8A%A8Win10%E5%88%B0Win11%E6%9E%B6%E6%9E%84%E8%BF%81%E7%A7%BB/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/03/08/Windows%E5%AD%98%E5%82%A8%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91%EF%BC%88%E5%85%AB%EF%BC%89%EF%BC%9AStorport%E9%A9%B1%E5%8A%A8Win10%E5%88%B0Win11%E6%9E%B6%E6%9E%84%E8%BF%81%E7%A7%BB/&title=Windows存储驱动开发（五）：Storport驱动Win10到Win11架构迁移"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/03/08/Windows%E5%AD%98%E5%82%A8%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91%EF%BC%88%E5%85%AB%EF%BC%89%EF%BC%9AStorport%E9%A9%B1%E5%8A%A8Win10%E5%88%B0Win11%E6%9E%B6%E6%9E%84%E8%BF%81%E7%A7%BB/&title=Windows存储驱动开发（五）：Storport驱动Win10到Win11架构迁移"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/03/08/Windows%E5%AD%98%E5%82%A8%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91%EF%BC%88%E5%85%AB%EF%BC%89%EF%BC%9AStorport%E9%A9%B1%E5%8A%A8Win10%E5%88%B0Win11%E6%9E%B6%E6%9E%84%E8%BF%81%E7%A7%BB/&title=Windows存储驱动开发（五）：Storport驱动Win10到Win11架构迁移"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/03/08/Windows%E5%AD%98%E5%82%A8%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91%EF%BC%88%E5%85%AB%EF%BC%89%EF%BC%9AStorport%E9%A9%B1%E5%8A%A8Win10%E5%88%B0Win11%E6%9E%B6%E6%9E%84%E8%BF%81%E7%A7%BB/&title=Windows存储驱动开发（五）：Storport驱动Win10到Win11架构迁移"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/03/08/Windows%E5%AD%98%E5%82%A8%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91%EF%BC%88%E5%85%AB%EF%BC%89%EF%BC%9AStorport%E9%A9%B1%E5%8A%A8Win10%E5%88%B0Win11%E6%9E%B6%E6%9E%84%E8%BF%81%E7%A7%BB/&name=Windows存储驱动开发（五）：Storport驱动Win10到Win11架构迁移&description=&lt;h1 id=&#34;Storport-驱动-Win10-到-Win11-架构迁移：多线程到单线程多任务&#34;&gt;&lt;a href=&#34;#Storport-驱动-Win10-到-Win11-架构迁移：多线程到单线程多任务&#34; class=&#34;headerlink&#34; title=&#34;Storport 驱动 Win10 到 Win11 架构迁移：多线程到单线程多任务&#34;&gt;&lt;/a&gt;Storport 驱动 Win10 到 Win11 架构迁移：多线程到单线程多任务&lt;/h1&gt;&lt;p&gt;&lt;strong&gt;日期&lt;/strong&gt;: 2026-03-08&lt;br&gt;&lt;strong&gt;项目&lt;/strong&gt;: Bayhub SD Host Controller Storport 驱动&lt;br&gt;&lt;strong&gt;背景&lt;/strong&gt;: Windows Storport DDI 限制导致架构重构&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;目录&#34;&gt;&lt;a href=&#34;#目录&#34; class=&#34;headerlink&#34; title=&#34;目录&#34;&gt;&lt;/a&gt;目录&lt;/h2&gt;&lt;ol&gt;
+&lt;li&gt;&lt;a href=&#34;#1-%E8%83%8C%E6%99%AFddi-%E9%99%90%E5%88%B6%E4%B8%8E%E6%9E%B6%E6%9E%84%E6%8C%91%E6%88%98&#34;&gt;背景：DDI 限制与架构挑战&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;#2-%E6%9E%B6%E6%9E%84%E5%AF%B9%E6%AF%94&#34;&gt;架构对比&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;#3-%E6%A0%B8%E5%BF%83%E6%94%B9%E5%8A%A8%E8%A7%A3%E6%9E%90&#34;&gt;核心改动解析&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;#4-%E5%AE%9E%E7%8E%B0%E7%BB%86%E8%8A%82&#34;&gt;实现细节&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;#5-%E5%85%B1%E4%BA%AB%E4%BB%BB%E5%8A%A1%E8%AE%A1%E6%95%B0%E5%99%A8%E6%9C%BA%E5%88%B6&#34;&gt;共享任务计数器机制&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;#6-%E8%B0%83%E8%AF%95%E4%B8%8E%E9%97%AE%E9%A2%98%E6%8E%92%E6%9F%A5&#34;&gt;调试与问题排查&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;#7-%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99&#34;&gt;参考资料&lt;/a&gt;&lt;/li&gt;
+&lt;/ol&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;1-背景：DDI-限制与架构挑战&#34;&gt;&lt;a href=&#34;#1-背景：DDI-限制与架构挑战&#34; class=&#34;headerlink&#34; title=&#34;1. 背景：DDI 限制与架构挑战&#34;&gt;&lt;/a&gt;1. 背景：DDI 限制与架构挑战&lt;/h2&gt;&lt;h3 id=&#34;1-1-Storport-HwStorPortProhibitedDDI-规则&#34;&gt;&lt;a href=&#34;#1-1-Storport-HwStorPortProhibitedDDI-规则&#34; class=&#34;headerlink&#34; title=&#34;1.1 Storport HwStorPortProhibitedDDI 规则&#34;&gt;&lt;/a&gt;1.1 Storport HwStorPortProhibitedDDI 规则&lt;/h3&gt;&lt;p&gt;根据 &lt;a href=&#34;https://learn.microsoft.com/zh-cn/windows-hardware/drivers/devtest/storport-hwstorportprohibitedddis&#34;&gt;Microsoft 官方文档&lt;/a&gt;，Storport 微型端口驱动禁止调用大量 WDM DDI 函数：&lt;/p&gt;
+&lt;figure class=&#34;highlight plaintext&#34;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&#34;gutter&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;3&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;4&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;5&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;6&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&#34;code&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;禁止的 DDI 类型：&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;- Ke* 系列（KeWaitForSingleObject, KeInitializeSpinLock 等）&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;- Ex* 系列（ExAllocatePool, ExAcquireFastMutex 等）&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;- Io* 系列（IoCompleteRequest, IoCallDriver 等）&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;- Mm* 系列（MmAllocateNonCachedMemory 等）&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;- Ps* 系列（PsCreateSystemThread 等）&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;"><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/03/08/Windows%E5%AD%98%E5%82%A8%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91%EF%BC%88%E5%85%AB%EF%BC%89%EF%BC%9AStorport%E9%A9%B1%E5%8A%A8Win10%E5%88%B0Win11%E6%9E%B6%E6%9E%84%E8%BF%81%E7%A7%BB/&t=Windows存储驱动开发（五）：Storport驱动Win10到Win11架构迁移"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> 菜单</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> 目录</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> 分享</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> 返回顶部</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2026
+    cursorhu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"复制到粘贴板！\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "复制成功！");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+</body>
+</html>
