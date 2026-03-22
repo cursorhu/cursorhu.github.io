@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="概述本文深入分析Linux内核MMC子系统对SD Express的支持框架，以及Bayhub(O2Micro) GG8芯片驱动如何适配到内核框架。 SD Express技术背景SD Express是SD协会发布的第七代SD标准，核心特性：    特性 SD 6.x SD Express    最大容量 2TB (SDXC) 128TB (SDXC)   最大速度 ~100 MB&#x2F;s (U">
+<meta property="og:type" content="article">
+<meta property="og:title" content="SD Express驱动架构解析：Linux MMC Core框架与O2Micro GG8芯片适配">
+<meta property="og:url" content="https://cursorhu.github.io/2025/12/23/SD-Express%E9%A9%B1%E5%8A%A8%E6%9E%B6%E6%9E%84%E8%A7%A3%E6%9E%90-Linux-MMC-Core%E6%A1%86%E6%9E%B6%E4%B8%8EO2Micro-GG8%E8%8A%AF%E7%89%87%E9%80%82%E9%85%8D/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="概述本文深入分析Linux内核MMC子系统对SD Express的支持框架，以及Bayhub(O2Micro) GG8芯片驱动如何适配到内核框架。 SD Express技术背景SD Express是SD协会发布的第七代SD标准，核心特性：    特性 SD 6.x SD Express    最大容量 2TB (SDXC) 128TB (SDXC)   最大速度 ~100 MB&#x2F;s (U">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2025-12-22T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-03-22T13:28:42.592Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="Linux内核">
+<meta property="article:tag" content="MMC子系统">
+<meta property="article:tag" content="O2Micro">
+<meta property="article:tag" content="SD Express">
+<meta property="article:tag" content="驱动架构">
+<meta name="twitter:card" content="summary">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>SD Express驱动架构解析：Linux MMC Core框架与O2Micro GG8芯片适配</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+<meta name="generator" content="Hexo 8.0.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="顶部" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="上一篇" href="/2025/12/23/SD-Express%E9%A9%B1%E5%8A%A8Upstream%E4%B9%8B%E6%97%85-%E4%BB%8E%E8%A1%A5%E4%B8%81%E5%88%B0%E5%86%85%E6%A0%B8%E4%B8%BB%E7%BA%BF%E7%9A%84%E5%AE%8C%E6%95%B4%E6%B5%81%E7%A8%8B/"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="下一篇" href="/2025/12/22/SD-Retimer%E9%A9%B1%E5%8A%A8%E9%87%8D%E6%9E%84/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="返回顶部" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="分享文章" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">上一篇</span>
+      <span id="i-next" class="info" style="display:none;">下一篇</span>
+      <span id="i-top" class="info" style="display:none;">返回顶部</span>
+      <span id="i-share" class="info" style="display:none;">分享文章</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2025/12/23/SD-Express%E9%A9%B1%E5%8A%A8%E6%9E%B6%E6%9E%84%E8%A7%A3%E6%9E%90-Linux-MMC-Core%E6%A1%86%E6%9E%B6%E4%B8%8EO2Micro-GG8%E8%8A%AF%E7%89%87%E9%80%82%E9%85%8D/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2025/12/23/SD-Express%E9%A9%B1%E5%8A%A8%E6%9E%B6%E6%9E%84%E8%A7%A3%E6%9E%90-Linux-MMC-Core%E6%A1%86%E6%9E%B6%E4%B8%8EO2Micro-GG8%E8%8A%AF%E7%89%87%E9%80%82%E9%85%8D/&text=SD Express驱动架构解析：Linux MMC Core框架与O2Micro GG8芯片适配"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2025/12/23/SD-Express%E9%A9%B1%E5%8A%A8%E6%9E%B6%E6%9E%84%E8%A7%A3%E6%9E%90-Linux-MMC-Core%E6%A1%86%E6%9E%B6%E4%B8%8EO2Micro-GG8%E8%8A%AF%E7%89%87%E9%80%82%E9%85%8D/&title=SD Express驱动架构解析：Linux MMC Core框架与O2Micro GG8芯片适配"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2025/12/23/SD-Express%E9%A9%B1%E5%8A%A8%E6%9E%B6%E6%9E%84%E8%A7%A3%E6%9E%90-Linux-MMC-Core%E6%A1%86%E6%9E%B6%E4%B8%8EO2Micro-GG8%E8%8A%AF%E7%89%87%E9%80%82%E9%85%8D/&is_video=false&description=SD Express驱动架构解析：Linux MMC Core框架与O2Micro GG8芯片适配"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=SD Express驱动架构解析：Linux MMC Core框架与O2Micro GG8芯片适配&body=Check out this article: https://cursorhu.github.io/2025/12/23/SD-Express%E9%A9%B1%E5%8A%A8%E6%9E%B6%E6%9E%84%E8%A7%A3%E6%9E%90-Linux-MMC-Core%E6%A1%86%E6%9E%B6%E4%B8%8EO2Micro-GG8%E8%8A%AF%E7%89%87%E9%80%82%E9%85%8D/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2025/12/23/SD-Express%E9%A9%B1%E5%8A%A8%E6%9E%B6%E6%9E%84%E8%A7%A3%E6%9E%90-Linux-MMC-Core%E6%A1%86%E6%9E%B6%E4%B8%8EO2Micro-GG8%E8%8A%AF%E7%89%87%E9%80%82%E9%85%8D/&title=SD Express驱动架构解析：Linux MMC Core框架与O2Micro GG8芯片适配"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2025/12/23/SD-Express%E9%A9%B1%E5%8A%A8%E6%9E%B6%E6%9E%84%E8%A7%A3%E6%9E%90-Linux-MMC-Core%E6%A1%86%E6%9E%B6%E4%B8%8EO2Micro-GG8%E8%8A%AF%E7%89%87%E9%80%82%E9%85%8D/&title=SD Express驱动架构解析：Linux MMC Core框架与O2Micro GG8芯片适配"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2025/12/23/SD-Express%E9%A9%B1%E5%8A%A8%E6%9E%B6%E6%9E%84%E8%A7%A3%E6%9E%90-Linux-MMC-Core%E6%A1%86%E6%9E%B6%E4%B8%8EO2Micro-GG8%E8%8A%AF%E7%89%87%E9%80%82%E9%85%8D/&title=SD Express驱动架构解析：Linux MMC Core框架与O2Micro GG8芯片适配"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2025/12/23/SD-Express%E9%A9%B1%E5%8A%A8%E6%9E%B6%E6%9E%84%E8%A7%A3%E6%9E%90-Linux-MMC-Core%E6%A1%86%E6%9E%B6%E4%B8%8EO2Micro-GG8%E8%8A%AF%E7%89%87%E9%80%82%E9%85%8D/&title=SD Express驱动架构解析：Linux MMC Core框架与O2Micro GG8芯片适配"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2025/12/23/SD-Express%E9%A9%B1%E5%8A%A8%E6%9E%B6%E6%9E%84%E8%A7%A3%E6%9E%90-Linux-MMC-Core%E6%A1%86%E6%9E%B6%E4%B8%8EO2Micro-GG8%E8%8A%AF%E7%89%87%E9%80%82%E9%85%8D/&name=SD Express驱动架构解析：Linux MMC Core框架与O2Micro GG8芯片适配&description=&lt;h2 id=&#34;概述&#34;&gt;&lt;a href=&#34;#概述&#34; class=&#34;headerlink&#34; title=&#34;概述&#34;&gt;&lt;/a&gt;概述&lt;/h2&gt;&lt;p&gt;本文深入分析Linux内核MMC子系统对SD Express的支持框架，以及Bayhub(O2Micro) GG8芯片驱动如何适配到内核框架。&lt;/p&gt;
+&lt;h2 id=&#34;SD-Express技术背景&#34;&gt;&lt;a href=&#34;#SD-Express技术背景&#34; class=&#34;headerlink&#34; title=&#34;SD Express技术背景&#34;&gt;&lt;/a&gt;SD Express技术背景&lt;/h2&gt;&lt;p&gt;SD Express是SD协会发布的第七代SD标准，核心特性：&lt;/p&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;特性&lt;/th&gt;
+&lt;th&gt;SD 6.x&lt;/th&gt;
+&lt;th&gt;SD Express&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;&lt;tr&gt;
+&lt;td&gt;最大容量&lt;/td&gt;
+&lt;td&gt;2TB (SDXC)&lt;/td&gt;
+&lt;td&gt;128TB (SDXC)&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;最大速度&lt;/td&gt;
+&lt;td&gt;~100 MB&amp;#x2F;s (UHS-II)&lt;/td&gt;
+&lt;td&gt;~4 GB&amp;#x2F;s (PCIe 4.0 x2)&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;总线协议&lt;/td&gt;
+&lt;td&gt;SD&amp;#x2F;UHS-II&lt;/td&gt;
+&lt;td&gt;PCIe&amp;#x2F;NVMe&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;&lt;/table&gt;
+&lt;h2 id=&#34;Linux-MMC子系统架构&#34;&gt;&lt;a href=&#34;#Linux-MMC子系统架构&#34; class=&#34;headerlink&#34; title=&#34;Linux MMC子系统架构&#34;&gt;&lt;/a&gt;Linux MMC子系统架构&lt;/h2&gt;&lt;h3 id=&#34;整体架构&#34;&gt;&lt;a href=&#34;#整体架构&#34; class=&#34;headerlink&#34; title=&#34;整体架构&#34;&gt;&lt;/a&gt;整体架构&lt;/h3&gt;&lt;figure class=&#34;highlight plaintext&#34;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&#34;gutter&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;3&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;4&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;5&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;6&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;7&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;8&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;9&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;10&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;11&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;12&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;13&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;14&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;15&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;16&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;17&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;18&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;19&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;20&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;21&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;22&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;23&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;24&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;25&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;26&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;27&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;28&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;29&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;30&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;31&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;32&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;33&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;34&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;35&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;36&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;37&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;38&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;39&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;40&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;41&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;42&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&#34;code&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;┌─────────────────────────────────────────────────────────────────┐&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                    Linux MMC 子系统架构                           │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;└─────────────────────────────────────────────────────────────────┘&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;┌─────────────────────────────────────────────────────────────────┐&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                     User Space (Block Layer)                    │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;└─────────────────────────────────────────────────────────────────┘&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;                              │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;                              ▼&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;┌─────────────────────────────────────────────────────────────────┐&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                   MMC Block Driver (mmc_blk)                     │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   • 将MMC设备呈现为块设备                                        │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   • 处理读写请求、队列管理                                        │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;└─────────────────────────────────────────────────────────────────┘&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;                              │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;                              ▼&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;┌─────────────────────────────────────────────────────────────────┐&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                     MMC Core (mmc_core)                          │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   ┌───────────────┐ ┌───────────────┐ ┌───────────────────┐  │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   │ mmc_bus_ops   │ │ mmc_card      │ │ MMC Protocol      │  │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   │ • suspend     │ │ • CID/CSD    │ │ • SD Express     │  │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   │ • resume     │ │ • SCR/SSR    │ │ • NVMe切换      │  │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   │ • remove     │ │ • 能力检测   │ │ • 初始化流程    │  │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   └───────────────┘ └───────────────┘ └───────────────────┘  │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;└─────────────────────────────────────────────────────────────────┘&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;                              │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;              ┌───────────────┼───────────────┐&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;              ▼               ▼               ▼&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;┌──────────────────┐ ┌──────────────────┐ ┌──────────────────┐&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  sdhci-pci-o2micro│ │  sdhci-pci-gli  │ │   其他Host驱动  │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  (Bayhub GG8)     │ │  (GL874/GL9750) │ │                 │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;└──────────────────┘ └──────────────────┘ └──────────────────┘&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;              │               │               │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;              ▼               ▼               ▼&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;┌─────────────────────────────────────────────────────────────────┐&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                     SD Host Controller                           │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   ┌───────────────┐ ┌───────────────┐ ┌───────────────────┐  │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   │ SDHCI Core    │ │  PCI/AMBA    │ │  Platform Data    │  │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   │ • DMA         │ │  Bus Layer   │ │  • GPIO/Clock    │  │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   │ • Interrupts  │ │              │ │                  │  │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   └───────────────┘ └───────────────┘ └───────────────────┘  │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;└─────────────────────────────────────────────────────────────────┘&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;
+
+&lt;h3 id=&#34;SD-Express支持框架&#34;&gt;&lt;a href=&#34;#SD-Express支持框架&#34; class=&#34;headerlink&#34; title=&#34;SD Express支持框架&#34;&gt;&lt;/a&gt;SD Express支持框架&lt;/h3&gt;&lt;h4 id=&#34;1-Capability声明&#34;&gt;&lt;a href=&#34;#1-Capability声明&#34; class=&#34;headerlink&#34; title=&#34;1. Capability声明&#34;&gt;&lt;/a&gt;1. Capability声明&lt;/h4&gt;"><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2025/12/23/SD-Express%E9%A9%B1%E5%8A%A8%E6%9E%B6%E6%9E%84%E8%A7%A3%E6%9E%90-Linux-MMC-Core%E6%A1%86%E6%9E%B6%E4%B8%8EO2Micro-GG8%E8%8A%AF%E7%89%87%E9%80%82%E9%85%8D/&t=SD Express驱动架构解析：Linux MMC Core框架与O2Micro GG8芯片适配"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%A6%82%E8%BF%B0"><span class="toc-number">1.</span> <span class="toc-text">概述</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#SD-Express%E6%8A%80%E6%9C%AF%E8%83%8C%E6%99%AF"><span class="toc-number">2.</span> <span class="toc-text">SD Express技术背景</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Linux-MMC%E5%AD%90%E7%B3%BB%E7%BB%9F%E6%9E%B6%E6%9E%84"><span class="toc-number">3.</span> <span class="toc-text">Linux MMC子系统架构</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%95%B4%E4%BD%93%E6%9E%B6%E6%9E%84"><span class="toc-number">3.1.</span> <span class="toc-text">整体架构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#SD-Express%E6%94%AF%E6%8C%81%E6%A1%86%E6%9E%B6"><span class="toc-number">3.2.</span> <span class="toc-text">SD Express支持框架</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#1-Capability%E5%A3%B0%E6%98%8E"><span class="toc-number">3.2.1.</span> <span class="toc-text">1. Capability声明</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-SD-Express%E5%88%9D%E5%A7%8B%E5%8C%96%E5%9B%9E%E8%B0%83"><span class="toc-number">3.2.2.</span> <span class="toc-text">2. SD Express初始化回调</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-SD-Express%E7%8A%B6%E6%80%81%E6%9C%BA"><span class="toc-number">3.2.3.</span> <span class="toc-text">3. SD Express状态机</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#GG8%E8%8A%AF%E7%89%87%E9%80%82%E9%85%8D%E5%88%86%E6%9E%90"><span class="toc-number">3.3.</span> <span class="toc-text">GG8芯片适配分析</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#1-Device-ID%E5%AE%9A%E4%B9%89"><span class="toc-number">3.3.1.</span> <span class="toc-text">1. Device ID定义</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-SD-Express%E5%88%87%E6%8D%A2%E5%AE%9E%E7%8E%B0"><span class="toc-number">3.3.2.</span> <span class="toc-text">2. SD Express切换实现</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-Capability%E9%85%8D%E7%BD%AE"><span class="toc-number">3.3.3.</span> <span class="toc-text">3. Capability配置</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#4-%E5%85%B3%E9%94%AE%E5%AF%84%E5%AD%98%E5%99%A8%E5%AE%9A%E4%B9%89"><span class="toc-number">3.3.4.</span> <span class="toc-text">4. 关键寄存器定义</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%8EMMC-Core%E7%9A%84%E5%8D%8F%E4%BD%9C%E6%B5%81%E7%A8%8B"><span class="toc-number">3.4.</span> <span class="toc-text">与MMC Core的协作流程</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8F%8C%E6%A8%A1%E5%BC%8F%E6%94%AF%E6%8C%81"><span class="toc-number">3.5.</span> <span class="toc-text">双模式支持</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%80%BB%E7%BB%93"><span class="toc-number">4.</span> <span class="toc-text">总结</span></a></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        SD Express驱动架构解析：Linux MMC Core框架与O2Micro GG8芯片适配
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">cursorhu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2025-12-22T16:00:00.000Z" class="dt-published" itemprop="datePublished">2025-12-23</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fa-solid fa-archive"></i>
+        <a class="category-link" href="/categories/Linux%E5%86%85%E6%A0%B8/">Linux内核</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/Linux%E5%86%85%E6%A0%B8/" rel="tag">Linux内核</a>, <a class="p-category" href="/tags/MMC%E5%AD%90%E7%B3%BB%E7%BB%9F/" rel="tag">MMC子系统</a>, <a class="p-category" href="/tags/O2Micro/" rel="tag">O2Micro</a>, <a class="p-category" href="/tags/SD-Express/" rel="tag">SD Express</a>, <a class="p-category" href="/tags/%E9%A9%B1%E5%8A%A8%E6%9E%B6%E6%9E%84/" rel="tag">驱动架构</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><p>本文深入分析Linux内核MMC子系统对SD Express的支持框架，以及Bayhub(O2Micro) GG8芯片驱动如何适配到内核框架。</p>
+<h2 id="SD-Express技术背景"><a href="#SD-Express技术背景" class="headerlink" title="SD Express技术背景"></a>SD Express技术背景</h2><p>SD Express是SD协会发布的第七代SD标准，核心特性：</p>
+<table>
+<thead>
+<tr>
+<th>特性</th>
+<th>SD 6.x</th>
+<th>SD Express</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>最大容量</td>
+<td>2TB (SDXC)</td>
+<td>128TB (SDXC)</td>
+</tr>
+<tr>
+<td>最大速度</td>
+<td>~100 MB&#x2F;s (UHS-II)</td>
+<td>~4 GB&#x2F;s (PCIe 4.0 x2)</td>
+</tr>
+<tr>
+<td>总线协议</td>
+<td>SD&#x2F;UHS-II</td>
+<td>PCIe&#x2F;NVMe</td>
+</tr>
+</tbody></table>
+<h2 id="Linux-MMC子系统架构"><a href="#Linux-MMC子系统架构" class="headerlink" title="Linux MMC子系统架构"></a>Linux MMC子系统架构</h2><h3 id="整体架构"><a href="#整体架构" class="headerlink" title="整体架构"></a>整体架构</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                    Linux MMC 子系统架构                           │</span><br><span class="line">└─────────────────────────────────────────────────────────────────┘</span><br><span class="line"></span><br><span class="line">┌─────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                     User Space (Block Layer)                    │</span><br><span class="line">└─────────────────────────────────────────────────────────────────┘</span><br><span class="line">                              │</span><br><span class="line">                              ▼</span><br><span class="line">┌─────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                   MMC Block Driver (mmc_blk)                     │</span><br><span class="line">│   • 将MMC设备呈现为块设备                                        │</span><br><span class="line">│   • 处理读写请求、队列管理                                        │</span><br><span class="line">└─────────────────────────────────────────────────────────────────┘</span><br><span class="line">                              │</span><br><span class="line">                              ▼</span><br><span class="line">┌─────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                     MMC Core (mmc_core)                          │</span><br><span class="line">│   ┌───────────────┐ ┌───────────────┐ ┌───────────────────┐  │</span><br><span class="line">│   │ mmc_bus_ops   │ │ mmc_card      │ │ MMC Protocol      │  │</span><br><span class="line">│   │ • suspend     │ │ • CID/CSD    │ │ • SD Express     │  │</span><br><span class="line">│   │ • resume     │ │ • SCR/SSR    │ │ • NVMe切换      │  │</span><br><span class="line">│   │ • remove     │ │ • 能力检测   │ │ • 初始化流程    │  │</span><br><span class="line">│   └───────────────┘ └───────────────┘ └───────────────────┘  │</span><br><span class="line">└─────────────────────────────────────────────────────────────────┘</span><br><span class="line">                              │</span><br><span class="line">              ┌───────────────┼───────────────┐</span><br><span class="line">              ▼               ▼               ▼</span><br><span class="line">┌──────────────────┐ ┌──────────────────┐ ┌──────────────────┐</span><br><span class="line">│  sdhci-pci-o2micro│ │  sdhci-pci-gli  │ │   其他Host驱动  │</span><br><span class="line">│  (Bayhub GG8)     │ │  (GL874/GL9750) │ │                 │</span><br><span class="line">└──────────────────┘ └──────────────────┘ └──────────────────┘</span><br><span class="line">              │               │               │</span><br><span class="line">              ▼               ▼               ▼</span><br><span class="line">┌─────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                     SD Host Controller                           │</span><br><span class="line">│   ┌───────────────┐ ┌───────────────┐ ┌───────────────────┐  │</span><br><span class="line">│   │ SDHCI Core    │ │  PCI/AMBA    │ │  Platform Data    │  │</span><br><span class="line">│   │ • DMA         │ │  Bus Layer   │ │  • GPIO/Clock    │  │</span><br><span class="line">│   │ • Interrupts  │ │              │ │                  │  │</span><br><span class="line">│   └───────────────┘ └───────────────┘ └───────────────────┘  │</span><br><span class="line">└─────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<h3 id="SD-Express支持框架"><a href="#SD-Express支持框架" class="headerlink" title="SD Express支持框架"></a>SD Express支持框架</h3><h4 id="1-Capability声明"><a href="#1-Capability声明" class="headerlink" title="1. Capability声明"></a>1. Capability声明</h4><p>在内核MMC框架中，Host驱动需要声明支持SD Express：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// mmc.h - MMC capability定义</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MMC_CAP2_SD_EXP        (1 &lt;&lt; 0)  <span class="comment">// SD Express支持</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MMC_CAP2_SD_EXP_1_2V  (1 &lt;&lt; 1)  <span class="comment">// SD Express 1.2V支持</span></span></span><br></pre></td></tr></table></figure>
+
+<h4 id="2-SD-Express初始化回调"><a href="#2-SD-Express初始化回调" class="headerlink" title="2. SD Express初始化回调"></a>2. SD Express初始化回调</h4><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// mmc.h - Host操作接口</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">mmc_host_ops</span> &#123;</span></span><br><span class="line">    <span class="comment">// ... 其他回调 ...</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// SD Express初始化回调</span></span><br><span class="line">    <span class="type">int</span> (*init_sd_express)(<span class="keyword">struct</span> mmc_host *mmc, <span class="keyword">struct</span> mmc_ios *ios);</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>当MMC Core检测到需要切换到SD Express模式时，调用此回调。</p>
+<h4 id="3-SD-Express状态机"><a href="#3-SD-Express状态机" class="headerlink" title="3. SD Express状态机"></a>3. SD Express状态机</h4><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                    SD Express 状态机                              │</span><br><span class="line">└─────────────────────────────────────────────────────────────────┘</span><br><span class="line"></span><br><span class="line">[1] 初始化SD卡</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">[2] 检测SD Express能力 (SCR[60] = 1)</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">[3] 协商电压 (1.8V)</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">[4] 执行PCIe链路训练</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">[5] 等待Card发出PCIe电源通知</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">[6] 调用init_sd_express回调</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">[7] 切换Host到PCIe模式</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">[8] 通知NVMe驱动接管</span><br></pre></td></tr></table></figure>
+
+<h3 id="GG8芯片适配分析"><a href="#GG8芯片适配分析" class="headerlink" title="GG8芯片适配分析"></a>GG8芯片适配分析</h3><h4 id="1-Device-ID定义"><a href="#1-Device-ID定义" class="headerlink" title="1. Device ID定义"></a>1. Device ID定义</h4><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// sdhci-pci.h - Bayhub GG8设备ID</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PCI_DEVICE_ID_O2_GG8_9860  0x9860</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PCI_DEVICE_ID_O2_GG8_9861  0x9861</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PCI_DEVICE_ID_O2_GG8_9862  0x9862</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PCI_DEVICE_ID_O2_GG8_9863  0x9863</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="2-SD-Express切换实现"><a href="#2-SD-Express切换实现" class="headerlink" title="2. SD Express切换实现"></a>2. SD Express切换实现</h4><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// sdhci-pci-o2micro.c - GG8 SD Express初始化</span></span><br><span class="line"><span class="type">static</span> <span class="type">int</span> <span class="title function_">sdhci_pci_o2_init_sd_express</span><span class="params">(<span class="keyword">struct</span> mmc_host *mmc,</span></span><br><span class="line"><span class="params">                                        <span class="keyword">struct</span> mmc_ios *ios)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">sdhci_host</span> *<span class="title">host</span> =</span> mmc_priv(mmc);</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">sdhci_pci_slot</span> *<span class="title">slot</span> =</span> sdhci_priv(host);</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">sdhci_pci_chip</span> *<span class="title">chip</span> =</span> slot-&gt;chip;</span><br><span class="line">    u8 scratch8;</span><br><span class="line">    u16 scratch16;</span><br><span class="line">    <span class="type">int</span> ret;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Step 1: 禁用时钟</span></span><br><span class="line">    sdhci_writeb(host, <span class="number">0</span>, SDHCI_CLOCK_CONTROL);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Step 2: 设置VDD2电压</span></span><br><span class="line">    scratch8 = sdhci_readb(host, SDHCI_POWER_CONTROL);</span><br><span class="line">    scratch8 &amp;= <span class="number">0x0F</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (host-&gt;mmc-&gt;ios.timing == MMC_TIMING_SD_EXP_1_2V &amp;&amp;</span><br><span class="line">        host-&gt;mmc-&gt;caps2 &amp; MMC_CAP2_SD_EXP_1_2V) &#123;</span><br><span class="line">        scratch8 |= SDHCI_VDD2_POWER_ON | SDHCI_VDD2_POWER_120;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        scratch8 |= SDHCI_VDD2_POWER_ON | SDHCI_VDD2_POWER_180;</span><br><span class="line">    &#125;</span><br><span class="line">    sdhci_writeb(host, scratch8, SDHCI_POWER_CONTROL);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Step 3: 解锁WP寄存器</span></span><br><span class="line">    pci_read_config_byte(chip-&gt;pdev, O2_SD_LOCK_WP, &amp;scratch8);</span><br><span class="line">    scratch8 &amp;= <span class="number">0x7f</span>;</span><br><span class="line">    pci_write_config_byte(chip-&gt;pdev, O2_SD_LOCK_WP, scratch8);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Step 4: 等待Card发出clkreqn信号</span></span><br><span class="line">    ret = read_poll_timeout(sdhci_readb, scratch8,</span><br><span class="line">                          !(scratch8 &amp; BIT(<span class="number">0</span>)),</span><br><span class="line">                          <span class="number">1</span>, <span class="number">30000</span>, <span class="literal">false</span>, host, O2_SD_EXP_INT_REG);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (!ret) &#123;</span><br><span class="line">        <span class="comment">// Step 5: 切换到PCIe模式</span></span><br><span class="line">        scratch16 = sdhci_readw(host, O2_SD_PCIE_SWITCH);</span><br><span class="line">        scratch16 |= BIT(<span class="number">8</span>);  <span class="comment">// 触发模式切换</span></span><br><span class="line">        sdhci_writew(host, scratch16, O2_SD_PCIE_SWITCH);</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">// 切换失败，恢复到Legacy模式</span></span><br><span class="line">        scratch8 = sdhci_readb(host, SDHCI_POWER_CONTROL);</span><br><span class="line">        scratch8 &amp;= <span class="number">0x0F</span>;</span><br><span class="line">        sdhci_writeb(host, scratch8, SDHCI_POWER_CONTROL);</span><br><span class="line"></span><br><span class="line">        host-&gt;mmc-&gt;ios.timing = MMC_TIMING_LEGACY;</span><br><span class="line">        <span class="comment">// ... 恢复到SD模式 ...</span></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Step 6: 锁定WP寄存器</span></span><br><span class="line">    pci_read_config_byte(chip-&gt;pdev, O2_SD_LOCK_WP, &amp;scratch8);</span><br><span class="line">    scratch8 |= <span class="number">0x80</span>;</span><br><span class="line">    pci_write_config_byte(chip-&gt;pdev, O2_SD_LOCK_WP, scratch8);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="3-Capability配置"><a href="#3-Capability配置" class="headerlink" title="3. Capability配置"></a>3. Capability配置</h4><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// sdhci-pci-o2micro.c - probe_slot函数中</span></span><br><span class="line"><span class="keyword">case</span> PCI_DEVICE_ID_O2_GG8_9860:</span><br><span class="line"><span class="keyword">case</span> PCI_DEVICE_ID_O2_GG8_9861:</span><br><span class="line"><span class="keyword">case</span> PCI_DEVICE_ID_O2_GG8_9862:</span><br><span class="line"><span class="keyword">case</span> PCI_DEVICE_ID_O2_GG8_9863:</span><br><span class="line">    <span class="comment">// 禁用SDIO功能（GG8不支持）</span></span><br><span class="line">    host-&gt;mmc-&gt;caps2 |= MMC_CAP2_NO_SDIO;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 启用SD Express支持</span></span><br><span class="line">    host-&gt;mmc-&gt;caps2 |= MMC_CAP2_SD_EXP | MMC_CAP2_SD_EXP_1_2V;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 启用Hardware Reset</span></span><br><span class="line">    host-&gt;mmc-&gt;caps |= MMC_CAP_HW_RESET;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 注册SD Express初始化回调</span></span><br><span class="line">    host-&gt;mmc_host_ops.init_sd_express = sdhci_pci_o2_init_sd_express;</span><br><span class="line">    <span class="keyword">break</span>;</span><br></pre></td></tr></table></figure>
+
+<h4 id="4-关键寄存器定义"><a href="#4-关键寄存器定义" class="headerlink" title="4. 关键寄存器定义"></a>4. 关键寄存器定义</h4><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// GG8 SD Express关键寄存器</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> O2_SD_PCIE_SWITCH      0x54   <span class="comment">// PCIe模式切换寄存器</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> O2_SD_LOCK_WP          0xC8   <span class="comment">// 写保护锁定寄存器</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> O2_SD_EXP_INT_REG      0x1E0  <span class="comment">// Express中断寄存器</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> O2_SD_PARA_SET_REG1    0x444  <span class="comment">// 参数设置寄存器</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> O2_SD_VDDX_CTRL_REG    0x508  <span class="comment">// VDD控制寄存器</span></span></span><br></pre></td></tr></table></figure>
+
+<h3 id="与MMC-Core的协作流程"><a href="#与MMC-Core的协作流程" class="headerlink" title="与MMC Core的协作流程"></a>与MMC Core的协作流程</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────────┐</span><br><span class="line">│              GG8驱动与MMC Core协作流程                            │</span><br><span class="line">└─────────────────────────────────────────────────────────────────┘</span><br><span class="line"></span><br><span class="line">┌──────────────┐     ┌──────────────┐     ┌──────────────┐</span><br><span class="line">│   MMC Core   │     │  sdhci-pci  │     │    GG8       │</span><br><span class="line">│              │     │   -o2micro  │     │   Hardware   │</span><br><span class="line">└──────┬───────┘     └──────┬───────┘     └──────┬───────┘</span><br><span class="line">       │                    │                    │</span><br><span class="line">       │  1. 枚举SD Express卡│                    │</span><br><span class="line">       │───────────────────►│                    │</span><br><span class="line">       │                    │                    │</span><br><span class="line">       │  2. 检测SCR[60]     │                    │</span><br><span class="line">       │◄───────────────────│                    │</span><br><span class="line">       │                    │                    │</span><br><span class="line">       │  3. 调用init_sd_express                  │</span><br><span class="line">       │───────────────────►│                    │</span><br><span class="line">       │                    │                    │</span><br><span class="line">       │                    │ 4. 关闭SD时钟      │</span><br><span class="line">       │                    │───────────────────►│</span><br><span class="line">       │                    │                    │</span><br><span class="line">       │                    │ 5. 设置VDD2电压   │</span><br><span class="line">       │                    │───────────────────►│</span><br><span class="line">       │                    │                    │</span><br><span class="line">       │                    │ 6. 等待clkreqn    │</span><br><span class="line">       │                    │◄───────────────────│</span><br><span class="line">       │                    │                    │</span><br><span class="line">       │                    │ 7. 写PCIE_SWITCH  │</span><br><span class="line">       │                    │───────────────────►│</span><br><span class="line">       │                    │                    │</span><br><span class="line">       │                    │ 8. 卡切换PCIe模式 │</span><br><span class="line">       │                    │◄───────────────────│</span><br><span class="line">       │                    │                    │</span><br><span class="line">       │  9. NVMe驱动接管   │                    │</span><br><span class="line">       │◄───────────────────│                    │</span><br></pre></td></tr></table></figure>
+
+<h3 id="双模式支持"><a href="#双模式支持" class="headerlink" title="双模式支持"></a>双模式支持</h3><p>GG8芯片支持两种工作模式：</p>
+<table>
+<thead>
+<tr>
+<th>模式</th>
+<th>协议</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>SD Legacy</td>
+<td>SD 4.0&#x2F;UHS-II</td>
+<td>兼容普通SD卡</td>
+</tr>
+<tr>
+<td>SD Express</td>
+<td>PCIe&#x2F;NVMe</td>
+<td>高速存储</td>
+</tr>
+</tbody></table>
+<p>MMC Core根据卡的能力自动选择模式：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// mmc_init_sd_express - MMC Core中的SD Express初始化</span></span><br><span class="line"><span class="type">static</span> <span class="type">int</span> <span class="title function_">mmc_init_sd_express</span><span class="params">(<span class="keyword">struct</span> mmc_host *host)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">// 检查卡是否支持SD Express</span></span><br><span class="line">    <span class="keyword">if</span> (!(card-&gt;scr[<span class="number">1</span>] &amp; SD_SCR_SD_EXPRESS))</span><br><span class="line">        <span class="keyword">return</span> -ENODEV;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 设置1.8V电压</span></span><br><span class="line">    host-&gt;ios.timing = MMC_TIMING_SD_EXP;</span><br><span class="line">    mmc_set_ios(host);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 调用Host驱动的init_sd_express回调</span></span><br><span class="line">    <span class="keyword">if</span> (host-&gt;ops-&gt;init_sd_express)</span><br><span class="line">        ret = host-&gt;ops-&gt;init_sd_express(host, &amp;host-&gt;ios);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> ret;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>本文分析了Linux MMC子系统中SD Express的支持框架：</p>
+<ol>
+<li><p><strong>MMC Core提供的能力</strong>：</p>
+<ul>
+<li>Capability声明机制</li>
+<li>状态机管理</li>
+<li>回调接口定义</li>
+</ul>
+</li>
+<li><p><strong>GG8芯片的适配点</strong>：</p>
+<ul>
+<li>Device ID注册</li>
+<li><code>init_sd_express</code>回调实现</li>
+<li>PCIe模式切换控制</li>
+<li>错误恢复机制</li>
+</ul>
+</li>
+<li><p><strong>协作流程</strong>：</p>
+<ul>
+<li>MMC Core主导流程</li>
+<li>Host驱动提供硬件操作</li>
+<li>NVMe驱动负责接管</li>
+</ul>
+</li>
+</ol>
+<p>这种分层架构设计使得不同厂商的SD Express控制器可以复用通用的MMC Core代码，只需实现厂商特定的硬件操作。</p>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">首页</a></li>
+        
+          <li><a href="/about/">关于</a></li>
+        
+          <li><a href="/archives/">归档</a></li>
+        
+          <li><a href="/tags/">标签</a></li>
+        
+          <li><a href="/categories/">分类</a></li>
+        
+          <li><a href="/search/">搜索</a></li>
+        
+          <li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%A6%82%E8%BF%B0"><span class="toc-number">1.</span> <span class="toc-text">概述</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#SD-Express%E6%8A%80%E6%9C%AF%E8%83%8C%E6%99%AF"><span class="toc-number">2.</span> <span class="toc-text">SD Express技术背景</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Linux-MMC%E5%AD%90%E7%B3%BB%E7%BB%9F%E6%9E%B6%E6%9E%84"><span class="toc-number">3.</span> <span class="toc-text">Linux MMC子系统架构</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%95%B4%E4%BD%93%E6%9E%B6%E6%9E%84"><span class="toc-number">3.1.</span> <span class="toc-text">整体架构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#SD-Express%E6%94%AF%E6%8C%81%E6%A1%86%E6%9E%B6"><span class="toc-number">3.2.</span> <span class="toc-text">SD Express支持框架</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#1-Capability%E5%A3%B0%E6%98%8E"><span class="toc-number">3.2.1.</span> <span class="toc-text">1. Capability声明</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-SD-Express%E5%88%9D%E5%A7%8B%E5%8C%96%E5%9B%9E%E8%B0%83"><span class="toc-number">3.2.2.</span> <span class="toc-text">2. SD Express初始化回调</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-SD-Express%E7%8A%B6%E6%80%81%E6%9C%BA"><span class="toc-number">3.2.3.</span> <span class="toc-text">3. SD Express状态机</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#GG8%E8%8A%AF%E7%89%87%E9%80%82%E9%85%8D%E5%88%86%E6%9E%90"><span class="toc-number">3.3.</span> <span class="toc-text">GG8芯片适配分析</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#1-Device-ID%E5%AE%9A%E4%B9%89"><span class="toc-number">3.3.1.</span> <span class="toc-text">1. Device ID定义</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-SD-Express%E5%88%87%E6%8D%A2%E5%AE%9E%E7%8E%B0"><span class="toc-number">3.3.2.</span> <span class="toc-text">2. SD Express切换实现</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-Capability%E9%85%8D%E7%BD%AE"><span class="toc-number">3.3.3.</span> <span class="toc-text">3. Capability配置</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#4-%E5%85%B3%E9%94%AE%E5%AF%84%E5%AD%98%E5%99%A8%E5%AE%9A%E4%B9%89"><span class="toc-number">3.3.4.</span> <span class="toc-text">4. 关键寄存器定义</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%8EMMC-Core%E7%9A%84%E5%8D%8F%E4%BD%9C%E6%B5%81%E7%A8%8B"><span class="toc-number">3.4.</span> <span class="toc-text">与MMC Core的协作流程</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8F%8C%E6%A8%A1%E5%BC%8F%E6%94%AF%E6%8C%81"><span class="toc-number">3.5.</span> <span class="toc-text">双模式支持</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%80%BB%E7%BB%93"><span class="toc-number">4.</span> <span class="toc-text">总结</span></a></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2025/12/23/SD-Express%E9%A9%B1%E5%8A%A8%E6%9E%B6%E6%9E%84%E8%A7%A3%E6%9E%90-Linux-MMC-Core%E6%A1%86%E6%9E%B6%E4%B8%8EO2Micro-GG8%E8%8A%AF%E7%89%87%E9%80%82%E9%85%8D/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2025/12/23/SD-Express%E9%A9%B1%E5%8A%A8%E6%9E%B6%E6%9E%84%E8%A7%A3%E6%9E%90-Linux-MMC-Core%E6%A1%86%E6%9E%B6%E4%B8%8EO2Micro-GG8%E8%8A%AF%E7%89%87%E9%80%82%E9%85%8D/&text=SD Express驱动架构解析：Linux MMC Core框架与O2Micro GG8芯片适配"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2025/12/23/SD-Express%E9%A9%B1%E5%8A%A8%E6%9E%B6%E6%9E%84%E8%A7%A3%E6%9E%90-Linux-MMC-Core%E6%A1%86%E6%9E%B6%E4%B8%8EO2Micro-GG8%E8%8A%AF%E7%89%87%E9%80%82%E9%85%8D/&title=SD Express驱动架构解析：Linux MMC Core框架与O2Micro GG8芯片适配"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2025/12/23/SD-Express%E9%A9%B1%E5%8A%A8%E6%9E%B6%E6%9E%84%E8%A7%A3%E6%9E%90-Linux-MMC-Core%E6%A1%86%E6%9E%B6%E4%B8%8EO2Micro-GG8%E8%8A%AF%E7%89%87%E9%80%82%E9%85%8D/&is_video=false&description=SD Express驱动架构解析：Linux MMC Core框架与O2Micro GG8芯片适配"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=SD Express驱动架构解析：Linux MMC Core框架与O2Micro GG8芯片适配&body=Check out this article: https://cursorhu.github.io/2025/12/23/SD-Express%E9%A9%B1%E5%8A%A8%E6%9E%B6%E6%9E%84%E8%A7%A3%E6%9E%90-Linux-MMC-Core%E6%A1%86%E6%9E%B6%E4%B8%8EO2Micro-GG8%E8%8A%AF%E7%89%87%E9%80%82%E9%85%8D/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2025/12/23/SD-Express%E9%A9%B1%E5%8A%A8%E6%9E%B6%E6%9E%84%E8%A7%A3%E6%9E%90-Linux-MMC-Core%E6%A1%86%E6%9E%B6%E4%B8%8EO2Micro-GG8%E8%8A%AF%E7%89%87%E9%80%82%E9%85%8D/&title=SD Express驱动架构解析：Linux MMC Core框架与O2Micro GG8芯片适配"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2025/12/23/SD-Express%E9%A9%B1%E5%8A%A8%E6%9E%B6%E6%9E%84%E8%A7%A3%E6%9E%90-Linux-MMC-Core%E6%A1%86%E6%9E%B6%E4%B8%8EO2Micro-GG8%E8%8A%AF%E7%89%87%E9%80%82%E9%85%8D/&title=SD Express驱动架构解析：Linux MMC Core框架与O2Micro GG8芯片适配"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2025/12/23/SD-Express%E9%A9%B1%E5%8A%A8%E6%9E%B6%E6%9E%84%E8%A7%A3%E6%9E%90-Linux-MMC-Core%E6%A1%86%E6%9E%B6%E4%B8%8EO2Micro-GG8%E8%8A%AF%E7%89%87%E9%80%82%E9%85%8D/&title=SD Express驱动架构解析：Linux MMC Core框架与O2Micro GG8芯片适配"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2025/12/23/SD-Express%E9%A9%B1%E5%8A%A8%E6%9E%B6%E6%9E%84%E8%A7%A3%E6%9E%90-Linux-MMC-Core%E6%A1%86%E6%9E%B6%E4%B8%8EO2Micro-GG8%E8%8A%AF%E7%89%87%E9%80%82%E9%85%8D/&title=SD Express驱动架构解析：Linux MMC Core框架与O2Micro GG8芯片适配"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2025/12/23/SD-Express%E9%A9%B1%E5%8A%A8%E6%9E%B6%E6%9E%84%E8%A7%A3%E6%9E%90-Linux-MMC-Core%E6%A1%86%E6%9E%B6%E4%B8%8EO2Micro-GG8%E8%8A%AF%E7%89%87%E9%80%82%E9%85%8D/&name=SD Express驱动架构解析：Linux MMC Core框架与O2Micro GG8芯片适配&description=&lt;h2 id=&#34;概述&#34;&gt;&lt;a href=&#34;#概述&#34; class=&#34;headerlink&#34; title=&#34;概述&#34;&gt;&lt;/a&gt;概述&lt;/h2&gt;&lt;p&gt;本文深入分析Linux内核MMC子系统对SD Express的支持框架，以及Bayhub(O2Micro) GG8芯片驱动如何适配到内核框架。&lt;/p&gt;
+&lt;h2 id=&#34;SD-Express技术背景&#34;&gt;&lt;a href=&#34;#SD-Express技术背景&#34; class=&#34;headerlink&#34; title=&#34;SD Express技术背景&#34;&gt;&lt;/a&gt;SD Express技术背景&lt;/h2&gt;&lt;p&gt;SD Express是SD协会发布的第七代SD标准，核心特性：&lt;/p&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;特性&lt;/th&gt;
+&lt;th&gt;SD 6.x&lt;/th&gt;
+&lt;th&gt;SD Express&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;&lt;tr&gt;
+&lt;td&gt;最大容量&lt;/td&gt;
+&lt;td&gt;2TB (SDXC)&lt;/td&gt;
+&lt;td&gt;128TB (SDXC)&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;最大速度&lt;/td&gt;
+&lt;td&gt;~100 MB&amp;#x2F;s (UHS-II)&lt;/td&gt;
+&lt;td&gt;~4 GB&amp;#x2F;s (PCIe 4.0 x2)&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;总线协议&lt;/td&gt;
+&lt;td&gt;SD&amp;#x2F;UHS-II&lt;/td&gt;
+&lt;td&gt;PCIe&amp;#x2F;NVMe&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;&lt;/table&gt;
+&lt;h2 id=&#34;Linux-MMC子系统架构&#34;&gt;&lt;a href=&#34;#Linux-MMC子系统架构&#34; class=&#34;headerlink&#34; title=&#34;Linux MMC子系统架构&#34;&gt;&lt;/a&gt;Linux MMC子系统架构&lt;/h2&gt;&lt;h3 id=&#34;整体架构&#34;&gt;&lt;a href=&#34;#整体架构&#34; class=&#34;headerlink&#34; title=&#34;整体架构&#34;&gt;&lt;/a&gt;整体架构&lt;/h3&gt;&lt;figure class=&#34;highlight plaintext&#34;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&#34;gutter&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;3&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;4&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;5&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;6&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;7&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;8&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;9&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;10&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;11&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;12&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;13&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;14&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;15&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;16&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;17&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;18&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;19&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;20&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;21&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;22&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;23&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;24&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;25&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;26&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;27&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;28&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;29&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;30&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;31&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;32&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;33&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;34&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;35&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;36&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;37&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;38&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;39&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;40&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;41&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;42&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&#34;code&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;┌─────────────────────────────────────────────────────────────────┐&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                    Linux MMC 子系统架构                           │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;└─────────────────────────────────────────────────────────────────┘&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;┌─────────────────────────────────────────────────────────────────┐&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                     User Space (Block Layer)                    │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;└─────────────────────────────────────────────────────────────────┘&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;                              │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;                              ▼&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;┌─────────────────────────────────────────────────────────────────┐&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                   MMC Block Driver (mmc_blk)                     │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   • 将MMC设备呈现为块设备                                        │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   • 处理读写请求、队列管理                                        │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;└─────────────────────────────────────────────────────────────────┘&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;                              │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;                              ▼&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;┌─────────────────────────────────────────────────────────────────┐&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                     MMC Core (mmc_core)                          │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   ┌───────────────┐ ┌───────────────┐ ┌───────────────────┐  │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   │ mmc_bus_ops   │ │ mmc_card      │ │ MMC Protocol      │  │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   │ • suspend     │ │ • CID/CSD    │ │ • SD Express     │  │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   │ • resume     │ │ • SCR/SSR    │ │ • NVMe切换      │  │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   │ • remove     │ │ • 能力检测   │ │ • 初始化流程    │  │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   └───────────────┘ └───────────────┘ └───────────────────┘  │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;└─────────────────────────────────────────────────────────────────┘&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;                              │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;              ┌───────────────┼───────────────┐&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;              ▼               ▼               ▼&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;┌──────────────────┐ ┌──────────────────┐ ┌──────────────────┐&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  sdhci-pci-o2micro│ │  sdhci-pci-gli  │ │   其他Host驱动  │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  (Bayhub GG8)     │ │  (GL874/GL9750) │ │                 │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;└──────────────────┘ └──────────────────┘ └──────────────────┘&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;              │               │               │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;              ▼               ▼               ▼&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;┌─────────────────────────────────────────────────────────────────┐&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                     SD Host Controller                           │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   ┌───────────────┐ ┌───────────────┐ ┌───────────────────┐  │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   │ SDHCI Core    │ │  PCI/AMBA    │ │  Platform Data    │  │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   │ • DMA         │ │  Bus Layer   │ │  • GPIO/Clock    │  │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   │ • Interrupts  │ │              │ │                  │  │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   └───────────────┘ └───────────────┘ └───────────────────┘  │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;└─────────────────────────────────────────────────────────────────┘&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;
+
+&lt;h3 id=&#34;SD-Express支持框架&#34;&gt;&lt;a href=&#34;#SD-Express支持框架&#34; class=&#34;headerlink&#34; title=&#34;SD Express支持框架&#34;&gt;&lt;/a&gt;SD Express支持框架&lt;/h3&gt;&lt;h4 id=&#34;1-Capability声明&#34;&gt;&lt;a href=&#34;#1-Capability声明&#34; class=&#34;headerlink&#34; title=&#34;1. Capability声明&#34;&gt;&lt;/a&gt;1. Capability声明&lt;/h4&gt;"><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2025/12/23/SD-Express%E9%A9%B1%E5%8A%A8%E6%9E%B6%E6%9E%84%E8%A7%A3%E6%9E%90-Linux-MMC-Core%E6%A1%86%E6%9E%B6%E4%B8%8EO2Micro-GG8%E8%8A%AF%E7%89%87%E9%80%82%E9%85%8D/&t=SD Express驱动架构解析：Linux MMC Core框架与O2Micro GG8芯片适配"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> 菜单</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> 目录</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> 分享</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> 返回顶部</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2026
+    cursorhu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"复制到粘贴板！\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "复制成功！");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+</body>
+</html>

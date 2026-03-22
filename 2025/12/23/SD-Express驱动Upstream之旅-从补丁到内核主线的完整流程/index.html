@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="概述本文记录了将O2Micro GG8芯片SD Express驱动提交到Linux内核主线的完整过程，包括补丁准备、提交、Code Review和修改迭代。 补丁准备1. 获取内核源码树1234567# 克隆主线内核仓库git clone git:&#x2F;&#x2F;git.kernel.org&#x2F;pub&#x2F;scm&#x2F;linux&#x2F;kernel&#x2F;git&#x2F;torvalds&#x2F;linux.gitcd linux# 或者克隆MM">
+<meta property="og:type" content="article">
+<meta property="og:title" content="SD Express驱动Upstream之旅：从补丁到内核主线的完整流程">
+<meta property="og:url" content="https://cursorhu.github.io/2025/12/23/SD-Express%E9%A9%B1%E5%8A%A8Upstream%E4%B9%8B%E6%97%85-%E4%BB%8E%E8%A1%A5%E4%B8%81%E5%88%B0%E5%86%85%E6%A0%B8%E4%B8%BB%E7%BA%BF%E7%9A%84%E5%AE%8C%E6%95%B4%E6%B5%81%E7%A8%8B/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="概述本文记录了将O2Micro GG8芯片SD Express驱动提交到Linux内核主线的完整过程，包括补丁准备、提交、Code Review和修改迭代。 补丁准备1. 获取内核源码树1234567# 克隆主线内核仓库git clone git:&#x2F;&#x2F;git.kernel.org&#x2F;pub&#x2F;scm&#x2F;linux&#x2F;kernel&#x2F;git&#x2F;torvalds&#x2F;linux.gitcd linux# 或者克隆MM">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2025-12-22T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-03-22T13:28:36.457Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="Code Review">
+<meta property="article:tag" content="Linux内核">
+<meta property="article:tag" content="Patch提交">
+<meta property="article:tag" content="Upstream">
+<meta property="article:tag" content="社区协作">
+<meta name="twitter:card" content="summary">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>SD Express驱动Upstream之旅：从补丁到内核主线的完整流程</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+<meta name="generator" content="Hexo 8.0.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="顶部" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="上一篇" href="/2026/02/10/MTK%E5%B9%B3%E5%8F%B0--Host%20TUNING_ISSUE/"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="下一篇" href="/2025/12/23/SD-Express%E9%A9%B1%E5%8A%A8%E6%9E%B6%E6%9E%84%E8%A7%A3%E6%9E%90-Linux-MMC-Core%E6%A1%86%E6%9E%B6%E4%B8%8EO2Micro-GG8%E8%8A%AF%E7%89%87%E9%80%82%E9%85%8D/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="返回顶部" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="分享文章" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">上一篇</span>
+      <span id="i-next" class="info" style="display:none;">下一篇</span>
+      <span id="i-top" class="info" style="display:none;">返回顶部</span>
+      <span id="i-share" class="info" style="display:none;">分享文章</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2025/12/23/SD-Express%E9%A9%B1%E5%8A%A8Upstream%E4%B9%8B%E6%97%85-%E4%BB%8E%E8%A1%A5%E4%B8%81%E5%88%B0%E5%86%85%E6%A0%B8%E4%B8%BB%E7%BA%BF%E7%9A%84%E5%AE%8C%E6%95%B4%E6%B5%81%E7%A8%8B/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2025/12/23/SD-Express%E9%A9%B1%E5%8A%A8Upstream%E4%B9%8B%E6%97%85-%E4%BB%8E%E8%A1%A5%E4%B8%81%E5%88%B0%E5%86%85%E6%A0%B8%E4%B8%BB%E7%BA%BF%E7%9A%84%E5%AE%8C%E6%95%B4%E6%B5%81%E7%A8%8B/&text=SD Express驱动Upstream之旅：从补丁到内核主线的完整流程"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2025/12/23/SD-Express%E9%A9%B1%E5%8A%A8Upstream%E4%B9%8B%E6%97%85-%E4%BB%8E%E8%A1%A5%E4%B8%81%E5%88%B0%E5%86%85%E6%A0%B8%E4%B8%BB%E7%BA%BF%E7%9A%84%E5%AE%8C%E6%95%B4%E6%B5%81%E7%A8%8B/&title=SD Express驱动Upstream之旅：从补丁到内核主线的完整流程"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2025/12/23/SD-Express%E9%A9%B1%E5%8A%A8Upstream%E4%B9%8B%E6%97%85-%E4%BB%8E%E8%A1%A5%E4%B8%81%E5%88%B0%E5%86%85%E6%A0%B8%E4%B8%BB%E7%BA%BF%E7%9A%84%E5%AE%8C%E6%95%B4%E6%B5%81%E7%A8%8B/&is_video=false&description=SD Express驱动Upstream之旅：从补丁到内核主线的完整流程"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=SD Express驱动Upstream之旅：从补丁到内核主线的完整流程&body=Check out this article: https://cursorhu.github.io/2025/12/23/SD-Express%E9%A9%B1%E5%8A%A8Upstream%E4%B9%8B%E6%97%85-%E4%BB%8E%E8%A1%A5%E4%B8%81%E5%88%B0%E5%86%85%E6%A0%B8%E4%B8%BB%E7%BA%BF%E7%9A%84%E5%AE%8C%E6%95%B4%E6%B5%81%E7%A8%8B/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2025/12/23/SD-Express%E9%A9%B1%E5%8A%A8Upstream%E4%B9%8B%E6%97%85-%E4%BB%8E%E8%A1%A5%E4%B8%81%E5%88%B0%E5%86%85%E6%A0%B8%E4%B8%BB%E7%BA%BF%E7%9A%84%E5%AE%8C%E6%95%B4%E6%B5%81%E7%A8%8B/&title=SD Express驱动Upstream之旅：从补丁到内核主线的完整流程"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2025/12/23/SD-Express%E9%A9%B1%E5%8A%A8Upstream%E4%B9%8B%E6%97%85-%E4%BB%8E%E8%A1%A5%E4%B8%81%E5%88%B0%E5%86%85%E6%A0%B8%E4%B8%BB%E7%BA%BF%E7%9A%84%E5%AE%8C%E6%95%B4%E6%B5%81%E7%A8%8B/&title=SD Express驱动Upstream之旅：从补丁到内核主线的完整流程"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2025/12/23/SD-Express%E9%A9%B1%E5%8A%A8Upstream%E4%B9%8B%E6%97%85-%E4%BB%8E%E8%A1%A5%E4%B8%81%E5%88%B0%E5%86%85%E6%A0%B8%E4%B8%BB%E7%BA%BF%E7%9A%84%E5%AE%8C%E6%95%B4%E6%B5%81%E7%A8%8B/&title=SD Express驱动Upstream之旅：从补丁到内核主线的完整流程"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2025/12/23/SD-Express%E9%A9%B1%E5%8A%A8Upstream%E4%B9%8B%E6%97%85-%E4%BB%8E%E8%A1%A5%E4%B8%81%E5%88%B0%E5%86%85%E6%A0%B8%E4%B8%BB%E7%BA%BF%E7%9A%84%E5%AE%8C%E6%95%B4%E6%B5%81%E7%A8%8B/&title=SD Express驱动Upstream之旅：从补丁到内核主线的完整流程"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2025/12/23/SD-Express%E9%A9%B1%E5%8A%A8Upstream%E4%B9%8B%E6%97%85-%E4%BB%8E%E8%A1%A5%E4%B8%81%E5%88%B0%E5%86%85%E6%A0%B8%E4%B8%BB%E7%BA%BF%E7%9A%84%E5%AE%8C%E6%95%B4%E6%B5%81%E7%A8%8B/&name=SD Express驱动Upstream之旅：从补丁到内核主线的完整流程&description=&lt;h2 id=&#34;概述&#34;&gt;&lt;a href=&#34;#概述&#34; class=&#34;headerlink&#34; title=&#34;概述&#34;&gt;&lt;/a&gt;概述&lt;/h2&gt;&lt;p&gt;本文记录了将O2Micro GG8芯片SD Express驱动提交到Linux内核主线的完整过程，包括补丁准备、提交、Code Review和修改迭代。&lt;/p&gt;
+&lt;h2 id=&#34;补丁准备&#34;&gt;&lt;a href=&#34;#补丁准备&#34; class=&#34;headerlink&#34; title=&#34;补丁准备&#34;&gt;&lt;/a&gt;补丁准备&lt;/h2&gt;&lt;h3 id=&#34;1-获取内核源码树&#34;&gt;&lt;a href=&#34;#1-获取内核源码树&#34; class=&#34;headerlink&#34; title=&#34;1. 获取内核源码树&#34;&gt;&lt;/a&gt;1. 获取内核源码树&lt;/h3&gt;&lt;figure class=&#34;highlight bash&#34;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&#34;gutter&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;3&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;4&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;5&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;6&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;7&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&#34;code&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;comment&#34;&gt;# 克隆主线内核仓库&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;git &lt;span class=&#34;built_in&#34;&gt;clone&lt;/span&gt; git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;built_in&#34;&gt;cd&lt;/span&gt; linux&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;comment&#34;&gt;# 或者克隆MMC子系统的维护者树（推荐，更新更快）&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;git &lt;span class=&#34;built_in&#34;&gt;clone&lt;/span&gt; git://git.kernel.org/pub/scm/linux/kernel/git/ulfh/linux-mmc.git&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;built_in&#34;&gt;cd&lt;/span&gt; linux-mmc&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;
+
+&lt;h3 id=&#34;2-创建开发分支&#34;&gt;&lt;a href=&#34;#2-创建开发分支&#34; class=&#34;headerlink&#34; title=&#34;2. 创建开发分支&#34;&gt;&lt;/a&gt;2. 创建开发分支&lt;/h3&gt;&lt;figure class=&#34;highlight bash&#34;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&#34;gutter&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;3&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;4&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;5&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;6&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;7&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;8&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&#34;code&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;comment&#34;&gt;# 查看远程分支&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;git branch -r&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;comment&#34;&gt;# 基于最新的MMC维护者分支创建开发分支&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;git checkout -b o2micro-gg8-sd-express origin/next&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;comment&#34;&gt;# 或基于mmc-next分支&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;git checkout -b o2micro-gg8-sd-express mmc-next&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;
+
+&lt;h3 id=&#34;3-本地开发与提交&#34;&gt;&lt;a href=&#34;#3-本地开发与提交&#34; class=&#34;headerlink&#34; title=&#34;3. 本地开发与提交&#34;&gt;&lt;/a&gt;3. 本地开发与提交&lt;/h3&gt;&lt;p&gt;这是关键步骤！你需要先将修改提交到本地git仓库：&lt;/p&gt;
+&lt;figure class=&#34;highlight bash&#34;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&#34;gutter&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;3&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;4&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;5&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;6&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;7&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;8&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;9&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&#34;code&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;comment&#34;&gt;# 假设你已经修改了代码，现在查看修改状态&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;git status&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;comment&#34;&gt;# On branch o2micro-gg8-sd-express&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;comment&#34;&gt;# Changes not staged for commit:&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;comment&#34;&gt;#   modified:   drivers/mmc/host/sdhci-pci-o2micro.c&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;comment&#34;&gt;#   modified:   drivers/mmc/host/sdhci-pci.h&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;comment&#34;&gt;# 查看具体修改内容&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;git diff drivers/mmc/host/sdhci-pci-o2micro.c&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;"><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2025/12/23/SD-Express%E9%A9%B1%E5%8A%A8Upstream%E4%B9%8B%E6%97%85-%E4%BB%8E%E8%A1%A5%E4%B8%81%E5%88%B0%E5%86%85%E6%A0%B8%E4%B8%BB%E7%BA%BF%E7%9A%84%E5%AE%8C%E6%95%B4%E6%B5%81%E7%A8%8B/&t=SD Express驱动Upstream之旅：从补丁到内核主线的完整流程"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%A6%82%E8%BF%B0"><span class="toc-number">1.</span> <span class="toc-text">概述</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%A1%A5%E4%B8%81%E5%87%86%E5%A4%87"><span class="toc-number">2.</span> <span class="toc-text">补丁准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E8%8E%B7%E5%8F%96%E5%86%85%E6%A0%B8%E6%BA%90%E7%A0%81%E6%A0%91"><span class="toc-number">2.1.</span> <span class="toc-text">1. 获取内核源码树</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-%E5%88%9B%E5%BB%BA%E5%BC%80%E5%8F%91%E5%88%86%E6%94%AF"><span class="toc-number">2.2.</span> <span class="toc-text">2. 创建开发分支</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-%E6%9C%AC%E5%9C%B0%E5%BC%80%E5%8F%91%E4%B8%8E%E6%8F%90%E4%BA%A4"><span class="toc-number">2.3.</span> <span class="toc-text">3. 本地开发与提交</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%8F%90%E4%BA%A4%E7%AC%AC%E4%B8%80%E4%B8%AA%E8%A1%A5%E4%B8%81%EF%BC%88UHS-I%E6%94%AF%E6%8C%81%EF%BC%89"><span class="toc-number">2.3.1.</span> <span class="toc-text">提交第一个补丁（UHS-I支持）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%8F%90%E4%BA%A4%E7%AC%AC%E4%BA%8C%E4%B8%AA%E8%A1%A5%E4%B8%81%EF%BC%88SD-Express%E6%94%AF%E6%8C%81%EF%BC%89"><span class="toc-number">2.3.2.</span> <span class="toc-text">提交第二个补丁（SD Express支持）</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-%E7%94%9F%E6%88%90%E8%A1%A5%E4%B8%81%E6%96%87%E4%BB%B6"><span class="toc-number">2.4.</span> <span class="toc-text">4. 生成补丁文件</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-%E7%94%9F%E6%88%90%E7%BB%93%E6%9E%9C"><span class="toc-number">2.5.</span> <span class="toc-text">5. 生成结果</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-%E7%94%9F%E6%88%90Cover-Letter%EF%BC%88%E5%8F%AF%E9%80%89%E4%BD%86%E6%8E%A8%E8%8D%90%EF%BC%89"><span class="toc-number">2.6.</span> <span class="toc-text">6. 生成Cover Letter（可选但推荐）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%8C%E6%95%B4%E6%B5%81%E7%A8%8B%E5%9B%9E%E9%A1%BE"><span class="toc-number">2.7.</span> <span class="toc-text">完整流程回顾</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98"><span class="toc-number">2.8.</span> <span class="toc-text">常见问题</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%8F%90%E4%BA%A4%E5%88%B0%E7%A4%BE%E5%8C%BA"><span class="toc-number">3.</span> <span class="toc-text">提交到社区</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E7%A1%AE%E5%AE%9A%E6%94%B6%E4%BB%B6%E4%BA%BA"><span class="toc-number">3.1.</span> <span class="toc-text">1. 确定收件人</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-%E5%8F%91%E9%80%81%E8%A1%A5%E4%B8%81"><span class="toc-number">3.2.</span> <span class="toc-text">2. 发送补丁</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-%E8%A1%A5%E4%B8%81%E4%B8%BB%E9%A2%98%E8%A1%8C%E8%A7%84%E8%8C%83"><span class="toc-number">3.3.</span> <span class="toc-text">3. 补丁主题行规范</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Code-Review%E8%BF%87%E7%A8%8B"><span class="toc-number">4.</span> <span class="toc-text">Code Review过程</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E4%B8%80%E8%BD%AEReview"><span class="toc-number">4.1.</span> <span class="toc-text">第一轮Review</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BF%AE%E6%94%B9%E8%BF%AD%E4%BB%A3"><span class="toc-number">4.2.</span> <span class="toc-text">修改迭代</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E4%BA%8C%E8%BD%AEReview"><span class="toc-number">4.3.</span> <span class="toc-text">第二轮Review</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%90%88%E5%B9%B6%E5%88%B0MMC-next"><span class="toc-number">4.4.</span> <span class="toc-text">合并到MMC-next</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Patch-2-2%EF%BC%9ASD-Express%E6%94%AF%E6%8C%81%E7%9A%84%E5%AE%8C%E6%95%B4%E6%8F%90%E4%BA%A4%E6%B5%81%E7%A8%8B"><span class="toc-number">5.</span> <span class="toc-text">Patch 2&#x2F;2：SD Express支持的完整提交流程</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%87%86%E5%A4%87SD-Express%E8%A1%A5%E4%B8%81"><span class="toc-number">5.1.</span> <span class="toc-text">准备SD Express补丁</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%8F%90%E4%BA%A4%E6%B6%88%E6%81%AF%E4%B8%AD%E7%9A%84%E4%BE%9D%E8%B5%96%E8%AF%B4%E6%98%8E"><span class="toc-number">5.2.</span> <span class="toc-text">提交消息中的依赖说明</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%A4%84%E7%90%86Review%E5%8F%8D%E9%A6%88"><span class="toc-number">5.3.</span> <span class="toc-text">处理Review反馈</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9C%80%E7%BB%88%E6%8F%90%E4%BA%A4"><span class="toc-number">5.4.</span> <span class="toc-text">最终提交</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%B3%E9%94%AE%E7%BB%8F%E9%AA%8C%E6%80%BB%E7%BB%93"><span class="toc-number">6.</span> <span class="toc-text">关键经验总结</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E6%8F%90%E4%BA%A4%E5%89%8D%E7%9A%84%E5%87%86%E5%A4%87"><span class="toc-number">6.1.</span> <span class="toc-text">1. 提交前的准备</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-%E4%B8%8E%E7%BB%B4%E6%8A%A4%E8%80%85%E6%B2%9F%E9%80%9A"><span class="toc-number">6.2.</span> <span class="toc-text">2. 与维护者沟通</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-%E5%A4%84%E7%90%86%E5%8F%8D%E5%A4%8D%E4%BF%AE%E6%94%B9"><span class="toc-number">6.3.</span> <span class="toc-text">3. 处理反复修改</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-%E6%8F%90%E4%BA%A4%E5%90%8E%E7%9A%84%E8%B7%9F%E8%BF%9B"><span class="toc-number">6.4.</span> <span class="toc-text">4. 提交后的跟进</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%BA%90"><span class="toc-number">7.</span> <span class="toc-text">参考资源</span></a></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        SD Express驱动Upstream之旅：从补丁到内核主线的完整流程
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">cursorhu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2025-12-22T16:00:00.000Z" class="dt-published" itemprop="datePublished">2025-12-23</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fa-solid fa-archive"></i>
+        <a class="category-link" href="/categories/Linux%E5%86%85%E6%A0%B8/">Linux内核</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/Code-Review/" rel="tag">Code Review</a>, <a class="p-category" href="/tags/Linux%E5%86%85%E6%A0%B8/" rel="tag">Linux内核</a>, <a class="p-category" href="/tags/Patch%E6%8F%90%E4%BA%A4/" rel="tag">Patch提交</a>, <a class="p-category" href="/tags/Upstream/" rel="tag">Upstream</a>, <a class="p-category" href="/tags/%E7%A4%BE%E5%8C%BA%E5%8D%8F%E4%BD%9C/" rel="tag">社区协作</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><p>本文记录了将O2Micro GG8芯片SD Express驱动提交到Linux内核主线的完整过程，包括补丁准备、提交、Code Review和修改迭代。</p>
+<h2 id="补丁准备"><a href="#补丁准备" class="headerlink" title="补丁准备"></a>补丁准备</h2><h3 id="1-获取内核源码树"><a href="#1-获取内核源码树" class="headerlink" title="1. 获取内核源码树"></a>1. 获取内核源码树</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 克隆主线内核仓库</span></span><br><span class="line">git <span class="built_in">clone</span> git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git</span><br><span class="line"><span class="built_in">cd</span> linux</span><br><span class="line"></span><br><span class="line"><span class="comment"># 或者克隆MMC子系统的维护者树（推荐，更新更快）</span></span><br><span class="line">git <span class="built_in">clone</span> git://git.kernel.org/pub/scm/linux/kernel/git/ulfh/linux-mmc.git</span><br><span class="line"><span class="built_in">cd</span> linux-mmc</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-创建开发分支"><a href="#2-创建开发分支" class="headerlink" title="2. 创建开发分支"></a>2. 创建开发分支</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看远程分支</span></span><br><span class="line">git branch -r</span><br><span class="line"></span><br><span class="line"><span class="comment"># 基于最新的MMC维护者分支创建开发分支</span></span><br><span class="line">git checkout -b o2micro-gg8-sd-express origin/next</span><br><span class="line"></span><br><span class="line"><span class="comment"># 或基于mmc-next分支</span></span><br><span class="line">git checkout -b o2micro-gg8-sd-express mmc-next</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-本地开发与提交"><a href="#3-本地开发与提交" class="headerlink" title="3. 本地开发与提交"></a>3. 本地开发与提交</h3><p>这是关键步骤！你需要先将修改提交到本地git仓库：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 假设你已经修改了代码，现在查看修改状态</span></span><br><span class="line">git status</span><br><span class="line"><span class="comment"># On branch o2micro-gg8-sd-express</span></span><br><span class="line"><span class="comment"># Changes not staged for commit:</span></span><br><span class="line"><span class="comment">#   modified:   drivers/mmc/host/sdhci-pci-o2micro.c</span></span><br><span class="line"><span class="comment">#   modified:   drivers/mmc/host/sdhci-pci.h</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看具体修改内容</span></span><br><span class="line">git diff drivers/mmc/host/sdhci-pci-o2micro.c</span><br></pre></td></tr></table></figure>
+
+<h4 id="提交第一个补丁（UHS-I支持）"><a href="#提交第一个补丁（UHS-I支持）" class="headerlink" title="提交第一个补丁（UHS-I支持）"></a>提交第一个补丁（UHS-I支持）</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 添加文件到暂存区</span></span><br><span class="line">git add drivers/mmc/host/sdhci-pci-o2micro.c</span><br><span class="line">git add drivers/mmc/host/sdhci-pci.h</span><br><span class="line"></span><br><span class="line"><span class="comment"># 提交（注意：-s 自动添加 Signed-off-by）</span></span><br><span class="line">git commit -s -m <span class="string">&quot;mmc: sdhci-pci-o2micro: add Bayhub new chip GG8 support for UHS-I</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">This patch adds support for Bayhub(O2Micro) GG8 chip family</span></span><br><span class="line"><span class="string">(0x9860-0x9863) including:</span></span><br><span class="line"><span class="string">- Device ID registration</span></span><br><span class="line"><span class="string">- UHS-I timing configuration</span></span><br><span class="line"><span class="string">- DLL phase tuning for SDR104 mode&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看提交历史</span></span><br><span class="line">git <span class="built_in">log</span> --oneline -3</span><br><span class="line"><span class="comment"># a1b2c3d (HEAD -&gt; o2micro-gg8-sd-express) mmc: sdhci-pci-o2micro: add Bayhub...</span></span><br><span class="line"><span class="comment"># x9y8z7w origin/next</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="提交第二个补丁（SD-Express支持）"><a href="#提交第二个补丁（SD-Express支持）" class="headerlink" title="提交第二个补丁（SD Express支持）"></a>提交第二个补丁（SD Express支持）</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 继续修改代码，添加SD Express支持</span></span><br><span class="line"><span class="comment"># ... 修改 sdhci-pci-o2micro.c ...</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 提交第二个补丁</span></span><br><span class="line">git add drivers/mmc/host/sdhci-pci-o2micro.c</span><br><span class="line">git commit -s -m <span class="string">&quot;mmc: sdhci-pci-o2micro: add Bayhub new chip GG8 support for express card</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">Add Bayhub new chip GG8 support for SD express card. This patch depends on</span></span><br><span class="line"><span class="string">patch 1/2 which adds GG8 device ID support.</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">The SD Express support implementation:</span></span><br><span class="line"><span class="string">- Registers init_sd_express callback</span></span><br><span class="line"><span class="string">- Implements PCIe mode switch sequence</span></span><br><span class="line"><span class="string">- Handles fallback to Legacy mode on failure&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看提交历史</span></span><br><span class="line">git <span class="built_in">log</span> --oneline -3</span><br><span class="line"><span class="comment"># b2c3d4e (HEAD -&gt; o2micro-gg8-sd-express) mmc: sdhci-pci-o2micro: add Bayhub... (express)</span></span><br><span class="line"><span class="comment"># a1b2c3d mmc: sdhci-pci-o2micro: add Bayhub... (UHS-I)</span></span><br><span class="line"><span class="comment"># x9y8z7w origin/next</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="4-生成补丁文件"><a href="#4-生成补丁文件" class="headerlink" title="4. 生成补丁文件"></a>4. 生成补丁文件</h3><p>本地提交后，使用 <code>git format-patch</code> 生成补丁文件：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 方法1：生成最近N个提交的补丁</span></span><br><span class="line">git format-patch -2 -o outgoing/</span><br><span class="line"></span><br><span class="line"><span class="comment"># 方法2：基于某个commit生成补丁</span></span><br><span class="line">git format-patch -1 a1b2c3d -o outgoing/</span><br><span class="line"></span><br><span class="line"><span class="comment"># 方法3：指定提交范围</span></span><br><span class="line">git format-patch -1 a1b2c3d..b2c3d4e -o outgoing/</span><br></pre></td></tr></table></figure>
+
+<p><strong>关键理解</strong>：</p>
+<ul>
+<li><code>git commit</code> 是本地提交，创建commit对象</li>
+<li><code>git format-patch</code> 是根据commit生成邮件格式的补丁文件</li>
+<li>生成的 <code>.patch</code> 文件就是你要发送到邮件列表的东西</li>
+</ul>
+<h3 id="5-生成结果"><a href="#5-生成结果" class="headerlink" title="5. 生成结果"></a>5. 生成结果</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">$ git format-patch -2 -o outgoing/</span><br><span class="line">outgoing/0001-mmc-sdhci-pci-o2micro-add-Bayhub-new-chip-GG8-.patch</span><br><span class="line">outgoing/0002-mmc-sdhci-pci-o2micro-add-Bayhub-new-chip-GG8-.patch</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看生成的文件</span></span><br><span class="line">$ <span class="built_in">ls</span> -la outgoing/</span><br><span class="line">-rw-r--r-- 1 user  8.5K Oct 24 10:30 0001-mmc-sdhci-pci-o2micro-add-Bayhub-new-chip-GG8-support-for-UHS-I.patch</span><br><span class="line">-rw-r--r-- 1 user  6.2K Oct 24 10:30 0002-mmc-sdhci-pci-o2micro-add-Bayhub-new-chip-GG8-support-for-express-card.patch</span><br></pre></td></tr></table></figure>
+
+<h3 id="6-生成Cover-Letter（可选但推荐）"><a href="#6-生成Cover-Letter（可选但推荐）" class="headerlink" title="6. 生成Cover Letter（可选但推荐）"></a>6. 生成Cover Letter（可选但推荐）</h3><p>如果是一系列补丁，建议生成封面信：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 生成包含封面信的完整补丁系列</span></span><br><span class="line">git format-patch -2 --cover-letter -o outgoing/</span><br><span class="line"></span><br><span class="line"><span class="comment"># 编辑封面信</span></span><br><span class="line">vim outgoing/0000-cover-letter.patch</span><br></pre></td></tr></table></figure>
+
+<p>生成的Cover Letter格式：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">Subject: [PATCH 0/2] mmc: sdhci-pci-o2micro: add GG8 chip support</span><br><span class="line"></span><br><span class="line">--------------------------------------------------------</span><br><span class="line">This series adds support for Bayhub(O2Micro) GG8 chip family</span><br><span class="line">(PCI Device ID 0x9860-0x9863) to the o2micro SD host controller</span><br><span class="line">driver, including UHS-I and SD Express support.</span><br><span class="line"></span><br><span class="line">Testing:</span><br><span class="line">- Tested on GG8 development board</span><br><span class="line">- Tested with SanDisk Ultra SDXC 64GB (SD mode)</span><br><span class="line">- Tested with Lexar SD Express 256GB (PCIe mode)</span><br><span class="line"></span><br><span class="line">Changes in V2:</span><br><span class="line">- Increased DLL lock timeout per Adrian&#x27;s suggestion</span><br><span class="line">- Improved error handling in init_sd_express</span><br><span class="line">--------------------------------------------------------</span><br></pre></td></tr></table></figure>
+
+<h3 id="完整流程回顾"><a href="#完整流程回顾" class="headerlink" title="完整流程回顾"></a>完整流程回顾</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────────┐</span><br><span class="line">│              本地开发 → 生成补丁 → 发送邮件 完整流程               │</span><br><span class="line">└─────────────────────────────────────────────────────────────────┘</span><br><span class="line"></span><br><span class="line">┌──────────────┐      ┌──────────────┐      ┌──────────────┐</span><br><span class="line">│  1.本地开发   │ ──►  │  2.本地提交   │ ──►  │ 3.生成补丁   │</span><br><span class="line">│              │      │              │      │              │</span><br><span class="line">│ 修改源文件    │      │ git commit  │      │ git format  │</span><br><span class="line">│              │      │ -s (签名)    │      │ -patch      │</span><br><span class="line">└──────────────┘      └──────────────┘      └──────┬───────┘</span><br><span class="line">                                                     │</span><br><span class="line">                                                     ▼</span><br><span class="line">┌──────────────┐      ┌──────────────┐      ┌──────────────┐</span><br><span class="line">│  6.等待合并   │ ◄──  │  5.发送补丁   │ ◄──  │ 4.检查补丁   │</span><br><span class="line">│              │      │              │      │              │</span><br><span class="line">│ 等待维护者    │      │ git send    │      │ git diff    │</span><br><span class="line">│ 合并到主线    │      │ -email      │      │ checkpatch  │</span><br><span class="line">└──────────────┘      └──────────────┘      └──────────────┘</span><br></pre></td></tr></table></figure>
+
+<h3 id="常见问题"><a href="#常见问题" class="headerlink" title="常见问题"></a>常见问题</h3><p><strong>Q: 如果提交后发现提交消息写错了怎么办？</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 修改最后一次提交消息</span></span><br><span class="line">git commit --amend -s</span><br><span class="line"></span><br><span class="line"><span class="comment"># 如果已经生成了补丁，需要重新生成</span></span><br><span class="line">git format-patch -1 HEAD -o outgoing/</span><br></pre></td></tr></table></figure>
+
+<p><strong>Q: 如何追加新的修改到已发送的补丁？</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 修改代码</span></span><br><span class="line">git add .</span><br><span class="line">git commit -m <span class="string">&quot;fixup: address review comments&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 重新生成补丁（此时有3个commit）</span></span><br><span class="line">git format-patch -3 -o outgoing/</span><br></pre></td></tr></table></figure>
+
+<p><strong>Q: 如何拆分一个过大的提交？</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 交互式变基，标记需要拆分的提交为 edit</span></span><br><span class="line">git rebase -i HEAD~3</span><br><span class="line"></span><br><span class="line"><span class="comment"># 在那个commit处，执行：</span></span><br><span class="line">git reset HEAD~</span><br><span class="line"><span class="comment"># 然后分多次add和commit</span></span><br><span class="line">git add file1.c</span><br><span class="line">git commit -s -m <span class="string">&quot;part 1: xxx&quot;</span></span><br><span class="line">git add file2.c</span><br><span class="line">git commit -s -m <span class="string">&quot;part 2: xxx&quot;</span></span><br><span class="line">git rebase --<span class="built_in">continue</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="提交到社区"><a href="#提交到社区" class="headerlink" title="提交到社区"></a>提交到社区</h2><h3 id="1-确定收件人"><a href="#1-确定收件人" class="headerlink" title="1. 确定收件人"></a>1. 确定收件人</h3><p>根据内核提交规范，首先需要找到正确的维护者：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看MMC子系统的维护者</span></span><br><span class="line"><span class="built_in">cat</span> MAINTAINERS | grep -A 20 <span class="string">&quot;MMC&quot;</span></span><br></pre></td></tr></table></figure>
+
+<p>MMC子系统维护者：</p>
+<ul>
+<li>Ulf Hansson (主维护者)</li>
+<li>Adrian Hunter (Intel O2Micro相关)</li>
+</ul>
+<h3 id="2-发送补丁"><a href="#2-发送补丁" class="headerlink" title="2. 发送补丁"></a>2. 发送补丁</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 使用git send-email发送补丁</span></span><br><span class="line">git send-email \</span><br><span class="line">    --to ulf.hansson@linaro.org \</span><br><span class="line">    --cc adrian.hunter@intel.com \</span><br><span class="line">    --cc linux-mmc@vger.kernel.org \</span><br><span class="line">    --cc linux-kernel@vger.kernel.org \</span><br><span class="line">    outgoing/0001-*.patch</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-补丁主题行规范"><a href="#3-补丁主题行规范" class="headerlink" title="3. 补丁主题行规范"></a>3. 补丁主题行规范</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Subject: [PATCH V1 1/2] mmc: sdhci-pci-o2micro: add Bayhub new chip GG8 support for UHS-I</span><br></pre></td></tr></table></figure>
+
+<p>格式说明：</p>
+<ul>
+<li><code>[PATCH]</code>：标识这是一个补丁</li>
+<li><code>V1</code>：版本号</li>
+<li><code>1/2</code>：补丁系列中的编号</li>
+<li><code>mmc: sdhci-pci-o2micro:</code>：影响的子系统</li>
+<li>简短的描述</li>
+</ul>
+<h2 id="Code-Review过程"><a href="#Code-Review过程" class="headerlink" title="Code Review过程"></a>Code Review过程</h2><h3 id="第一轮Review"><a href="#第一轮Review" class="headerlink" title="第一轮Review"></a>第一轮Review</h3><p>提交后，收到了来自MMC维护者的反馈：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">From: Adrian Hunter &lt;adrian.hunter@intel.com&gt;</span><br><span class="line">Date: Thu, 10 Aug 2023 15:30:00 +0300</span><br><span class="line"></span><br><span class="line">Hi,</span><br><span class="line"></span><br><span class="line">Some minor comments below:</span><br><span class="line"></span><br><span class="line">1. The DLL lock timeout value seems too short for some platforms.</span><br><span class="line">   Consider increasing it to 10ms.</span><br><span class="line"></span><br><span class="line">2. The error path handling in probe_slot should be improved.</span><br><span class="line"></span><br><span class="line">Please see the inline comments.</span><br><span class="line"></span><br><span class="line">Reviewed-by: Adrian Hunter &lt;adrian.hunter@intel.com&gt;</span><br></pre></td></tr></table></figure>
+
+<h3 id="修改迭代"><a href="#修改迭代" class="headerlink" title="修改迭代"></a>修改迭代</h3><p>根据Review意见进行修改：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 修改前</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> DLL_LOCK_TIMEOUT 5  <span class="comment">// ms</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 修改后</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> DLL_LOCK_TIMEOUT 10  <span class="comment">// ms</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 添加错误处理</span></span><br><span class="line"><span class="keyword">if</span> (ret) &#123;</span><br><span class="line">    dev_err(mmc_dev(host-&gt;mmc), <span class="string">&quot;DLL lock timeout\n&quot;</span>);</span><br><span class="line">    <span class="keyword">return</span> ret;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>重新生成补丁：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">git add -u</span><br><span class="line">git commit -s -v</span><br><span class="line"><span class="comment"># 修改提交消息，添加版本信息</span></span><br><span class="line"></span><br><span class="line">git format-patch -v2 -1 --cover-letter -o outgoing/</span><br><span class="line">git send-email --in-reply-to &lt;previous-message-id&gt; \</span><br><span class="line">    --to ulf.hansson@linaro.org \</span><br><span class="line">    --cc adrian.hunter@intel.com \</span><br><span class="line">    --cc linux-mmc@vger.kernel.org \</span><br><span class="line">    outgoing/0001-*.patch</span><br></pre></td></tr></table></figure>
+
+<h3 id="第二轮Review"><a href="#第二轮Review" class="headerlink" title="第二轮Review"></a>第二轮Review</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">From: Ulf Hansson &lt;ulf.hansson@linaro.org&gt;</span><br><span class="line">Date: Mon, 14 Aug 2023 10:00:00 +0200</span><br><span class="line"></span><br><span class="line">Patchset looks good to me now.</span><br><span class="line"></span><br><span class="line">Adrian, any further comments before I pick this up?</span><br><span class="line"></span><br><span class="line">[...]</span><br></pre></td></tr></table></figure>
+
+<h3 id="合并到MMC-next"><a href="#合并到MMC-next" class="headerlink" title="合并到MMC-next"></a>合并到MMC-next</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">From: Ulf Hansson &lt;ulf.hansson@linaro.org&gt;</span><br><span class="line">Date: Wed, 16 Aug 2023 09:00:00 +0200</span><br><span class="line"></span><br><span class="line">Patches applied to mmc-next. Thanks!</span><br><span class="line"></span><br><span class="line">[1/2] mmc: sdhci-pci-o2micro: add Bayhub new chip GG8 support for UHS-I</span><br><span class="line">[2/2] mmc: sdhci-pci-o2micro: add Bayhub new chip GG8 support for express card</span><br></pre></td></tr></table></figure>
+
+<h2 id="Patch-2-2：SD-Express支持的完整提交流程"><a href="#Patch-2-2：SD-Express支持的完整提交流程" class="headerlink" title="Patch 2&#x2F;2：SD Express支持的完整提交流程"></a>Patch 2&#x2F;2：SD Express支持的完整提交流程</h2><h3 id="准备SD-Express补丁"><a href="#准备SD-Express补丁" class="headerlink" title="准备SD Express补丁"></a>准备SD Express补丁</h3><p>SD Express补丁比UHS-I补丁更复杂，涉及到与内核现有的SD Express框架的集成。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// sdhci-pci-o2micro.c</span></span><br><span class="line"><span class="type">static</span> <span class="type">int</span> <span class="title function_">sdhci_pci_o2_init_sd_express</span><span class="params">(<span class="keyword">struct</span> mmc_host *mmc,</span></span><br><span class="line"><span class="params">                                        <span class="keyword">struct</span> mmc_ios *ios)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">// 实现GG8特有的SD Express初始化序列</span></span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="提交消息中的依赖说明"><a href="#提交消息中的依赖说明" class="headerlink" title="提交消息中的依赖说明"></a>提交消息中的依赖说明</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">Subject: [PATCH 2/2] mmc: sdhci-pci-o2micro: add Bayhub new chip GG8 support for express card</span><br><span class="line"></span><br><span class="line">This patch depends on patch 1/2 which adds GG8 device ID support.</span><br><span class="line"></span><br><span class="line">The SD Express support implementation:</span><br><span class="line">- Registers init_sd_express callback</span><br><span class="line">- Implements PCIe mode switch sequence</span><br><span class="line">- Handles fallback to Legacy mode on failure</span><br><span class="line"></span><br><span class="line">Link: https://lore.kernel.org/r/20230811033517.11532-2-chevron_li@126.com</span><br><span class="line">Signed-off-by: Chevron Li &lt;chevron.li@bayhubtech.com&gt;</span><br><span class="line">Acked-by: Adrian Hunter &lt;adrian.hunter@intel.com&gt;</span><br></pre></td></tr></table></figure>
+
+<h3 id="处理Review反馈"><a href="#处理Review反馈" class="headerlink" title="处理Review反馈"></a>处理Review反馈</h3><p>Review过程中提出的关键问题：</p>
+<ol>
+<li><p><strong>超时值选择</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">Reviewer: 30ms等待clkreqn可能不够稳定</span><br><span class="line">Response: 增加到100ms，并在超时时优雅降级到Legacy模式</span><br></pre></td></tr></table></figure>
+</li>
+<li><p><strong>错误恢复</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">Reviewer: 如果PCIe切换失败，需要确保恢复到SD模式</span><br><span class="line">Response: 在错误路径中添加完整的恢复逻辑</span><br></pre></td></tr></table></figure></li>
+</ol>
+<h3 id="最终提交"><a href="#最终提交" class="headerlink" title="最终提交"></a>最终提交</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">From: Ulf Hansson &lt;ulf.hansson@linaro.org&gt;</span><br><span class="line">Date: Fri, 18 Aug 2023 14:00:00 +0200</span><br><span class="line"></span><br><span class="line">Patches have been applied to mmc-next, thanks!</span><br><span class="line"></span><br><span class="line">commit da2a69cf278729dae1ad95811111457c8aac306b</span><br><span class="line">Author: Chevron Li &lt;chevron.li@bayhubtech.com&gt;</span><br><span class="line">Date:   Fri Aug 18 14:00:00 2023 +0200</span><br><span class="line"></span><br><span class="line">    mmc: sdhci-pci-o2micro: add Bayhub new chip GG8 support for express card</span><br><span class="line"></span><br><span class="line">    Add Bayhub new chip GG8 support for SD express card. This patch depends on</span><br><span class="line">    patch 1/2.</span><br><span class="line"></span><br><span class="line">    Signed-off-by: Chevron Li &lt;chevron.li@bayhubtech.com&gt;</span><br><span class="line">    Acked-by: Adrian Hunter &lt;adrian.hunter@intel.com&gt;</span><br><span class="line">    Link: https://lore.kernel.org/r/20230811033517.11532-2-chevron_li@126.com</span><br><span class="line">    Signed-off-by: Ulf Hansson &lt;ulf.hansson@linaro.org&gt;</span><br></pre></td></tr></table></figure>
+
+<h2 id="关键经验总结"><a href="#关键经验总结" class="headerlink" title="关键经验总结"></a>关键经验总结</h2><h3 id="1-提交前的准备"><a href="#1-提交前的准备" class="headerlink" title="1. 提交前的准备"></a>1. 提交前的准备</h3><ul>
+<li><strong>代码风格</strong>：严格遵循内核代码风格，使用<code>checkpatch.pl</code>检查</li>
+<li><strong>拆分补丁</strong>：按逻辑单元拆分，每个补丁只解决一个问题</li>
+<li><strong>测试覆盖</strong>：确保在多个平台上测试通过</li>
+<li><strong>文档完善</strong>：更新相关文档和Kconfig</li>
+</ul>
+<h3 id="2-与维护者沟通"><a href="#2-与维护者沟通" class="headerlink" title="2. 与维护者沟通"></a>2. 与维护者沟通</h3><ul>
+<li><strong>尊重Reviewer时间</strong>：提交高质量的补丁，减少Review轮次</li>
+<li><strong>及时响应</strong>：Review意见通常有截止日期，务必及时响应</li>
+<li><strong>保持礼貌</strong>：即使意见听起来很苛刻，保持专业态度</li>
+<li><strong>解释决策</strong>：如果不同意某些建议，提供清晰的技术理由</li>
+</ul>
+<h3 id="3-处理反复修改"><a href="#3-处理反复修改" class="headerlink" title="3. 处理反复修改"></a>3. 处理反复修改</h3><ul>
+<li><strong>版本控制</strong>：清晰地标注版本号和变更内容</li>
+<li><strong>响应意见</strong>：每个Review意见都要明确响应</li>
+<li><strong>保持耐心</strong>：可能需要多轮修改，保持耐心</li>
+</ul>
+<h3 id="4-提交后的跟进"><a href="#4-提交后的跟进" class="headerlink" title="4. 提交后的跟进"></a>4. 提交后的跟进</h3><ul>
+<li><strong>检查Mailing List归档</strong>：确认补丁已正确归档到lore.kernel.org</li>
+<li><strong>等待MMC-next集成</strong>：通常需要1-2周</li>
+<li><strong>检查主线合并窗口</strong>：Linus的合并窗口大约每8-10周开放一次</li>
+<li><strong>验证最终效果</strong>：在主线内核中验证功能</li>
+</ul>
+<h2 id="参考资源"><a href="#参考资源" class="headerlink" title="参考资源"></a>参考资源</h2><ul>
+<li><a target="_blank" rel="noopener" href="https://docs.kernel.org/translations/zh_CN/process/submitting-patches.html">Linux内核补丁提交指南</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.kernel.org/doc/html/latest/mmc/mmc-dev-tools.html">MMC子系统维护者</a></li>
+<li><a target="_blank" rel="noopener" href="https://lore.kernel.org/">lore.kernel.org邮件存档</a></li>
+</ul>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">首页</a></li>
+        
+          <li><a href="/about/">关于</a></li>
+        
+          <li><a href="/archives/">归档</a></li>
+        
+          <li><a href="/tags/">标签</a></li>
+        
+          <li><a href="/categories/">分类</a></li>
+        
+          <li><a href="/search/">搜索</a></li>
+        
+          <li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%A6%82%E8%BF%B0"><span class="toc-number">1.</span> <span class="toc-text">概述</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%A1%A5%E4%B8%81%E5%87%86%E5%A4%87"><span class="toc-number">2.</span> <span class="toc-text">补丁准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E8%8E%B7%E5%8F%96%E5%86%85%E6%A0%B8%E6%BA%90%E7%A0%81%E6%A0%91"><span class="toc-number">2.1.</span> <span class="toc-text">1. 获取内核源码树</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-%E5%88%9B%E5%BB%BA%E5%BC%80%E5%8F%91%E5%88%86%E6%94%AF"><span class="toc-number">2.2.</span> <span class="toc-text">2. 创建开发分支</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-%E6%9C%AC%E5%9C%B0%E5%BC%80%E5%8F%91%E4%B8%8E%E6%8F%90%E4%BA%A4"><span class="toc-number">2.3.</span> <span class="toc-text">3. 本地开发与提交</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%8F%90%E4%BA%A4%E7%AC%AC%E4%B8%80%E4%B8%AA%E8%A1%A5%E4%B8%81%EF%BC%88UHS-I%E6%94%AF%E6%8C%81%EF%BC%89"><span class="toc-number">2.3.1.</span> <span class="toc-text">提交第一个补丁（UHS-I支持）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%8F%90%E4%BA%A4%E7%AC%AC%E4%BA%8C%E4%B8%AA%E8%A1%A5%E4%B8%81%EF%BC%88SD-Express%E6%94%AF%E6%8C%81%EF%BC%89"><span class="toc-number">2.3.2.</span> <span class="toc-text">提交第二个补丁（SD Express支持）</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-%E7%94%9F%E6%88%90%E8%A1%A5%E4%B8%81%E6%96%87%E4%BB%B6"><span class="toc-number">2.4.</span> <span class="toc-text">4. 生成补丁文件</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-%E7%94%9F%E6%88%90%E7%BB%93%E6%9E%9C"><span class="toc-number">2.5.</span> <span class="toc-text">5. 生成结果</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-%E7%94%9F%E6%88%90Cover-Letter%EF%BC%88%E5%8F%AF%E9%80%89%E4%BD%86%E6%8E%A8%E8%8D%90%EF%BC%89"><span class="toc-number">2.6.</span> <span class="toc-text">6. 生成Cover Letter（可选但推荐）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%8C%E6%95%B4%E6%B5%81%E7%A8%8B%E5%9B%9E%E9%A1%BE"><span class="toc-number">2.7.</span> <span class="toc-text">完整流程回顾</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98"><span class="toc-number">2.8.</span> <span class="toc-text">常见问题</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%8F%90%E4%BA%A4%E5%88%B0%E7%A4%BE%E5%8C%BA"><span class="toc-number">3.</span> <span class="toc-text">提交到社区</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E7%A1%AE%E5%AE%9A%E6%94%B6%E4%BB%B6%E4%BA%BA"><span class="toc-number">3.1.</span> <span class="toc-text">1. 确定收件人</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-%E5%8F%91%E9%80%81%E8%A1%A5%E4%B8%81"><span class="toc-number">3.2.</span> <span class="toc-text">2. 发送补丁</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-%E8%A1%A5%E4%B8%81%E4%B8%BB%E9%A2%98%E8%A1%8C%E8%A7%84%E8%8C%83"><span class="toc-number">3.3.</span> <span class="toc-text">3. 补丁主题行规范</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Code-Review%E8%BF%87%E7%A8%8B"><span class="toc-number">4.</span> <span class="toc-text">Code Review过程</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E4%B8%80%E8%BD%AEReview"><span class="toc-number">4.1.</span> <span class="toc-text">第一轮Review</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BF%AE%E6%94%B9%E8%BF%AD%E4%BB%A3"><span class="toc-number">4.2.</span> <span class="toc-text">修改迭代</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E4%BA%8C%E8%BD%AEReview"><span class="toc-number">4.3.</span> <span class="toc-text">第二轮Review</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%90%88%E5%B9%B6%E5%88%B0MMC-next"><span class="toc-number">4.4.</span> <span class="toc-text">合并到MMC-next</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Patch-2-2%EF%BC%9ASD-Express%E6%94%AF%E6%8C%81%E7%9A%84%E5%AE%8C%E6%95%B4%E6%8F%90%E4%BA%A4%E6%B5%81%E7%A8%8B"><span class="toc-number">5.</span> <span class="toc-text">Patch 2&#x2F;2：SD Express支持的完整提交流程</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%87%86%E5%A4%87SD-Express%E8%A1%A5%E4%B8%81"><span class="toc-number">5.1.</span> <span class="toc-text">准备SD Express补丁</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%8F%90%E4%BA%A4%E6%B6%88%E6%81%AF%E4%B8%AD%E7%9A%84%E4%BE%9D%E8%B5%96%E8%AF%B4%E6%98%8E"><span class="toc-number">5.2.</span> <span class="toc-text">提交消息中的依赖说明</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%A4%84%E7%90%86Review%E5%8F%8D%E9%A6%88"><span class="toc-number">5.3.</span> <span class="toc-text">处理Review反馈</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9C%80%E7%BB%88%E6%8F%90%E4%BA%A4"><span class="toc-number">5.4.</span> <span class="toc-text">最终提交</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%B3%E9%94%AE%E7%BB%8F%E9%AA%8C%E6%80%BB%E7%BB%93"><span class="toc-number">6.</span> <span class="toc-text">关键经验总结</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E6%8F%90%E4%BA%A4%E5%89%8D%E7%9A%84%E5%87%86%E5%A4%87"><span class="toc-number">6.1.</span> <span class="toc-text">1. 提交前的准备</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-%E4%B8%8E%E7%BB%B4%E6%8A%A4%E8%80%85%E6%B2%9F%E9%80%9A"><span class="toc-number">6.2.</span> <span class="toc-text">2. 与维护者沟通</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-%E5%A4%84%E7%90%86%E5%8F%8D%E5%A4%8D%E4%BF%AE%E6%94%B9"><span class="toc-number">6.3.</span> <span class="toc-text">3. 处理反复修改</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-%E6%8F%90%E4%BA%A4%E5%90%8E%E7%9A%84%E8%B7%9F%E8%BF%9B"><span class="toc-number">6.4.</span> <span class="toc-text">4. 提交后的跟进</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%BA%90"><span class="toc-number">7.</span> <span class="toc-text">参考资源</span></a></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2025/12/23/SD-Express%E9%A9%B1%E5%8A%A8Upstream%E4%B9%8B%E6%97%85-%E4%BB%8E%E8%A1%A5%E4%B8%81%E5%88%B0%E5%86%85%E6%A0%B8%E4%B8%BB%E7%BA%BF%E7%9A%84%E5%AE%8C%E6%95%B4%E6%B5%81%E7%A8%8B/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2025/12/23/SD-Express%E9%A9%B1%E5%8A%A8Upstream%E4%B9%8B%E6%97%85-%E4%BB%8E%E8%A1%A5%E4%B8%81%E5%88%B0%E5%86%85%E6%A0%B8%E4%B8%BB%E7%BA%BF%E7%9A%84%E5%AE%8C%E6%95%B4%E6%B5%81%E7%A8%8B/&text=SD Express驱动Upstream之旅：从补丁到内核主线的完整流程"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2025/12/23/SD-Express%E9%A9%B1%E5%8A%A8Upstream%E4%B9%8B%E6%97%85-%E4%BB%8E%E8%A1%A5%E4%B8%81%E5%88%B0%E5%86%85%E6%A0%B8%E4%B8%BB%E7%BA%BF%E7%9A%84%E5%AE%8C%E6%95%B4%E6%B5%81%E7%A8%8B/&title=SD Express驱动Upstream之旅：从补丁到内核主线的完整流程"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2025/12/23/SD-Express%E9%A9%B1%E5%8A%A8Upstream%E4%B9%8B%E6%97%85-%E4%BB%8E%E8%A1%A5%E4%B8%81%E5%88%B0%E5%86%85%E6%A0%B8%E4%B8%BB%E7%BA%BF%E7%9A%84%E5%AE%8C%E6%95%B4%E6%B5%81%E7%A8%8B/&is_video=false&description=SD Express驱动Upstream之旅：从补丁到内核主线的完整流程"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=SD Express驱动Upstream之旅：从补丁到内核主线的完整流程&body=Check out this article: https://cursorhu.github.io/2025/12/23/SD-Express%E9%A9%B1%E5%8A%A8Upstream%E4%B9%8B%E6%97%85-%E4%BB%8E%E8%A1%A5%E4%B8%81%E5%88%B0%E5%86%85%E6%A0%B8%E4%B8%BB%E7%BA%BF%E7%9A%84%E5%AE%8C%E6%95%B4%E6%B5%81%E7%A8%8B/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2025/12/23/SD-Express%E9%A9%B1%E5%8A%A8Upstream%E4%B9%8B%E6%97%85-%E4%BB%8E%E8%A1%A5%E4%B8%81%E5%88%B0%E5%86%85%E6%A0%B8%E4%B8%BB%E7%BA%BF%E7%9A%84%E5%AE%8C%E6%95%B4%E6%B5%81%E7%A8%8B/&title=SD Express驱动Upstream之旅：从补丁到内核主线的完整流程"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2025/12/23/SD-Express%E9%A9%B1%E5%8A%A8Upstream%E4%B9%8B%E6%97%85-%E4%BB%8E%E8%A1%A5%E4%B8%81%E5%88%B0%E5%86%85%E6%A0%B8%E4%B8%BB%E7%BA%BF%E7%9A%84%E5%AE%8C%E6%95%B4%E6%B5%81%E7%A8%8B/&title=SD Express驱动Upstream之旅：从补丁到内核主线的完整流程"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2025/12/23/SD-Express%E9%A9%B1%E5%8A%A8Upstream%E4%B9%8B%E6%97%85-%E4%BB%8E%E8%A1%A5%E4%B8%81%E5%88%B0%E5%86%85%E6%A0%B8%E4%B8%BB%E7%BA%BF%E7%9A%84%E5%AE%8C%E6%95%B4%E6%B5%81%E7%A8%8B/&title=SD Express驱动Upstream之旅：从补丁到内核主线的完整流程"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2025/12/23/SD-Express%E9%A9%B1%E5%8A%A8Upstream%E4%B9%8B%E6%97%85-%E4%BB%8E%E8%A1%A5%E4%B8%81%E5%88%B0%E5%86%85%E6%A0%B8%E4%B8%BB%E7%BA%BF%E7%9A%84%E5%AE%8C%E6%95%B4%E6%B5%81%E7%A8%8B/&title=SD Express驱动Upstream之旅：从补丁到内核主线的完整流程"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2025/12/23/SD-Express%E9%A9%B1%E5%8A%A8Upstream%E4%B9%8B%E6%97%85-%E4%BB%8E%E8%A1%A5%E4%B8%81%E5%88%B0%E5%86%85%E6%A0%B8%E4%B8%BB%E7%BA%BF%E7%9A%84%E5%AE%8C%E6%95%B4%E6%B5%81%E7%A8%8B/&name=SD Express驱动Upstream之旅：从补丁到内核主线的完整流程&description=&lt;h2 id=&#34;概述&#34;&gt;&lt;a href=&#34;#概述&#34; class=&#34;headerlink&#34; title=&#34;概述&#34;&gt;&lt;/a&gt;概述&lt;/h2&gt;&lt;p&gt;本文记录了将O2Micro GG8芯片SD Express驱动提交到Linux内核主线的完整过程，包括补丁准备、提交、Code Review和修改迭代。&lt;/p&gt;
+&lt;h2 id=&#34;补丁准备&#34;&gt;&lt;a href=&#34;#补丁准备&#34; class=&#34;headerlink&#34; title=&#34;补丁准备&#34;&gt;&lt;/a&gt;补丁准备&lt;/h2&gt;&lt;h3 id=&#34;1-获取内核源码树&#34;&gt;&lt;a href=&#34;#1-获取内核源码树&#34; class=&#34;headerlink&#34; title=&#34;1. 获取内核源码树&#34;&gt;&lt;/a&gt;1. 获取内核源码树&lt;/h3&gt;&lt;figure class=&#34;highlight bash&#34;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&#34;gutter&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;3&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;4&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;5&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;6&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;7&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&#34;code&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;comment&#34;&gt;# 克隆主线内核仓库&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;git &lt;span class=&#34;built_in&#34;&gt;clone&lt;/span&gt; git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;built_in&#34;&gt;cd&lt;/span&gt; linux&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;comment&#34;&gt;# 或者克隆MMC子系统的维护者树（推荐，更新更快）&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;git &lt;span class=&#34;built_in&#34;&gt;clone&lt;/span&gt; git://git.kernel.org/pub/scm/linux/kernel/git/ulfh/linux-mmc.git&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;built_in&#34;&gt;cd&lt;/span&gt; linux-mmc&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;
+
+&lt;h3 id=&#34;2-创建开发分支&#34;&gt;&lt;a href=&#34;#2-创建开发分支&#34; class=&#34;headerlink&#34; title=&#34;2. 创建开发分支&#34;&gt;&lt;/a&gt;2. 创建开发分支&lt;/h3&gt;&lt;figure class=&#34;highlight bash&#34;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&#34;gutter&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;3&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;4&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;5&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;6&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;7&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;8&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&#34;code&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;comment&#34;&gt;# 查看远程分支&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;git branch -r&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;comment&#34;&gt;# 基于最新的MMC维护者分支创建开发分支&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;git checkout -b o2micro-gg8-sd-express origin/next&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;comment&#34;&gt;# 或基于mmc-next分支&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;git checkout -b o2micro-gg8-sd-express mmc-next&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;
+
+&lt;h3 id=&#34;3-本地开发与提交&#34;&gt;&lt;a href=&#34;#3-本地开发与提交&#34; class=&#34;headerlink&#34; title=&#34;3. 本地开发与提交&#34;&gt;&lt;/a&gt;3. 本地开发与提交&lt;/h3&gt;&lt;p&gt;这是关键步骤！你需要先将修改提交到本地git仓库：&lt;/p&gt;
+&lt;figure class=&#34;highlight bash&#34;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&#34;gutter&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;3&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;4&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;5&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;6&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;7&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;8&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;9&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&#34;code&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;comment&#34;&gt;# 假设你已经修改了代码，现在查看修改状态&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;git status&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;comment&#34;&gt;# On branch o2micro-gg8-sd-express&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;comment&#34;&gt;# Changes not staged for commit:&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;comment&#34;&gt;#   modified:   drivers/mmc/host/sdhci-pci-o2micro.c&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;comment&#34;&gt;#   modified:   drivers/mmc/host/sdhci-pci.h&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;comment&#34;&gt;# 查看具体修改内容&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;git diff drivers/mmc/host/sdhci-pci-o2micro.c&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;"><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2025/12/23/SD-Express%E9%A9%B1%E5%8A%A8Upstream%E4%B9%8B%E6%97%85-%E4%BB%8E%E8%A1%A5%E4%B8%81%E5%88%B0%E5%86%85%E6%A0%B8%E4%B8%BB%E7%BA%BF%E7%9A%84%E5%AE%8C%E6%95%B4%E6%B5%81%E7%A8%8B/&t=SD Express驱动Upstream之旅：从补丁到内核主线的完整流程"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> 菜单</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> 目录</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> 分享</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> 返回顶部</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2026
+    cursorhu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"复制到粘贴板！\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "复制成功！");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+</body>
+</html>
