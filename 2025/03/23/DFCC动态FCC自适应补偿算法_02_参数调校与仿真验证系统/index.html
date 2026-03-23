@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="1. 为什么需要仿真调参？1.1 实验室调参的痛点传统 DFCC 参数调校面临的问题：  耗时长：完整的温度×电流×SOC 三维测试需要数周 成本高：需要恒温箱、充放电设备、工程师值守 难以覆盖边界条件：极端温度、极端电流的组合难以测试 迭代周期长：每次参数修改后需要重新测试  1.2 仿真调参的思路 基于一次完整的放电循环测试数据，通过仿真软件模拟 DFCC 参数更新，观察电量精度是否达标，从而">
+<meta property="og:type" content="article">
+<meta property="og:title" content="DFCC动态FCC自适应补偿算法(二)：参数调校与仿真验证系统">
+<meta property="og:url" content="https://cursorhu.github.io/2025/03/23/DFCC%E5%8A%A8%E6%80%81FCC%E8%87%AA%E9%80%82%E5%BA%94%E8%A1%A5%E5%81%BF%E7%AE%97%E6%B3%95_02_%E5%8F%82%E6%95%B0%E8%B0%83%E6%A0%A1%E4%B8%8E%E4%BB%BF%E7%9C%9F%E9%AA%8C%E8%AF%81%E7%B3%BB%E7%BB%9F/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="1. 为什么需要仿真调参？1.1 实验室调参的痛点传统 DFCC 参数调校面临的问题：  耗时长：完整的温度×电流×SOC 三维测试需要数周 成本高：需要恒温箱、充放电设备、工程师值守 难以覆盖边界条件：极端温度、极端电流的组合难以测试 迭代周期长：每次参数修改后需要重新测试  1.2 仿真调参的思路 基于一次完整的放电循环测试数据，通过仿真软件模拟 DFCC 参数更新，观察电量精度是否达标，从而">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2025-03-23T10:30:00.000Z">
+<meta property="article:modified_time" content="2026-03-23T08:55:43.993Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="DFCC">
+<meta property="article:tag" content="仿真">
+<meta property="article:tag" content="参数调校">
+<meta property="article:tag" content="循环仪">
+<meta name="twitter:card" content="summary">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>DFCC动态FCC自适应补偿算法(二)：参数调校与仿真验证系统</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+<meta name="generator" content="Hexo 8.0.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="顶部" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="上一篇" href="/2025/03/23/DFCC%E5%8A%A8%E6%80%81FCC%E8%87%AA%E9%80%82%E5%BA%94%E8%A1%A5%E5%81%BF%E7%AE%97%E6%B3%95_03_%E5%BA%93%E4%BB%91%E8%AE%A1SOC%E7%AE%97%E6%B3%95%E5%B7%A5%E7%A8%8B%E5%AE%9E%E7%8E%B0/"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="下一篇" href="/2025/03/23/DFCC%E5%8A%A8%E6%80%81FCC%E8%87%AA%E9%80%82%E5%BA%94%E8%A1%A5%E5%81%BF%E7%AE%97%E6%B3%95_01_%E7%AE%97%E6%B3%95%E5%8E%9F%E7%90%86%E4%B8%8E%E7%94%B5%E6%B1%A0%E9%98%BB%E6%8A%97%E8%BF%BD%E8%B8%AA/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="返回顶部" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="分享文章" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">上一篇</span>
+      <span id="i-next" class="info" style="display:none;">下一篇</span>
+      <span id="i-top" class="info" style="display:none;">返回顶部</span>
+      <span id="i-share" class="info" style="display:none;">分享文章</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2025/03/23/DFCC%E5%8A%A8%E6%80%81FCC%E8%87%AA%E9%80%82%E5%BA%94%E8%A1%A5%E5%81%BF%E7%AE%97%E6%B3%95_02_%E5%8F%82%E6%95%B0%E8%B0%83%E6%A0%A1%E4%B8%8E%E4%BB%BF%E7%9C%9F%E9%AA%8C%E8%AF%81%E7%B3%BB%E7%BB%9F/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2025/03/23/DFCC%E5%8A%A8%E6%80%81FCC%E8%87%AA%E9%80%82%E5%BA%94%E8%A1%A5%E5%81%BF%E7%AE%97%E6%B3%95_02_%E5%8F%82%E6%95%B0%E8%B0%83%E6%A0%A1%E4%B8%8E%E4%BB%BF%E7%9C%9F%E9%AA%8C%E8%AF%81%E7%B3%BB%E7%BB%9F/&text=DFCC动态FCC自适应补偿算法(二)：参数调校与仿真验证系统"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2025/03/23/DFCC%E5%8A%A8%E6%80%81FCC%E8%87%AA%E9%80%82%E5%BA%94%E8%A1%A5%E5%81%BF%E7%AE%97%E6%B3%95_02_%E5%8F%82%E6%95%B0%E8%B0%83%E6%A0%A1%E4%B8%8E%E4%BB%BF%E7%9C%9F%E9%AA%8C%E8%AF%81%E7%B3%BB%E7%BB%9F/&title=DFCC动态FCC自适应补偿算法(二)：参数调校与仿真验证系统"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2025/03/23/DFCC%E5%8A%A8%E6%80%81FCC%E8%87%AA%E9%80%82%E5%BA%94%E8%A1%A5%E5%81%BF%E7%AE%97%E6%B3%95_02_%E5%8F%82%E6%95%B0%E8%B0%83%E6%A0%A1%E4%B8%8E%E4%BB%BF%E7%9C%9F%E9%AA%8C%E8%AF%81%E7%B3%BB%E7%BB%9F/&is_video=false&description=DFCC动态FCC自适应补偿算法(二)：参数调校与仿真验证系统"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=DFCC动态FCC自适应补偿算法(二)：参数调校与仿真验证系统&body=Check out this article: https://cursorhu.github.io/2025/03/23/DFCC%E5%8A%A8%E6%80%81FCC%E8%87%AA%E9%80%82%E5%BA%94%E8%A1%A5%E5%81%BF%E7%AE%97%E6%B3%95_02_%E5%8F%82%E6%95%B0%E8%B0%83%E6%A0%A1%E4%B8%8E%E4%BB%BF%E7%9C%9F%E9%AA%8C%E8%AF%81%E7%B3%BB%E7%BB%9F/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2025/03/23/DFCC%E5%8A%A8%E6%80%81FCC%E8%87%AA%E9%80%82%E5%BA%94%E8%A1%A5%E5%81%BF%E7%AE%97%E6%B3%95_02_%E5%8F%82%E6%95%B0%E8%B0%83%E6%A0%A1%E4%B8%8E%E4%BB%BF%E7%9C%9F%E9%AA%8C%E8%AF%81%E7%B3%BB%E7%BB%9F/&title=DFCC动态FCC自适应补偿算法(二)：参数调校与仿真验证系统"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2025/03/23/DFCC%E5%8A%A8%E6%80%81FCC%E8%87%AA%E9%80%82%E5%BA%94%E8%A1%A5%E5%81%BF%E7%AE%97%E6%B3%95_02_%E5%8F%82%E6%95%B0%E8%B0%83%E6%A0%A1%E4%B8%8E%E4%BB%BF%E7%9C%9F%E9%AA%8C%E8%AF%81%E7%B3%BB%E7%BB%9F/&title=DFCC动态FCC自适应补偿算法(二)：参数调校与仿真验证系统"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2025/03/23/DFCC%E5%8A%A8%E6%80%81FCC%E8%87%AA%E9%80%82%E5%BA%94%E8%A1%A5%E5%81%BF%E7%AE%97%E6%B3%95_02_%E5%8F%82%E6%95%B0%E8%B0%83%E6%A0%A1%E4%B8%8E%E4%BB%BF%E7%9C%9F%E9%AA%8C%E8%AF%81%E7%B3%BB%E7%BB%9F/&title=DFCC动态FCC自适应补偿算法(二)：参数调校与仿真验证系统"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2025/03/23/DFCC%E5%8A%A8%E6%80%81FCC%E8%87%AA%E9%80%82%E5%BA%94%E8%A1%A5%E5%81%BF%E7%AE%97%E6%B3%95_02_%E5%8F%82%E6%95%B0%E8%B0%83%E6%A0%A1%E4%B8%8E%E4%BB%BF%E7%9C%9F%E9%AA%8C%E8%AF%81%E7%B3%BB%E7%BB%9F/&title=DFCC动态FCC自适应补偿算法(二)：参数调校与仿真验证系统"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2025/03/23/DFCC%E5%8A%A8%E6%80%81FCC%E8%87%AA%E9%80%82%E5%BA%94%E8%A1%A5%E5%81%BF%E7%AE%97%E6%B3%95_02_%E5%8F%82%E6%95%B0%E8%B0%83%E6%A0%A1%E4%B8%8E%E4%BB%BF%E7%9C%9F%E9%AA%8C%E8%AF%81%E7%B3%BB%E7%BB%9F/&name=DFCC动态FCC自适应补偿算法(二)：参数调校与仿真验证系统&description=&lt;h2 id=&#34;1-为什么需要仿真调参？&#34;&gt;&lt;a href=&#34;#1-为什么需要仿真调参？&#34; class=&#34;headerlink&#34; title=&#34;1. 为什么需要仿真调参？&#34;&gt;&lt;/a&gt;1. 为什么需要仿真调参？&lt;/h2&gt;&lt;h3 id=&#34;1-1-实验室调参的痛点&#34;&gt;&lt;a href=&#34;#1-1-实验室调参的痛点&#34; class=&#34;headerlink&#34; title=&#34;1.1 实验室调参的痛点&#34;&gt;&lt;/a&gt;1.1 实验室调参的痛点&lt;/h3&gt;&lt;p&gt;传统 DFCC 参数调校面临的问题：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;耗时长&lt;/strong&gt;：完整的温度×电流×SOC 三维测试需要数周&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;成本高&lt;/strong&gt;：需要恒温箱、充放电设备、工程师值守&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;难以覆盖边界条件&lt;/strong&gt;：极端温度、极端电流的组合难以测试&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;迭代周期长&lt;/strong&gt;：每次参数修改后需要重新测试&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id=&#34;1-2-仿真调参的思路&#34;&gt;&lt;a href=&#34;#1-2-仿真调参的思路&#34; class=&#34;headerlink&#34; title=&#34;1.2 仿真调参的思路&#34;&gt;&lt;/a&gt;1.2 仿真调参的思路&lt;/h3&gt;&lt;blockquote&gt;
+&lt;p&gt;基于&lt;strong&gt;一次完整的放电循环测试数据&lt;/strong&gt;，通过仿真软件模拟 DFCC 参数更新，观察电量精度是否达标，从而&lt;strong&gt;快速迭代参数配置&lt;/strong&gt;。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;2-仿真系统架构&#34;&gt;&lt;a href=&#34;#2-仿真系统架构&#34; class=&#34;headerlink&#34; title=&#34;2. 仿真系统架构&#34;&gt;&lt;/a&gt;2. 仿真系统架构&lt;/h2&gt;&lt;h3 id=&#34;2-1-系统组成&#34;&gt;&lt;a href=&#34;#2-1-系统组成&#34; class=&#34;headerlink&#34; title=&#34;2.1 系统组成&#34;&gt;&lt;/a&gt;2.1 系统组成&lt;/h3&gt;&lt;figure class=&#34;highlight plaintext&#34;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&#34;gutter&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;3&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;4&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;5&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;6&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;7&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;8&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;9&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;10&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;11&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;12&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;13&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;14&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;15&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;16&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;17&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&#34;code&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;┌─────────────────────────────────────────────────────────────────┐&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                      BatterySimer (C# 上位机)                    │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                    充放电数据回放 + 算法仿真                       │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;└────────────────────────────────┬────────────────────────────────┘&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;                                 │ CSV/串口&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;                                 ▼&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;┌─────────────────────────────────────────────────────────────────┐&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                    SOCLib77561 (C 固件库)                         │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                  lib_fg.c - 完整电量算法实现                        │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                  DFCC 三维查表 + 平滑更新                          │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;└────────────────────────────────┬────────────────────────────────┘&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;                                 │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;                                 ▼&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;┌─────────────────────────────────────────────────────────────────┐&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                      仿真结果输出                                │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│              SOC 精度曲线、DFCC 更新轨迹、误差统计                   │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;└─────────────────────────────────────────────────────────────────┘&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;"><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2025/03/23/DFCC%E5%8A%A8%E6%80%81FCC%E8%87%AA%E9%80%82%E5%BA%94%E8%A1%A5%E5%81%BF%E7%AE%97%E6%B3%95_02_%E5%8F%82%E6%95%B0%E8%B0%83%E6%A0%A1%E4%B8%8E%E4%BB%BF%E7%9C%9F%E9%AA%8C%E8%AF%81%E7%B3%BB%E7%BB%9F/&t=DFCC动态FCC自适应补偿算法(二)：参数调校与仿真验证系统"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E4%B8%BA%E4%BB%80%E4%B9%88%E9%9C%80%E8%A6%81%E4%BB%BF%E7%9C%9F%E8%B0%83%E5%8F%82%EF%BC%9F"><span class="toc-number">1.</span> <span class="toc-text">1. 为什么需要仿真调参？</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-%E5%AE%9E%E9%AA%8C%E5%AE%A4%E8%B0%83%E5%8F%82%E7%9A%84%E7%97%9B%E7%82%B9"><span class="toc-number">1.1.</span> <span class="toc-text">1.1 实验室调参的痛点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-2-%E4%BB%BF%E7%9C%9F%E8%B0%83%E5%8F%82%E7%9A%84%E6%80%9D%E8%B7%AF"><span class="toc-number">1.2.</span> <span class="toc-text">1.2 仿真调参的思路</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-%E4%BB%BF%E7%9C%9F%E7%B3%BB%E7%BB%9F%E6%9E%B6%E6%9E%84"><span class="toc-number">2.</span> <span class="toc-text">2. 仿真系统架构</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E7%B3%BB%E7%BB%9F%E7%BB%84%E6%88%90"><span class="toc-number">2.1.</span> <span class="toc-text">2.1 系统组成</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-%E9%A1%B9%E7%9B%AE%E7%BB%93%E6%9E%84"><span class="toc-number">2.2.</span> <span class="toc-text">2.2 项目结构</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-%E5%BE%AA%E7%8E%AF%E4%BB%AA%E6%B5%8B%E8%AF%95%E6%95%B0%E6%8D%AE"><span class="toc-number">3.</span> <span class="toc-text">3. 循环仪测试数据</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E6%B5%8B%E8%AF%95%E6%95%B0%E6%8D%AE%E6%A0%BC%E5%BC%8F"><span class="toc-number">3.1.</span> <span class="toc-text">3.1 测试数据格式</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E6%B5%8B%E8%AF%95%E6%9D%A1%E4%BB%B6"><span class="toc-number">3.2.</span> <span class="toc-text">3.2 测试条件</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-%E6%95%B0%E6%8D%AE%E9%A2%84%E5%A4%84%E7%90%86"><span class="toc-number">3.3.</span> <span class="toc-text">3.3 数据预处理</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-DFCC-%E5%8F%82%E6%95%B0%E9%85%8D%E7%BD%AE"><span class="toc-number">4.</span> <span class="toc-text">4. DFCC 参数配置</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-%E5%85%B3%E9%94%AE%E5%8F%82%E6%95%B0"><span class="toc-number">4.1.</span> <span class="toc-text">4.1 关键参数</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-%E5%90%AF%E7%94%A8%E5%BC%80%E5%85%B3"><span class="toc-number">4.2.</span> <span class="toc-text">4.2 启用开关</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-%E4%BB%BF%E7%9C%9F%E6%89%A7%E8%A1%8C%E6%B5%81%E7%A8%8B"><span class="toc-number">5.</span> <span class="toc-text">5. 仿真执行流程</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E6%95%B0%E6%8D%AE%E5%9B%9E%E6%94%BE"><span class="toc-number">5.1.</span> <span class="toc-text">5.1 数据回放</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-DFCC-%E6%9B%B4%E6%96%B0%E8%BD%A8%E8%BF%B9%E8%AE%B0%E5%BD%95"><span class="toc-number">5.2.</span> <span class="toc-text">5.2 DFCC 更新轨迹记录</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-%E7%B2%BE%E5%BA%A6%E8%AF%84%E4%BC%B0"><span class="toc-number">5.3.</span> <span class="toc-text">5.3 精度评估</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6-%E5%8F%82%E6%95%B0%E8%BF%AD%E4%BB%A3%E4%BC%98%E5%8C%96"><span class="toc-number">6.</span> <span class="toc-text">6. 参数迭代优化</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E8%B0%83%E5%8F%82%E6%B5%81%E7%A8%8B"><span class="toc-number">6.1.</span> <span class="toc-text">6.1 调参流程</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E5%85%B3%E9%94%AE%E8%B0%83%E5%8F%82%E5%8F%98%E9%87%8F"><span class="toc-number">6.2.</span> <span class="toc-text">6.2 关键调参变量</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-dfcc-ratio-%E8%AF%A6%E8%A7%A3"><span class="toc-number">6.3.</span> <span class="toc-text">6.3 dfcc_ratio 详解</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#7-%E4%BB%BF%E7%9C%9F%E9%AA%8C%E8%AF%81%E5%AE%9E%E4%BE%8B"><span class="toc-number">7.</span> <span class="toc-text">7. 仿真验证实例</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#7-1-%E6%B5%8B%E8%AF%95%E5%9C%BA%E6%99%AF"><span class="toc-number">7.1.</span> <span class="toc-text">7.1 测试场景</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-2-%E4%BB%BF%E7%9C%9F%E7%BB%93%E6%9E%9C"><span class="toc-number">7.2.</span> <span class="toc-text">7.2 仿真结果</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-3-DFCC-%E6%9B%B4%E6%96%B0%E8%BD%A8%E8%BF%B9"><span class="toc-number">7.3.</span> <span class="toc-text">7.3 DFCC 更新轨迹</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#8-%E5%B0%8F%E7%BB%93"><span class="toc-number">8.</span> <span class="toc-text">8. 小结</span></a></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        DFCC动态FCC自适应补偿算法(二)：参数调校与仿真验证系统
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">cursorhu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2025-03-23T10:30:00.000Z" class="dt-published" itemprop="datePublished">2025-03-23</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fa-solid fa-archive"></i>
+        <a class="category-link" href="/categories/%E7%94%B5%E6%B1%A0%E7%AE%A1%E7%90%86/">电池管理</a> › <a class="category-link" href="/categories/%E7%94%B5%E6%B1%A0%E7%AE%A1%E7%90%86/%E7%94%B5%E9%87%8F%E7%AE%97%E6%B3%95/">电量算法</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/DFCC/" rel="tag">DFCC</a>, <a class="p-category" href="/tags/%E4%BB%BF%E7%9C%9F/" rel="tag">仿真</a>, <a class="p-category" href="/tags/%E5%8F%82%E6%95%B0%E8%B0%83%E6%A0%A1/" rel="tag">参数调校</a>, <a class="p-category" href="/tags/%E5%BE%AA%E7%8E%AF%E4%BB%AA/" rel="tag">循环仪</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <h2 id="1-为什么需要仿真调参？"><a href="#1-为什么需要仿真调参？" class="headerlink" title="1. 为什么需要仿真调参？"></a>1. 为什么需要仿真调参？</h2><h3 id="1-1-实验室调参的痛点"><a href="#1-1-实验室调参的痛点" class="headerlink" title="1.1 实验室调参的痛点"></a>1.1 实验室调参的痛点</h3><p>传统 DFCC 参数调校面临的问题：</p>
+<ul>
+<li><strong>耗时长</strong>：完整的温度×电流×SOC 三维测试需要数周</li>
+<li><strong>成本高</strong>：需要恒温箱、充放电设备、工程师值守</li>
+<li><strong>难以覆盖边界条件</strong>：极端温度、极端电流的组合难以测试</li>
+<li><strong>迭代周期长</strong>：每次参数修改后需要重新测试</li>
+</ul>
+<h3 id="1-2-仿真调参的思路"><a href="#1-2-仿真调参的思路" class="headerlink" title="1.2 仿真调参的思路"></a>1.2 仿真调参的思路</h3><blockquote>
+<p>基于<strong>一次完整的放电循环测试数据</strong>，通过仿真软件模拟 DFCC 参数更新，观察电量精度是否达标，从而<strong>快速迭代参数配置</strong>。</p>
+</blockquote>
+<hr>
+<h2 id="2-仿真系统架构"><a href="#2-仿真系统架构" class="headerlink" title="2. 仿真系统架构"></a>2. 仿真系统架构</h2><h3 id="2-1-系统组成"><a href="#2-1-系统组成" class="headerlink" title="2.1 系统组成"></a>2.1 系统组成</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                      BatterySimer (C# 上位机)                    │</span><br><span class="line">│                    充放电数据回放 + 算法仿真                       │</span><br><span class="line">└────────────────────────────────┬────────────────────────────────┘</span><br><span class="line">                                 │ CSV/串口</span><br><span class="line">                                 ▼</span><br><span class="line">┌─────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                    SOCLib77561 (C 固件库)                         │</span><br><span class="line">│                  lib_fg.c - 完整电量算法实现                        │</span><br><span class="line">│                  DFCC 三维查表 + 平滑更新                          │</span><br><span class="line">└────────────────────────────────┬────────────────────────────────┘</span><br><span class="line">                                 │</span><br><span class="line">                                 ▼</span><br><span class="line">┌─────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                      仿真结果输出                                │</span><br><span class="line">│              SOC 精度曲线、DFCC 更新轨迹、误差统计                   │</span><br><span class="line">└─────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-2-项目结构"><a href="#2-2-项目结构" class="headerlink" title="2.2 项目结构"></a>2.2 项目结构</h3><table>
+<thead>
+<tr>
+<th>模块</th>
+<th>路径</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>BatterySimer</strong></td>
+<td>BatterySimerKit2.0&#x2F;BatterySimer&#x2F;</td>
+<td>C# 仿真上位机</td>
+</tr>
+<tr>
+<td><strong>SOCLib</strong></td>
+<td>BatterySimerKit2.0&#x2F;SOCLib77561&#x2F;</td>
+<td>C 固件库</td>
+</tr>
+<tr>
+<td><strong>Table</strong></td>
+<td>BatterySimerKit2.0&#x2F;SOCLib77561&#x2F;table&#x2F;</td>
+<td>DFCC&#x2F;RC&#x2F;OCV 表格</td>
+</tr>
+<tr>
+<td><strong>lib_fg.c</strong></td>
+<td>SOCLib77561&#x2F;lib&#x2F;</td>
+<td>核心电量算法</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="3-循环仪测试数据"><a href="#3-循环仪测试数据" class="headerlink" title="3. 循环仪测试数据"></a>3. 循环仪测试数据</h2><h3 id="3-1-测试数据格式"><a href="#3-1-测试数据格式" class="headerlink" title="3.1 测试数据格式"></a>3.1 测试数据格式</h3><p>仿真依赖一次完整的<strong>放电循环测试</strong>数据，典型格式：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">时间(s),电压(mV),电流(mA),温度(0.1°C),容量(mAh),SOC(%)</span><br><span class="line">0,4200,0,250,0,100</span><br><span class="line">1,4180,-500,251,0.5,99.98</span><br><span class="line">2,4150,-500,252,1.0,99.95</span><br><span class="line">...</span><br><span class="line">3600,3650,-3000,250,3500,30</span><br><span class="line">...</span><br><span class="line">7200,3400,-100,245,4850,5</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-2-测试条件"><a href="#3-2-测试条件" class="headerlink" title="3.2 测试条件"></a>3.2 测试条件</h3><p>为构建完整的 DFCC 三维表，需要在不同条件下测试：</p>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>测试条件</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>温度</strong></td>
+<td>-10°C, 0°C, 25°C, 40°C</td>
+</tr>
+<tr>
+<td><strong>电流</strong></td>
+<td>0.5C, 1C, 2C, 3C</td>
+</tr>
+<tr>
+<td><strong>SOC</strong></td>
+<td>100%→0% 全程放电</td>
+</tr>
+</tbody></table>
+<h3 id="3-3-数据预处理"><a href="#3-3-数据预处理" class="headerlink" title="3.3 数据预处理"></a>3.3 数据预处理</h3><p>仿真前需要对原始数据进行预处理：</p>
+<ol>
+<li><strong>数据清洗</strong>：去除异常点、噪声滤波</li>
+<li><strong>对齐处理</strong>：时间戳对齐、采样率统一</li>
+<li><strong>特征提取</strong>：提取 OCV 曲线、放电曲线、末端特性</li>
+</ol>
+<hr>
+<h2 id="4-DFCC-参数配置"><a href="#4-DFCC-参数配置" class="headerlink" title="4. DFCC 参数配置"></a>4. DFCC 参数配置</h2><h3 id="4-1-关键参数"><a href="#4-1-关键参数" class="headerlink" title="4.1 关键参数"></a>4.1 关键参数</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// main.c - 参数配置</span></span><br><span class="line">FG_LIB_PARAM_T fglib_param = &#123;</span><br><span class="line">    <span class="number">100</span>,            <span class="comment">// soh 更新滤波速率</span></span><br><span class="line">    <span class="number">100</span>,            <span class="comment">// 充电FCC更新速率</span></span><br><span class="line">    <span class="number">100</span>,            <span class="comment">// 放电DSGOffset更新速率</span></span><br><span class="line">    <span class="number">100</span>,            <span class="comment">// 放电 DFCC 更新速率 (单位100)</span></span><br><span class="line">    <span class="number">150</span>,            <span class="comment">// 自动开启DFCC的温度阈值 (单位0.1°C)</span></span><br><span class="line">    <span class="number">1000</span>,           <span class="comment">// 自动开启DFCC的电流阈值 (单位mA)</span></span><br><span class="line">    <span class="number">50</span>,             <span class="comment">// DFCC更新的最小步进值</span></span><br><span class="line">    <span class="number">60</span>,             <span class="comment">// DFCC更新的最大SOC阈值 (单位%)</span></span><br><span class="line">    <span class="number">50</span>,             <span class="comment">// DFCC更新的最小SOC放电量 (单位mAh)</span></span><br><span class="line">    <span class="number">20</span>,             <span class="comment">// DFCC更新的最大温度变化 (单位°C)</span></span><br><span class="line">    <span class="number">10</span>,             <span class="comment">// DFCC更新的最小温度 (单位°C)</span></span><br><span class="line">    <span class="number">25</span>,             <span class="comment">// DFCC更新的最大温度变化 (单位°C)</span></span><br><span class="line">    <span class="number">10</span>,             <span class="comment">// SOH更新计数阈值</span></span><br><span class="line">    <span class="number">100</span>,            <span class="comment">// 充电阶段DFCC单次补偿最大范围 (单位mAh)</span></span><br><span class="line">    <span class="number">300</span>,            <span class="comment">// 放电阶段DSGOffset单次补偿最大范围 (单位%)</span></span><br><span class="line">    <span class="number">500</span>             <span class="comment">// 放电阶段DFCC单次补偿最大范围 (单位100)</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-2-启用开关"><a href="#4-2-启用开关" class="headerlink" title="4.2 启用开关"></a>4.2 启用开关</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">LIB_ENABLE_CFG_TYPE_T fglib_enable_cfg = &#123;</span><br><span class="line">    <span class="number">1</span>,              <span class="comment">// SOH计算模式: 1=传统, 2=新方法</span></span><br><span class="line">    <span class="number">0</span>,              <span class="comment">// 动态充电DFCC调节使能</span></span><br><span class="line">    <span class="number">0</span>,              <span class="comment">// 动态充电FCC赋值</span></span><br><span class="line">    <span class="number">0</span>,              <span class="comment">// 放电自学习参数更新使能</span></span><br><span class="line">    <span class="number">0</span>,              <span class="comment">// 放电Offset初始化使能</span></span><br><span class="line">    <span class="number">0</span>,              <span class="comment">// 动态放电DFCC自动调整使能</span></span><br><span class="line">    <span class="number">1</span>,              <span class="comment">// 动态放电DFCC开启使能</span></span><br><span class="line">    <span class="number">0</span>               <span class="comment">// (保留)</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="5-仿真执行流程"><a href="#5-仿真执行流程" class="headerlink" title="5. 仿真执行流程"></a>5. 仿真执行流程</h2><h3 id="5-1-数据回放"><a href="#5-1-数据回放" class="headerlink" title="5.1 数据回放"></a>5.1 数据回放</h3><p>BatterySimer 上位机按时间顺序回放循环仪测试数据：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 仿真主循环</span></span><br><span class="line"><span class="keyword">for</span> (each_data_point) &#123;</span><br><span class="line">    <span class="comment">// 1. 输入当前时刻的测量值</span></span><br><span class="line">    fg_input_voltage(current_mv);</span><br><span class="line">    fg_input_current(current_ma);</span><br><span class="line">    fg_input_temperature(current_temp_0_1deg);</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 2. 调用固件库更新算法</span></span><br><span class="line">    fg_update();  <span class="comment">// 包含 DFCC 更新逻辑</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 3. 获取当前 SOC 估算值</span></span><br><span class="line">    <span class="type">int</span> soc = fg_get_soc();</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 4. 与真实 SOC 对比，记录误差</span></span><br><span class="line">    real_soc = lookup_real_soc(time);</span><br><span class="line">    error = soc - real_soc;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 5. 输出调试信息</span></span><br><span class="line">    <span class="keyword">if</span> (debug_enabled) &#123;</span><br><span class="line">        print_status(time, voltage, current, temp, soc, error);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-2-DFCC-更新轨迹记录"><a href="#5-2-DFCC-更新轨迹记录" class="headerlink" title="5.2 DFCC 更新轨迹记录"></a>5.2 DFCC 更新轨迹记录</h3><p>仿真过程中记录 DFCC 的变化轨迹：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">Time=3600s: DFCC=2850mAh (初始值)</span><br><span class="line">Time=4000s: DFCC=2900mAh (+50, 温度从25°C→20°C触发更新)</span><br><span class="line">Time=5000s: DFCC=2950mAh (+50, SOC变化触发更新)</span><br><span class="line">Time=6000s: DFCC=3000mAh (+50, 平滑收敛)</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-3-精度评估"><a href="#5-3-精度评估" class="headerlink" title="5.3 精度评估"></a>5.3 精度评估</h3><p>仿真结束后，计算整体精度：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 精度统计</span></span><br><span class="line"><span class="type">float</span> max_error = <span class="number">0</span>;</span><br><span class="line"><span class="type">float</span> avg_error = <span class="number">0</span>;</span><br><span class="line"><span class="type">int</span> error_count = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">for</span> (each_data_point) &#123;</span><br><span class="line">    error = <span class="built_in">abs</span>(simulated_soc - real_soc);</span><br><span class="line">    max_error = max(max_error, error);</span><br><span class="line">    avg_error += error;</span><br><span class="line">    error_count++;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">avg_error /= error_count;</span><br><span class="line"></span><br><span class="line"><span class="built_in">printf</span>(<span class="string">&quot;=== 仿真结果 ===\n&quot;</span>);</span><br><span class="line"><span class="built_in">printf</span>(<span class="string">&quot;最大误差: %.2f%%\n&quot;</span>, max_error);</span><br><span class="line"><span class="built_in">printf</span>(<span class="string">&quot;平均误差: %.2f%%\n&quot;</span>, avg_error);</span><br><span class="line"><span class="built_in">printf</span>(<span class="string">&quot;误差&lt;3%%的比例: %.1f%%\n&quot;</span>, pass_rate);</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="6-参数迭代优化"><a href="#6-参数迭代优化" class="headerlink" title="6. 参数迭代优化"></a>6. 参数迭代优化</h2><h3 id="6-1-调参流程"><a href="#6-1-调参流程" class="headerlink" title="6.1 调参流程"></a>6.1 调参流程</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────┐</span><br><span class="line">│  设定初始参数    │</span><br><span class="line">└────────┬────────┘</span><br><span class="line">         │</span><br><span class="line">         ▼</span><br><span class="line">┌─────────────────┐</span><br><span class="line">│  运行仿真        │</span><br><span class="line">└────────┬────────┘</span><br><span class="line">         │</span><br><span class="line">         ▼</span><br><span class="line">┌─────────────────┐</span><br><span class="line">│  检查精度指标    │</span><br><span class="line">└────────┬────────┘</span><br><span class="line">         │</span><br><span class="line">    ┌────┴────┐</span><br><span class="line">    │  达标?  │</span><br><span class="line">    └────┬────┘</span><br><span class="line">       是 │ 否</span><br><span class="line">         │ │</span><br><span class="line">         ▼ │</span><br><span class="line">┌─────────────────┐  │</span><br><span class="line">│  输出最终参数    │◄─┘</span><br><span class="line">└─────────────────┘</span><br></pre></td></tr></table></figure>
+
+<h3 id="6-2-关键调参变量"><a href="#6-2-关键调参变量" class="headerlink" title="6.2 关键调参变量"></a>6.2 关键调参变量</h3><table>
+<thead>
+<tr>
+<th>参数</th>
+<th>影响</th>
+<th>调参建议</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>dfcc_ratio</code></td>
+<td>DFCC 更新速度</td>
+<td>值越大收敛越快，但可能震荡</td>
+</tr>
+<tr>
+<td><code>dfcc_update_maxsoc</code></td>
+<td>SOC 变化阈值</td>
+<td>越大触发越少，更稳定</td>
+</tr>
+<tr>
+<td><code>dfcc_update_thmrange</code></td>
+<td>温度变化阈值</td>
+<td>越大触发越少</td>
+</tr>
+<tr>
+<td><code>dfcc_maxrange</code></td>
+<td>单次最大变化</td>
+<td>防止跳变，但影响收敛速度</td>
+</tr>
+</tbody></table>
+<h3 id="6-3-dfcc-ratio-详解"><a href="#6-3-dfcc-ratio-详解" class="headerlink" title="6.3 dfcc_ratio 详解"></a>6.3 dfcc_ratio 详解</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">signed</span> <span class="type">int</span> dfcc_ratio = <span class="number">15</span>;  <span class="comment">// 0-100, 值越大越快接近查表结果</span></span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>值大 (如 50)</strong>：快速收敛，但可能在边界附近震荡</li>
+<li><strong>值小 (如 5)</strong>：缓慢稳定，但初始阶段误差大</li>
+<li><strong>值 -1</strong>：关闭 DFCC 功能</li>
+</ul>
+<hr>
+<h2 id="7-仿真验证实例"><a href="#7-仿真验证实例" class="headerlink" title="7. 仿真验证实例"></a>7. 仿真验证实例</h2><h3 id="7-1-测试场景"><a href="#7-1-测试场景" class="headerlink" title="7.1 测试场景"></a>7.1 测试场景</h3><p>假设测试数据：</p>
+<ul>
+<li>电芯：道格ZN139，5000mAh×6&#x3D;30000mAh</li>
+<li>放电电流：1C (3000mA)</li>
+<li>温度：25°C → 5°C (模拟使用中温度下降)</li>
+</ul>
+<h3 id="7-2-仿真结果"><a href="#7-2-仿真结果" class="headerlink" title="7.2 仿真结果"></a>7.2 仿真结果</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">=== DFCC 仿真结果 ===</span><br><span class="line">测试条件: 1C放电, 25°C→5°C</span><br><span class="line"></span><br><span class="line">时间(s)  电压(mV)  电流(mA)  温度(°C)  SOC_真  SOC_仿  误差(%)</span><br><span class="line">0        4200       3000      25.0      100.0   100.0    0.0</span><br><span class="line">1800     3750       3000      20.0      60.0    60.2    +0.2</span><br><span class="line">3600     3550       3000      15.0      35.0    35.4    +0.4</span><br><span class="line">5400     3400       3000      8.0       15.0    15.3    +0.3</span><br><span class="line">7200     3200       500       5.0       5.0     5.1     +0.1</span><br><span class="line"></span><br><span class="line">=== 精度统计 ===</span><br><span class="line">最大误差: 0.4%</span><br><span class="line">平均误差: 0.2%</span><br><span class="line">精度 &lt; 3%: 100% ✓</span><br></pre></td></tr></table></figure>
+
+<h3 id="7-3-DFCC-更新轨迹"><a href="#7-3-DFCC-更新轨迹" class="headerlink" title="7.3 DFCC 更新轨迹"></a>7.3 DFCC 更新轨迹</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">时间    DFCC(mAh)   触发原因</span><br><span class="line">0       29500       初始值</span><br><span class="line">1800    29750       温度变化&gt;20°C</span><br><span class="line">3600    30000       SOC变化&gt;60%</span><br><span class="line">4200    30000       已达上限，稳定</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="8-小结"><a href="#8-小结" class="headerlink" title="8. 小结"></a>8. 小结</h2><p>仿真调参系统的价值：</p>
+<ol>
+<li><strong>加速迭代</strong>：无需反复做实验，快速验证参数</li>
+<li><strong>覆盖边界</strong>：极端条件通过仿真覆盖</li>
+<li><strong>量化评估</strong>：精度指标客观可量化</li>
+<li><strong>可复现</strong>：相同数据可重复仿真</li>
+</ol>
+<p>结合实验室少量验证 + 大量仿真，可实现 DFCC 参数的<strong>高效调校</strong>。</p>
+<hr>
+<p><strong>系列目录</strong><br>01. DFCC算法原理与电池阻抗追踪<br>02. DFCC参数调校与仿真验证系统（本文）<br>03. 库仑计SOC算法工程实现</p>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">首页</a></li>
+        
+          <li><a href="/about/">关于</a></li>
+        
+          <li><a href="/archives/">归档</a></li>
+        
+          <li><a href="/tags/">标签</a></li>
+        
+          <li><a href="/categories/">分类</a></li>
+        
+          <li><a href="/search/">搜索</a></li>
+        
+          <li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E4%B8%BA%E4%BB%80%E4%B9%88%E9%9C%80%E8%A6%81%E4%BB%BF%E7%9C%9F%E8%B0%83%E5%8F%82%EF%BC%9F"><span class="toc-number">1.</span> <span class="toc-text">1. 为什么需要仿真调参？</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-%E5%AE%9E%E9%AA%8C%E5%AE%A4%E8%B0%83%E5%8F%82%E7%9A%84%E7%97%9B%E7%82%B9"><span class="toc-number">1.1.</span> <span class="toc-text">1.1 实验室调参的痛点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-2-%E4%BB%BF%E7%9C%9F%E8%B0%83%E5%8F%82%E7%9A%84%E6%80%9D%E8%B7%AF"><span class="toc-number">1.2.</span> <span class="toc-text">1.2 仿真调参的思路</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-%E4%BB%BF%E7%9C%9F%E7%B3%BB%E7%BB%9F%E6%9E%B6%E6%9E%84"><span class="toc-number">2.</span> <span class="toc-text">2. 仿真系统架构</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E7%B3%BB%E7%BB%9F%E7%BB%84%E6%88%90"><span class="toc-number">2.1.</span> <span class="toc-text">2.1 系统组成</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-%E9%A1%B9%E7%9B%AE%E7%BB%93%E6%9E%84"><span class="toc-number">2.2.</span> <span class="toc-text">2.2 项目结构</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-%E5%BE%AA%E7%8E%AF%E4%BB%AA%E6%B5%8B%E8%AF%95%E6%95%B0%E6%8D%AE"><span class="toc-number">3.</span> <span class="toc-text">3. 循环仪测试数据</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E6%B5%8B%E8%AF%95%E6%95%B0%E6%8D%AE%E6%A0%BC%E5%BC%8F"><span class="toc-number">3.1.</span> <span class="toc-text">3.1 测试数据格式</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E6%B5%8B%E8%AF%95%E6%9D%A1%E4%BB%B6"><span class="toc-number">3.2.</span> <span class="toc-text">3.2 测试条件</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-%E6%95%B0%E6%8D%AE%E9%A2%84%E5%A4%84%E7%90%86"><span class="toc-number">3.3.</span> <span class="toc-text">3.3 数据预处理</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-DFCC-%E5%8F%82%E6%95%B0%E9%85%8D%E7%BD%AE"><span class="toc-number">4.</span> <span class="toc-text">4. DFCC 参数配置</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-%E5%85%B3%E9%94%AE%E5%8F%82%E6%95%B0"><span class="toc-number">4.1.</span> <span class="toc-text">4.1 关键参数</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-%E5%90%AF%E7%94%A8%E5%BC%80%E5%85%B3"><span class="toc-number">4.2.</span> <span class="toc-text">4.2 启用开关</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-%E4%BB%BF%E7%9C%9F%E6%89%A7%E8%A1%8C%E6%B5%81%E7%A8%8B"><span class="toc-number">5.</span> <span class="toc-text">5. 仿真执行流程</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E6%95%B0%E6%8D%AE%E5%9B%9E%E6%94%BE"><span class="toc-number">5.1.</span> <span class="toc-text">5.1 数据回放</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-DFCC-%E6%9B%B4%E6%96%B0%E8%BD%A8%E8%BF%B9%E8%AE%B0%E5%BD%95"><span class="toc-number">5.2.</span> <span class="toc-text">5.2 DFCC 更新轨迹记录</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-%E7%B2%BE%E5%BA%A6%E8%AF%84%E4%BC%B0"><span class="toc-number">5.3.</span> <span class="toc-text">5.3 精度评估</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6-%E5%8F%82%E6%95%B0%E8%BF%AD%E4%BB%A3%E4%BC%98%E5%8C%96"><span class="toc-number">6.</span> <span class="toc-text">6. 参数迭代优化</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E8%B0%83%E5%8F%82%E6%B5%81%E7%A8%8B"><span class="toc-number">6.1.</span> <span class="toc-text">6.1 调参流程</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E5%85%B3%E9%94%AE%E8%B0%83%E5%8F%82%E5%8F%98%E9%87%8F"><span class="toc-number">6.2.</span> <span class="toc-text">6.2 关键调参变量</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-dfcc-ratio-%E8%AF%A6%E8%A7%A3"><span class="toc-number">6.3.</span> <span class="toc-text">6.3 dfcc_ratio 详解</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#7-%E4%BB%BF%E7%9C%9F%E9%AA%8C%E8%AF%81%E5%AE%9E%E4%BE%8B"><span class="toc-number">7.</span> <span class="toc-text">7. 仿真验证实例</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#7-1-%E6%B5%8B%E8%AF%95%E5%9C%BA%E6%99%AF"><span class="toc-number">7.1.</span> <span class="toc-text">7.1 测试场景</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-2-%E4%BB%BF%E7%9C%9F%E7%BB%93%E6%9E%9C"><span class="toc-number">7.2.</span> <span class="toc-text">7.2 仿真结果</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-3-DFCC-%E6%9B%B4%E6%96%B0%E8%BD%A8%E8%BF%B9"><span class="toc-number">7.3.</span> <span class="toc-text">7.3 DFCC 更新轨迹</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#8-%E5%B0%8F%E7%BB%93"><span class="toc-number">8.</span> <span class="toc-text">8. 小结</span></a></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2025/03/23/DFCC%E5%8A%A8%E6%80%81FCC%E8%87%AA%E9%80%82%E5%BA%94%E8%A1%A5%E5%81%BF%E7%AE%97%E6%B3%95_02_%E5%8F%82%E6%95%B0%E8%B0%83%E6%A0%A1%E4%B8%8E%E4%BB%BF%E7%9C%9F%E9%AA%8C%E8%AF%81%E7%B3%BB%E7%BB%9F/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2025/03/23/DFCC%E5%8A%A8%E6%80%81FCC%E8%87%AA%E9%80%82%E5%BA%94%E8%A1%A5%E5%81%BF%E7%AE%97%E6%B3%95_02_%E5%8F%82%E6%95%B0%E8%B0%83%E6%A0%A1%E4%B8%8E%E4%BB%BF%E7%9C%9F%E9%AA%8C%E8%AF%81%E7%B3%BB%E7%BB%9F/&text=DFCC动态FCC自适应补偿算法(二)：参数调校与仿真验证系统"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2025/03/23/DFCC%E5%8A%A8%E6%80%81FCC%E8%87%AA%E9%80%82%E5%BA%94%E8%A1%A5%E5%81%BF%E7%AE%97%E6%B3%95_02_%E5%8F%82%E6%95%B0%E8%B0%83%E6%A0%A1%E4%B8%8E%E4%BB%BF%E7%9C%9F%E9%AA%8C%E8%AF%81%E7%B3%BB%E7%BB%9F/&title=DFCC动态FCC自适应补偿算法(二)：参数调校与仿真验证系统"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2025/03/23/DFCC%E5%8A%A8%E6%80%81FCC%E8%87%AA%E9%80%82%E5%BA%94%E8%A1%A5%E5%81%BF%E7%AE%97%E6%B3%95_02_%E5%8F%82%E6%95%B0%E8%B0%83%E6%A0%A1%E4%B8%8E%E4%BB%BF%E7%9C%9F%E9%AA%8C%E8%AF%81%E7%B3%BB%E7%BB%9F/&is_video=false&description=DFCC动态FCC自适应补偿算法(二)：参数调校与仿真验证系统"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=DFCC动态FCC自适应补偿算法(二)：参数调校与仿真验证系统&body=Check out this article: https://cursorhu.github.io/2025/03/23/DFCC%E5%8A%A8%E6%80%81FCC%E8%87%AA%E9%80%82%E5%BA%94%E8%A1%A5%E5%81%BF%E7%AE%97%E6%B3%95_02_%E5%8F%82%E6%95%B0%E8%B0%83%E6%A0%A1%E4%B8%8E%E4%BB%BF%E7%9C%9F%E9%AA%8C%E8%AF%81%E7%B3%BB%E7%BB%9F/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2025/03/23/DFCC%E5%8A%A8%E6%80%81FCC%E8%87%AA%E9%80%82%E5%BA%94%E8%A1%A5%E5%81%BF%E7%AE%97%E6%B3%95_02_%E5%8F%82%E6%95%B0%E8%B0%83%E6%A0%A1%E4%B8%8E%E4%BB%BF%E7%9C%9F%E9%AA%8C%E8%AF%81%E7%B3%BB%E7%BB%9F/&title=DFCC动态FCC自适应补偿算法(二)：参数调校与仿真验证系统"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2025/03/23/DFCC%E5%8A%A8%E6%80%81FCC%E8%87%AA%E9%80%82%E5%BA%94%E8%A1%A5%E5%81%BF%E7%AE%97%E6%B3%95_02_%E5%8F%82%E6%95%B0%E8%B0%83%E6%A0%A1%E4%B8%8E%E4%BB%BF%E7%9C%9F%E9%AA%8C%E8%AF%81%E7%B3%BB%E7%BB%9F/&title=DFCC动态FCC自适应补偿算法(二)：参数调校与仿真验证系统"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2025/03/23/DFCC%E5%8A%A8%E6%80%81FCC%E8%87%AA%E9%80%82%E5%BA%94%E8%A1%A5%E5%81%BF%E7%AE%97%E6%B3%95_02_%E5%8F%82%E6%95%B0%E8%B0%83%E6%A0%A1%E4%B8%8E%E4%BB%BF%E7%9C%9F%E9%AA%8C%E8%AF%81%E7%B3%BB%E7%BB%9F/&title=DFCC动态FCC自适应补偿算法(二)：参数调校与仿真验证系统"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2025/03/23/DFCC%E5%8A%A8%E6%80%81FCC%E8%87%AA%E9%80%82%E5%BA%94%E8%A1%A5%E5%81%BF%E7%AE%97%E6%B3%95_02_%E5%8F%82%E6%95%B0%E8%B0%83%E6%A0%A1%E4%B8%8E%E4%BB%BF%E7%9C%9F%E9%AA%8C%E8%AF%81%E7%B3%BB%E7%BB%9F/&title=DFCC动态FCC自适应补偿算法(二)：参数调校与仿真验证系统"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2025/03/23/DFCC%E5%8A%A8%E6%80%81FCC%E8%87%AA%E9%80%82%E5%BA%94%E8%A1%A5%E5%81%BF%E7%AE%97%E6%B3%95_02_%E5%8F%82%E6%95%B0%E8%B0%83%E6%A0%A1%E4%B8%8E%E4%BB%BF%E7%9C%9F%E9%AA%8C%E8%AF%81%E7%B3%BB%E7%BB%9F/&name=DFCC动态FCC自适应补偿算法(二)：参数调校与仿真验证系统&description=&lt;h2 id=&#34;1-为什么需要仿真调参？&#34;&gt;&lt;a href=&#34;#1-为什么需要仿真调参？&#34; class=&#34;headerlink&#34; title=&#34;1. 为什么需要仿真调参？&#34;&gt;&lt;/a&gt;1. 为什么需要仿真调参？&lt;/h2&gt;&lt;h3 id=&#34;1-1-实验室调参的痛点&#34;&gt;&lt;a href=&#34;#1-1-实验室调参的痛点&#34; class=&#34;headerlink&#34; title=&#34;1.1 实验室调参的痛点&#34;&gt;&lt;/a&gt;1.1 实验室调参的痛点&lt;/h3&gt;&lt;p&gt;传统 DFCC 参数调校面临的问题：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;耗时长&lt;/strong&gt;：完整的温度×电流×SOC 三维测试需要数周&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;成本高&lt;/strong&gt;：需要恒温箱、充放电设备、工程师值守&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;难以覆盖边界条件&lt;/strong&gt;：极端温度、极端电流的组合难以测试&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;迭代周期长&lt;/strong&gt;：每次参数修改后需要重新测试&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id=&#34;1-2-仿真调参的思路&#34;&gt;&lt;a href=&#34;#1-2-仿真调参的思路&#34; class=&#34;headerlink&#34; title=&#34;1.2 仿真调参的思路&#34;&gt;&lt;/a&gt;1.2 仿真调参的思路&lt;/h3&gt;&lt;blockquote&gt;
+&lt;p&gt;基于&lt;strong&gt;一次完整的放电循环测试数据&lt;/strong&gt;，通过仿真软件模拟 DFCC 参数更新，观察电量精度是否达标，从而&lt;strong&gt;快速迭代参数配置&lt;/strong&gt;。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;2-仿真系统架构&#34;&gt;&lt;a href=&#34;#2-仿真系统架构&#34; class=&#34;headerlink&#34; title=&#34;2. 仿真系统架构&#34;&gt;&lt;/a&gt;2. 仿真系统架构&lt;/h2&gt;&lt;h3 id=&#34;2-1-系统组成&#34;&gt;&lt;a href=&#34;#2-1-系统组成&#34; class=&#34;headerlink&#34; title=&#34;2.1 系统组成&#34;&gt;&lt;/a&gt;2.1 系统组成&lt;/h3&gt;&lt;figure class=&#34;highlight plaintext&#34;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&#34;gutter&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;3&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;4&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;5&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;6&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;7&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;8&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;9&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;10&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;11&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;12&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;13&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;14&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;15&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;16&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;17&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&#34;code&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;┌─────────────────────────────────────────────────────────────────┐&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                      BatterySimer (C# 上位机)                    │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                    充放电数据回放 + 算法仿真                       │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;└────────────────────────────────┬────────────────────────────────┘&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;                                 │ CSV/串口&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;                                 ▼&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;┌─────────────────────────────────────────────────────────────────┐&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                    SOCLib77561 (C 固件库)                         │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                  lib_fg.c - 完整电量算法实现                        │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                  DFCC 三维查表 + 平滑更新                          │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;└────────────────────────────────┬────────────────────────────────┘&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;                                 │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;                                 ▼&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;┌─────────────────────────────────────────────────────────────────┐&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                      仿真结果输出                                │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│              SOC 精度曲线、DFCC 更新轨迹、误差统计                   │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;└─────────────────────────────────────────────────────────────────┘&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;"><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2025/03/23/DFCC%E5%8A%A8%E6%80%81FCC%E8%87%AA%E9%80%82%E5%BA%94%E8%A1%A5%E5%81%BF%E7%AE%97%E6%B3%95_02_%E5%8F%82%E6%95%B0%E8%B0%83%E6%A0%A1%E4%B8%8E%E4%BB%BF%E7%9C%9F%E9%AA%8C%E8%AF%81%E7%B3%BB%E7%BB%9F/&t=DFCC动态FCC自适应补偿算法(二)：参数调校与仿真验证系统"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> 菜单</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> 目录</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> 分享</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> 返回顶部</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2026
+    cursorhu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"复制到粘贴板！\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "复制成功！");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+</body>
+</html>
