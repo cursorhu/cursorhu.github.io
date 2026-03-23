@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="1. 上位机整体架构123456789101112131415161718┌──────────────────────────────────────────────────────────────────┐│                     PyComSender (PyQt5)                           ││  ┌─────────────┐  ┌─────">
+<meta property="og:type" content="article">
+<meta property="og:title" content="EIS电池阻抗测量芯片验证系统(三)：上位机PyQt架构与CSV流程">
+<meta property="og:url" content="https://cursorhu.github.io/2025/07/23/EIS%E7%94%B5%E6%B1%A0%E9%98%BB%E6%8A%97%E6%B5%8B%E9%87%8F%E8%8A%AF%E7%89%87%E9%AA%8C%E8%AF%81%E7%B3%BB%E7%BB%9F_03_%E4%B8%8A%E4%BD%8D%E6%9C%BAPyQt%E6%9E%B6%E6%9E%84%E4%B8%8ECSV%E6%B5%81%E7%A8%8B/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="1. 上位机整体架构123456789101112131415161718┌──────────────────────────────────────────────────────────────────┐│                     PyComSender (PyQt5)                           ││  ┌─────────────┐  ┌─────">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2025-07-23T08:00:00.000Z">
+<meta property="article:modified_time" content="2026-03-23T08:29:54.510Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="CSV">
+<meta property="article:tag" content="EIS">
+<meta property="article:tag" content="PyQt">
+<meta property="article:tag" content="自动化测试">
+<meta name="twitter:card" content="summary">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>EIS电池阻抗测量芯片验证系统(三)：上位机PyQt架构与CSV流程</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+<meta name="generator" content="Hexo 8.0.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="顶部" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="上一篇" href="/2025/07/23/EIS%E7%94%B5%E6%B1%A0%E9%98%BB%E6%8A%97%E6%B5%8B%E9%87%8F%E8%8A%AF%E7%89%87%E9%AA%8C%E8%AF%81%E7%B3%BB%E7%BB%9F_04_STM32%E5%91%BD%E4%BB%A4%E8%BD%AC%E5%8F%91%E4%B8%8E%E5%8D%8F%E8%AE%AE/"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="下一篇" href="/2025/07/23/EIS%E7%94%B5%E6%B1%A0%E9%98%BB%E6%8A%97%E6%B5%8B%E9%87%8F%E8%8A%AF%E7%89%87%E9%AA%8C%E8%AF%81%E7%B3%BB%E7%BB%9F_02_FPGA%E6%BF%80%E5%8A%B1%E4%B8%8EADC%E9%87%87%E9%9B%86%E5%8E%9F%E7%90%86/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="返回顶部" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="分享文章" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">上一篇</span>
+      <span id="i-next" class="info" style="display:none;">下一篇</span>
+      <span id="i-top" class="info" style="display:none;">返回顶部</span>
+      <span id="i-share" class="info" style="display:none;">分享文章</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2025/07/23/EIS%E7%94%B5%E6%B1%A0%E9%98%BB%E6%8A%97%E6%B5%8B%E9%87%8F%E8%8A%AF%E7%89%87%E9%AA%8C%E8%AF%81%E7%B3%BB%E7%BB%9F_03_%E4%B8%8A%E4%BD%8D%E6%9C%BAPyQt%E6%9E%B6%E6%9E%84%E4%B8%8ECSV%E6%B5%81%E7%A8%8B/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2025/07/23/EIS%E7%94%B5%E6%B1%A0%E9%98%BB%E6%8A%97%E6%B5%8B%E9%87%8F%E8%8A%AF%E7%89%87%E9%AA%8C%E8%AF%81%E7%B3%BB%E7%BB%9F_03_%E4%B8%8A%E4%BD%8D%E6%9C%BAPyQt%E6%9E%B6%E6%9E%84%E4%B8%8ECSV%E6%B5%81%E7%A8%8B/&text=EIS电池阻抗测量芯片验证系统(三)：上位机PyQt架构与CSV流程"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2025/07/23/EIS%E7%94%B5%E6%B1%A0%E9%98%BB%E6%8A%97%E6%B5%8B%E9%87%8F%E8%8A%AF%E7%89%87%E9%AA%8C%E8%AF%81%E7%B3%BB%E7%BB%9F_03_%E4%B8%8A%E4%BD%8D%E6%9C%BAPyQt%E6%9E%B6%E6%9E%84%E4%B8%8ECSV%E6%B5%81%E7%A8%8B/&title=EIS电池阻抗测量芯片验证系统(三)：上位机PyQt架构与CSV流程"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2025/07/23/EIS%E7%94%B5%E6%B1%A0%E9%98%BB%E6%8A%97%E6%B5%8B%E9%87%8F%E8%8A%AF%E7%89%87%E9%AA%8C%E8%AF%81%E7%B3%BB%E7%BB%9F_03_%E4%B8%8A%E4%BD%8D%E6%9C%BAPyQt%E6%9E%B6%E6%9E%84%E4%B8%8ECSV%E6%B5%81%E7%A8%8B/&is_video=false&description=EIS电池阻抗测量芯片验证系统(三)：上位机PyQt架构与CSV流程"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=EIS电池阻抗测量芯片验证系统(三)：上位机PyQt架构与CSV流程&body=Check out this article: https://cursorhu.github.io/2025/07/23/EIS%E7%94%B5%E6%B1%A0%E9%98%BB%E6%8A%97%E6%B5%8B%E9%87%8F%E8%8A%AF%E7%89%87%E9%AA%8C%E8%AF%81%E7%B3%BB%E7%BB%9F_03_%E4%B8%8A%E4%BD%8D%E6%9C%BAPyQt%E6%9E%B6%E6%9E%84%E4%B8%8ECSV%E6%B5%81%E7%A8%8B/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2025/07/23/EIS%E7%94%B5%E6%B1%A0%E9%98%BB%E6%8A%97%E6%B5%8B%E9%87%8F%E8%8A%AF%E7%89%87%E9%AA%8C%E8%AF%81%E7%B3%BB%E7%BB%9F_03_%E4%B8%8A%E4%BD%8D%E6%9C%BAPyQt%E6%9E%B6%E6%9E%84%E4%B8%8ECSV%E6%B5%81%E7%A8%8B/&title=EIS电池阻抗测量芯片验证系统(三)：上位机PyQt架构与CSV流程"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2025/07/23/EIS%E7%94%B5%E6%B1%A0%E9%98%BB%E6%8A%97%E6%B5%8B%E9%87%8F%E8%8A%AF%E7%89%87%E9%AA%8C%E8%AF%81%E7%B3%BB%E7%BB%9F_03_%E4%B8%8A%E4%BD%8D%E6%9C%BAPyQt%E6%9E%B6%E6%9E%84%E4%B8%8ECSV%E6%B5%81%E7%A8%8B/&title=EIS电池阻抗测量芯片验证系统(三)：上位机PyQt架构与CSV流程"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2025/07/23/EIS%E7%94%B5%E6%B1%A0%E9%98%BB%E6%8A%97%E6%B5%8B%E9%87%8F%E8%8A%AF%E7%89%87%E9%AA%8C%E8%AF%81%E7%B3%BB%E7%BB%9F_03_%E4%B8%8A%E4%BD%8D%E6%9C%BAPyQt%E6%9E%B6%E6%9E%84%E4%B8%8ECSV%E6%B5%81%E7%A8%8B/&title=EIS电池阻抗测量芯片验证系统(三)：上位机PyQt架构与CSV流程"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2025/07/23/EIS%E7%94%B5%E6%B1%A0%E9%98%BB%E6%8A%97%E6%B5%8B%E9%87%8F%E8%8A%AF%E7%89%87%E9%AA%8C%E8%AF%81%E7%B3%BB%E7%BB%9F_03_%E4%B8%8A%E4%BD%8D%E6%9C%BAPyQt%E6%9E%B6%E6%9E%84%E4%B8%8ECSV%E6%B5%81%E7%A8%8B/&title=EIS电池阻抗测量芯片验证系统(三)：上位机PyQt架构与CSV流程"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2025/07/23/EIS%E7%94%B5%E6%B1%A0%E9%98%BB%E6%8A%97%E6%B5%8B%E9%87%8F%E8%8A%AF%E7%89%87%E9%AA%8C%E8%AF%81%E7%B3%BB%E7%BB%9F_03_%E4%B8%8A%E4%BD%8D%E6%9C%BAPyQt%E6%9E%B6%E6%9E%84%E4%B8%8ECSV%E6%B5%81%E7%A8%8B/&name=EIS电池阻抗测量芯片验证系统(三)：上位机PyQt架构与CSV流程&description=&lt;h2 id=&#34;1-上位机整体架构&#34;&gt;&lt;a href=&#34;#1-上位机整体架构&#34; class=&#34;headerlink&#34; title=&#34;1. 上位机整体架构&#34;&gt;&lt;/a&gt;1. 上位机整体架构&lt;/h2&gt;&lt;figure class=&#34;highlight plaintext&#34;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&#34;gutter&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;3&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;4&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;5&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;6&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;7&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;8&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;9&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;10&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;11&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;12&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;13&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;14&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;15&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;16&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;17&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;18&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&#34;code&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;┌──────────────────────────────────────────────────────────────────┐&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                     PyComSender (PyQt5)                           │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  │ 串口设置    │  │ CSV文件加载  │  │ 命令执行 + 日志         │  │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  │ 波特率选择  │  │ 浏览/加载    │  │ 开始/停止  real-time log│  │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  └─────────────┘  └─────────────┘  └─────────────────────────┘  │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;└────────────────────────────┬─────────────────────────────────────┘&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;                             │ UART (115200)&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;                             ▼&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;┌──────────────────────────────────────────────────────────────────┐&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                  STM32F407 I2C Bridge                             │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                   串口 → I2C 协议转换                              │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;└────────────────────────────┬─────────────────────────────────────┘&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;                             │ I2C (100kHz, 0x58)&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;                             ▼&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;┌──────────────────────────────────────────────────────────────────┐&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                  EIS FPGA/ASIC 验证板                              │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;└──────────────────────────────────────────────────────────────────┘&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;
+
+&lt;h2 id=&#34;2-项目结构&#34;&gt;&lt;a href=&#34;#2-项目结构&#34; class=&#34;headerlink&#34; title=&#34;2. 项目结构&#34;&gt;&lt;/a&gt;2. 项目结构&lt;/h2&gt;&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;组件&lt;/th&gt;
+&lt;th&gt;路径&lt;/th&gt;
+&lt;th&gt;职责&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;PyComSender&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;COM2IIC&amp;#x2F;PyComSender&amp;#x2F;&lt;/td&gt;
+&lt;td&gt;PyQt 上位机，加载CSV并发送命令&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;PyEisAdcCreator&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;COM2IIC&amp;#x2F;PyEisAdcCreator&amp;#x2F;&lt;/td&gt;
+&lt;td&gt;根据 config.yml 生成 EIS 验证用 CSV&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;STM32F407IICBridge&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;STM32F407IICBridge&amp;#x2F;&lt;/td&gt;
+&lt;td&gt;串口转 I2C 桥接固件&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;&lt;/table&gt;
+&lt;h2 id=&#34;3-PyComSender-主要功能&#34;&gt;&lt;a href=&#34;#3-PyComSender-主要功能&#34; class=&#34;headerlink&#34; title=&#34;3. PyComSender 主要功能&#34;&gt;&lt;/a&gt;3. PyComSender 主要功能&lt;/h2&gt;&lt;h3 id=&#34;3-1-串口管理&#34;&gt;&lt;a href=&#34;#3-1-串口管理&#34; class=&#34;headerlink&#34; title=&#34;3.1 串口管理&#34;&gt;&lt;/a&gt;3.1 串口管理&lt;/h3&gt;&lt;ul&gt;
+&lt;li&gt;自动扫描可用串口&lt;/li&gt;
+&lt;li&gt;波特率可选：9600 ~ 115200（默认 115200）&lt;/li&gt;
+&lt;li&gt;打开&amp;#x2F;关闭串口&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id=&#34;3-2-CSV-加载&#34;&gt;&lt;a href=&#34;#3-2-CSV-加载&#34; class=&#34;headerlink&#34; title=&#34;3.2 CSV 加载&#34;&gt;&lt;/a&gt;3.2 CSV 加载&lt;/h3&gt;&lt;figure class=&#34;highlight python&#34;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&#34;gutter&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;3&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;4&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;5&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;6&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&#34;code&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;comment&#34;&gt;# main_window.py - load_commands()&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;keyword&#34;&gt;with&lt;/span&gt; &lt;span class=&#34;built_in&#34;&gt;open&lt;/span&gt;(file_path, &lt;span class=&#34;string&#34;&gt;&amp;#x27;r&amp;#x27;&lt;/span&gt;, newline=&lt;span class=&#34;string&#34;&gt;&amp;#x27;&amp;#x27;&lt;/span&gt;) &lt;span class=&#34;keyword&#34;&gt;as&lt;/span&gt; file:&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    reader = csv.reader(file)&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    &lt;span class=&#34;keyword&#34;&gt;for&lt;/span&gt; row &lt;span class=&#34;keyword&#34;&gt;in&lt;/span&gt; reader:&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        &lt;span class=&#34;keyword&#34;&gt;if&lt;/span&gt; row &lt;span class=&#34;keyword&#34;&gt;and&lt;/span&gt; &lt;span class=&#34;keyword&#34;&gt;not&lt;/span&gt; row[&lt;span class=&#34;number&#34;&gt;0&lt;/span&gt;].startswith(&lt;span class=&#34;string&#34;&gt;&amp;#x27;#&amp;#x27;&lt;/span&gt;):&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;            &lt;span class=&#34;variable language_&#34;&gt;self&lt;/span&gt;.command_list.append(I2CCommand.from_csv_row(row))&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;
+
+&lt;ul&gt;
+&lt;li&gt;解析 CSV 每一行&lt;/li&gt;
+&lt;li&gt;跳过 &lt;code&gt;#&lt;/code&gt; 注释行&lt;/li&gt;
+&lt;li&gt;调用 &lt;code&gt;I2CCommand.from_csv_row(row)&lt;/code&gt; 转换为命令对象&lt;/li&gt;
+&lt;/ul&gt;"><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2025/07/23/EIS%E7%94%B5%E6%B1%A0%E9%98%BB%E6%8A%97%E6%B5%8B%E9%87%8F%E8%8A%AF%E7%89%87%E9%AA%8C%E8%AF%81%E7%B3%BB%E7%BB%9F_03_%E4%B8%8A%E4%BD%8D%E6%9C%BAPyQt%E6%9E%B6%E6%9E%84%E4%B8%8ECSV%E6%B5%81%E7%A8%8B/&t=EIS电池阻抗测量芯片验证系统(三)：上位机PyQt架构与CSV流程"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E4%B8%8A%E4%BD%8D%E6%9C%BA%E6%95%B4%E4%BD%93%E6%9E%B6%E6%9E%84"><span class="toc-number">1.</span> <span class="toc-text">1. 上位机整体架构</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-%E9%A1%B9%E7%9B%AE%E7%BB%93%E6%9E%84"><span class="toc-number">2.</span> <span class="toc-text">2. 项目结构</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-PyComSender-%E4%B8%BB%E8%A6%81%E5%8A%9F%E8%83%BD"><span class="toc-number">3.</span> <span class="toc-text">3. PyComSender 主要功能</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E4%B8%B2%E5%8F%A3%E7%AE%A1%E7%90%86"><span class="toc-number">3.1.</span> <span class="toc-text">3.1 串口管理</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-CSV-%E5%8A%A0%E8%BD%BD"><span class="toc-number">3.2.</span> <span class="toc-text">3.2 CSV 加载</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C"><span class="toc-number">3.3.</span> <span class="toc-text">3.3 命令执行</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-4-%E6%97%A5%E5%BF%97"><span class="toc-number">3.4.</span> <span class="toc-text">3.4 日志</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-CSV-%E6%96%87%E4%BB%B6%E6%9D%A5%E6%BA%90"><span class="toc-number">4.</span> <span class="toc-text">4. CSV 文件来源</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-%E6%89%8B%E5%8A%A8%E7%BC%96%E5%86%99"><span class="toc-number">4.1.</span> <span class="toc-text">4.1 手动编写</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-PyEisAdcCreator-%E8%87%AA%E5%8A%A8%E7%94%9F%E6%88%90"><span class="toc-number">4.2.</span> <span class="toc-text">4.2 PyEisAdcCreator 自动生成</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-%E5%85%B8%E5%9E%8B-EIS-%E9%AA%8C%E8%AF%81-CSV-%E7%BB%93%E6%9E%84"><span class="toc-number">5.</span> <span class="toc-text">5. 典型 EIS 验证 CSV 结构</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6-%E6%95%B0%E6%8D%AE%E6%B5%81%E6%80%BB%E7%BB%93"><span class="toc-number">6.</span> <span class="toc-text">6. 数据流总结</span></a></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        EIS电池阻抗测量芯片验证系统(三)：上位机PyQt架构与CSV流程
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">cursorhu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2025-07-23T08:00:00.000Z" class="dt-published" itemprop="datePublished">2025-07-23</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fa-solid fa-archive"></i>
+        <a class="category-link" href="/categories/%E5%B5%8C%E5%85%A5%E5%BC%8F/">嵌入式</a> › <a class="category-link" href="/categories/%E5%B5%8C%E5%85%A5%E5%BC%8F/%E7%94%B5%E6%B1%A0%E7%AE%A1%E7%90%86/">电池管理</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/CSV/" rel="tag">CSV</a>, <a class="p-category" href="/tags/EIS/" rel="tag">EIS</a>, <a class="p-category" href="/tags/PyQt/" rel="tag">PyQt</a>, <a class="p-category" href="/tags/%E8%87%AA%E5%8A%A8%E5%8C%96%E6%B5%8B%E8%AF%95/" rel="tag">自动化测试</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <h2 id="1-上位机整体架构"><a href="#1-上位机整体架构" class="headerlink" title="1. 上位机整体架构"></a>1. 上位机整体架构</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">┌──────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                     PyComSender (PyQt5)                           │</span><br><span class="line">│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │</span><br><span class="line">│  │ 串口设置    │  │ CSV文件加载  │  │ 命令执行 + 日志         │  │</span><br><span class="line">│  │ 波特率选择  │  │ 浏览/加载    │  │ 开始/停止  real-time log│  │</span><br><span class="line">│  └─────────────┘  └─────────────┘  └─────────────────────────┘  │</span><br><span class="line">└────────────────────────────┬─────────────────────────────────────┘</span><br><span class="line">                             │ UART (115200)</span><br><span class="line">                             ▼</span><br><span class="line">┌──────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                  STM32F407 I2C Bridge                             │</span><br><span class="line">│                   串口 → I2C 协议转换                              │</span><br><span class="line">└────────────────────────────┬─────────────────────────────────────┘</span><br><span class="line">                             │ I2C (100kHz, 0x58)</span><br><span class="line">                             ▼</span><br><span class="line">┌──────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                  EIS FPGA/ASIC 验证板                              │</span><br><span class="line">└──────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<h2 id="2-项目结构"><a href="#2-项目结构" class="headerlink" title="2. 项目结构"></a>2. 项目结构</h2><table>
+<thead>
+<tr>
+<th>组件</th>
+<th>路径</th>
+<th>职责</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>PyComSender</strong></td>
+<td>COM2IIC&#x2F;PyComSender&#x2F;</td>
+<td>PyQt 上位机，加载CSV并发送命令</td>
+</tr>
+<tr>
+<td><strong>PyEisAdcCreator</strong></td>
+<td>COM2IIC&#x2F;PyEisAdcCreator&#x2F;</td>
+<td>根据 config.yml 生成 EIS 验证用 CSV</td>
+</tr>
+<tr>
+<td><strong>STM32F407IICBridge</strong></td>
+<td>STM32F407IICBridge&#x2F;</td>
+<td>串口转 I2C 桥接固件</td>
+</tr>
+</tbody></table>
+<h2 id="3-PyComSender-主要功能"><a href="#3-PyComSender-主要功能" class="headerlink" title="3. PyComSender 主要功能"></a>3. PyComSender 主要功能</h2><h3 id="3-1-串口管理"><a href="#3-1-串口管理" class="headerlink" title="3.1 串口管理"></a>3.1 串口管理</h3><ul>
+<li>自动扫描可用串口</li>
+<li>波特率可选：9600 ~ 115200（默认 115200）</li>
+<li>打开&#x2F;关闭串口</li>
+</ul>
+<h3 id="3-2-CSV-加载"><a href="#3-2-CSV-加载" class="headerlink" title="3.2 CSV 加载"></a>3.2 CSV 加载</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># main_window.py - load_commands()</span></span><br><span class="line"><span class="keyword">with</span> <span class="built_in">open</span>(file_path, <span class="string">&#x27;r&#x27;</span>, newline=<span class="string">&#x27;&#x27;</span>) <span class="keyword">as</span> file:</span><br><span class="line">    reader = csv.reader(file)</span><br><span class="line">    <span class="keyword">for</span> row <span class="keyword">in</span> reader:</span><br><span class="line">        <span class="keyword">if</span> row <span class="keyword">and</span> <span class="keyword">not</span> row[<span class="number">0</span>].startswith(<span class="string">&#x27;#&#x27;</span>):</span><br><span class="line">            <span class="variable language_">self</span>.command_list.append(I2CCommand.from_csv_row(row))</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>解析 CSV 每一行</li>
+<li>跳过 <code>#</code> 注释行</li>
+<li>调用 <code>I2CCommand.from_csv_row(row)</code> 转换为命令对象</li>
+</ul>
+<h3 id="3-3-命令执行"><a href="#3-3-命令执行" class="headerlink" title="3.3 命令执行"></a>3.3 命令执行</h3><ul>
+<li><strong>顺序执行</strong>：按 CSV 行序依次执行</li>
+<li><strong>控制流</strong>：支持 <code>DELAY</code>、<code>LOOP BEGIN/END</code>、<code>REPEAT</code></li>
+<li><strong>异步调度</strong>：使用 <code>QTimer.singleShot(0, ...)</code> 避免递归栈溢出，支持任意深度嵌套</li>
+</ul>
+<h3 id="3-4-日志"><a href="#3-4-日志" class="headerlink" title="3.4 日志"></a>3.4 日志</h3><ul>
+<li>实时显示在 GUI</li>
+<li>同时写入 <code>logs/test_YYYYMMDD_HHMMSS.log</code></li>
+<li>颜色区分：命令(蓝)、成功(绿)、错误(红)</li>
+</ul>
+<h2 id="4-CSV-文件来源"><a href="#4-CSV-文件来源" class="headerlink" title="4. CSV 文件来源"></a>4. CSV 文件来源</h2><h3 id="4-1-手动编写"><a href="#4-1-手动编写" class="headerlink" title="4.1 手动编写"></a>4.1 手动编写</h3><p>适用于简单 I2C 读写、寄存器配置调试。</p>
+<h3 id="4-2-PyEisAdcCreator-自动生成"><a href="#4-2-PyEisAdcCreator-自动生成" class="headerlink" title="4.2 PyEisAdcCreator 自动生成"></a>4.2 PyEisAdcCreator 自动生成</h3><p>针对 EIS 芯片验证：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">config.yml  →  PyEisAdcCreator  →  output_pycomsender.csv</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>支持 <code>FREQ_INDEX: 0~0xF</code> 等<strong>范围参数</strong>，自动生成多组配置</li>
+<li>每组配置包含：寄存器写、DELAY、ADC 范围比较&#x2F;读命令</li>
+<li>输出格式符合 PyComSender 的 CSV 规范</li>
+</ul>
+<h2 id="5-典型-EIS-验证-CSV-结构"><a href="#5-典型-EIS-验证-CSV-结构" class="headerlink" title="5. 典型 EIS 验证 CSV 结构"></a>5. 典型 EIS 验证 CSV 结构</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">#=== 配置组 1/16 - FREQ_INDEX = 0 ===</span><br><span class="line">,1,0x58,0x42,1,0x43,#bit[6]=1+FREQ_INDEX...</span><br><span class="line">,1,0x58,0x3F,1,0x18,#OSR_SEL</span><br><span class="line">...</span><br><span class="line">,1,0x58,0x41,1,0x80,#ADC_GO</span><br><span class="line">DELAY:10,#wait ADC_GO</span><br><span class="line">,4,0x58,0x0b,6,&quot;0xa5,0xaf,0x05,0xde,0x48,0x06&quot;</span><br><span class="line">,2,0x58,0x14,4,,&quot;#ADC expect: 0x07d30e&quot;</span><br><span class="line">...</span><br><span class="line">#=== 配置组 2/16 - FREQ_INDEX = 1 ===</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>每个配置组：写寄存器 → DELAY:10 → 17 个 ADC 点验证</li>
+<li>16 个配置组 &#x3D; 16 个频率点，完整 EIS 扫频验证</li>
+</ul>
+<h2 id="6-数据流总结"><a href="#6-数据流总结" class="headerlink" title="6. 数据流总结"></a>6. 数据流总结</h2><ol>
+<li><strong>PyEisAdcCreator</strong>：算法 + 配置 → 生成 CSV</li>
+<li><strong>PyComSender</strong>：加载 CSV → 解析为 I2CCommand 列表</li>
+<li><strong>执行引擎</strong>：顺序 + 控制流 → 通过串口发往 STM32</li>
+<li><strong>STM32</strong>：串口协议 → I2C 时序 → 操作 FPGA 寄存器</li>
+<li><strong>FPGA</strong>：寄存器配置 → 执行 EIS 测量 → 结果存于 EIS Cell 寄存器</li>
+<li><strong>验证</strong>：读回&#x2F;范围比较 → 判断 Pass&#x2F;Fail</li>
+</ol>
+<p>下一篇文章将详细说明 STM32 的串口命令协议与 I2C 转发逻辑。</p>
+<hr>
+<p><strong>系列目录</strong><br>01. EIS原理与电池阻抗谱<br>02. FPGA ADC激励与电池阻抗扫描原理<br>03. 上位机架构：PyQt与CSV流程（本文）<br>04. STM32命令转发与串口-I2C桥接<br>05. CSV脚本解释器实现精髓</p>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">首页</a></li>
+        
+          <li><a href="/about/">关于</a></li>
+        
+          <li><a href="/archives/">归档</a></li>
+        
+          <li><a href="/tags/">标签</a></li>
+        
+          <li><a href="/categories/">分类</a></li>
+        
+          <li><a href="/search/">搜索</a></li>
+        
+          <li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E4%B8%8A%E4%BD%8D%E6%9C%BA%E6%95%B4%E4%BD%93%E6%9E%B6%E6%9E%84"><span class="toc-number">1.</span> <span class="toc-text">1. 上位机整体架构</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-%E9%A1%B9%E7%9B%AE%E7%BB%93%E6%9E%84"><span class="toc-number">2.</span> <span class="toc-text">2. 项目结构</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-PyComSender-%E4%B8%BB%E8%A6%81%E5%8A%9F%E8%83%BD"><span class="toc-number">3.</span> <span class="toc-text">3. PyComSender 主要功能</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E4%B8%B2%E5%8F%A3%E7%AE%A1%E7%90%86"><span class="toc-number">3.1.</span> <span class="toc-text">3.1 串口管理</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-CSV-%E5%8A%A0%E8%BD%BD"><span class="toc-number">3.2.</span> <span class="toc-text">3.2 CSV 加载</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C"><span class="toc-number">3.3.</span> <span class="toc-text">3.3 命令执行</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-4-%E6%97%A5%E5%BF%97"><span class="toc-number">3.4.</span> <span class="toc-text">3.4 日志</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-CSV-%E6%96%87%E4%BB%B6%E6%9D%A5%E6%BA%90"><span class="toc-number">4.</span> <span class="toc-text">4. CSV 文件来源</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-%E6%89%8B%E5%8A%A8%E7%BC%96%E5%86%99"><span class="toc-number">4.1.</span> <span class="toc-text">4.1 手动编写</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-PyEisAdcCreator-%E8%87%AA%E5%8A%A8%E7%94%9F%E6%88%90"><span class="toc-number">4.2.</span> <span class="toc-text">4.2 PyEisAdcCreator 自动生成</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-%E5%85%B8%E5%9E%8B-EIS-%E9%AA%8C%E8%AF%81-CSV-%E7%BB%93%E6%9E%84"><span class="toc-number">5.</span> <span class="toc-text">5. 典型 EIS 验证 CSV 结构</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6-%E6%95%B0%E6%8D%AE%E6%B5%81%E6%80%BB%E7%BB%93"><span class="toc-number">6.</span> <span class="toc-text">6. 数据流总结</span></a></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2025/07/23/EIS%E7%94%B5%E6%B1%A0%E9%98%BB%E6%8A%97%E6%B5%8B%E9%87%8F%E8%8A%AF%E7%89%87%E9%AA%8C%E8%AF%81%E7%B3%BB%E7%BB%9F_03_%E4%B8%8A%E4%BD%8D%E6%9C%BAPyQt%E6%9E%B6%E6%9E%84%E4%B8%8ECSV%E6%B5%81%E7%A8%8B/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2025/07/23/EIS%E7%94%B5%E6%B1%A0%E9%98%BB%E6%8A%97%E6%B5%8B%E9%87%8F%E8%8A%AF%E7%89%87%E9%AA%8C%E8%AF%81%E7%B3%BB%E7%BB%9F_03_%E4%B8%8A%E4%BD%8D%E6%9C%BAPyQt%E6%9E%B6%E6%9E%84%E4%B8%8ECSV%E6%B5%81%E7%A8%8B/&text=EIS电池阻抗测量芯片验证系统(三)：上位机PyQt架构与CSV流程"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2025/07/23/EIS%E7%94%B5%E6%B1%A0%E9%98%BB%E6%8A%97%E6%B5%8B%E9%87%8F%E8%8A%AF%E7%89%87%E9%AA%8C%E8%AF%81%E7%B3%BB%E7%BB%9F_03_%E4%B8%8A%E4%BD%8D%E6%9C%BAPyQt%E6%9E%B6%E6%9E%84%E4%B8%8ECSV%E6%B5%81%E7%A8%8B/&title=EIS电池阻抗测量芯片验证系统(三)：上位机PyQt架构与CSV流程"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2025/07/23/EIS%E7%94%B5%E6%B1%A0%E9%98%BB%E6%8A%97%E6%B5%8B%E9%87%8F%E8%8A%AF%E7%89%87%E9%AA%8C%E8%AF%81%E7%B3%BB%E7%BB%9F_03_%E4%B8%8A%E4%BD%8D%E6%9C%BAPyQt%E6%9E%B6%E6%9E%84%E4%B8%8ECSV%E6%B5%81%E7%A8%8B/&is_video=false&description=EIS电池阻抗测量芯片验证系统(三)：上位机PyQt架构与CSV流程"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=EIS电池阻抗测量芯片验证系统(三)：上位机PyQt架构与CSV流程&body=Check out this article: https://cursorhu.github.io/2025/07/23/EIS%E7%94%B5%E6%B1%A0%E9%98%BB%E6%8A%97%E6%B5%8B%E9%87%8F%E8%8A%AF%E7%89%87%E9%AA%8C%E8%AF%81%E7%B3%BB%E7%BB%9F_03_%E4%B8%8A%E4%BD%8D%E6%9C%BAPyQt%E6%9E%B6%E6%9E%84%E4%B8%8ECSV%E6%B5%81%E7%A8%8B/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2025/07/23/EIS%E7%94%B5%E6%B1%A0%E9%98%BB%E6%8A%97%E6%B5%8B%E9%87%8F%E8%8A%AF%E7%89%87%E9%AA%8C%E8%AF%81%E7%B3%BB%E7%BB%9F_03_%E4%B8%8A%E4%BD%8D%E6%9C%BAPyQt%E6%9E%B6%E6%9E%84%E4%B8%8ECSV%E6%B5%81%E7%A8%8B/&title=EIS电池阻抗测量芯片验证系统(三)：上位机PyQt架构与CSV流程"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2025/07/23/EIS%E7%94%B5%E6%B1%A0%E9%98%BB%E6%8A%97%E6%B5%8B%E9%87%8F%E8%8A%AF%E7%89%87%E9%AA%8C%E8%AF%81%E7%B3%BB%E7%BB%9F_03_%E4%B8%8A%E4%BD%8D%E6%9C%BAPyQt%E6%9E%B6%E6%9E%84%E4%B8%8ECSV%E6%B5%81%E7%A8%8B/&title=EIS电池阻抗测量芯片验证系统(三)：上位机PyQt架构与CSV流程"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2025/07/23/EIS%E7%94%B5%E6%B1%A0%E9%98%BB%E6%8A%97%E6%B5%8B%E9%87%8F%E8%8A%AF%E7%89%87%E9%AA%8C%E8%AF%81%E7%B3%BB%E7%BB%9F_03_%E4%B8%8A%E4%BD%8D%E6%9C%BAPyQt%E6%9E%B6%E6%9E%84%E4%B8%8ECSV%E6%B5%81%E7%A8%8B/&title=EIS电池阻抗测量芯片验证系统(三)：上位机PyQt架构与CSV流程"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2025/07/23/EIS%E7%94%B5%E6%B1%A0%E9%98%BB%E6%8A%97%E6%B5%8B%E9%87%8F%E8%8A%AF%E7%89%87%E9%AA%8C%E8%AF%81%E7%B3%BB%E7%BB%9F_03_%E4%B8%8A%E4%BD%8D%E6%9C%BAPyQt%E6%9E%B6%E6%9E%84%E4%B8%8ECSV%E6%B5%81%E7%A8%8B/&title=EIS电池阻抗测量芯片验证系统(三)：上位机PyQt架构与CSV流程"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2025/07/23/EIS%E7%94%B5%E6%B1%A0%E9%98%BB%E6%8A%97%E6%B5%8B%E9%87%8F%E8%8A%AF%E7%89%87%E9%AA%8C%E8%AF%81%E7%B3%BB%E7%BB%9F_03_%E4%B8%8A%E4%BD%8D%E6%9C%BAPyQt%E6%9E%B6%E6%9E%84%E4%B8%8ECSV%E6%B5%81%E7%A8%8B/&name=EIS电池阻抗测量芯片验证系统(三)：上位机PyQt架构与CSV流程&description=&lt;h2 id=&#34;1-上位机整体架构&#34;&gt;&lt;a href=&#34;#1-上位机整体架构&#34; class=&#34;headerlink&#34; title=&#34;1. 上位机整体架构&#34;&gt;&lt;/a&gt;1. 上位机整体架构&lt;/h2&gt;&lt;figure class=&#34;highlight plaintext&#34;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&#34;gutter&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;3&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;4&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;5&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;6&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;7&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;8&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;9&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;10&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;11&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;12&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;13&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;14&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;15&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;16&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;17&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;18&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&#34;code&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;┌──────────────────────────────────────────────────────────────────┐&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                     PyComSender (PyQt5)                           │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  │ 串口设置    │  │ CSV文件加载  │  │ 命令执行 + 日志         │  │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  │ 波特率选择  │  │ 浏览/加载    │  │ 开始/停止  real-time log│  │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  └─────────────┘  └─────────────┘  └─────────────────────────┘  │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;└────────────────────────────┬─────────────────────────────────────┘&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;                             │ UART (115200)&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;                             ▼&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;┌──────────────────────────────────────────────────────────────────┐&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                  STM32F407 I2C Bridge                             │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                   串口 → I2C 协议转换                              │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;└────────────────────────────┬─────────────────────────────────────┘&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;                             │ I2C (100kHz, 0x58)&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;                             ▼&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;┌──────────────────────────────────────────────────────────────────┐&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                  EIS FPGA/ASIC 验证板                              │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;└──────────────────────────────────────────────────────────────────┘&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;
+
+&lt;h2 id=&#34;2-项目结构&#34;&gt;&lt;a href=&#34;#2-项目结构&#34; class=&#34;headerlink&#34; title=&#34;2. 项目结构&#34;&gt;&lt;/a&gt;2. 项目结构&lt;/h2&gt;&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;组件&lt;/th&gt;
+&lt;th&gt;路径&lt;/th&gt;
+&lt;th&gt;职责&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;PyComSender&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;COM2IIC&amp;#x2F;PyComSender&amp;#x2F;&lt;/td&gt;
+&lt;td&gt;PyQt 上位机，加载CSV并发送命令&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;PyEisAdcCreator&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;COM2IIC&amp;#x2F;PyEisAdcCreator&amp;#x2F;&lt;/td&gt;
+&lt;td&gt;根据 config.yml 生成 EIS 验证用 CSV&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;STM32F407IICBridge&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;STM32F407IICBridge&amp;#x2F;&lt;/td&gt;
+&lt;td&gt;串口转 I2C 桥接固件&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;&lt;/table&gt;
+&lt;h2 id=&#34;3-PyComSender-主要功能&#34;&gt;&lt;a href=&#34;#3-PyComSender-主要功能&#34; class=&#34;headerlink&#34; title=&#34;3. PyComSender 主要功能&#34;&gt;&lt;/a&gt;3. PyComSender 主要功能&lt;/h2&gt;&lt;h3 id=&#34;3-1-串口管理&#34;&gt;&lt;a href=&#34;#3-1-串口管理&#34; class=&#34;headerlink&#34; title=&#34;3.1 串口管理&#34;&gt;&lt;/a&gt;3.1 串口管理&lt;/h3&gt;&lt;ul&gt;
+&lt;li&gt;自动扫描可用串口&lt;/li&gt;
+&lt;li&gt;波特率可选：9600 ~ 115200（默认 115200）&lt;/li&gt;
+&lt;li&gt;打开&amp;#x2F;关闭串口&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id=&#34;3-2-CSV-加载&#34;&gt;&lt;a href=&#34;#3-2-CSV-加载&#34; class=&#34;headerlink&#34; title=&#34;3.2 CSV 加载&#34;&gt;&lt;/a&gt;3.2 CSV 加载&lt;/h3&gt;&lt;figure class=&#34;highlight python&#34;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&#34;gutter&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;3&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;4&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;5&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;6&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&#34;code&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;comment&#34;&gt;# main_window.py - load_commands()&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;keyword&#34;&gt;with&lt;/span&gt; &lt;span class=&#34;built_in&#34;&gt;open&lt;/span&gt;(file_path, &lt;span class=&#34;string&#34;&gt;&amp;#x27;r&amp;#x27;&lt;/span&gt;, newline=&lt;span class=&#34;string&#34;&gt;&amp;#x27;&amp;#x27;&lt;/span&gt;) &lt;span class=&#34;keyword&#34;&gt;as&lt;/span&gt; file:&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    reader = csv.reader(file)&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    &lt;span class=&#34;keyword&#34;&gt;for&lt;/span&gt; row &lt;span class=&#34;keyword&#34;&gt;in&lt;/span&gt; reader:&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        &lt;span class=&#34;keyword&#34;&gt;if&lt;/span&gt; row &lt;span class=&#34;keyword&#34;&gt;and&lt;/span&gt; &lt;span class=&#34;keyword&#34;&gt;not&lt;/span&gt; row[&lt;span class=&#34;number&#34;&gt;0&lt;/span&gt;].startswith(&lt;span class=&#34;string&#34;&gt;&amp;#x27;#&amp;#x27;&lt;/span&gt;):&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;            &lt;span class=&#34;variable language_&#34;&gt;self&lt;/span&gt;.command_list.append(I2CCommand.from_csv_row(row))&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;
+
+&lt;ul&gt;
+&lt;li&gt;解析 CSV 每一行&lt;/li&gt;
+&lt;li&gt;跳过 &lt;code&gt;#&lt;/code&gt; 注释行&lt;/li&gt;
+&lt;li&gt;调用 &lt;code&gt;I2CCommand.from_csv_row(row)&lt;/code&gt; 转换为命令对象&lt;/li&gt;
+&lt;/ul&gt;"><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2025/07/23/EIS%E7%94%B5%E6%B1%A0%E9%98%BB%E6%8A%97%E6%B5%8B%E9%87%8F%E8%8A%AF%E7%89%87%E9%AA%8C%E8%AF%81%E7%B3%BB%E7%BB%9F_03_%E4%B8%8A%E4%BD%8D%E6%9C%BAPyQt%E6%9E%B6%E6%9E%84%E4%B8%8ECSV%E6%B5%81%E7%A8%8B/&t=EIS电池阻抗测量芯片验证系统(三)：上位机PyQt架构与CSV流程"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> 菜单</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> 目录</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> 分享</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> 返回顶部</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2026
+    cursorhu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"复制到粘贴板！\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "复制成功！");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+</body>
+</html>
