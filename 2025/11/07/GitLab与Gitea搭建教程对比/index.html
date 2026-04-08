@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="前言小公司搭代码服务器，GitLab 和 Gitea 是最常见的两个开源方案。很多人分不清它们有什么区别，本文从选型对比出发，重点讲清楚两者的搭建步骤，帮你选出最适合自己团队的方案。 一、GitLab vs Gitea 选型对比1.1 基本信息   对比项 GitLab Gitea    开源协议 MIT MIT   诞生时间 2011 年 2016 年（从 Gogs 分叉）   开发语言 Rub">
+<meta property="og:type" content="article">
+<meta property="og:title" content="小公司Git代码服务器选型：GitLab 与 Gitea 搭建教程对比">
+<meta property="og:url" content="https://cursorhu.github.io/2025/11/07/GitLab%E4%B8%8EGitea%E6%90%AD%E5%BB%BA%E6%95%99%E7%A8%8B%E5%AF%B9%E6%AF%94/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="前言小公司搭代码服务器，GitLab 和 Gitea 是最常见的两个开源方案。很多人分不清它们有什么区别，本文从选型对比出发，重点讲清楚两者的搭建步骤，帮你选出最适合自己团队的方案。 一、GitLab vs Gitea 选型对比1.1 基本信息   对比项 GitLab Gitea    开源协议 MIT MIT   诞生时间 2011 年 2016 年（从 Gogs 分叉）   开发语言 Rub">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2025-11-07T02:00:00.000Z">
+<meta property="article:modified_time" content="2026-04-08T06:12:34.454Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="Git">
+<meta name="twitter:card" content="summary">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>小公司Git代码服务器选型：GitLab 与 Gitea 搭建教程对比</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+<meta name="generator" content="Hexo 8.0.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="顶部" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="上一篇" href="/2025/11/15/Blog%E9%85%8D%E7%BD%AE%20--%20Github.io%E5%9F%9F%E5%90%8D%E6%9B%BF%E6%8D%A2%E6%94%AF%E6%8C%81%E5%9B%BD%E5%86%85%E8%AE%BF%E9%97%AE/"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="下一篇" href="/2025/11/05/Markdown%E7%9A%84%E5%85%AC%E5%BC%8F%E5%92%8C%E6%B5%81%E7%A8%8B%E5%9B%BE%E5%BF%AB%E9%80%9F%E8%BD%AC%E5%8C%96%E4%B8%BAwordwps/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="返回顶部" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="分享文章" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">上一篇</span>
+      <span id="i-next" class="info" style="display:none;">下一篇</span>
+      <span id="i-top" class="info" style="display:none;">返回顶部</span>
+      <span id="i-share" class="info" style="display:none;">分享文章</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2025/11/07/GitLab%E4%B8%8EGitea%E6%90%AD%E5%BB%BA%E6%95%99%E7%A8%8B%E5%AF%B9%E6%AF%94/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2025/11/07/GitLab%E4%B8%8EGitea%E6%90%AD%E5%BB%BA%E6%95%99%E7%A8%8B%E5%AF%B9%E6%AF%94/&text=小公司Git代码服务器选型：GitLab 与 Gitea 搭建教程对比"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2025/11/07/GitLab%E4%B8%8EGitea%E6%90%AD%E5%BB%BA%E6%95%99%E7%A8%8B%E5%AF%B9%E6%AF%94/&title=小公司Git代码服务器选型：GitLab 与 Gitea 搭建教程对比"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2025/11/07/GitLab%E4%B8%8EGitea%E6%90%AD%E5%BB%BA%E6%95%99%E7%A8%8B%E5%AF%B9%E6%AF%94/&is_video=false&description=小公司Git代码服务器选型：GitLab 与 Gitea 搭建教程对比"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=小公司Git代码服务器选型：GitLab 与 Gitea 搭建教程对比&body=Check out this article: https://cursorhu.github.io/2025/11/07/GitLab%E4%B8%8EGitea%E6%90%AD%E5%BB%BA%E6%95%99%E7%A8%8B%E5%AF%B9%E6%AF%94/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2025/11/07/GitLab%E4%B8%8EGitea%E6%90%AD%E5%BB%BA%E6%95%99%E7%A8%8B%E5%AF%B9%E6%AF%94/&title=小公司Git代码服务器选型：GitLab 与 Gitea 搭建教程对比"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2025/11/07/GitLab%E4%B8%8EGitea%E6%90%AD%E5%BB%BA%E6%95%99%E7%A8%8B%E5%AF%B9%E6%AF%94/&title=小公司Git代码服务器选型：GitLab 与 Gitea 搭建教程对比"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2025/11/07/GitLab%E4%B8%8EGitea%E6%90%AD%E5%BB%BA%E6%95%99%E7%A8%8B%E5%AF%B9%E6%AF%94/&title=小公司Git代码服务器选型：GitLab 与 Gitea 搭建教程对比"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2025/11/07/GitLab%E4%B8%8EGitea%E6%90%AD%E5%BB%BA%E6%95%99%E7%A8%8B%E5%AF%B9%E6%AF%94/&title=小公司Git代码服务器选型：GitLab 与 Gitea 搭建教程对比"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2025/11/07/GitLab%E4%B8%8EGitea%E6%90%AD%E5%BB%BA%E6%95%99%E7%A8%8B%E5%AF%B9%E6%AF%94/&name=小公司Git代码服务器选型：GitLab 与 Gitea 搭建教程对比&description=&lt;h1 id=&#34;前言&#34;&gt;&lt;a href=&#34;#前言&#34; class=&#34;headerlink&#34; title=&#34;前言&#34;&gt;&lt;/a&gt;前言&lt;/h1&gt;&lt;p&gt;小公司搭代码服务器，GitLab 和 Gitea 是最常见的两个开源方案。很多人分不清它们有什么区别，本文从选型对比出发，重点讲清楚两者的搭建步骤，帮你选出最适合自己团队的方案。&lt;/p&gt;
+&lt;h1 id=&#34;一、GitLab-vs-Gitea-选型对比&#34;&gt;&lt;a href=&#34;#一、GitLab-vs-Gitea-选型对比&#34; class=&#34;headerlink&#34; title=&#34;一、GitLab vs Gitea 选型对比&#34;&gt;&lt;/a&gt;一、GitLab vs Gitea 选型对比&lt;/h1&gt;&lt;h2 id=&#34;1-1-基本信息&#34;&gt;&lt;a href=&#34;#1-1-基本信息&#34; class=&#34;headerlink&#34; title=&#34;1.1 基本信息&#34;&gt;&lt;/a&gt;1.1 基本信息&lt;/h2&gt;&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;对比项&lt;/th&gt;
+&lt;th&gt;GitLab&lt;/th&gt;
+&lt;th&gt;Gitea&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;&lt;tr&gt;
+&lt;td&gt;开源协议&lt;/td&gt;
+&lt;td&gt;MIT&lt;/td&gt;
+&lt;td&gt;MIT&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;诞生时间&lt;/td&gt;
+&lt;td&gt;2011 年&lt;/td&gt;
+&lt;td&gt;2016 年（从 Gogs 分叉）&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;开发语言&lt;/td&gt;
+&lt;td&gt;Ruby on Rails&lt;/td&gt;
+&lt;td&gt;Go&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;定位&lt;/td&gt;
+&lt;td&gt;对标 GitHub，功能最完整&lt;/td&gt;
+&lt;td&gt;轻量级 GitHub 替代&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;安装方式&lt;/td&gt;
+&lt;td&gt;Omnibus 包 &amp;#x2F; Docker &amp;#x2F; 源码&lt;/td&gt;
+&lt;td&gt;二进制 &amp;#x2F; Docker&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;官方支持&lt;/td&gt;
+&lt;td&gt;有商业版和社区版&lt;/td&gt;
+&lt;td&gt;纯开源，社区驱动&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;&lt;/table&gt;
+&lt;h2 id=&#34;1-2-资源消耗对比&#34;&gt;&lt;a href=&#34;#1-2-资源消耗对比&#34; class=&#34;headerlink&#34; title=&#34;1.2 资源消耗对比&#34;&gt;&lt;/a&gt;1.2 资源消耗对比&lt;/h2&gt;&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;资源&lt;/th&gt;
+&lt;th&gt;GitLab&lt;/th&gt;
+&lt;th&gt;Gitea&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;&lt;tr&gt;
+&lt;td&gt;最低内存&lt;/td&gt;
+&lt;td&gt;4GB（社区版官方要求）&lt;/td&gt;
+&lt;td&gt;1GB&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;推荐内存&lt;/td&gt;
+&lt;td&gt;8GB+&lt;/td&gt;
+&lt;td&gt;2GB&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;CPU 要求&lt;/td&gt;
+&lt;td&gt;4 核推荐&lt;/td&gt;
+&lt;td&gt;1 核即可&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;磁盘占用&lt;/td&gt;
+&lt;td&gt;10GB+（含日志、缓存）&lt;/td&gt;
+&lt;td&gt;200MB 程序 + 数据&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;&lt;/table&gt;
+&lt;blockquote&gt;
+&lt;p&gt;GitLab 内存消耗大的根本原因是它集成了太多功能：CI&amp;#x2F;CD Runner、PostgreSQL、Redis、Nginx、Sidekiq 作业队列等。Gitea 则是一个纯粹的 Git 托管工具，依赖少，体积小。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h2 id=&#34;1-3-功能对比&#34;&gt;&lt;a href=&#34;#1-3-功能对比&#34; class=&#34;headerlink&#34; title=&#34;1.3 功能对比&#34;&gt;&lt;/a&gt;1.3 功能对比&lt;/h2&gt;&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;功能&lt;/th&gt;
+&lt;th&gt;GitLab&lt;/th&gt;
+&lt;th&gt;Gitea&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;&lt;tr&gt;
+&lt;td&gt;仓库管理&lt;/td&gt;
+&lt;td&gt;支持&lt;/td&gt;
+&lt;td&gt;支持&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Merge Request &amp;#x2F; Pull Request&lt;/td&gt;
+&lt;td&gt;支持&lt;/td&gt;
+&lt;td&gt;支持&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;代码审查&lt;/td&gt;
+&lt;td&gt;支持（Reviewer 指定、讨论线程）&lt;/td&gt;
+&lt;td&gt;支持（基础）&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;CI&amp;#x2F;CD 流水线&lt;/td&gt;
+&lt;td&gt;内置，功能强大&lt;/td&gt;
+&lt;td&gt;支持（需手动配置 Runner）&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;容器镜像仓库&lt;/td&gt;
+&lt;td&gt;内置&lt;/td&gt;
+&lt;td&gt;需额外搭 Harbor&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Wiki &amp;#x2F; Issue &amp;#x2F; Boards&lt;/td&gt;
+&lt;td&gt;完整&lt;/td&gt;
+&lt;td&gt;基础&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;LDAP &amp;#x2F; AD 集成&lt;/td&gt;
+&lt;td&gt;支持&lt;/td&gt;
+&lt;td&gt;支持&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;高可用集群&lt;/td&gt;
+&lt;td&gt;支持（商业版）&lt;/td&gt;
+&lt;td&gt;不支持&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;主题定制&lt;/td&gt;
+&lt;td&gt;有限&lt;/td&gt;
+&lt;td&gt;支持（主题 + Logo）&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;&lt;/table&gt;"><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2025/11/07/GitLab%E4%B8%8EGitea%E6%90%AD%E5%BB%BA%E6%95%99%E7%A8%8B%E5%AF%B9%E6%AF%94/&t=小公司Git代码服务器选型：GitLab 与 Gitea 搭建教程对比"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%89%8D%E8%A8%80"><span class="toc-number">1.</span> <span class="toc-text">前言</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E4%B8%80%E3%80%81GitLab-vs-Gitea-%E9%80%89%E5%9E%8B%E5%AF%B9%E6%AF%94"><span class="toc-number">2.</span> <span class="toc-text">一、GitLab vs Gitea 选型对比</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-1-%E5%9F%BA%E6%9C%AC%E4%BF%A1%E6%81%AF"><span class="toc-number">2.1.</span> <span class="toc-text">1.1 基本信息</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-2-%E8%B5%84%E6%BA%90%E6%B6%88%E8%80%97%E5%AF%B9%E6%AF%94"><span class="toc-number">2.2.</span> <span class="toc-text">1.2 资源消耗对比</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-3-%E5%8A%9F%E8%83%BD%E5%AF%B9%E6%AF%94"><span class="toc-number">2.3.</span> <span class="toc-text">1.3 功能对比</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-4-%E9%80%89%E5%9E%8B%E5%BB%BA%E8%AE%AE"><span class="toc-number">2.4.</span> <span class="toc-text">1.4 选型建议</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E4%BA%8C%E3%80%81GitLab-%E6%90%AD%E5%BB%BA%E6%95%99%E7%A8%8B"><span class="toc-number">3.</span> <span class="toc-text">二、GitLab 搭建教程</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#2-1-%E7%8E%AF%E5%A2%83%E8%A6%81%E6%B1%82"><span class="toc-number">3.1.</span> <span class="toc-text">2.1 环境要求</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-2-%E5%AE%89%E8%A3%85%E6%AD%A5%E9%AA%A4"><span class="toc-number">3.2.</span> <span class="toc-text">2.2 安装步骤</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E4%B8%80%E6%AD%A5%EF%BC%9A%E5%AE%89%E8%A3%85%E4%BE%9D%E8%B5%96%E7%BB%84%E4%BB%B6"><span class="toc-number">3.2.1.</span> <span class="toc-text">第一步：安装依赖组件</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E4%BA%8C%E6%AD%A5%EF%BC%9A%E9%85%8D%E7%BD%AE%E9%98%B2%E7%81%AB%E5%A2%99"><span class="toc-number">3.2.2.</span> <span class="toc-text">第二步：配置防火墙</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E4%B8%89%E6%AD%A5%EF%BC%9A%E5%AE%89%E8%A3%85-GitLab"><span class="toc-number">3.2.3.</span> <span class="toc-text">第三步：安装 GitLab</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E5%9B%9B%E6%AD%A5%EF%BC%9A%E4%BF%AE%E6%94%B9%E9%85%8D%E7%BD%AE%E6%96%87%E4%BB%B6"><span class="toc-number">3.2.4.</span> <span class="toc-text">第四步：修改配置文件</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E4%BA%94%E6%AD%A5%EF%BC%9A%E9%87%8D%E6%96%B0%E9%85%8D%E7%BD%AE%E5%B9%B6%E5%90%AF%E5%8A%A8"><span class="toc-number">3.2.5.</span> <span class="toc-text">第五步：重新配置并启动</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E5%85%AD%E6%AD%A5%EF%BC%9A%E8%AE%BF%E9%97%AE-GitLab"><span class="toc-number">3.2.6.</span> <span class="toc-text">第六步：访问 GitLab</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-3-%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98%E6%8E%92%E6%9F%A5"><span class="toc-number">3.3.</span> <span class="toc-text">2.3 常见问题排查</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%97%AE%E9%A2%98%E4%B8%80%EF%BC%9A%E8%AE%BF%E9%97%AE%E6%98%BE%E7%A4%BA-502-Bad-Gateway"><span class="toc-number">3.3.1.</span> <span class="toc-text">问题一：访问显示 502 Bad Gateway</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%97%AE%E9%A2%98%E4%BA%8C%EF%BC%9Agitlab-ctl-reconfigure-%E5%90%8E-502"><span class="toc-number">3.3.2.</span> <span class="toc-text">问题二：gitlab-ctl reconfigure 后 502</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%97%AE%E9%A2%98%E4%B8%89%EF%BC%9A%E5%AD%90%E6%9C%8D%E5%8A%A1%E7%AB%AF%E5%8F%A3%E5%86%B2%E7%AA%81"><span class="toc-number">3.3.3.</span> <span class="toc-text">问题三：子服务端口冲突</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%97%AE%E9%A2%98%E5%9B%9B%EF%BC%9A%E4%BA%91%E6%9C%8D%E5%8A%A1%E5%99%A8%E5%AE%89%E5%85%A8%E7%BB%84%E6%9C%AA%E5%BC%80%E6%94%BE%E7%AB%AF%E5%8F%A3"><span class="toc-number">3.3.4.</span> <span class="toc-text">问题四：云服务器安全组未开放端口</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-4-%E9%85%8D%E7%BD%AE-SSH-%E8%AE%BF%E9%97%AE"><span class="toc-number">3.4.</span> <span class="toc-text">2.4 配置 SSH 访问</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E4%B8%89%E3%80%81Gitea-%E6%90%AD%E5%BB%BA%E6%95%99%E7%A8%8B"><span class="toc-number">4.</span> <span class="toc-text">三、Gitea 搭建教程</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#3-1-%E7%8E%AF%E5%A2%83%E8%A6%81%E6%B1%82"><span class="toc-number">4.1.</span> <span class="toc-text">3.1 环境要求</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-2-%E5%AE%89%E8%A3%85%E6%AD%A5%E9%AA%A4"><span class="toc-number">4.2.</span> <span class="toc-text">3.2 安装步骤</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E4%B8%80%E6%AD%A5%EF%BC%9A%E5%88%9B%E5%BB%BA%E4%B8%93%E7%94%A8%E7%94%A8%E6%88%B7"><span class="toc-number">4.2.1.</span> <span class="toc-text">第一步：创建专用用户</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E4%BA%8C%E6%AD%A5%EF%BC%9A%E4%B8%8B%E8%BD%BD-Gitea"><span class="toc-number">4.2.2.</span> <span class="toc-text">第二步：下载 Gitea</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E4%B8%89%E6%AD%A5%EF%BC%9A%E5%88%9B%E5%BB%BA%E6%95%B0%E6%8D%AE%E7%9B%AE%E5%BD%95"><span class="toc-number">4.2.3.</span> <span class="toc-text">第三步：创建数据目录</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E5%9B%9B%E6%AD%A5%EF%BC%9A%E5%88%9B%E5%BB%BA-Systemd-%E6%9C%8D%E5%8A%A1%EF%BC%88%E5%BC%80%E6%9C%BA%E8%87%AA%E5%90%AF%EF%BC%89"><span class="toc-number">4.2.4.</span> <span class="toc-text">第四步：创建 Systemd 服务（开机自启）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E4%BA%94%E6%AD%A5%EF%BC%9A%E5%BC%80%E6%94%BE%E9%98%B2%E7%81%AB%E5%A2%99%E7%AB%AF%E5%8F%A3"><span class="toc-number">4.2.5.</span> <span class="toc-text">第五步：开放防火墙端口</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E5%85%AD%E6%AD%A5%EF%BC%9A%E5%88%9D%E5%A7%8B%E5%8C%96%E9%85%8D%E7%BD%AE"><span class="toc-number">4.2.6.</span> <span class="toc-text">第六步：初始化配置</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E4%B8%83%E6%AD%A5%EF%BC%9A%E9%85%8D%E7%BD%AE%E5%8F%8D%E5%90%91%E4%BB%A3%E7%90%86%EF%BC%88%E5%8F%AF%E9%80%89%EF%BC%8C%E6%8E%A8%E8%8D%90%EF%BC%89"><span class="toc-number">4.2.7.</span> <span class="toc-text">第七步：配置反向代理（可选，推荐）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E5%85%AB%E6%AD%A5%EF%BC%9A%E9%85%8D%E7%BD%AE-SSH-%E8%AE%BF%E9%97%AE"><span class="toc-number">4.2.8.</span> <span class="toc-text">第八步：配置 SSH 访问</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-3-%E5%A4%87%E4%BB%BD%E4%B8%8E%E6%81%A2%E5%A4%8D"><span class="toc-number">4.3.</span> <span class="toc-text">3.3 备份与恢复</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E6%80%BB%E7%BB%93%E5%AF%B9%E6%AF%94"><span class="toc-number">5.</span> <span class="toc-text">四、总结对比</span></a></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        小公司Git代码服务器选型：GitLab 与 Gitea 搭建教程对比
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">cursorhu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2025-11-07T02:00:00.000Z" class="dt-published" itemprop="datePublished">2025-11-07</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fa-solid fa-archive"></i>
+        <a class="category-link" href="/categories/Git/">Git</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/Git/" rel="tag">Git</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>小公司搭代码服务器，GitLab 和 Gitea 是最常见的两个开源方案。很多人分不清它们有什么区别，本文从选型对比出发，重点讲清楚两者的搭建步骤，帮你选出最适合自己团队的方案。</p>
+<h1 id="一、GitLab-vs-Gitea-选型对比"><a href="#一、GitLab-vs-Gitea-选型对比" class="headerlink" title="一、GitLab vs Gitea 选型对比"></a>一、GitLab vs Gitea 选型对比</h1><h2 id="1-1-基本信息"><a href="#1-1-基本信息" class="headerlink" title="1.1 基本信息"></a>1.1 基本信息</h2><table>
+<thead>
+<tr>
+<th>对比项</th>
+<th>GitLab</th>
+<th>Gitea</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>开源协议</td>
+<td>MIT</td>
+<td>MIT</td>
+</tr>
+<tr>
+<td>诞生时间</td>
+<td>2011 年</td>
+<td>2016 年（从 Gogs 分叉）</td>
+</tr>
+<tr>
+<td>开发语言</td>
+<td>Ruby on Rails</td>
+<td>Go</td>
+</tr>
+<tr>
+<td>定位</td>
+<td>对标 GitHub，功能最完整</td>
+<td>轻量级 GitHub 替代</td>
+</tr>
+<tr>
+<td>安装方式</td>
+<td>Omnibus 包 &#x2F; Docker &#x2F; 源码</td>
+<td>二进制 &#x2F; Docker</td>
+</tr>
+<tr>
+<td>官方支持</td>
+<td>有商业版和社区版</td>
+<td>纯开源，社区驱动</td>
+</tr>
+</tbody></table>
+<h2 id="1-2-资源消耗对比"><a href="#1-2-资源消耗对比" class="headerlink" title="1.2 资源消耗对比"></a>1.2 资源消耗对比</h2><table>
+<thead>
+<tr>
+<th>资源</th>
+<th>GitLab</th>
+<th>Gitea</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>最低内存</td>
+<td>4GB（社区版官方要求）</td>
+<td>1GB</td>
+</tr>
+<tr>
+<td>推荐内存</td>
+<td>8GB+</td>
+<td>2GB</td>
+</tr>
+<tr>
+<td>CPU 要求</td>
+<td>4 核推荐</td>
+<td>1 核即可</td>
+</tr>
+<tr>
+<td>磁盘占用</td>
+<td>10GB+（含日志、缓存）</td>
+<td>200MB 程序 + 数据</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>GitLab 内存消耗大的根本原因是它集成了太多功能：CI&#x2F;CD Runner、PostgreSQL、Redis、Nginx、Sidekiq 作业队列等。Gitea 则是一个纯粹的 Git 托管工具，依赖少，体积小。</p>
+</blockquote>
+<h2 id="1-3-功能对比"><a href="#1-3-功能对比" class="headerlink" title="1.3 功能对比"></a>1.3 功能对比</h2><table>
+<thead>
+<tr>
+<th>功能</th>
+<th>GitLab</th>
+<th>Gitea</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>仓库管理</td>
+<td>支持</td>
+<td>支持</td>
+</tr>
+<tr>
+<td>Merge Request &#x2F; Pull Request</td>
+<td>支持</td>
+<td>支持</td>
+</tr>
+<tr>
+<td>代码审查</td>
+<td>支持（Reviewer 指定、讨论线程）</td>
+<td>支持（基础）</td>
+</tr>
+<tr>
+<td>CI&#x2F;CD 流水线</td>
+<td>内置，功能强大</td>
+<td>支持（需手动配置 Runner）</td>
+</tr>
+<tr>
+<td>容器镜像仓库</td>
+<td>内置</td>
+<td>需额外搭 Harbor</td>
+</tr>
+<tr>
+<td>Wiki &#x2F; Issue &#x2F; Boards</td>
+<td>完整</td>
+<td>基础</td>
+</tr>
+<tr>
+<td>LDAP &#x2F; AD 集成</td>
+<td>支持</td>
+<td>支持</td>
+</tr>
+<tr>
+<td>高可用集群</td>
+<td>支持（商业版）</td>
+<td>不支持</td>
+</tr>
+<tr>
+<td>主题定制</td>
+<td>有限</td>
+<td>支持（主题 + Logo）</td>
+</tr>
+</tbody></table>
+<h2 id="1-4-选型建议"><a href="#1-4-选型建议" class="headerlink" title="1.4 选型建议"></a>1.4 选型建议</h2><table>
+<thead>
+<tr>
+<th>场景</th>
+<th>推荐</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>服务器 ≤ 2GB 内存</td>
+<td><strong>只能用 Gitea</strong>，GitLab 会 OOM</td>
+</tr>
+<tr>
+<td>服务器 4~8GB 内存，团队 ≤ 15 人</td>
+<td><strong>Gitea</strong>，省资源，够用</td>
+</tr>
+<tr>
+<td>服务器 8GB+，团队需要完整 CI&#x2F;CD</td>
+<td><strong>GitLab</strong>，流水线开箱即用</td>
+</tr>
+<tr>
+<td>需要代码审查、权限管理精细控制</td>
+<td><strong>GitLab</strong> 更成熟</td>
+</tr>
+<tr>
+<td>想快速部署、极少维护</td>
+<td><strong>Gitea</strong>，更新频率低，出错少</td>
+</tr>
+<tr>
+<td>追求接近 GitHub 的完整体验</td>
+<td><strong>GitLab</strong></td>
+</tr>
+</tbody></table>
+<p><strong>一句话总结</strong>：内存不够用选 Gitea，功能要完整选 GitLab。</p>
+<hr>
+<h1 id="二、GitLab-搭建教程"><a href="#二、GitLab-搭建教程" class="headerlink" title="二、GitLab 搭建教程"></a>二、GitLab 搭建教程</h1><blockquote>
+<p>本教程基于 <strong>CentOS 7</strong>，其他 Linux 发行版可参考官方文档。</p>
+</blockquote>
+<h2 id="2-1-环境要求"><a href="#2-1-环境要求" class="headerlink" title="2.1 环境要求"></a>2.1 环境要求</h2><ul>
+<li>CPU：2 核（推荐 4 核）</li>
+<li>内存：4GB 最低，8GB 推荐</li>
+<li>硬盘：20GB+</li>
+<li>系统：CentOS 7 &#x2F; Ubuntu 20.04</li>
+</ul>
+<h2 id="2-2-安装步骤"><a href="#2-2-安装步骤" class="headerlink" title="2.2 安装步骤"></a>2.2 安装步骤</h2><h3 id="第一步：安装依赖组件"><a href="#第一步：安装依赖组件" class="headerlink" title="第一步：安装依赖组件"></a>第一步：安装依赖组件</h3><p>SSH 连接上服务器后，执行以下命令：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 安装 SSH、Postfix（邮件通知用）、依赖包</span></span><br><span class="line"><span class="built_in">sudo</span> yum install -y curl policycoreutils-python openssh-server</span><br><span class="line"></span><br><span class="line"><span class="comment"># 启动 SSH 并设置开机自启</span></span><br><span class="line"><span class="built_in">sudo</span> systemctl <span class="built_in">enable</span> sshd</span><br><span class="line"><span class="built_in">sudo</span> systemctl start sshd</span><br></pre></td></tr></table></figure>
+
+<h3 id="第二步：配置防火墙"><a href="#第二步：配置防火墙" class="headerlink" title="第二步：配置防火墙"></a>第二步：配置防火墙</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 启动防火墙</span></span><br><span class="line"><span class="built_in">sudo</span> systemctl <span class="built_in">enable</span> firewalld</span><br><span class="line"><span class="built_in">sudo</span> systemctl start firewalld</span><br><span class="line"></span><br><span class="line"><span class="comment"># 开放 HTTP 和 HTTPS 端口</span></span><br><span class="line"><span class="built_in">sudo</span> firewall-cmd --permanent --add-service=http</span><br><span class="line"><span class="built_in">sudo</span> firewall-cmd --permanent --add-service=https</span><br><span class="line"><span class="built_in">sudo</span> firewall-cmd --reload</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>如果是阿里云、腾讯云等云服务器，还需要在控制台的<strong>安全组</strong>里手动开放对应端口。</p>
+</blockquote>
+<h3 id="第三步：安装-GitLab"><a href="#第三步：安装-GitLab" class="headerlink" title="第三步：安装 GitLab"></a>第三步：安装 GitLab</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 下载 GitLab 官方安装脚本并执行</span></span><br><span class="line">curl https://packages.gitlab.com/install/repositories/gitlab/gitlab-ee/script.rpm.sh | <span class="built_in">sudo</span> bash</span><br><span class="line"></span><br><span class="line"><span class="comment"># 安装 GitLab EE（社区版免费）</span></span><br><span class="line"><span class="built_in">sudo</span> yum install -y gitlab-ee</span><br></pre></td></tr></table></figure>
+
+<p>安装过程需要 3~8 分钟，看到 <code>gitlab: OK</code> 提示说明安装成功。</p>
+<h3 id="第四步：修改配置文件"><a href="#第四步：修改配置文件" class="headerlink" title="第四步：修改配置文件"></a>第四步：修改配置文件</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 打开 GitLab 主配置文件</span></span><br><span class="line"><span class="built_in">sudo</span> vim /etc/gitlab/gitlab.rb</span><br></pre></td></tr></table></figure>
+
+<p>找到 <code>external_url</code> 那一行，修改为你的服务器 IP 和端口：</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 默认是 80 端口，如果被占用，改成其他端口如 8922</span></span><br><span class="line">external_url <span class="string">&#x27;http://你的服务器IP:8922&#x27;</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="第五步：重新配置并启动"><a href="#第五步：重新配置并启动" class="headerlink" title="第五步：重新配置并启动"></a>第五步：重新配置并启动</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 让配置生效（这步会重新生成各服务配置，等待 2~5 分钟）</span></span><br><span class="line"><span class="built_in">sudo</span> gitlab-ctl reconfigure</span><br><span class="line"></span><br><span class="line"><span class="comment"># 重启 GitLab</span></span><br><span class="line"><span class="built_in">sudo</span> gitlab-ctl restart</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看所有服务状态</span></span><br><span class="line"><span class="built_in">sudo</span> gitlab-ctl status</span><br></pre></td></tr></table></figure>
+
+<p>正常情况下所有服务都显示为 <code>ok: run</code>。</p>
+<h3 id="第六步：访问-GitLab"><a href="#第六步：访问-GitLab" class="headerlink" title="第六步：访问 GitLab"></a>第六步：访问 GitLab</h3><p>打开浏览器，输入：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">http://你的服务器IP:8922</span><br></pre></td></tr></table></figure>
+
+<p>首次访问会跳转到设置 root 管理员密码的页面，设置完成后用 <code>root</code> + 密码登录即可。</p>
+<h2 id="2-3-常见问题排查"><a href="#2-3-常见问题排查" class="headerlink" title="2.3 常见问题排查"></a>2.3 常见问题排查</h2><h3 id="问题一：访问显示-502-Bad-Gateway"><a href="#问题一：访问显示-502-Bad-Gateway" class="headerlink" title="问题一：访问显示 502 Bad Gateway"></a>问题一：访问显示 502 Bad Gateway</h3><p><strong>原因</strong>：内存不足是最常见的原因。</p>
+<p><strong>解决方法</strong>：创建 swap 交换分区：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 创建 4GB swap 文件</span></span><br><span class="line"><span class="built_in">sudo</span> <span class="built_in">dd</span> <span class="keyword">if</span>=/dev/zero of=/mnt/swap bs=512 count=8388616</span><br><span class="line"><span class="built_in">sudo</span> mkswap /mnt/swap</span><br><span class="line"><span class="built_in">sudo</span> swapon /mnt/swap</span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;/mnt/swap swap swap defaults 0 0&quot;</span> &gt;&gt; /etc/fstab</span><br></pre></td></tr></table></figure>
+
+<h3 id="问题二：gitlab-ctl-reconfigure-后-502"><a href="#问题二：gitlab-ctl-reconfigure-后-502" class="headerlink" title="问题二：gitlab-ctl reconfigure 后 502"></a>问题二：gitlab-ctl reconfigure 后 502</h3><p><strong>原因</strong>：GitLab 日志目录权限被重置。</p>
+<p><strong>解决方法</strong>：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">sudo</span> <span class="built_in">chmod</span> -R 777 /var/log/gitlab</span><br><span class="line"><span class="built_in">sudo</span> gitlab-ctl restart</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>每次执行 <code>gitlab-ctl reconfigure</code> 后权限都会重置，需要重新执行 chmod。</p>
+</blockquote>
+<h3 id="问题三：子服务端口冲突"><a href="#问题三：子服务端口冲突" class="headerlink" title="问题三：子服务端口冲突"></a>问题三：子服务端口冲突</h3><p>GitLab 内部有多个子服务（Unicorn、Sidekiq 等），默认占用 8080 端口。如果本机 8080 被占用，子服务会启动失败：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看哪个进程占用了 8080</span></span><br><span class="line"><span class="built_in">sudo</span> netstat -nlp | grep 8080</span><br><span class="line"></span><br><span class="line"><span class="comment"># 在 /etc/gitlab/gitlab.rb 中指定子服务端口</span></span><br><span class="line"><span class="comment"># 追加以下内容：</span></span><br><span class="line">unicorn[<span class="string">&#x27;port&#x27;</span>] = 9032</span><br><span class="line">gitlab_workhorse[<span class="string">&#x27;auth_backend&#x27;</span>] = <span class="string">&quot;http://localhost:9032&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 然后重新配置</span></span><br><span class="line"><span class="built_in">sudo</span> gitlab-ctl reconfigure</span><br></pre></td></tr></table></figure>
+
+<h3 id="问题四：云服务器安全组未开放端口"><a href="#问题四：云服务器安全组未开放端口" class="headerlink" title="问题四：云服务器安全组未开放端口"></a>问题四：云服务器安全组未开放端口</h3><p>登录云服务商控制台 → 安全组 → 入方向规则 → 添加规则，开放 TCP 8922 端口。</p>
+<h2 id="2-4-配置-SSH-访问"><a href="#2-4-配置-SSH-访问" class="headerlink" title="2.4 配置 SSH 访问"></a>2.4 配置 SSH 访问</h2><p>团队成员在各自电脑上生成 SSH 密钥：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Windows 用 Git Bash，Mac/Linux 用终端</span></span><br><span class="line">ssh-keygen -t rsa -C <span class="string">&quot;你的邮箱@example.com&quot;</span></span><br><span class="line"><span class="built_in">cat</span> ~/.ssh/id_rsa.pub</span><br></pre></td></tr></table></figure>
+
+<p>复制公钥内容，登录 GitLab → 右上角头像 → <strong>Preferences</strong> → <strong>SSH Keys</strong> → 粘贴公钥保存。</p>
+<p>之后 clone 项目用 SSH 地址，不需要每次输入密码：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git <span class="built_in">clone</span> git@你的服务器IP:用户名/仓库名.git</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h1 id="三、Gitea-搭建教程"><a href="#三、Gitea-搭建教程" class="headerlink" title="三、Gitea 搭建教程"></a>三、Gitea 搭建教程</h1><blockquote>
+<p>Gitea 极度轻量，1GB 内存就能跑。以下教程以 <strong>Linux 普通用户运行</strong>为最佳实践。</p>
+</blockquote>
+<h2 id="3-1-环境要求"><a href="#3-1-环境要求" class="headerlink" title="3.1 环境要求"></a>3.1 环境要求</h2><ul>
+<li>CPU：1 核</li>
+<li>内存：1GB 最低，2GB 推荐</li>
+<li>硬盘：5GB+</li>
+<li>系统：CentOS 7 &#x2F; Ubuntu 18.04+</li>
+</ul>
+<h2 id="3-2-安装步骤"><a href="#3-2-安装步骤" class="headerlink" title="3.2 安装步骤"></a>3.2 安装步骤</h2><h3 id="第一步：创建专用用户"><a href="#第一步：创建专用用户" class="headerlink" title="第一步：创建专用用户"></a>第一步：创建专用用户</h3><p>Gitea 不能用 root 运行，需要创建一个专门的用户：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 创建用户</span></span><br><span class="line"><span class="built_in">sudo</span> adduser git</span><br><span class="line"></span><br><span class="line"><span class="comment"># 设置密码</span></span><br><span class="line"><span class="built_in">sudo</span> passwd git</span><br><span class="line"></span><br><span class="line"><span class="comment"># CentOS 7 赋予 sudo 权限（Ubuntu 跳过此步）</span></span><br><span class="line"><span class="built_in">sudo</span> usermod -aG wheel git</span><br></pre></td></tr></table></figure>
+
+<h3 id="第二步：下载-Gitea"><a href="#第二步：下载-Gitea" class="headerlink" title="第二步：下载 Gitea"></a>第二步：下载 Gitea</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 切换到 git 用户</span></span><br><span class="line"><span class="built_in">sudo</span> su - git</span><br><span class="line"></span><br><span class="line"><span class="comment"># 创建安装目录</span></span><br><span class="line"><span class="built_in">mkdir</span> -p ~/gitea &amp;&amp; <span class="built_in">cd</span> ~/gitea</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看 Gitea 最新版本：https://dl.gitea.com/gitea/</span></span><br><span class="line"><span class="comment"># 下载 1.22 版本（根据你的系统和架构选）</span></span><br><span class="line">wget -O gitea https://dl.gitea.com/gitea/1.22.0/gitea-1.22.0-linux-amd64</span><br><span class="line"></span><br><span class="line"><span class="comment"># 添加执行权限（重要！）</span></span><br><span class="line"><span class="built_in">chmod</span> +x gitea</span><br><span class="line"></span><br><span class="line"><span class="comment"># 验证</span></span><br><span class="line">./gitea --version</span><br></pre></td></tr></table></figure>
+
+<h3 id="第三步：创建数据目录"><a href="#第三步：创建数据目录" class="headerlink" title="第三步：创建数据目录"></a>第三步：创建数据目录</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 在 git 用户主目录下创建数据目录</span></span><br><span class="line"><span class="built_in">mkdir</span> -p ~/gitea-data</span><br></pre></td></tr></table></figure>
+
+<h3 id="第四步：创建-Systemd-服务（开机自启）"><a href="#第四步：创建-Systemd-服务（开机自启）" class="headerlink" title="第四步：创建 Systemd 服务（开机自启）"></a>第四步：创建 Systemd 服务（开机自启）</h3><p>切换回 root 用户：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">exit</span>  <span class="comment"># 退出 git 用户</span></span><br><span class="line"><span class="built_in">sudo</span> vim /etc/systemd/system/gitea.service</span><br></pre></td></tr></table></figure>
+
+<p>按 <code>i</code> 进入编辑模式，粘贴以下内容：</p>
+<figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">[Unit]</span></span><br><span class="line"><span class="attr">Description</span>=Gitea</span><br><span class="line"><span class="attr">After</span>=syslog.target</span><br><span class="line"><span class="attr">After</span>=network.target</span><br><span class="line"></span><br><span class="line"><span class="section">[Service]</span></span><br><span class="line"><span class="attr">Type</span>=simple</span><br><span class="line"><span class="attr">User</span>=git</span><br><span class="line"><span class="attr">Group</span>=git</span><br><span class="line"><span class="attr">WorkingDirectory</span>=/home/git/gitea</span><br><span class="line"><span class="attr">ExecStart</span>=/home/git/gitea/gitea web --config /home/git/gitea/custom/conf/app.ini</span><br><span class="line"><span class="attr">Restart</span>=always</span><br><span class="line"><span class="attr">RestartSec</span>=<span class="number">3</span></span><br><span class="line"></span><br><span class="line"><span class="section">[Install]</span></span><br><span class="line"><span class="attr">WantedBy</span>=multi-user.target</span><br></pre></td></tr></table></figure>
+
+<p>按 <code>Esc</code>，输入 <code>:wq</code> 回车保存退出。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 重新加载 systemd</span></span><br><span class="line"><span class="built_in">sudo</span> systemctl daemon-reload</span><br><span class="line"></span><br><span class="line"><span class="comment"># 启动 Gitea</span></span><br><span class="line"><span class="built_in">sudo</span> systemctl start gitea</span><br><span class="line"></span><br><span class="line"><span class="comment"># 设置开机自启</span></span><br><span class="line"><span class="built_in">sudo</span> systemctl <span class="built_in">enable</span> gitea</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看状态</span></span><br><span class="line"><span class="built_in">sudo</span> systemctl status gitea</span><br></pre></td></tr></table></figure>
+
+<p>看到 <code>active (running)</code> 即成功。</p>
+<h3 id="第五步：开放防火墙端口"><a href="#第五步：开放防火墙端口" class="headerlink" title="第五步：开放防火墙端口"></a>第五步：开放防火墙端口</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">sudo</span> firewall-cmd --permanent --add-port=3000/tcp</span><br><span class="line"><span class="built_in">sudo</span> firewall-cmd --reload</span><br></pre></td></tr></table></figure>
+
+<p>云服务器安全组同样需要开放 TCP 3000 端口。</p>
+<h3 id="第六步：初始化配置"><a href="#第六步：初始化配置" class="headerlink" title="第六步：初始化配置"></a>第六步：初始化配置</h3><p>打开浏览器访问：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">http://你的服务器IP:3000</span><br></pre></td></tr></table></figure>
+
+<p>首次访问显示的是初始化页面，填写以下信息：</p>
+<table>
+<thead>
+<tr>
+<th>字段</th>
+<th>推荐填写</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>数据库类型</td>
+<td>SQLite 3（最简单，无需安装数据库）</td>
+</tr>
+<tr>
+<td>仓库根目录</td>
+<td><code>/home/git/gitea-data</code></td>
+</tr>
+<tr>
+<td>Gitea 基础 URL</td>
+<td><code>http://你的服务器IP:3000/</code></td>
+</tr>
+<tr>
+<td>管理员账号</td>
+<td>创建第一个管理员（记得设置密码）</td>
+</tr>
+</tbody></table>
+<p>点击「立即安装」，等待几秒即可进入主界面。</p>
+<h3 id="第七步：配置反向代理（可选，推荐）"><a href="#第七步：配置反向代理（可选，推荐）" class="headerlink" title="第七步：配置反向代理（可选，推荐）"></a>第七步：配置反向代理（可选，推荐）</h3><p>为了用 80 端口访问（不加 <code>:3000</code>），可以配 Nginx：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">sudo</span> yum install -y nginx</span><br><span class="line"><span class="built_in">sudo</span> vim /etc/nginx/nginx.conf</span><br></pre></td></tr></table></figure>
+
+<p>找到 <code>server</code> 块，修改为：</p>
+<figure class="highlight nginx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">server</span> &#123;</span><br><span class="line">    <span class="attribute">listen</span> <span class="number">80</span>;</span><br><span class="line">    <span class="attribute">server_name</span> 你的服务器IP;</span><br><span class="line"></span><br><span class="line">    <span class="section">location</span> / &#123;</span><br><span class="line">        <span class="attribute">proxy_pass</span> http://127.0.0.1:3000;</span><br><span class="line">        <span class="attribute">proxy_set_header</span> Host <span class="variable">$host</span>;</span><br><span class="line">        <span class="attribute">proxy_set_header</span> X-Real-IP <span class="variable">$remote_addr</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">sudo</span> systemctl <span class="built_in">enable</span> nginx</span><br><span class="line"><span class="built_in">sudo</span> systemctl start nginx</span><br><span class="line"><span class="built_in">sudo</span> firewall-cmd --permanent --add-port=80/tcp</span><br><span class="line"><span class="built_in">sudo</span> firewall-cmd --reload</span><br></pre></td></tr></table></figure>
+
+<p>之后直接访问 <code>http://你的服务器IP</code> 即可，不需要加端口号。</p>
+<h3 id="第八步：配置-SSH-访问"><a href="#第八步：配置-SSH-访问" class="headerlink" title="第八步：配置 SSH 访问"></a>第八步：配置 SSH 访问</h3><p>团队成员在各自电脑上生成 SSH 密钥：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ssh-keygen -t rsa -C <span class="string">&quot;你的邮箱@example.com&quot;</span></span><br><span class="line"><span class="built_in">cat</span> ~/.ssh/id_rsa.pub</span><br></pre></td></tr></table></figure>
+
+<p>登录 Gitea → 右上角头像 → <strong>设置</strong> → <strong>SSH 密钥</strong> → 粘贴公钥。</p>
+<h2 id="3-3-备份与恢复"><a href="#3-3-备份与恢复" class="headerlink" title="3.3 备份与恢复"></a>3.3 备份与恢复</h2><p>Gitea 数据全在 SQLite 文件中，备份极简：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 备份（停止服务后打包）</span></span><br><span class="line"><span class="built_in">sudo</span> systemctl stop gitea</span><br><span class="line"><span class="built_in">sudo</span> tar -czvf gitea-backup-$(<span class="built_in">date</span> +%Y%m%d).tar.gz /home/git/gitea-data</span><br><span class="line"><span class="built_in">sudo</span> systemctl start gitea</span><br><span class="line"></span><br><span class="line"><span class="comment"># 恢复</span></span><br><span class="line"><span class="built_in">sudo</span> systemctl stop gitea</span><br><span class="line"><span class="built_in">sudo</span> tar -xzvf gitea-backup-xxx.tar.gz -C /</span><br><span class="line"><span class="built_in">sudo</span> systemctl start gitea</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h1 id="四、总结对比"><a href="#四、总结对比" class="headerlink" title="四、总结对比"></a>四、总结对比</h1><table>
+<thead>
+<tr>
+<th>维度</th>
+<th>GitLab</th>
+<th>Gitea</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>内存占用</td>
+<td>高（4GB+）</td>
+<td>低（1GB）</td>
+</tr>
+<tr>
+<td>功能完整性</td>
+<td>完整（CI&#x2F;CD 内置）</td>
+<td>基础够用</td>
+</tr>
+<tr>
+<td>安装难度</td>
+<td>中等（坑多）</td>
+<td>简单</td>
+</tr>
+<tr>
+<td>维护成本</td>
+<td>高（更新复杂）</td>
+<td>低（几乎免维护）</td>
+</tr>
+<tr>
+<td>适合团队规模</td>
+<td>中大型</td>
+<td>小型</td>
+</tr>
+<tr>
+<td>迁移难度</td>
+<td>高</td>
+<td>极低（单文件 + SQLite）</td>
+</tr>
+</tbody></table>
+<p>选哪个？记住两句话：</p>
+<blockquote>
+<p><strong>服务器配置低（≤ 2GB 内存）→ Gitea</strong><br><strong>需要完整 CI&#x2F;CD、团队在 10 人以上 → GitLab</strong></p>
+</blockquote>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">首页</a></li>
+        
+          <li><a href="/about/">关于</a></li>
+        
+          <li><a href="/archives/">归档</a></li>
+        
+          <li><a href="/tags/">标签</a></li>
+        
+          <li><a href="/categories/">分类</a></li>
+        
+          <li><a href="/search/">搜索</a></li>
+        
+          <li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%89%8D%E8%A8%80"><span class="toc-number">1.</span> <span class="toc-text">前言</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E4%B8%80%E3%80%81GitLab-vs-Gitea-%E9%80%89%E5%9E%8B%E5%AF%B9%E6%AF%94"><span class="toc-number">2.</span> <span class="toc-text">一、GitLab vs Gitea 选型对比</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-1-%E5%9F%BA%E6%9C%AC%E4%BF%A1%E6%81%AF"><span class="toc-number">2.1.</span> <span class="toc-text">1.1 基本信息</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-2-%E8%B5%84%E6%BA%90%E6%B6%88%E8%80%97%E5%AF%B9%E6%AF%94"><span class="toc-number">2.2.</span> <span class="toc-text">1.2 资源消耗对比</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-3-%E5%8A%9F%E8%83%BD%E5%AF%B9%E6%AF%94"><span class="toc-number">2.3.</span> <span class="toc-text">1.3 功能对比</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-4-%E9%80%89%E5%9E%8B%E5%BB%BA%E8%AE%AE"><span class="toc-number">2.4.</span> <span class="toc-text">1.4 选型建议</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E4%BA%8C%E3%80%81GitLab-%E6%90%AD%E5%BB%BA%E6%95%99%E7%A8%8B"><span class="toc-number">3.</span> <span class="toc-text">二、GitLab 搭建教程</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#2-1-%E7%8E%AF%E5%A2%83%E8%A6%81%E6%B1%82"><span class="toc-number">3.1.</span> <span class="toc-text">2.1 环境要求</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-2-%E5%AE%89%E8%A3%85%E6%AD%A5%E9%AA%A4"><span class="toc-number">3.2.</span> <span class="toc-text">2.2 安装步骤</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E4%B8%80%E6%AD%A5%EF%BC%9A%E5%AE%89%E8%A3%85%E4%BE%9D%E8%B5%96%E7%BB%84%E4%BB%B6"><span class="toc-number">3.2.1.</span> <span class="toc-text">第一步：安装依赖组件</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E4%BA%8C%E6%AD%A5%EF%BC%9A%E9%85%8D%E7%BD%AE%E9%98%B2%E7%81%AB%E5%A2%99"><span class="toc-number">3.2.2.</span> <span class="toc-text">第二步：配置防火墙</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E4%B8%89%E6%AD%A5%EF%BC%9A%E5%AE%89%E8%A3%85-GitLab"><span class="toc-number">3.2.3.</span> <span class="toc-text">第三步：安装 GitLab</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E5%9B%9B%E6%AD%A5%EF%BC%9A%E4%BF%AE%E6%94%B9%E9%85%8D%E7%BD%AE%E6%96%87%E4%BB%B6"><span class="toc-number">3.2.4.</span> <span class="toc-text">第四步：修改配置文件</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E4%BA%94%E6%AD%A5%EF%BC%9A%E9%87%8D%E6%96%B0%E9%85%8D%E7%BD%AE%E5%B9%B6%E5%90%AF%E5%8A%A8"><span class="toc-number">3.2.5.</span> <span class="toc-text">第五步：重新配置并启动</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E5%85%AD%E6%AD%A5%EF%BC%9A%E8%AE%BF%E9%97%AE-GitLab"><span class="toc-number">3.2.6.</span> <span class="toc-text">第六步：访问 GitLab</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-3-%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98%E6%8E%92%E6%9F%A5"><span class="toc-number">3.3.</span> <span class="toc-text">2.3 常见问题排查</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%97%AE%E9%A2%98%E4%B8%80%EF%BC%9A%E8%AE%BF%E9%97%AE%E6%98%BE%E7%A4%BA-502-Bad-Gateway"><span class="toc-number">3.3.1.</span> <span class="toc-text">问题一：访问显示 502 Bad Gateway</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%97%AE%E9%A2%98%E4%BA%8C%EF%BC%9Agitlab-ctl-reconfigure-%E5%90%8E-502"><span class="toc-number">3.3.2.</span> <span class="toc-text">问题二：gitlab-ctl reconfigure 后 502</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%97%AE%E9%A2%98%E4%B8%89%EF%BC%9A%E5%AD%90%E6%9C%8D%E5%8A%A1%E7%AB%AF%E5%8F%A3%E5%86%B2%E7%AA%81"><span class="toc-number">3.3.3.</span> <span class="toc-text">问题三：子服务端口冲突</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%97%AE%E9%A2%98%E5%9B%9B%EF%BC%9A%E4%BA%91%E6%9C%8D%E5%8A%A1%E5%99%A8%E5%AE%89%E5%85%A8%E7%BB%84%E6%9C%AA%E5%BC%80%E6%94%BE%E7%AB%AF%E5%8F%A3"><span class="toc-number">3.3.4.</span> <span class="toc-text">问题四：云服务器安全组未开放端口</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-4-%E9%85%8D%E7%BD%AE-SSH-%E8%AE%BF%E9%97%AE"><span class="toc-number">3.4.</span> <span class="toc-text">2.4 配置 SSH 访问</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E4%B8%89%E3%80%81Gitea-%E6%90%AD%E5%BB%BA%E6%95%99%E7%A8%8B"><span class="toc-number">4.</span> <span class="toc-text">三、Gitea 搭建教程</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#3-1-%E7%8E%AF%E5%A2%83%E8%A6%81%E6%B1%82"><span class="toc-number">4.1.</span> <span class="toc-text">3.1 环境要求</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-2-%E5%AE%89%E8%A3%85%E6%AD%A5%E9%AA%A4"><span class="toc-number">4.2.</span> <span class="toc-text">3.2 安装步骤</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E4%B8%80%E6%AD%A5%EF%BC%9A%E5%88%9B%E5%BB%BA%E4%B8%93%E7%94%A8%E7%94%A8%E6%88%B7"><span class="toc-number">4.2.1.</span> <span class="toc-text">第一步：创建专用用户</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E4%BA%8C%E6%AD%A5%EF%BC%9A%E4%B8%8B%E8%BD%BD-Gitea"><span class="toc-number">4.2.2.</span> <span class="toc-text">第二步：下载 Gitea</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E4%B8%89%E6%AD%A5%EF%BC%9A%E5%88%9B%E5%BB%BA%E6%95%B0%E6%8D%AE%E7%9B%AE%E5%BD%95"><span class="toc-number">4.2.3.</span> <span class="toc-text">第三步：创建数据目录</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E5%9B%9B%E6%AD%A5%EF%BC%9A%E5%88%9B%E5%BB%BA-Systemd-%E6%9C%8D%E5%8A%A1%EF%BC%88%E5%BC%80%E6%9C%BA%E8%87%AA%E5%90%AF%EF%BC%89"><span class="toc-number">4.2.4.</span> <span class="toc-text">第四步：创建 Systemd 服务（开机自启）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E4%BA%94%E6%AD%A5%EF%BC%9A%E5%BC%80%E6%94%BE%E9%98%B2%E7%81%AB%E5%A2%99%E7%AB%AF%E5%8F%A3"><span class="toc-number">4.2.5.</span> <span class="toc-text">第五步：开放防火墙端口</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E5%85%AD%E6%AD%A5%EF%BC%9A%E5%88%9D%E5%A7%8B%E5%8C%96%E9%85%8D%E7%BD%AE"><span class="toc-number">4.2.6.</span> <span class="toc-text">第六步：初始化配置</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E4%B8%83%E6%AD%A5%EF%BC%9A%E9%85%8D%E7%BD%AE%E5%8F%8D%E5%90%91%E4%BB%A3%E7%90%86%EF%BC%88%E5%8F%AF%E9%80%89%EF%BC%8C%E6%8E%A8%E8%8D%90%EF%BC%89"><span class="toc-number">4.2.7.</span> <span class="toc-text">第七步：配置反向代理（可选，推荐）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E5%85%AB%E6%AD%A5%EF%BC%9A%E9%85%8D%E7%BD%AE-SSH-%E8%AE%BF%E9%97%AE"><span class="toc-number">4.2.8.</span> <span class="toc-text">第八步：配置 SSH 访问</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-3-%E5%A4%87%E4%BB%BD%E4%B8%8E%E6%81%A2%E5%A4%8D"><span class="toc-number">4.3.</span> <span class="toc-text">3.3 备份与恢复</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E6%80%BB%E7%BB%93%E5%AF%B9%E6%AF%94"><span class="toc-number">5.</span> <span class="toc-text">四、总结对比</span></a></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2025/11/07/GitLab%E4%B8%8EGitea%E6%90%AD%E5%BB%BA%E6%95%99%E7%A8%8B%E5%AF%B9%E6%AF%94/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2025/11/07/GitLab%E4%B8%8EGitea%E6%90%AD%E5%BB%BA%E6%95%99%E7%A8%8B%E5%AF%B9%E6%AF%94/&text=小公司Git代码服务器选型：GitLab 与 Gitea 搭建教程对比"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2025/11/07/GitLab%E4%B8%8EGitea%E6%90%AD%E5%BB%BA%E6%95%99%E7%A8%8B%E5%AF%B9%E6%AF%94/&title=小公司Git代码服务器选型：GitLab 与 Gitea 搭建教程对比"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2025/11/07/GitLab%E4%B8%8EGitea%E6%90%AD%E5%BB%BA%E6%95%99%E7%A8%8B%E5%AF%B9%E6%AF%94/&is_video=false&description=小公司Git代码服务器选型：GitLab 与 Gitea 搭建教程对比"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=小公司Git代码服务器选型：GitLab 与 Gitea 搭建教程对比&body=Check out this article: https://cursorhu.github.io/2025/11/07/GitLab%E4%B8%8EGitea%E6%90%AD%E5%BB%BA%E6%95%99%E7%A8%8B%E5%AF%B9%E6%AF%94/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2025/11/07/GitLab%E4%B8%8EGitea%E6%90%AD%E5%BB%BA%E6%95%99%E7%A8%8B%E5%AF%B9%E6%AF%94/&title=小公司Git代码服务器选型：GitLab 与 Gitea 搭建教程对比"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2025/11/07/GitLab%E4%B8%8EGitea%E6%90%AD%E5%BB%BA%E6%95%99%E7%A8%8B%E5%AF%B9%E6%AF%94/&title=小公司Git代码服务器选型：GitLab 与 Gitea 搭建教程对比"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2025/11/07/GitLab%E4%B8%8EGitea%E6%90%AD%E5%BB%BA%E6%95%99%E7%A8%8B%E5%AF%B9%E6%AF%94/&title=小公司Git代码服务器选型：GitLab 与 Gitea 搭建教程对比"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2025/11/07/GitLab%E4%B8%8EGitea%E6%90%AD%E5%BB%BA%E6%95%99%E7%A8%8B%E5%AF%B9%E6%AF%94/&title=小公司Git代码服务器选型：GitLab 与 Gitea 搭建教程对比"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2025/11/07/GitLab%E4%B8%8EGitea%E6%90%AD%E5%BB%BA%E6%95%99%E7%A8%8B%E5%AF%B9%E6%AF%94/&name=小公司Git代码服务器选型：GitLab 与 Gitea 搭建教程对比&description=&lt;h1 id=&#34;前言&#34;&gt;&lt;a href=&#34;#前言&#34; class=&#34;headerlink&#34; title=&#34;前言&#34;&gt;&lt;/a&gt;前言&lt;/h1&gt;&lt;p&gt;小公司搭代码服务器，GitLab 和 Gitea 是最常见的两个开源方案。很多人分不清它们有什么区别，本文从选型对比出发，重点讲清楚两者的搭建步骤，帮你选出最适合自己团队的方案。&lt;/p&gt;
+&lt;h1 id=&#34;一、GitLab-vs-Gitea-选型对比&#34;&gt;&lt;a href=&#34;#一、GitLab-vs-Gitea-选型对比&#34; class=&#34;headerlink&#34; title=&#34;一、GitLab vs Gitea 选型对比&#34;&gt;&lt;/a&gt;一、GitLab vs Gitea 选型对比&lt;/h1&gt;&lt;h2 id=&#34;1-1-基本信息&#34;&gt;&lt;a href=&#34;#1-1-基本信息&#34; class=&#34;headerlink&#34; title=&#34;1.1 基本信息&#34;&gt;&lt;/a&gt;1.1 基本信息&lt;/h2&gt;&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;对比项&lt;/th&gt;
+&lt;th&gt;GitLab&lt;/th&gt;
+&lt;th&gt;Gitea&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;&lt;tr&gt;
+&lt;td&gt;开源协议&lt;/td&gt;
+&lt;td&gt;MIT&lt;/td&gt;
+&lt;td&gt;MIT&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;诞生时间&lt;/td&gt;
+&lt;td&gt;2011 年&lt;/td&gt;
+&lt;td&gt;2016 年（从 Gogs 分叉）&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;开发语言&lt;/td&gt;
+&lt;td&gt;Ruby on Rails&lt;/td&gt;
+&lt;td&gt;Go&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;定位&lt;/td&gt;
+&lt;td&gt;对标 GitHub，功能最完整&lt;/td&gt;
+&lt;td&gt;轻量级 GitHub 替代&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;安装方式&lt;/td&gt;
+&lt;td&gt;Omnibus 包 &amp;#x2F; Docker &amp;#x2F; 源码&lt;/td&gt;
+&lt;td&gt;二进制 &amp;#x2F; Docker&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;官方支持&lt;/td&gt;
+&lt;td&gt;有商业版和社区版&lt;/td&gt;
+&lt;td&gt;纯开源，社区驱动&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;&lt;/table&gt;
+&lt;h2 id=&#34;1-2-资源消耗对比&#34;&gt;&lt;a href=&#34;#1-2-资源消耗对比&#34; class=&#34;headerlink&#34; title=&#34;1.2 资源消耗对比&#34;&gt;&lt;/a&gt;1.2 资源消耗对比&lt;/h2&gt;&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;资源&lt;/th&gt;
+&lt;th&gt;GitLab&lt;/th&gt;
+&lt;th&gt;Gitea&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;&lt;tr&gt;
+&lt;td&gt;最低内存&lt;/td&gt;
+&lt;td&gt;4GB（社区版官方要求）&lt;/td&gt;
+&lt;td&gt;1GB&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;推荐内存&lt;/td&gt;
+&lt;td&gt;8GB+&lt;/td&gt;
+&lt;td&gt;2GB&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;CPU 要求&lt;/td&gt;
+&lt;td&gt;4 核推荐&lt;/td&gt;
+&lt;td&gt;1 核即可&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;磁盘占用&lt;/td&gt;
+&lt;td&gt;10GB+（含日志、缓存）&lt;/td&gt;
+&lt;td&gt;200MB 程序 + 数据&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;&lt;/table&gt;
+&lt;blockquote&gt;
+&lt;p&gt;GitLab 内存消耗大的根本原因是它集成了太多功能：CI&amp;#x2F;CD Runner、PostgreSQL、Redis、Nginx、Sidekiq 作业队列等。Gitea 则是一个纯粹的 Git 托管工具，依赖少，体积小。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h2 id=&#34;1-3-功能对比&#34;&gt;&lt;a href=&#34;#1-3-功能对比&#34; class=&#34;headerlink&#34; title=&#34;1.3 功能对比&#34;&gt;&lt;/a&gt;1.3 功能对比&lt;/h2&gt;&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;功能&lt;/th&gt;
+&lt;th&gt;GitLab&lt;/th&gt;
+&lt;th&gt;Gitea&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;&lt;tr&gt;
+&lt;td&gt;仓库管理&lt;/td&gt;
+&lt;td&gt;支持&lt;/td&gt;
+&lt;td&gt;支持&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Merge Request &amp;#x2F; Pull Request&lt;/td&gt;
+&lt;td&gt;支持&lt;/td&gt;
+&lt;td&gt;支持&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;代码审查&lt;/td&gt;
+&lt;td&gt;支持（Reviewer 指定、讨论线程）&lt;/td&gt;
+&lt;td&gt;支持（基础）&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;CI&amp;#x2F;CD 流水线&lt;/td&gt;
+&lt;td&gt;内置，功能强大&lt;/td&gt;
+&lt;td&gt;支持（需手动配置 Runner）&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;容器镜像仓库&lt;/td&gt;
+&lt;td&gt;内置&lt;/td&gt;
+&lt;td&gt;需额外搭 Harbor&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Wiki &amp;#x2F; Issue &amp;#x2F; Boards&lt;/td&gt;
+&lt;td&gt;完整&lt;/td&gt;
+&lt;td&gt;基础&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;LDAP &amp;#x2F; AD 集成&lt;/td&gt;
+&lt;td&gt;支持&lt;/td&gt;
+&lt;td&gt;支持&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;高可用集群&lt;/td&gt;
+&lt;td&gt;支持（商业版）&lt;/td&gt;
+&lt;td&gt;不支持&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;主题定制&lt;/td&gt;
+&lt;td&gt;有限&lt;/td&gt;
+&lt;td&gt;支持（主题 + Logo）&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;&lt;/table&gt;"><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2025/11/07/GitLab%E4%B8%8EGitea%E6%90%AD%E5%BB%BA%E6%95%99%E7%A8%8B%E5%AF%B9%E6%AF%94/&t=小公司Git代码服务器选型：GitLab 与 Gitea 搭建教程对比"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> 菜单</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> 目录</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> 分享</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> 返回顶部</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2026
+    cursorhu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"复制到粘贴板！\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "复制成功！");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+</body>
+</html>

@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="电量计新国标安全时间与保护记录系统架构1. 概述本文档系统说明基于 BST85226 电量计芯片的新国标安全时间和保护记录功能的系统架构设计。该系统实现了电池安全事件的实时检测、状态记录、Flash 持久化存储以及主机端数据获取的完整闭环。 1.1 系统架构总览1234567891011121314151617181920212223242526┌─────────────────────────">
+<meta property="og:type" content="article">
+<meta property="og:title" content="电量计 -- 新国标安全时间与保护记录系统架构">
+<meta property="og:url" content="https://cursorhu.github.io/2026/03/25/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E6%96%B0%E5%9B%BD%E6%A0%87%E5%AE%89%E5%85%A8%E6%97%B6%E9%97%B4%E4%B8%8E%E4%BF%9D%E6%8A%A4%E8%AE%B0%E5%BD%95%E7%B3%BB%E7%BB%9F%E6%9E%B6%E6%9E%84/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="电量计新国标安全时间与保护记录系统架构1. 概述本文档系统说明基于 BST85226 电量计芯片的新国标安全时间和保护记录功能的系统架构设计。该系统实现了电池安全事件的实时检测、状态记录、Flash 持久化存储以及主机端数据获取的完整闭环。 1.1 系统架构总览1234567891011121314151617181920212223242526┌─────────────────────────">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-03-25T07:50:54.000Z">
+<meta property="article:modified_time" content="2026-04-08T06:19:56.082Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="电量计">
+<meta name="twitter:card" content="summary">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>电量计 -- 新国标安全时间与保护记录系统架构</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+<meta name="generator" content="Hexo 8.0.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="顶部" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="上一篇" href="/2026/03/25/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E6%BB%A1%E5%85%85%E6%97%B6%E9%97%B4%E9%A2%84%E4%BC%B0%E5%8A%9F%E8%83%BD%E8%AF%B4%E6%98%8E/"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="下一篇" href="/2026/03/21/Qcom_ARM%E5%B9%B3%E5%8F%B0%E9%A9%B1%E5%8A%A8_01_SD_Host%E9%85%8D%E7%BD%AE%E4%B8%8EDLL%E8%B0%83%E8%B0%90/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="返回顶部" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="分享文章" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">上一篇</span>
+      <span id="i-next" class="info" style="display:none;">下一篇</span>
+      <span id="i-top" class="info" style="display:none;">返回顶部</span>
+      <span id="i-share" class="info" style="display:none;">分享文章</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/03/25/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E6%96%B0%E5%9B%BD%E6%A0%87%E5%AE%89%E5%85%A8%E6%97%B6%E9%97%B4%E4%B8%8E%E4%BF%9D%E6%8A%A4%E8%AE%B0%E5%BD%95%E7%B3%BB%E7%BB%9F%E6%9E%B6%E6%9E%84/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/03/25/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E6%96%B0%E5%9B%BD%E6%A0%87%E5%AE%89%E5%85%A8%E6%97%B6%E9%97%B4%E4%B8%8E%E4%BF%9D%E6%8A%A4%E8%AE%B0%E5%BD%95%E7%B3%BB%E7%BB%9F%E6%9E%B6%E6%9E%84/&text=电量计 -- 新国标安全时间与保护记录系统架构"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/03/25/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E6%96%B0%E5%9B%BD%E6%A0%87%E5%AE%89%E5%85%A8%E6%97%B6%E9%97%B4%E4%B8%8E%E4%BF%9D%E6%8A%A4%E8%AE%B0%E5%BD%95%E7%B3%BB%E7%BB%9F%E6%9E%B6%E6%9E%84/&title=电量计 -- 新国标安全时间与保护记录系统架构"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/03/25/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E6%96%B0%E5%9B%BD%E6%A0%87%E5%AE%89%E5%85%A8%E6%97%B6%E9%97%B4%E4%B8%8E%E4%BF%9D%E6%8A%A4%E8%AE%B0%E5%BD%95%E7%B3%BB%E7%BB%9F%E6%9E%B6%E6%9E%84/&is_video=false&description=电量计 -- 新国标安全时间与保护记录系统架构"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=电量计 -- 新国标安全时间与保护记录系统架构&body=Check out this article: https://cursorhu.github.io/2026/03/25/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E6%96%B0%E5%9B%BD%E6%A0%87%E5%AE%89%E5%85%A8%E6%97%B6%E9%97%B4%E4%B8%8E%E4%BF%9D%E6%8A%A4%E8%AE%B0%E5%BD%95%E7%B3%BB%E7%BB%9F%E6%9E%B6%E6%9E%84/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/03/25/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E6%96%B0%E5%9B%BD%E6%A0%87%E5%AE%89%E5%85%A8%E6%97%B6%E9%97%B4%E4%B8%8E%E4%BF%9D%E6%8A%A4%E8%AE%B0%E5%BD%95%E7%B3%BB%E7%BB%9F%E6%9E%B6%E6%9E%84/&title=电量计 -- 新国标安全时间与保护记录系统架构"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/03/25/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E6%96%B0%E5%9B%BD%E6%A0%87%E5%AE%89%E5%85%A8%E6%97%B6%E9%97%B4%E4%B8%8E%E4%BF%9D%E6%8A%A4%E8%AE%B0%E5%BD%95%E7%B3%BB%E7%BB%9F%E6%9E%B6%E6%9E%84/&title=电量计 -- 新国标安全时间与保护记录系统架构"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/03/25/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E6%96%B0%E5%9B%BD%E6%A0%87%E5%AE%89%E5%85%A8%E6%97%B6%E9%97%B4%E4%B8%8E%E4%BF%9D%E6%8A%A4%E8%AE%B0%E5%BD%95%E7%B3%BB%E7%BB%9F%E6%9E%B6%E6%9E%84/&title=电量计 -- 新国标安全时间与保护记录系统架构"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/03/25/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E6%96%B0%E5%9B%BD%E6%A0%87%E5%AE%89%E5%85%A8%E6%97%B6%E9%97%B4%E4%B8%8E%E4%BF%9D%E6%8A%A4%E8%AE%B0%E5%BD%95%E7%B3%BB%E7%BB%9F%E6%9E%B6%E6%9E%84/&title=电量计 -- 新国标安全时间与保护记录系统架构"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/03/25/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E6%96%B0%E5%9B%BD%E6%A0%87%E5%AE%89%E5%85%A8%E6%97%B6%E9%97%B4%E4%B8%8E%E4%BF%9D%E6%8A%A4%E8%AE%B0%E5%BD%95%E7%B3%BB%E7%BB%9F%E6%9E%B6%E6%9E%84/&name=电量计 -- 新国标安全时间与保护记录系统架构&description=&lt;h1 id=&#34;电量计新国标安全时间与保护记录系统架构&#34;&gt;&lt;a href=&#34;#电量计新国标安全时间与保护记录系统架构&#34; class=&#34;headerlink&#34; title=&#34;电量计新国标安全时间与保护记录系统架构&#34;&gt;&lt;/a&gt;电量计新国标安全时间与保护记录系统架构&lt;/h1&gt;&lt;h2 id=&#34;1-概述&#34;&gt;&lt;a href=&#34;#1-概述&#34; class=&#34;headerlink&#34; title=&#34;1. 概述&#34;&gt;&lt;/a&gt;1. 概述&lt;/h2&gt;&lt;p&gt;本文档系统说明基于 BST85226 电量计芯片的新国标安全时间和保护记录功能的系统架构设计。该系统实现了电池安全事件的实时检测、状态记录、Flash 持久化存储以及主机端数据获取的完整闭环。&lt;/p&gt;
+&lt;h3 id=&#34;1-1-系统架构总览&#34;&gt;&lt;a href=&#34;#1-1-系统架构总览&#34; class=&#34;headerlink&#34; title=&#34;1.1 系统架构总览&#34;&gt;&lt;/a&gt;1.1 系统架构总览&lt;/h3&gt;&lt;figure class=&#34;highlight plaintext&#34;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&#34;gutter&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;3&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;4&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;5&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;6&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;7&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;8&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;9&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;10&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;11&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;12&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;13&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;14&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;15&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;16&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;17&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;18&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;19&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;20&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;21&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;22&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;23&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;24&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;25&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;26&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&#34;code&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;┌─────────────────────────────────────────────────────────────────────────┐&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                           系统架构图                                      │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;├─────────────────────────────────────────────────────────────────────────┤&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                                                                          │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  ┌──────────────────┐     I2C/SMBus      ┌──────────────────────────┐   │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  │   主机 MCU        │◄──────────────────►│   BST85226 电量计        │   │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  │  (dev_bst7001.c) │     + PEC校验       │   (Firmware)            │   │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  │                  │                     │                          │   │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  │  ┌────────────┐  │     GPIO INT        │  ┌────────────────────┐  │   │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  │  │ 故障查询   │  │◄────────────────────│  │  保护检测模块      │  │   │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  │  │ SBS 0x8D   │  │   下降沿触发         │  │  (protect_handle)  │  │   │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  │  │ SBS 0x90   │  │                     │  └────────────────────┘  │   │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  │  └────────────┘  │                     │           │              │   │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  └──────────────────┘                     │           ▼              │   │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                                           │  ┌────────────────────┐  │   │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                                           │  │  LOG 记录模块      │  │   │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                                           │  │  (update_log_data) │  │   │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                                           │  └────────────────────┘  │   │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                                           │           │              │   │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                                           │           ▼              │   │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                                           │  ┌────────────────────┐  │   │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                                           │  │  Flash 存储        │  │   │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                                           │  │  (21KB 循环存储)   │  │   │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                                           │  └────────────────────┘  │   │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                                           └──────────────────────────┘   │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;└─────────────────────────────────────────────────────────────────────────┘&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;
+
+&lt;h3 id=&#34;1-2-核心需求&#34;&gt;&lt;a href=&#34;#1-2-核心需求&#34; class=&#34;headerlink&#34; title=&#34;1.2 核心需求&#34;&gt;&lt;/a&gt;1.2 核心需求&lt;/h3&gt;&lt;p&gt;根据新国标要求，电量计需要：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;存储 4800 条异常记录（电芯最大 1200 循环 × 4 条异常记录）&lt;/li&gt;
+&lt;li&gt;记录异常类型、触发时间、异常数据、充放电状态、触发电芯 ID&lt;/li&gt;
+&lt;li&gt;支持主机按索引查询历史记录&lt;/li&gt;
+&lt;/ul&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;2-LOG-数据结构设计&#34;&gt;&lt;a href=&#34;#2-LOG-数据结构设计&#34; class=&#34;headerlink&#34; title=&#34;2. LOG 数据结构设计&#34;&gt;&lt;/a&gt;2. LOG 数据结构设计&lt;/h2&gt;"><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/03/25/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E6%96%B0%E5%9B%BD%E6%A0%87%E5%AE%89%E5%85%A8%E6%97%B6%E9%97%B4%E4%B8%8E%E4%BF%9D%E6%8A%A4%E8%AE%B0%E5%BD%95%E7%B3%BB%E7%BB%9F%E6%9E%B6%E6%9E%84/&t=电量计 -- 新国标安全时间与保护记录系统架构"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E7%94%B5%E9%87%8F%E8%AE%A1%E6%96%B0%E5%9B%BD%E6%A0%87%E5%AE%89%E5%85%A8%E6%97%B6%E9%97%B4%E4%B8%8E%E4%BF%9D%E6%8A%A4%E8%AE%B0%E5%BD%95%E7%B3%BB%E7%BB%9F%E6%9E%B6%E6%9E%84"><span class="toc-number">1.</span> <span class="toc-text">电量计新国标安全时间与保护记录系统架构</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E6%A6%82%E8%BF%B0"><span class="toc-number">1.1.</span> <span class="toc-text">1. 概述</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-%E7%B3%BB%E7%BB%9F%E6%9E%B6%E6%9E%84%E6%80%BB%E8%A7%88"><span class="toc-number">1.1.1.</span> <span class="toc-text">1.1 系统架构总览</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-2-%E6%A0%B8%E5%BF%83%E9%9C%80%E6%B1%82"><span class="toc-number">1.1.2.</span> <span class="toc-text">1.2 核心需求</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-LOG-%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E8%AE%BE%E8%AE%A1"><span class="toc-number">1.2.</span> <span class="toc-text">2. LOG 数据结构设计</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-LOG-T-%E7%BB%93%E6%9E%84%E4%BD%93%E5%AE%9A%E4%B9%89"><span class="toc-number">1.2.1.</span> <span class="toc-text">2.1 LOG_T 结构体定义</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-%E5%AD%97%E6%AE%B5%E8%AF%B4%E6%98%8E"><span class="toc-number">1.2.2.</span> <span class="toc-text">2.2 字段说明</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-Safety-Status-%E7%BC%96%E7%A0%81%E8%A1%A8"><span class="toc-number">1.2.3.</span> <span class="toc-text">2.3 Safety Status 编码表</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-%E5%AE%89%E5%85%A8%E4%BA%8B%E4%BB%B6%E6%A3%80%E6%B5%8B%E6%9C%BA%E5%88%B6"><span class="toc-number">1.3.</span> <span class="toc-text">3. 安全事件检测机制</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E4%BA%8B%E4%BB%B6%E8%A7%A6%E5%8F%91%E6%B5%81%E7%A8%8B%E5%9B%BE"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 事件触发流程图</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E5%90%84%E7%B1%BB%E4%BA%8B%E4%BB%B6%E6%A3%80%E6%B5%8B%E6%96%B9%E5%BC%8F"><span class="toc-number">1.3.2.</span> <span class="toc-text">3.2 各类事件检测方式</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#3-2-1-%E7%A1%AC%E4%BB%B6%E6%A3%80%E6%B5%8B%E4%BA%8B%E4%BB%B6-OV-UV-OT-UT"><span class="toc-number">1.3.2.1.</span> <span class="toc-text">3.2.1 硬件检测事件 (OV&#x2F;UV&#x2F;OT&#x2F;UT)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-2-2-%E8%BD%AF%E4%BB%B6%E6%A3%80%E6%B5%8B%E4%BA%8B%E4%BB%B6-OCC-OCD"><span class="toc-number">1.3.2.2.</span> <span class="toc-text">3.2.2 软件检测事件 (OCC&#x2F;OCD)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-2-3-%E7%9F%AD%E8%B7%AF%E5%A4%8D%E4%BD%8D%E4%BA%8B%E4%BB%B6-SC"><span class="toc-number">1.3.2.3.</span> <span class="toc-text">3.2.3 短路复位事件 (SC)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-2-4-%E5%86%85%E7%9F%AD%E8%B7%AF%E6%A3%80%E6%B5%8B%E4%BA%8B%E4%BB%B6-ISC"><span class="toc-number">1.3.2.4.</span> <span class="toc-text">3.2.4 内短路检测事件 (ISC)</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-%E5%85%85%E6%94%BE%E7%94%B5%E7%8A%B6%E6%80%81%E6%8D%95%E8%8E%B7%E6%9C%BA%E5%88%B6"><span class="toc-number">1.3.3.</span> <span class="toc-text">3.3 充放电状态捕获机制</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-Flash-%E5%AD%98%E5%82%A8%E8%AE%BE%E8%AE%A1"><span class="toc-number">1.4.</span> <span class="toc-text">4. Flash 存储设计</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-%E5%AD%98%E5%82%A8%E5%8C%BA%E5%9F%9F%E8%A7%84%E5%88%92"><span class="toc-number">1.4.1.</span> <span class="toc-text">4.1 存储区域规划</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-%E5%BE%AA%E7%8E%AF%E5%86%99%E5%85%A5%E7%AD%96%E7%95%A5"><span class="toc-number">1.4.2.</span> <span class="toc-text">4.2 循环写入策略</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-LOG-%E8%AF%BB%E5%8F%96%E6%8E%A5%E5%8F%A3"><span class="toc-number">1.4.3.</span> <span class="toc-text">4.3 LOG 读取接口</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-%E4%B8%BB%E6%9C%BA%E9%A9%B1%E5%8A%A8%E6%8E%A5%E5%8F%A3"><span class="toc-number">1.5.</span> <span class="toc-text">5. 主机驱动接口</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-SBS-%E5%AF%84%E5%AD%98%E5%99%A8%E5%AE%9A%E4%B9%89"><span class="toc-number">1.5.1.</span> <span class="toc-text">5.1 SBS 寄存器定义</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E9%A9%B1%E5%8A%A8%E4%BB%A3%E7%A0%81%E7%A4%BA%E4%BE%8B"><span class="toc-number">1.5.2.</span> <span class="toc-text">5.2 驱动代码示例</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#5-2-1-%E8%8E%B7%E5%8F%96%E6%9C%80%E6%96%B0%E6%95%85%E9%9A%9C%E8%AE%B0%E5%BD%95"><span class="toc-number">1.5.2.1.</span> <span class="toc-text">5.2.1 获取最新故障记录</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#5-2-2-%E6%8C%89%E7%B4%A2%E5%BC%95%E6%9F%A5%E8%AF%A2%E5%8E%86%E5%8F%B2%E8%AE%B0%E5%BD%95"><span class="toc-number">1.5.2.2.</span> <span class="toc-text">5.2.2 按索引查询历史记录</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#5-2-3-GPIO-%E4%B8%AD%E6%96%AD%E5%A4%84%E7%90%86"><span class="toc-number">1.5.2.3.</span> <span class="toc-text">5.2.3 GPIO 中断处理</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-%E4%B8%BB%E6%9C%BA%E7%AB%AF%E4%BD%BF%E7%94%A8%E7%A4%BA%E4%BE%8B"><span class="toc-number">1.5.3.</span> <span class="toc-text">5.3 主机端使用示例</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6-%E6%97%B6%E9%97%B4%E6%88%B3%E7%B3%BB%E7%BB%9F"><span class="toc-number">1.6.</span> <span class="toc-text">6. 时间戳系统</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E6%97%B6%E9%97%B4%E5%9F%BA%E5%87%86"><span class="toc-number">1.6.1.</span> <span class="toc-text">6.1 时间基准</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E6%97%B6%E9%97%B4%E5%90%8C%E6%AD%A5%E6%9C%BA%E5%88%B6"><span class="toc-number">1.6.2.</span> <span class="toc-text">6.2 时间同步机制</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E6%97%B6%E9%97%B4%E7%94%A8%E9%80%94"><span class="toc-number">1.6.3.</span> <span class="toc-text">6.3 时间用途</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#7-%E7%B3%BB%E7%BB%9F%E5%8F%AF%E9%9D%A0%E6%80%A7%E8%AE%BE%E8%AE%A1"><span class="toc-number">1.7.</span> <span class="toc-text">7. 系统可靠性设计</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#7-1-%E9%80%9A%E4%BF%A1%E6%A0%A1%E9%AA%8C"><span class="toc-number">1.7.1.</span> <span class="toc-text">7.1 通信校验</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-2-%E9%87%8D%E8%AF%95%E6%9C%BA%E5%88%B6"><span class="toc-number">1.7.2.</span> <span class="toc-text">7.2 重试机制</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-3-%E6%95%B0%E6%8D%AE%E5%AE%8C%E6%95%B4%E6%80%A7"><span class="toc-number">1.7.3.</span> <span class="toc-text">7.3 数据完整性</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#8-%E6%89%A9%E5%B1%95%E4%B8%8E%E4%BC%98%E5%8C%96%E5%BB%BA%E8%AE%AE"><span class="toc-number">1.8.</span> <span class="toc-text">8. 扩展与优化建议</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#8-1-%E5%AD%98%E5%82%A8%E5%AE%B9%E9%87%8F%E6%89%A9%E5%B1%95"><span class="toc-number">1.8.1.</span> <span class="toc-text">8.1 存储容量扩展</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8-2-%E4%BA%8B%E4%BB%B6%E4%BC%98%E5%85%88%E7%BA%A7"><span class="toc-number">1.8.2.</span> <span class="toc-text">8.2 事件优先级</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8-3-%E4%B8%BB%E6%9C%BA%E7%AB%AF%E7%BC%93%E5%AD%98"><span class="toc-number">1.8.3.</span> <span class="toc-text">8.3 主机端缓存</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#9-%E6%80%BB%E7%BB%93"><span class="toc-number">1.9.</span> <span class="toc-text">9. 总结</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%99%84%E5%BD%95-A-%E7%9B%B8%E5%85%B3%E6%96%87%E4%BB%B6%E6%B8%85%E5%8D%95"><span class="toc-number">1.10.</span> <span class="toc-text">附录 A: 相关文件清单</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%99%84%E5%BD%95-B-%E4%BF%AE%E8%AE%A2%E5%8E%86%E5%8F%B2"><span class="toc-number">1.11.</span> <span class="toc-text">附录 B: 修订历史</span></a></li></ol></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        电量计 -- 新国标安全时间与保护记录系统架构
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">cursorhu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2026-03-25T07:50:54.000Z" class="dt-published" itemprop="datePublished">2026-03-25</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fa-solid fa-archive"></i>
+        <a class="category-link" href="/categories/%E7%94%B5%E9%87%8F%E8%AE%A1/">电量计</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/%E7%94%B5%E9%87%8F%E8%AE%A1/" rel="tag">电量计</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <h1 id="电量计新国标安全时间与保护记录系统架构"><a href="#电量计新国标安全时间与保护记录系统架构" class="headerlink" title="电量计新国标安全时间与保护记录系统架构"></a>电量计新国标安全时间与保护记录系统架构</h1><h2 id="1-概述"><a href="#1-概述" class="headerlink" title="1. 概述"></a>1. 概述</h2><p>本文档系统说明基于 BST85226 电量计芯片的新国标安全时间和保护记录功能的系统架构设计。该系统实现了电池安全事件的实时检测、状态记录、Flash 持久化存储以及主机端数据获取的完整闭环。</p>
+<h3 id="1-1-系统架构总览"><a href="#1-1-系统架构总览" class="headerlink" title="1.1 系统架构总览"></a>1.1 系统架构总览</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                           系统架构图                                      │</span><br><span class="line">├─────────────────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                                          │</span><br><span class="line">│  ┌──────────────────┐     I2C/SMBus      ┌──────────────────────────┐   │</span><br><span class="line">│  │   主机 MCU        │◄──────────────────►│   BST85226 电量计        │   │</span><br><span class="line">│  │  (dev_bst7001.c) │     + PEC校验       │   (Firmware)            │   │</span><br><span class="line">│  │                  │                     │                          │   │</span><br><span class="line">│  │  ┌────────────┐  │     GPIO INT        │  ┌────────────────────┐  │   │</span><br><span class="line">│  │  │ 故障查询   │  │◄────────────────────│  │  保护检测模块      │  │   │</span><br><span class="line">│  │  │ SBS 0x8D   │  │   下降沿触发         │  │  (protect_handle)  │  │   │</span><br><span class="line">│  │  │ SBS 0x90   │  │                     │  └────────────────────┘  │   │</span><br><span class="line">│  │  └────────────┘  │                     │           │              │   │</span><br><span class="line">│  └──────────────────┘                     │           ▼              │   │</span><br><span class="line">│                                           │  ┌────────────────────┐  │   │</span><br><span class="line">│                                           │  │  LOG 记录模块      │  │   │</span><br><span class="line">│                                           │  │  (update_log_data) │  │   │</span><br><span class="line">│                                           │  └────────────────────┘  │   │</span><br><span class="line">│                                           │           │              │   │</span><br><span class="line">│                                           │           ▼              │   │</span><br><span class="line">│                                           │  ┌────────────────────┐  │   │</span><br><span class="line">│                                           │  │  Flash 存储        │  │   │</span><br><span class="line">│                                           │  │  (21KB 循环存储)   │  │   │</span><br><span class="line">│                                           │  └────────────────────┘  │   │</span><br><span class="line">│                                           └──────────────────────────┘   │</span><br><span class="line">└─────────────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<h3 id="1-2-核心需求"><a href="#1-2-核心需求" class="headerlink" title="1.2 核心需求"></a>1.2 核心需求</h3><p>根据新国标要求，电量计需要：</p>
+<ul>
+<li>存储 4800 条异常记录（电芯最大 1200 循环 × 4 条异常记录）</li>
+<li>记录异常类型、触发时间、异常数据、充放电状态、触发电芯 ID</li>
+<li>支持主机按索引查询历史记录</li>
+</ul>
+<hr>
+<h2 id="2-LOG-数据结构设计"><a href="#2-LOG-数据结构设计" class="headerlink" title="2. LOG 数据结构设计"></a>2. LOG 数据结构设计</h2><h3 id="2-1-LOG-T-结构体定义"><a href="#2-1-LOG-T-结构体定义" class="headerlink" title="2.1 LOG_T 结构体定义"></a>2.1 LOG_T 结构体定义</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line">    <span class="type">uint16_t</span> logindex:<span class="number">14</span>;      <span class="comment">// LOG索引: 最大16383, 足够128KB/8bytes=16384条</span></span><br><span class="line">    <span class="type">uint16_t</span> charge_status:<span class="number">2</span>;  <span class="comment">// 充放电状态: 0-放电, 1-充电, 2-空闲</span></span><br><span class="line">    <span class="type">uint16_t</span> raw:<span class="number">16</span>;           <span class="comment">// 原始数据: OV电压/UV电压/OT温度/UT温度/OC电流/SC电流/ISC电流</span></span><br><span class="line">    <span class="type">uint32_t</span> timefw:<span class="number">24</span>;        <span class="comment">// 时间戳: 单位分钟, 基准2025-01-01 00:00, 最大31.92年</span></span><br><span class="line">    <span class="type">uint32_t</span> safety_status:<span class="number">4</span>;  <span class="comment">// 安全状态: 0-OV, 1-UV, 2-OT, 3-UT, 4-OCC, 5-OCD, 6-SC, 7-ISC</span></span><br><span class="line">    <span class="type">uint32_t</span> cell_id:<span class="number">4</span>;        <span class="comment">// 电芯ID: OV/UV时记录触发的电芯(1-cell1, 2-cell2)</span></span><br><span class="line">&#125; LOG_T;</span><br></pre></td></tr></table></figure>
+
+<p><strong>结构体大小</strong>：8 字节（紧凑设计，满足存储效率要求）</p>
+<h3 id="2-2-字段说明"><a href="#2-2-字段说明" class="headerlink" title="2.2 字段说明"></a>2.2 字段说明</h3><table>
+<thead>
+<tr>
+<th>字段</th>
+<th>位宽</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>logindex</code></td>
+<td>14 bits</td>
+<td>日志索引，从0开始递增，支持循环覆盖</td>
+</tr>
+<tr>
+<td><code>charge_status</code></td>
+<td>2 bits</td>
+<td>故障发生时的充放电状态</td>
+</tr>
+<tr>
+<td><code>raw</code></td>
+<td>16 bits</td>
+<td>故障原始数据（电压mV&#x2F;温度℃&#x2F;电流mA）</td>
+</tr>
+<tr>
+<td><code>timefw</code></td>
+<td>24 bits</td>
+<td>相对时间戳（分钟），最大约31.92年</td>
+</tr>
+<tr>
+<td><code>safety_status</code></td>
+<td>4 bits</td>
+<td>安全事件类型编码</td>
+</tr>
+<tr>
+<td><code>cell_id</code></td>
+<td>4 bits</td>
+<td>OV&#x2F;UV时标识触发的电芯编号</td>
+</tr>
+</tbody></table>
+<h3 id="2-3-Safety-Status-编码表"><a href="#2-3-Safety-Status-编码表" class="headerlink" title="2.3 Safety Status 编码表"></a>2.3 Safety Status 编码表</h3><table>
+<thead>
+<tr>
+<th align="center">编码</th>
+<th>事件类型</th>
+<th>raw 字段含义</th>
+<th>cell_id 含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">0x01</td>
+<td>OV (过压)</td>
+<td>触发电芯电压 (mV)</td>
+<td>1&#x3D;Cell1, 2&#x3D;Cell2</td>
+</tr>
+<tr>
+<td align="center">0x02</td>
+<td>UV (欠压)</td>
+<td>触发电芯电压 (mV)</td>
+<td>1&#x3D;Cell1, 2&#x3D;Cell2</td>
+</tr>
+<tr>
+<td align="center">0x03</td>
+<td>OT (过温)</td>
+<td>温度 (℃)</td>
+<td>0 (不适用)</td>
+</tr>
+<tr>
+<td align="center">0x04</td>
+<td>UT (欠温)</td>
+<td>温度 (℃)</td>
+<td>0 (不适用)</td>
+</tr>
+<tr>
+<td align="center">0x05</td>
+<td>OCC&#x2F;OCD (过流)</td>
+<td>电流 (mA)</td>
+<td>0 (不适用)</td>
+</tr>
+<tr>
+<td align="center">0x06</td>
+<td>SC (短路)</td>
+<td>电流 (mA)</td>
+<td>0 (不适用)</td>
+</tr>
+<tr>
+<td align="center">0x07</td>
+<td>ISC (内短路)</td>
+<td>漏电流 (mA)</td>
+<td>0 (不适用)</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="3-安全事件检测机制"><a href="#3-安全事件检测机制" class="headerlink" title="3. 安全事件检测机制"></a>3. 安全事件检测机制</h2><h3 id="3-1-事件触发流程图"><a href="#3-1-事件触发流程图" class="headerlink" title="3.1 事件触发流程图"></a>3.1 事件触发流程图</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                    Safety Event 触发与记录流程                           │</span><br><span class="line">├─────────────────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                                          │</span><br><span class="line">│  ┌─────────────┐                                                        │</span><br><span class="line">│  │ 硬件检测    │  OV/UV/OT/UT (DFE 寄存器)                              │</span><br><span class="line">│  └──────┬──────┘                                                        │</span><br><span class="line">│         │                                                                │</span><br><span class="line">│         ▼                                                                │</span><br><span class="line">│  ┌─────────────┐     ┌─────────────┐                                    │</span><br><span class="line">│  │ protect_    │────►│ fault_imode │  保存当前充放电状态                 │</span><br><span class="line">│  │ handle()    │     │ = stm_check │  (在MOS关闭前捕获)                  │</span><br><span class="line">│  └──────┬──────┘     │ _imode()    │                                    │</span><br><span class="line">│         │            └─────────────┘                                    │</span><br><span class="line">│         ▼                                                                │</span><br><span class="line">│  ┌─────────────┐                                                        │</span><br><span class="line">│  │ update_log  │  设置标志位                                            │</span><br><span class="line">│  │ = 1         │                                                        │</span><br><span class="line">│  └──────┬──────┘                                                        │</span><br><span class="line">│         │                                                                │</span><br><span class="line">│         ▼                                                                │</span><br><span class="line">│  ┌─────────────┐                                                        │</span><br><span class="line">│  │ 关闭 MOS    │  Set_TXGPIO(0) 保护电路                                │</span><br><span class="line">│  └──────┬──────┘                                                        │</span><br><span class="line">│         │                                                                │</span><br><span class="line">│         ▼  (下一轮 mainloop)                                            │</span><br><span class="line">│  ┌─────────────┐                                                        │</span><br><span class="line">│  │ update_log_ │  检测 safe_event，记录到 LOG_T                         │</span><br><span class="line">│  │ data(1)     │  使用之前保存的 fault_imode                            │</span><br><span class="line">│  └──────┬──────┘                                                        │</span><br><span class="line">│         │                                                                │</span><br><span class="line">│         ▼                                                                │</span><br><span class="line">│  ┌─────────────┐                                                        │</span><br><span class="line">│  │ write_log_  │  写入 Flash (循环存储)                                 │</span><br><span class="line">│  │ into_flash()│                                                        │</span><br><span class="line">│  └──────┬──────┘                                                        │</span><br><span class="line">│         │                                                                │</span><br><span class="line">│         ▼                                                                │</span><br><span class="line">│  ┌─────────────┐                                                        │</span><br><span class="line">│  │ INT GPIO    │  下降沿通知主机有新故障                                │</span><br><span class="line">│  │ 触发        │                                                        │</span><br><span class="line">│  └─────────────┘                                                        │</span><br><span class="line">│                                                                          │</span><br><span class="line">└─────────────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-2-各类事件检测方式"><a href="#3-2-各类事件检测方式" class="headerlink" title="3.2 各类事件检测方式"></a>3.2 各类事件检测方式</h3><h4 id="3-2-1-硬件检测事件-OV-UV-OT-UT"><a href="#3-2-1-硬件检测事件-OV-UV-OT-UT" class="headerlink" title="3.2.1 硬件检测事件 (OV&#x2F;UV&#x2F;OT&#x2F;UT)"></a>3.2.1 硬件检测事件 (OV&#x2F;UV&#x2F;OT&#x2F;UT)</h4><p>这些事件由 DFE (Digital Front End) 硬件自动检测：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// protect_handle() 函数中的检测逻辑</span></span><br><span class="line"><span class="keyword">if</span> (hw_prot_new &amp; GSTATUS_PROT_HWOVCELL1) &#123;</span><br><span class="line">    hw_prot_status.cell1_ov_status = <span class="number">1</span>;</span><br><span class="line">    need_close_mos = <span class="number">1</span>;</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">if</span> (hw_prot_new &amp; GSTATUS_PROT_HWOVCELL2) &#123;</span><br><span class="line">    hw_prot_status.cell2_ov_status = <span class="number">1</span>;</span><br><span class="line">    need_close_mos = <span class="number">1</span>;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// ... UV/OT/UT 类似</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>特点</strong>：</p>
+<ul>
+<li>硬件实时检测，响应速度快</li>
+<li>通过 DFE STATUS 寄存器读取状态</li>
+<li>触发后立即关闭 MOS 保护电路</li>
+</ul>
+<h4 id="3-2-2-软件检测事件-OCC-OCD"><a href="#3-2-2-软件检测事件-OCC-OCD" class="headerlink" title="3.2.2 软件检测事件 (OCC&#x2F;OCD)"></a>3.2.2 软件检测事件 (OCC&#x2F;OCD)</h4><p>过流保护由软件算法判断：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// protect_handle() 函数中的软件过流检测</span></span><br><span class="line"><span class="keyword">if</span> (occ_prot.status == <span class="number">1</span> &amp;&amp; occ_status_prev == <span class="number">0</span>) &#123;</span><br><span class="line">    need_close_mos = <span class="number">1</span>;  <span class="comment">// 新触发OCC</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">if</span> (ocd_prot.status == <span class="number">1</span> &amp;&amp; ocd_status_prev == <span class="number">0</span>) &#123;</span><br><span class="line">    need_close_mos = <span class="number">1</span>;  <span class="comment">// 新触发OCD</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>特点</strong>：</p>
+<ul>
+<li>软件定时采样电流并判断</li>
+<li>支持可配置的阈值和延时</li>
+<li>状态变化触发保护</li>
+</ul>
+<h4 id="3-2-3-短路复位事件-SC"><a href="#3-2-3-短路复位事件-SC" class="headerlink" title="3.2.3 短路复位事件 (SC)"></a>3.2.3 短路复位事件 (SC)</h4><p>SC 是硬件级保护，触发后系统复位：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 系统启动时检测 SC 标志</span></span><br><span class="line">log_init();</span><br><span class="line"></span><br><span class="line"><span class="comment">// SC检测：从复位标志寄存器读取</span></span><br><span class="line"><span class="type">uint16_t</span> rst_status = Chip_BLK_Get_Buffer(CH_BLANK2);</span><br><span class="line"><span class="keyword">if</span> (rst_status &amp; <span class="number">0x08</span>) &#123;  <span class="comment">// SC flag</span></span><br><span class="line">    fault_imode = STM_IMODE_INDSG;  <span class="comment">// SC通常发生在放电时</span></span><br><span class="line">    update_log = <span class="number">1</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>特点</strong>：</p>
+<ul>
+<li>硬件保护触发系统复位</li>
+<li>复位后从寄存器恢复 SC 标志</li>
+<li>无法获取实际发生时的 charge_status，推断为放电状态</li>
+</ul>
+<h4 id="3-2-4-内短路检测事件-ISC"><a href="#3-2-4-内短路检测事件-ISC" class="headerlink" title="3.2.4 内短路检测事件 (ISC)"></a>3.2.4 内短路检测事件 (ISC)</h4><p>内短路通过 ISRW1 算法检测：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// mainloop 中的 ISC 检测</span></span><br><span class="line"><span class="meta">#<span class="keyword">if</span> __ISRW1_ENABLE__</span></span><br><span class="line">isrw1_integration_update();</span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">static</span> <span class="type">uint8_t</span> isc_alert_prev = <span class="number">0</span>;</span><br><span class="line">    <span class="type">uint32_t</span> isc_result = isrw1_integration_get_alert_result();</span><br><span class="line">    <span class="type">uint8_t</span> isc_alert_now = isc_result &amp; <span class="number">0xFF</span>;  <span class="comment">// severity level</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 新检测到ISC alert时，保存charge状态并触发log记录</span></span><br><span class="line">    <span class="keyword">if</span> (isc_alert_now &gt; <span class="number">0</span> &amp;&amp; isc_alert_prev == <span class="number">0</span>) &#123;</span><br><span class="line">        fault_imode = stm_check_imode();</span><br><span class="line">        update_log = <span class="number">1</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    isc_alert_prev = isc_alert_now;</span><br><span class="line">&#125;</span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br></pre></td></tr></table></figure>
+
+<p><strong>特点</strong>：</p>
+<ul>
+<li>基于电压-库仑法检测内部漏电流</li>
+<li>分级告警 (mild&#x2F;moderate&#x2F;severe)</li>
+<li>周期性检测，检测到新告警时记录</li>
+</ul>
+<h3 id="3-3-充放电状态捕获机制"><a href="#3-3-充放电状态捕获机制" class="headerlink" title="3.3 充放电状态捕获机制"></a>3.3 充放电状态捕获机制</h3><p>为保证记录的是<strong>故障发生时</strong>的充放电状态，而非<strong>写入 LOG 时</strong>的状态：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 全局变量保存故障发生时的状态</span></span><br><span class="line">STM_IMODE_T fault_imode = STM_IMODE_IDLE;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 保护触发时立即保存状态（在 MOS 关闭前）</span></span><br><span class="line"><span class="keyword">if</span> (need_close_mos) &#123;</span><br><span class="line">    fault_imode = stm_check_imode();  <span class="comment">// 捕获当前状态</span></span><br><span class="line">    update_log = <span class="number">1</span>;</span><br><span class="line">    Set_TXGPIO(<span class="number">0</span>);  <span class="comment">// 然后才关闭 MOS</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// stm_check_imode() 返回值映射</span></span><br><span class="line"><span class="comment">// STM_IMODE_INDSG (-1) → charge_status = 0 (放电)</span></span><br><span class="line"><span class="comment">// STM_IMODE_INCHG (1)  → charge_status = 1 (充电)</span></span><br><span class="line"><span class="comment">// STM_IMODE_IDLE (0)   → charge_status = 2 (空闲)</span></span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="4-Flash-存储设计"><a href="#4-Flash-存储设计" class="headerlink" title="4. Flash 存储设计"></a>4. Flash 存储设计</h2><h3 id="4-1-存储区域规划"><a href="#4-1-存储区域规划" class="headerlink" title="4.1 存储区域规划"></a>4.1 存储区域规划</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                    Flash 存储布局 (64KB)                         │</span><br><span class="line">├─────────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                                  │</span><br><span class="line">│  Page 0-32:   Bootloader &amp; Firmware Code                        │</span><br><span class="line">│  ────────────────────────────────────────────────────────────── │</span><br><span class="line">│  Page 33:     持久化数据区 (1KB)                                 │</span><br><span class="line">│               - 激活信息 (activate_time, lifetime_en)            │</span><br><span class="line">│               - 校准数据 (cell offset, current slope)            │</span><br><span class="line">│               - 累计放电容量 (agemah)                            │</span><br><span class="line">│  ────────────────────────────────────────────────────────────── │</span><br><span class="line">│  Page 34-52:  LOG1 区域 (19KB)                                   │</span><br><span class="line">│               - 19 × 1024 / 8 = 2432 条记录                      │</span><br><span class="line">│  ────────────────────────────────────────────────────────────── │</span><br><span class="line">│  Page 53-60:  Reserved                                          │</span><br><span class="line">│  ────────────────────────────────────────────────────────────── │</span><br><span class="line">│  Page 61-62:  LOG2 区域 (2KB)                                    │</span><br><span class="line">│               - 2 × 1024 / 8 = 256 条记录                        │</span><br><span class="line">│  ────────────────────────────────────────────────────────────── │</span><br><span class="line">│  Page 63:     Reserved                                          │</span><br><span class="line">│                                                                  │</span><br><span class="line">│  总 LOG 容量: 21KB / 8B = 2688 条 (满足 4800 条需求需扩展)      │</span><br><span class="line">└─────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-2-循环写入策略"><a href="#4-2-循环写入策略" class="headerlink" title="4.2 循环写入策略"></a>4.2 循环写入策略</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> <span class="title function_">write_log_into_flash</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">// 计算循环位置</span></span><br><span class="line">    <span class="type">uint16_t</span> total_log_capacity = FLASH_LOG_DATA_SIZE / <span class="keyword">sizeof</span>(LOG_T);</span><br><span class="line">    <span class="type">uint16_t</span> circular_index = log_p-&gt;logindex % total_log_capacity;</span><br><span class="line">    <span class="type">uint16_t</span> log1_capacity = FLASH_LOG1_DATA_SIZE / <span class="keyword">sizeof</span>(LOG_T);</span><br><span class="line">    <span class="type">uint16_t</span> area_offset;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (circular_index &lt; log1_capacity) &#123;</span><br><span class="line">        <span class="comment">// 在 LOG1 区域 (pages 34-52)</span></span><br><span class="line">        page_log_now = PAGE_LOG1_START;</span><br><span class="line">        area_offset = circular_index * <span class="keyword">sizeof</span>(LOG_T);</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">// 在 LOG2 区域 (pages 61-62)</span></span><br><span class="line">        page_log_now = PAGE_LOG2_START;</span><br><span class="line">        area_offset = (circular_index - log1_capacity) * <span class="keyword">sizeof</span>(LOG_T);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 计算页内偏移</span></span><br><span class="line">    <span class="type">uint16_t</span> page_offset = area_offset / FLASH_PAGE_SIZE;</span><br><span class="line">    <span class="type">uint16_t</span> offset_in_page = area_offset % FLASH_PAGE_SIZE;</span><br><span class="line">    page_log_now += page_offset;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 页边界自动擦除</span></span><br><span class="line">    <span class="keyword">if</span> (<span class="number">0</span> == offset_in_page) &#123;</span><br><span class="line">        eflash_erase_page(page_log_now);</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    eflash_mem_to_flash(page_log_now, offset_in_page, <span class="keyword">sizeof</span>(LOG_T), (<span class="type">uint8_t</span> *)log_mem);</span><br><span class="line">    log_p-&gt;logindex++;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>设计要点</strong>：</p>
+<ul>
+<li><code>logindex</code> 从 0 开始，持续递增</li>
+<li>使用取模运算实现循环覆盖</li>
+<li>页边界自动擦除，无需预读保护</li>
+<li>支持跨区域连续存储</li>
+</ul>
+<h3 id="4-3-LOG-读取接口"><a href="#4-3-LOG-读取接口" class="headerlink" title="4.3 LOG 读取接口"></a>4.3 LOG 读取接口</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int16_t</span> <span class="title function_">read_log_by_index</span><span class="params">(<span class="type">uint16_t</span> logindex, LOG_T *log_data)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">// 检查 logindex 是否在有效范围内</span></span><br><span class="line">    <span class="keyword">if</span> (log_p-&gt;logindex &gt; total_log_capacity) &#123;</span><br><span class="line">        <span class="type">uint16_t</span> oldest_valid = log_p-&gt;logindex - total_log_capacity;</span><br><span class="line">        <span class="keyword">if</span> (logindex &lt; oldest_valid) &#123;</span><br><span class="line">            <span class="keyword">return</span> <span class="number">-1</span>;  <span class="comment">// 已被循环覆盖</span></span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 计算物理位置并读取</span></span><br><span class="line">    <span class="type">uint16_t</span> circular_index = logindex % total_log_capacity;</span><br><span class="line">    <span class="comment">// ... 读取 Flash 数据 ...</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 验证 logindex 匹配</span></span><br><span class="line">    <span class="keyword">if</span> (log_data-&gt;logindex != logindex) &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="number">-1</span>;  <span class="comment">// 数据不匹配</span></span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="5-主机驱动接口"><a href="#5-主机驱动接口" class="headerlink" title="5. 主机驱动接口"></a>5. 主机驱动接口</h2><h3 id="5-1-SBS-寄存器定义"><a href="#5-1-SBS-寄存器定义" class="headerlink" title="5.1 SBS 寄存器定义"></a>5.1 SBS 寄存器定义</h3><table>
+<thead>
+<tr>
+<th align="center">寄存器地址</th>
+<th>名称</th>
+<th align="center">读写</th>
+<th align="center">长度</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">0x8D</td>
+<td>LATESTLOG</td>
+<td align="center">R</td>
+<td align="center">8B</td>
+<td>读取最新一条 LOG 记录</td>
+</tr>
+<tr>
+<td align="center">0x90</td>
+<td>LOGBYINDEX</td>
+<td align="center">R&#x2F;W</td>
+<td align="center">8B</td>
+<td>按索引查询 LOG (写2B索引，读8B数据)</td>
+</tr>
+<tr>
+<td align="center">0x1F</td>
+<td>SAFETYSTATUS</td>
+<td align="center">R</td>
+<td align="center">2B</td>
+<td>当前安全状态标志</td>
+</tr>
+</tbody></table>
+<h3 id="5-2-驱动代码示例"><a href="#5-2-驱动代码示例" class="headerlink" title="5.2 驱动代码示例"></a>5.2 驱动代码示例</h3><h4 id="5-2-1-获取最新故障记录"><a href="#5-2-1-获取最新故障记录" class="headerlink" title="5.2.1 获取最新故障记录"></a>5.2.1 获取最新故障记录</h4><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * @brief 获取最新的电池异常事件</span></span><br><span class="line"><span class="comment"> * @param[out] fault_record 指向故障记录结构体的指针</span></span><br><span class="line"><span class="comment"> * @return true 成功获取, false 失败</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="type">static</span> <span class="type">bool</span> <span class="title function_">batt_get_latest_fault</span><span class="params">(<span class="type">dev_id_t</span> id, <span class="type">fault_record_t</span>* fault_record)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">int32_t</span> ret = <span class="number">0</span>;</span><br><span class="line">    <span class="type">uint8_t</span> tempBuff[<span class="number">8</span>] = &#123;<span class="number">0</span>&#125;;</span><br><span class="line"></span><br><span class="line">    ret = BST7001_read_bytes(id, SBS8D_LATESTLOG, tempBuff, <span class="number">8</span>);</span><br><span class="line">    <span class="keyword">if</span> (ret &lt; <span class="number">0</span>) <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 解析 LOG_T 结构 (8 字节)</span></span><br><span class="line">    <span class="comment">// Byte0-1: logindex(14b) + charge_status(2b)</span></span><br><span class="line">    <span class="comment">// Byte2-3: raw(16b)</span></span><br><span class="line">    <span class="comment">// Byte4-6: timefw(24b)</span></span><br><span class="line">    <span class="comment">// Byte7: safety_status(4b) + cell_id(4b)</span></span><br><span class="line">    </span><br><span class="line">    <span class="type">uint16_t</span> word0 = (<span class="type">uint16_t</span>)tempBuff[<span class="number">0</span>] | ((<span class="type">uint16_t</span>)tempBuff[<span class="number">1</span>] &lt;&lt; <span class="number">8</span>);</span><br><span class="line">    fault_record-&gt;logindex      = word0 &amp; <span class="number">0x3FFF</span>;           <span class="comment">// bit0-13</span></span><br><span class="line">    fault_record-&gt;charge_status = (word0 &gt;&gt; <span class="number">14</span>) &amp; <span class="number">0x03</span>;     <span class="comment">// bit14-15</span></span><br><span class="line">    fault_record-&gt;rawData       = (<span class="type">int16_t</span>)((<span class="type">uint16_t</span>)tempBuff[<span class="number">2</span>] | ((<span class="type">uint16_t</span>)tempBuff[<span class="number">3</span>] &lt;&lt; <span class="number">8</span>));</span><br><span class="line">    fault_record-&gt;timefw        = (<span class="type">uint32_t</span>)tempBuff[<span class="number">4</span>] | ((<span class="type">uint32_t</span>)tempBuff[<span class="number">5</span>] &lt;&lt; <span class="number">8</span>) | ((<span class="type">uint32_t</span>)tempBuff[<span class="number">6</span>] &lt;&lt; <span class="number">16</span>);</span><br><span class="line">    fault_record-&gt;safetystatus  = tempBuff[<span class="number">7</span>] &amp; <span class="number">0x0F</span>;        <span class="comment">// bit0-3: safety_status</span></span><br><span class="line">    fault_record-&gt;cellID        = (tempBuff[<span class="number">7</span>] &gt;&gt; <span class="number">4</span>) &amp; <span class="number">0x0F</span>; <span class="comment">// bit4-7: cell_id</span></span><br><span class="line">    </span><br><span class="line">    <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="5-2-2-按索引查询历史记录"><a href="#5-2-2-按索引查询历史记录" class="headerlink" title="5.2.2 按索引查询历史记录"></a>5.2.2 按索引查询历史记录</h4><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * @brief 根据 logindex 获取指定的电池异常事件</span></span><br><span class="line"><span class="comment"> * @param[in] logindex 要查询的日志索引</span></span><br><span class="line"><span class="comment"> * @param[out] fault_record 查询结果</span></span><br><span class="line"><span class="comment"> * @return true 成功, false 该索引不存在或已被覆盖</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="type">static</span> <span class="type">bool</span> <span class="title function_">batt_get_fault_by_index</span><span class="params">(<span class="type">dev_id_t</span> id, <span class="type">uint16_t</span> logindex, <span class="type">fault_record_t</span>* fault_record)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">int32_t</span> ret = <span class="number">0</span>;</span><br><span class="line">    <span class="type">uint8_t</span> writeBuff[<span class="number">2</span>] = &#123;<span class="number">0</span>&#125;;</span><br><span class="line">    <span class="type">uint8_t</span> readBuff[<span class="number">8</span>] = &#123;<span class="number">0</span>&#125;;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Step 1: 写入要查询的 logindex</span></span><br><span class="line">    writeBuff[<span class="number">0</span>] = (<span class="type">uint8_t</span>)(logindex &amp; <span class="number">0xFF</span>);</span><br><span class="line">    writeBuff[<span class="number">1</span>] = (<span class="type">uint8_t</span>)((logindex &gt;&gt; <span class="number">8</span>) &amp; <span class="number">0xFF</span>);</span><br><span class="line">    ret = BST7001_write_bytes(id, SBS90_LOGBYINDEX, writeBuff, <span class="number">2</span>);</span><br><span class="line">    <span class="keyword">if</span> (ret &lt; <span class="number">0</span>) <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Step 2: 读取对应的 LOG 数据</span></span><br><span class="line">    ret = BST7001_read_bytes(id, SBS90_LOGBYINDEX, readBuff, <span class="number">8</span>);</span><br><span class="line">    <span class="keyword">if</span> (ret &lt; <span class="number">0</span>) <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Step 3: 检查数据有效性 (全 0xFF 表示无效)</span></span><br><span class="line">    <span class="keyword">if</span> (readBuff[<span class="number">0</span>] == <span class="number">0xFF</span> &amp;&amp; readBuff[<span class="number">1</span>] == <span class="number">0xFF</span> &amp;&amp; <span class="comment">/* ... */</span>) &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">false</span>;  <span class="comment">// 该 logindex 不存在</span></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Step 4: 解析数据 (同上)</span></span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">    </span><br><span class="line">    <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="5-2-3-GPIO-中断处理"><a href="#5-2-3-GPIO-中断处理" class="headerlink" title="5.2.3 GPIO 中断处理"></a>5.2.3 GPIO 中断处理</h4><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 驱动初始化时配置中断</span></span><br><span class="line">hsd-&gt;pin_int.id = IO_BST7001_INT;</span><br><span class="line">hsd-&gt;pin_int.active_val = BST7001_GPIO_ACTIVE_LOW;</span><br><span class="line">drv_io_port.quick_init(hsd-&gt;pin_int.id, GPIO_MODE_INPUT, GPIO_PULL_UP);</span><br><span class="line">drv_io_port.quick_interrupt_config(hsd-&gt;pin_int.id, EXTI_TRIGGER_FALLING, <span class="number">0x02</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 中断服务函数示例</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">BST7001_INT_IRQHandler</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">// 检测到下降沿，表示有新的安全事件</span></span><br><span class="line">    <span class="type">fault_record_t</span> fault;</span><br><span class="line">    <span class="keyword">if</span> (batt_get_latest_fault(dev_id, &amp;fault)) &#123;</span><br><span class="line">        <span class="comment">// 处理故障记录</span></span><br><span class="line">        process_battery_fault(&amp;fault);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-3-主机端使用示例"><a href="#5-3-主机端使用示例" class="headerlink" title="5.3 主机端使用示例"></a>5.3 主机端使用示例</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 1. 获取最新故障</span></span><br><span class="line"><span class="type">fault_record_t</span> latest_fault;</span><br><span class="line"><span class="keyword">if</span> (batt_get_latest_fault(id, &amp;latest_fault)) &#123;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;Latest fault: idx=%d, type=%d, time=%d min\n&quot;</span>,</span><br><span class="line">           latest_fault.logindex,</span><br><span class="line">           latest_fault.safetystatus,</span><br><span class="line">           latest_fault.timefw);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 2. 遍历所有历史记录</span></span><br><span class="line"><span class="keyword">for</span> (<span class="type">uint16_t</span> i = <span class="number">0</span>; i &lt;= latest_fault.logindex; i++) &#123;</span><br><span class="line">    <span class="type">fault_record_t</span> record;</span><br><span class="line">    <span class="keyword">if</span> (batt_get_fault_by_index(id, i, &amp;record)) &#123;</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;Log[%d]: safety=0x%X, raw=%d, charge=%d\n&quot;</span>,</span><br><span class="line">               record.logindex,</span><br><span class="line">               record.safetystatus,</span><br><span class="line">               record.rawData,</span><br><span class="line">               record.charge_status);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="6-时间戳系统"><a href="#6-时间戳系统" class="headerlink" title="6. 时间戳系统"></a>6. 时间戳系统</h2><h3 id="6-1-时间基准"><a href="#6-1-时间基准" class="headerlink" title="6.1 时间基准"></a>6.1 时间基准</h3><ul>
+<li><strong>基准时间</strong>: 2025-01-01 00:00:00</li>
+<li><strong>单位</strong>: 分钟</li>
+<li><strong>位宽</strong>: 24 bits</li>
+<li><strong>最大范围</strong>: 16,777,215 分钟 ≈ 31.92 年</li>
+</ul>
+<h3 id="6-2-时间同步机制"><a href="#6-2-时间同步机制" class="headerlink" title="6.2 时间同步机制"></a>6.2 时间同步机制</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 主机激活时下发时间戳 (通过 SBSB0 寄存器)</span></span><br><span class="line"><span class="comment">// 格式: [bit31-24: lifetime_en] [bit23-0: timefw (分钟)]</span></span><br><span class="line"></span><br><span class="line"><span class="type">void</span> <span class="title function_">log_init_activate_time</span><span class="params">(<span class="type">uint32_t</span> activate_time)</span></span><br><span class="line">&#123;</span><br><span class="line">    time_activate = activate_time;  <span class="comment">// 记录激活时间点</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> <span class="title function_">log_update_time</span><span class="params">(<span class="type">uint32_t</span> calitime)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">if</span> (calitime) &#123;</span><br><span class="line">        timefw_now = calitime &amp; <span class="number">0xFFFFFF</span>;  <span class="comment">// 校准时间</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 系统每分钟自动递增</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">log_sync_time</span><span class="params">(<span class="type">uint32_t</span> minutes)</span></span><br><span class="line">&#123;</span><br><span class="line">    timefw_now += minutes;</span><br><span class="line">    timefw_now &amp;= <span class="number">0xFFFFFF</span>;  <span class="comment">// 保持 24 位</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="6-3-时间用途"><a href="#6-3-时间用途" class="headerlink" title="6.3 时间用途"></a>6.3 时间用途</h3><ol>
+<li><strong>故障定位</strong>: 记录故障发生的精确时间点</li>
+<li><strong>寿命管理</strong>: 计算电池使用时长</li>
+<li><strong>CV 调整</strong>: 超过一定年限后自动降低充电截止电压</li>
+</ol>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 根据使用时长调整充电电压 (单位: 分钟)</span></span><br><span class="line"><span class="comment">// 1年 = 365.25天 * 24小时 * 60分钟 = 525960 分钟</span></span><br><span class="line"><span class="comment">// 2年 = 525960 * 2 = 1051920 分钟</span></span><br><span class="line"><span class="keyword">if</span> (timefw_now - time_activate &gt; <span class="number">525960</span>) &#123;    <span class="comment">// 超过1年</span></span><br><span class="line">    fg_chg_update(log_cfg, design_cv - <span class="number">100</span>, ...);  <span class="comment">// CV降低100mV</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">else</span> <span class="keyword">if</span> (timefw_now - time_activate &gt; <span class="number">1051920</span>) &#123;  <span class="comment">// 超过2年</span></span><br><span class="line">    fg_chg_update(log_cfg, design_cv - <span class="number">150</span>, ...);  <span class="comment">// CV降低150mV</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="7-系统可靠性设计"><a href="#7-系统可靠性设计" class="headerlink" title="7. 系统可靠性设计"></a>7. 系统可靠性设计</h2><h3 id="7-1-通信校验"><a href="#7-1-通信校验" class="headerlink" title="7.1 通信校验"></a>7.1 通信校验</h3><p>主机驱动采用 SMBus PEC (Packet Error Checking) 校验：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">uint8_t</span> <span class="title function_">calculate_pec_byte</span><span class="params">(<span class="type">uint8_t</span> data, <span class="type">uint8_t</span> crcin)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">uint8_t</span> crc8 = data ^ crcin;</span><br><span class="line">    <span class="keyword">for</span> (<span class="type">uint8_t</span> i = <span class="number">0</span>; i &lt; <span class="number">8</span>; i++) &#123;</span><br><span class="line">        <span class="keyword">if</span> (crc8 &amp; <span class="number">0x80</span>)</span><br><span class="line">            crc8 = (crc8 &lt;&lt; <span class="number">1</span>) ^ I2C_PEC_POLY;  <span class="comment">// 多项式 0x07</span></span><br><span class="line">        <span class="keyword">else</span></span><br><span class="line">            crc8 = (crc8 &lt;&lt; <span class="number">1</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> crc8;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="7-2-重试机制"><a href="#7-2-重试机制" class="headerlink" title="7.2 重试机制"></a>7.2 重试机制</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// I2C 通信失败时自动重试 4 次</span></span><br><span class="line"><span class="keyword">for</span> (i = <span class="number">0</span>; i &lt; <span class="number">4</span>; i++) &#123;</span><br><span class="line">    ret = dev_recv(hsd-&gt;fd_dev_ops, rxbuf, read_len + <span class="number">1</span>);</span><br><span class="line">    <span class="keyword">if</span> (ret &amp;&amp; rxbuf[read_len] == calculated_pec) &#123;</span><br><span class="line">        <span class="keyword">break</span>;  <span class="comment">// 校验通过</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="7-3-数据完整性"><a href="#7-3-数据完整性" class="headerlink" title="7.3 数据完整性"></a>7.3 数据完整性</h3><ul>
+<li>LOG 记录包含 <code>logindex</code> 用于验证数据有效性</li>
+<li>读取时比对 <code>logindex</code> 是否匹配请求的索引</li>
+<li>无效数据返回全 0xFF</li>
+</ul>
+<hr>
+<h2 id="8-扩展与优化建议"><a href="#8-扩展与优化建议" class="headerlink" title="8. 扩展与优化建议"></a>8. 扩展与优化建议</h2><h3 id="8-1-存储容量扩展"><a href="#8-1-存储容量扩展" class="headerlink" title="8.1 存储容量扩展"></a>8.1 存储容量扩展</h3><p>当前设计支持约 2688 条记录，如需满足 4800 条需求：</p>
+<ul>
+<li>方案1: 扩展 LOG2 区域或增加 LOG3 区域</li>
+<li>方案2: 压缩 LOG_T 结构（如时间精度降低）</li>
+<li>方案3: 使用外部 Flash 存储</li>
+</ul>
+<h3 id="8-2-事件优先级"><a href="#8-2-事件优先级" class="headerlink" title="8.2 事件优先级"></a>8.2 事件优先级</h3><p>建议实现事件优先级机制：</p>
+<ol>
+<li><strong>Critical</strong>: SC, ISC (立即记录)</li>
+<li><strong>High</strong>: OV, UV, OCC, OCD (立即记录)</li>
+<li><strong>Medium</strong>: OT, UT (可合并相近时间的事件)</li>
+<li><strong>Low</strong>: 周期性状态记录</li>
+</ol>
+<h3 id="8-3-主机端缓存"><a href="#8-3-主机端缓存" class="headerlink" title="8.3 主机端缓存"></a>8.3 主机端缓存</h3><p>建议主机端实现本地缓存机制：</p>
+<ul>
+<li>定期同步新增记录</li>
+<li>断电恢复后只需同步增量</li>
+<li>减少 I2C 通信开销</li>
+</ul>
+<hr>
+<h2 id="9-总结"><a href="#9-总结" class="headerlink" title="9. 总结"></a>9. 总结</h2><p>本系统实现了完整的电池安全事件检测、记录和查询功能：</p>
+<table>
+<thead>
+<tr>
+<th>功能模块</th>
+<th>实现方式</th>
+<th>关键技术</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>事件检测</td>
+<td>硬件+软件混合</td>
+<td>DFE 寄存器、软件算法</td>
+</tr>
+<tr>
+<td>状态捕获</td>
+<td>实时保存</td>
+<td>fault_imode 机制</td>
+</tr>
+<tr>
+<td>数据存储</td>
+<td>Flash 循环</td>
+<td>页边界擦除、跨区域存储</td>
+</tr>
+<tr>
+<td>主机查询</td>
+<td>SBS 接口</td>
+<td>PEC 校验、中断通知</td>
+</tr>
+<tr>
+<td>时间管理</td>
+<td>24-bit 时间戳</td>
+<td>主机校准、分钟精度</td>
+</tr>
+</tbody></table>
+<p>该设计满足新国标对电池安全记录的要求，具备良好的可靠性和扩展性。</p>
+<hr>
+<h2 id="附录-A-相关文件清单"><a href="#附录-A-相关文件清单" class="headerlink" title="附录 A: 相关文件清单"></a>附录 A: 相关文件清单</h2><table>
+<thead>
+<tr>
+<th>文件</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>flash/log.c</code></td>
+<td>LOG 模块核心实现</td>
+</tr>
+<tr>
+<td><code>flash/log.h</code></td>
+<td>LOG 数据结构定义</td>
+</tr>
+<tr>
+<td><code>user/main.c</code></td>
+<td>主循环、保护检测</td>
+</tr>
+<tr>
+<td><code>flash/stm.c</code></td>
+<td>状态机、充放电状态判断</td>
+</tr>
+<tr>
+<td><code>dev_bst7001.c</code></td>
+<td>主机 MCU 驱动</td>
+</tr>
+<tr>
+<td><code>dev_bst7001.h</code></td>
+<td>驱动接口定义</td>
+</tr>
+</tbody></table>
+<h2 id="附录-B-修订历史"><a href="#附录-B-修订历史" class="headerlink" title="附录 B: 修订历史"></a>附录 B: 修订历史</h2><table>
+<thead>
+<tr>
+<th>版本</th>
+<th>日期</th>
+<th>修改内容</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>V1.0</td>
+<td>2026-01-30</td>
+<td>初始版本</td>
+</tr>
+</tbody></table>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">首页</a></li>
+        
+          <li><a href="/about/">关于</a></li>
+        
+          <li><a href="/archives/">归档</a></li>
+        
+          <li><a href="/tags/">标签</a></li>
+        
+          <li><a href="/categories/">分类</a></li>
+        
+          <li><a href="/search/">搜索</a></li>
+        
+          <li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E7%94%B5%E9%87%8F%E8%AE%A1%E6%96%B0%E5%9B%BD%E6%A0%87%E5%AE%89%E5%85%A8%E6%97%B6%E9%97%B4%E4%B8%8E%E4%BF%9D%E6%8A%A4%E8%AE%B0%E5%BD%95%E7%B3%BB%E7%BB%9F%E6%9E%B6%E6%9E%84"><span class="toc-number">1.</span> <span class="toc-text">电量计新国标安全时间与保护记录系统架构</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E6%A6%82%E8%BF%B0"><span class="toc-number">1.1.</span> <span class="toc-text">1. 概述</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-%E7%B3%BB%E7%BB%9F%E6%9E%B6%E6%9E%84%E6%80%BB%E8%A7%88"><span class="toc-number">1.1.1.</span> <span class="toc-text">1.1 系统架构总览</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-2-%E6%A0%B8%E5%BF%83%E9%9C%80%E6%B1%82"><span class="toc-number">1.1.2.</span> <span class="toc-text">1.2 核心需求</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-LOG-%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E8%AE%BE%E8%AE%A1"><span class="toc-number">1.2.</span> <span class="toc-text">2. LOG 数据结构设计</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-LOG-T-%E7%BB%93%E6%9E%84%E4%BD%93%E5%AE%9A%E4%B9%89"><span class="toc-number">1.2.1.</span> <span class="toc-text">2.1 LOG_T 结构体定义</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-%E5%AD%97%E6%AE%B5%E8%AF%B4%E6%98%8E"><span class="toc-number">1.2.2.</span> <span class="toc-text">2.2 字段说明</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-Safety-Status-%E7%BC%96%E7%A0%81%E8%A1%A8"><span class="toc-number">1.2.3.</span> <span class="toc-text">2.3 Safety Status 编码表</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-%E5%AE%89%E5%85%A8%E4%BA%8B%E4%BB%B6%E6%A3%80%E6%B5%8B%E6%9C%BA%E5%88%B6"><span class="toc-number">1.3.</span> <span class="toc-text">3. 安全事件检测机制</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E4%BA%8B%E4%BB%B6%E8%A7%A6%E5%8F%91%E6%B5%81%E7%A8%8B%E5%9B%BE"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 事件触发流程图</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E5%90%84%E7%B1%BB%E4%BA%8B%E4%BB%B6%E6%A3%80%E6%B5%8B%E6%96%B9%E5%BC%8F"><span class="toc-number">1.3.2.</span> <span class="toc-text">3.2 各类事件检测方式</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#3-2-1-%E7%A1%AC%E4%BB%B6%E6%A3%80%E6%B5%8B%E4%BA%8B%E4%BB%B6-OV-UV-OT-UT"><span class="toc-number">1.3.2.1.</span> <span class="toc-text">3.2.1 硬件检测事件 (OV&#x2F;UV&#x2F;OT&#x2F;UT)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-2-2-%E8%BD%AF%E4%BB%B6%E6%A3%80%E6%B5%8B%E4%BA%8B%E4%BB%B6-OCC-OCD"><span class="toc-number">1.3.2.2.</span> <span class="toc-text">3.2.2 软件检测事件 (OCC&#x2F;OCD)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-2-3-%E7%9F%AD%E8%B7%AF%E5%A4%8D%E4%BD%8D%E4%BA%8B%E4%BB%B6-SC"><span class="toc-number">1.3.2.3.</span> <span class="toc-text">3.2.3 短路复位事件 (SC)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-2-4-%E5%86%85%E7%9F%AD%E8%B7%AF%E6%A3%80%E6%B5%8B%E4%BA%8B%E4%BB%B6-ISC"><span class="toc-number">1.3.2.4.</span> <span class="toc-text">3.2.4 内短路检测事件 (ISC)</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-%E5%85%85%E6%94%BE%E7%94%B5%E7%8A%B6%E6%80%81%E6%8D%95%E8%8E%B7%E6%9C%BA%E5%88%B6"><span class="toc-number">1.3.3.</span> <span class="toc-text">3.3 充放电状态捕获机制</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-Flash-%E5%AD%98%E5%82%A8%E8%AE%BE%E8%AE%A1"><span class="toc-number">1.4.</span> <span class="toc-text">4. Flash 存储设计</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-%E5%AD%98%E5%82%A8%E5%8C%BA%E5%9F%9F%E8%A7%84%E5%88%92"><span class="toc-number">1.4.1.</span> <span class="toc-text">4.1 存储区域规划</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-%E5%BE%AA%E7%8E%AF%E5%86%99%E5%85%A5%E7%AD%96%E7%95%A5"><span class="toc-number">1.4.2.</span> <span class="toc-text">4.2 循环写入策略</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-LOG-%E8%AF%BB%E5%8F%96%E6%8E%A5%E5%8F%A3"><span class="toc-number">1.4.3.</span> <span class="toc-text">4.3 LOG 读取接口</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-%E4%B8%BB%E6%9C%BA%E9%A9%B1%E5%8A%A8%E6%8E%A5%E5%8F%A3"><span class="toc-number">1.5.</span> <span class="toc-text">5. 主机驱动接口</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-SBS-%E5%AF%84%E5%AD%98%E5%99%A8%E5%AE%9A%E4%B9%89"><span class="toc-number">1.5.1.</span> <span class="toc-text">5.1 SBS 寄存器定义</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E9%A9%B1%E5%8A%A8%E4%BB%A3%E7%A0%81%E7%A4%BA%E4%BE%8B"><span class="toc-number">1.5.2.</span> <span class="toc-text">5.2 驱动代码示例</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#5-2-1-%E8%8E%B7%E5%8F%96%E6%9C%80%E6%96%B0%E6%95%85%E9%9A%9C%E8%AE%B0%E5%BD%95"><span class="toc-number">1.5.2.1.</span> <span class="toc-text">5.2.1 获取最新故障记录</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#5-2-2-%E6%8C%89%E7%B4%A2%E5%BC%95%E6%9F%A5%E8%AF%A2%E5%8E%86%E5%8F%B2%E8%AE%B0%E5%BD%95"><span class="toc-number">1.5.2.2.</span> <span class="toc-text">5.2.2 按索引查询历史记录</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#5-2-3-GPIO-%E4%B8%AD%E6%96%AD%E5%A4%84%E7%90%86"><span class="toc-number">1.5.2.3.</span> <span class="toc-text">5.2.3 GPIO 中断处理</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-%E4%B8%BB%E6%9C%BA%E7%AB%AF%E4%BD%BF%E7%94%A8%E7%A4%BA%E4%BE%8B"><span class="toc-number">1.5.3.</span> <span class="toc-text">5.3 主机端使用示例</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6-%E6%97%B6%E9%97%B4%E6%88%B3%E7%B3%BB%E7%BB%9F"><span class="toc-number">1.6.</span> <span class="toc-text">6. 时间戳系统</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E6%97%B6%E9%97%B4%E5%9F%BA%E5%87%86"><span class="toc-number">1.6.1.</span> <span class="toc-text">6.1 时间基准</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E6%97%B6%E9%97%B4%E5%90%8C%E6%AD%A5%E6%9C%BA%E5%88%B6"><span class="toc-number">1.6.2.</span> <span class="toc-text">6.2 时间同步机制</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E6%97%B6%E9%97%B4%E7%94%A8%E9%80%94"><span class="toc-number">1.6.3.</span> <span class="toc-text">6.3 时间用途</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#7-%E7%B3%BB%E7%BB%9F%E5%8F%AF%E9%9D%A0%E6%80%A7%E8%AE%BE%E8%AE%A1"><span class="toc-number">1.7.</span> <span class="toc-text">7. 系统可靠性设计</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#7-1-%E9%80%9A%E4%BF%A1%E6%A0%A1%E9%AA%8C"><span class="toc-number">1.7.1.</span> <span class="toc-text">7.1 通信校验</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-2-%E9%87%8D%E8%AF%95%E6%9C%BA%E5%88%B6"><span class="toc-number">1.7.2.</span> <span class="toc-text">7.2 重试机制</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-3-%E6%95%B0%E6%8D%AE%E5%AE%8C%E6%95%B4%E6%80%A7"><span class="toc-number">1.7.3.</span> <span class="toc-text">7.3 数据完整性</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#8-%E6%89%A9%E5%B1%95%E4%B8%8E%E4%BC%98%E5%8C%96%E5%BB%BA%E8%AE%AE"><span class="toc-number">1.8.</span> <span class="toc-text">8. 扩展与优化建议</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#8-1-%E5%AD%98%E5%82%A8%E5%AE%B9%E9%87%8F%E6%89%A9%E5%B1%95"><span class="toc-number">1.8.1.</span> <span class="toc-text">8.1 存储容量扩展</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8-2-%E4%BA%8B%E4%BB%B6%E4%BC%98%E5%85%88%E7%BA%A7"><span class="toc-number">1.8.2.</span> <span class="toc-text">8.2 事件优先级</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8-3-%E4%B8%BB%E6%9C%BA%E7%AB%AF%E7%BC%93%E5%AD%98"><span class="toc-number">1.8.3.</span> <span class="toc-text">8.3 主机端缓存</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#9-%E6%80%BB%E7%BB%93"><span class="toc-number">1.9.</span> <span class="toc-text">9. 总结</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%99%84%E5%BD%95-A-%E7%9B%B8%E5%85%B3%E6%96%87%E4%BB%B6%E6%B8%85%E5%8D%95"><span class="toc-number">1.10.</span> <span class="toc-text">附录 A: 相关文件清单</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%99%84%E5%BD%95-B-%E4%BF%AE%E8%AE%A2%E5%8E%86%E5%8F%B2"><span class="toc-number">1.11.</span> <span class="toc-text">附录 B: 修订历史</span></a></li></ol></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/03/25/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E6%96%B0%E5%9B%BD%E6%A0%87%E5%AE%89%E5%85%A8%E6%97%B6%E9%97%B4%E4%B8%8E%E4%BF%9D%E6%8A%A4%E8%AE%B0%E5%BD%95%E7%B3%BB%E7%BB%9F%E6%9E%B6%E6%9E%84/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/03/25/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E6%96%B0%E5%9B%BD%E6%A0%87%E5%AE%89%E5%85%A8%E6%97%B6%E9%97%B4%E4%B8%8E%E4%BF%9D%E6%8A%A4%E8%AE%B0%E5%BD%95%E7%B3%BB%E7%BB%9F%E6%9E%B6%E6%9E%84/&text=电量计 -- 新国标安全时间与保护记录系统架构"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/03/25/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E6%96%B0%E5%9B%BD%E6%A0%87%E5%AE%89%E5%85%A8%E6%97%B6%E9%97%B4%E4%B8%8E%E4%BF%9D%E6%8A%A4%E8%AE%B0%E5%BD%95%E7%B3%BB%E7%BB%9F%E6%9E%B6%E6%9E%84/&title=电量计 -- 新国标安全时间与保护记录系统架构"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/03/25/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E6%96%B0%E5%9B%BD%E6%A0%87%E5%AE%89%E5%85%A8%E6%97%B6%E9%97%B4%E4%B8%8E%E4%BF%9D%E6%8A%A4%E8%AE%B0%E5%BD%95%E7%B3%BB%E7%BB%9F%E6%9E%B6%E6%9E%84/&is_video=false&description=电量计 -- 新国标安全时间与保护记录系统架构"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=电量计 -- 新国标安全时间与保护记录系统架构&body=Check out this article: https://cursorhu.github.io/2026/03/25/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E6%96%B0%E5%9B%BD%E6%A0%87%E5%AE%89%E5%85%A8%E6%97%B6%E9%97%B4%E4%B8%8E%E4%BF%9D%E6%8A%A4%E8%AE%B0%E5%BD%95%E7%B3%BB%E7%BB%9F%E6%9E%B6%E6%9E%84/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/03/25/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E6%96%B0%E5%9B%BD%E6%A0%87%E5%AE%89%E5%85%A8%E6%97%B6%E9%97%B4%E4%B8%8E%E4%BF%9D%E6%8A%A4%E8%AE%B0%E5%BD%95%E7%B3%BB%E7%BB%9F%E6%9E%B6%E6%9E%84/&title=电量计 -- 新国标安全时间与保护记录系统架构"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/03/25/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E6%96%B0%E5%9B%BD%E6%A0%87%E5%AE%89%E5%85%A8%E6%97%B6%E9%97%B4%E4%B8%8E%E4%BF%9D%E6%8A%A4%E8%AE%B0%E5%BD%95%E7%B3%BB%E7%BB%9F%E6%9E%B6%E6%9E%84/&title=电量计 -- 新国标安全时间与保护记录系统架构"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/03/25/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E6%96%B0%E5%9B%BD%E6%A0%87%E5%AE%89%E5%85%A8%E6%97%B6%E9%97%B4%E4%B8%8E%E4%BF%9D%E6%8A%A4%E8%AE%B0%E5%BD%95%E7%B3%BB%E7%BB%9F%E6%9E%B6%E6%9E%84/&title=电量计 -- 新国标安全时间与保护记录系统架构"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/03/25/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E6%96%B0%E5%9B%BD%E6%A0%87%E5%AE%89%E5%85%A8%E6%97%B6%E9%97%B4%E4%B8%8E%E4%BF%9D%E6%8A%A4%E8%AE%B0%E5%BD%95%E7%B3%BB%E7%BB%9F%E6%9E%B6%E6%9E%84/&title=电量计 -- 新国标安全时间与保护记录系统架构"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/03/25/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E6%96%B0%E5%9B%BD%E6%A0%87%E5%AE%89%E5%85%A8%E6%97%B6%E9%97%B4%E4%B8%8E%E4%BF%9D%E6%8A%A4%E8%AE%B0%E5%BD%95%E7%B3%BB%E7%BB%9F%E6%9E%B6%E6%9E%84/&name=电量计 -- 新国标安全时间与保护记录系统架构&description=&lt;h1 id=&#34;电量计新国标安全时间与保护记录系统架构&#34;&gt;&lt;a href=&#34;#电量计新国标安全时间与保护记录系统架构&#34; class=&#34;headerlink&#34; title=&#34;电量计新国标安全时间与保护记录系统架构&#34;&gt;&lt;/a&gt;电量计新国标安全时间与保护记录系统架构&lt;/h1&gt;&lt;h2 id=&#34;1-概述&#34;&gt;&lt;a href=&#34;#1-概述&#34; class=&#34;headerlink&#34; title=&#34;1. 概述&#34;&gt;&lt;/a&gt;1. 概述&lt;/h2&gt;&lt;p&gt;本文档系统说明基于 BST85226 电量计芯片的新国标安全时间和保护记录功能的系统架构设计。该系统实现了电池安全事件的实时检测、状态记录、Flash 持久化存储以及主机端数据获取的完整闭环。&lt;/p&gt;
+&lt;h3 id=&#34;1-1-系统架构总览&#34;&gt;&lt;a href=&#34;#1-1-系统架构总览&#34; class=&#34;headerlink&#34; title=&#34;1.1 系统架构总览&#34;&gt;&lt;/a&gt;1.1 系统架构总览&lt;/h3&gt;&lt;figure class=&#34;highlight plaintext&#34;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&#34;gutter&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;3&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;4&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;5&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;6&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;7&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;8&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;9&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;10&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;11&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;12&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;13&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;14&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;15&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;16&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;17&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;18&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;19&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;20&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;21&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;22&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;23&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;24&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;25&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;26&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&#34;code&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;┌─────────────────────────────────────────────────────────────────────────┐&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                           系统架构图                                      │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;├─────────────────────────────────────────────────────────────────────────┤&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                                                                          │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  ┌──────────────────┐     I2C/SMBus      ┌──────────────────────────┐   │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  │   主机 MCU        │◄──────────────────►│   BST85226 电量计        │   │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  │  (dev_bst7001.c) │     + PEC校验       │   (Firmware)            │   │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  │                  │                     │                          │   │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  │  ┌────────────┐  │     GPIO INT        │  ┌────────────────────┐  │   │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  │  │ 故障查询   │  │◄────────────────────│  │  保护检测模块      │  │   │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  │  │ SBS 0x8D   │  │   下降沿触发         │  │  (protect_handle)  │  │   │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  │  │ SBS 0x90   │  │                     │  └────────────────────┘  │   │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  │  └────────────┘  │                     │           │              │   │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  └──────────────────┘                     │           ▼              │   │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                                           │  ┌────────────────────┐  │   │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                                           │  │  LOG 记录模块      │  │   │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                                           │  │  (update_log_data) │  │   │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                                           │  └────────────────────┘  │   │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                                           │           │              │   │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                                           │           ▼              │   │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                                           │  ┌────────────────────┐  │   │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                                           │  │  Flash 存储        │  │   │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                                           │  │  (21KB 循环存储)   │  │   │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                                           │  └────────────────────┘  │   │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                                           └──────────────────────────┘   │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;└─────────────────────────────────────────────────────────────────────────┘&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;
+
+&lt;h3 id=&#34;1-2-核心需求&#34;&gt;&lt;a href=&#34;#1-2-核心需求&#34; class=&#34;headerlink&#34; title=&#34;1.2 核心需求&#34;&gt;&lt;/a&gt;1.2 核心需求&lt;/h3&gt;&lt;p&gt;根据新国标要求，电量计需要：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;存储 4800 条异常记录（电芯最大 1200 循环 × 4 条异常记录）&lt;/li&gt;
+&lt;li&gt;记录异常类型、触发时间、异常数据、充放电状态、触发电芯 ID&lt;/li&gt;
+&lt;li&gt;支持主机按索引查询历史记录&lt;/li&gt;
+&lt;/ul&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;2-LOG-数据结构设计&#34;&gt;&lt;a href=&#34;#2-LOG-数据结构设计&#34; class=&#34;headerlink&#34; title=&#34;2. LOG 数据结构设计&#34;&gt;&lt;/a&gt;2. LOG 数据结构设计&lt;/h2&gt;"><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/03/25/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E6%96%B0%E5%9B%BD%E6%A0%87%E5%AE%89%E5%85%A8%E6%97%B6%E9%97%B4%E4%B8%8E%E4%BF%9D%E6%8A%A4%E8%AE%B0%E5%BD%95%E7%B3%BB%E7%BB%9F%E6%9E%B6%E6%9E%84/&t=电量计 -- 新国标安全时间与保护记录系统架构"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> 菜单</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> 目录</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> 分享</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> 返回顶部</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2026
+    cursorhu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"复制到粘贴板！\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "复制成功！");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+</body>
+</html>

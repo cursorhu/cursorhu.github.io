@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="满充时间预估功能说明目录 功能概述 原理说明 接口定义 数据流程 关键参数 调试方法 常见问题   功能概述满充时间预估(Time To Full, TTF)功能用于估算电池从当前状态充满到100%SOC所需的时间。 特性 支持两种计算模式（由TIME_ESTIMATION_MODE宏控制） 通过SBS标准接口对外提供数据 支持充电时间(TTF)和放电时间(TTE)两种预估 输出单位为分钟  文件">
+<meta property="og:type" content="article">
+<meta property="og:title" content="电量计 -- 满充时间预估功能说明">
+<meta property="og:url" content="https://cursorhu.github.io/2026/03/25/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E6%BB%A1%E5%85%85%E6%97%B6%E9%97%B4%E9%A2%84%E4%BC%B0%E5%8A%9F%E8%83%BD%E8%AF%B4%E6%98%8E/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="满充时间预估功能说明目录 功能概述 原理说明 接口定义 数据流程 关键参数 调试方法 常见问题   功能概述满充时间预估(Time To Full, TTF)功能用于估算电池从当前状态充满到100%SOC所需的时间。 特性 支持两种计算模式（由TIME_ESTIMATION_MODE宏控制） 通过SBS标准接口对外提供数据 支持充电时间(TTF)和放电时间(TTE)两种预估 输出单位为分钟  文件">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-03-25T07:50:54.000Z">
+<meta property="article:modified_time" content="2026-04-08T06:18:06.449Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="电量计">
+<meta name="twitter:card" content="summary">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>电量计 -- 满充时间预估功能说明</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+<meta name="generator" content="Hexo 8.0.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="顶部" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="上一篇" href="/2026/04/03/windbg%20--%20%E8%81%94%E6%9C%BA%E6%96%AD%E7%82%B9%E8%B0%83%E8%AF%95%E6%96%B9%E6%B3%95/"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="下一篇" href="/2026/03/25/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E6%96%B0%E5%9B%BD%E6%A0%87%E5%AE%89%E5%85%A8%E6%97%B6%E9%97%B4%E4%B8%8E%E4%BF%9D%E6%8A%A4%E8%AE%B0%E5%BD%95%E7%B3%BB%E7%BB%9F%E6%9E%B6%E6%9E%84/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="返回顶部" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="分享文章" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">上一篇</span>
+      <span id="i-next" class="info" style="display:none;">下一篇</span>
+      <span id="i-top" class="info" style="display:none;">返回顶部</span>
+      <span id="i-share" class="info" style="display:none;">分享文章</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/03/25/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E6%BB%A1%E5%85%85%E6%97%B6%E9%97%B4%E9%A2%84%E4%BC%B0%E5%8A%9F%E8%83%BD%E8%AF%B4%E6%98%8E/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/03/25/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E6%BB%A1%E5%85%85%E6%97%B6%E9%97%B4%E9%A2%84%E4%BC%B0%E5%8A%9F%E8%83%BD%E8%AF%B4%E6%98%8E/&text=电量计 -- 满充时间预估功能说明"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/03/25/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E6%BB%A1%E5%85%85%E6%97%B6%E9%97%B4%E9%A2%84%E4%BC%B0%E5%8A%9F%E8%83%BD%E8%AF%B4%E6%98%8E/&title=电量计 -- 满充时间预估功能说明"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/03/25/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E6%BB%A1%E5%85%85%E6%97%B6%E9%97%B4%E9%A2%84%E4%BC%B0%E5%8A%9F%E8%83%BD%E8%AF%B4%E6%98%8E/&is_video=false&description=电量计 -- 满充时间预估功能说明"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=电量计 -- 满充时间预估功能说明&body=Check out this article: https://cursorhu.github.io/2026/03/25/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E6%BB%A1%E5%85%85%E6%97%B6%E9%97%B4%E9%A2%84%E4%BC%B0%E5%8A%9F%E8%83%BD%E8%AF%B4%E6%98%8E/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/03/25/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E6%BB%A1%E5%85%85%E6%97%B6%E9%97%B4%E9%A2%84%E4%BC%B0%E5%8A%9F%E8%83%BD%E8%AF%B4%E6%98%8E/&title=电量计 -- 满充时间预估功能说明"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/03/25/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E6%BB%A1%E5%85%85%E6%97%B6%E9%97%B4%E9%A2%84%E4%BC%B0%E5%8A%9F%E8%83%BD%E8%AF%B4%E6%98%8E/&title=电量计 -- 满充时间预估功能说明"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/03/25/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E6%BB%A1%E5%85%85%E6%97%B6%E9%97%B4%E9%A2%84%E4%BC%B0%E5%8A%9F%E8%83%BD%E8%AF%B4%E6%98%8E/&title=电量计 -- 满充时间预估功能说明"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/03/25/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E6%BB%A1%E5%85%85%E6%97%B6%E9%97%B4%E9%A2%84%E4%BC%B0%E5%8A%9F%E8%83%BD%E8%AF%B4%E6%98%8E/&title=电量计 -- 满充时间预估功能说明"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/03/25/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E6%BB%A1%E5%85%85%E6%97%B6%E9%97%B4%E9%A2%84%E4%BC%B0%E5%8A%9F%E8%83%BD%E8%AF%B4%E6%98%8E/&name=电量计 -- 满充时间预估功能说明&description=&lt;h1 id=&#34;满充时间预估功能说明&#34;&gt;&lt;a href=&#34;#满充时间预估功能说明&#34; class=&#34;headerlink&#34; title=&#34;满充时间预估功能说明&#34;&gt;&lt;/a&gt;满充时间预估功能说明&lt;/h1&gt;&lt;h2 id=&#34;目录&#34;&gt;&lt;a href=&#34;#目录&#34; class=&#34;headerlink&#34; title=&#34;目录&#34;&gt;&lt;/a&gt;目录&lt;/h2&gt;&lt;ul&gt;
+&lt;li&gt;&lt;a href=&#34;#%E5%8A%9F%E8%83%BD%E6%A6%82%E8%BF%B0&#34;&gt;功能概述&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;#%E5%8E%9F%E7%90%86%E8%AF%B4%E6%98%8E&#34;&gt;原理说明&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;#%E6%8E%A5%E5%8F%A3%E5%AE%9A%E4%B9%89&#34;&gt;接口定义&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;#%E6%95%B0%E6%8D%AE%E6%B5%81%E7%A8%8B&#34;&gt;数据流程&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;#%E5%85%B3%E9%94%AE%E5%8F%82%E6%95%B0&#34;&gt;关键参数&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;#%E8%B0%83%E8%AF%95%E6%96%B9%E6%B3%95&#34;&gt;调试方法&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;#%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98&#34;&gt;常见问题&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;功能概述&#34;&gt;&lt;a href=&#34;#功能概述&#34; class=&#34;headerlink&#34; title=&#34;功能概述&#34;&gt;&lt;/a&gt;功能概述&lt;/h2&gt;&lt;p&gt;满充时间预估(Time To Full, TTF)功能用于估算电池从当前状态充满到100%SOC所需的时间。&lt;/p&gt;
+&lt;h3 id=&#34;特性&#34;&gt;&lt;a href=&#34;#特性&#34; class=&#34;headerlink&#34; title=&#34;特性&#34;&gt;&lt;/a&gt;特性&lt;/h3&gt;&lt;ul&gt;
+&lt;li&gt;支持两种计算模式（由&lt;code&gt;TIME_ESTIMATION_MODE&lt;/code&gt;宏控制）&lt;/li&gt;
+&lt;li&gt;通过SBS标准接口对外提供数据&lt;/li&gt;
+&lt;li&gt;支持充电时间(TTF)和放电时间(TTE)两种预估&lt;/li&gt;
+&lt;li&gt;输出单位为分钟&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id=&#34;文件位置&#34;&gt;&lt;a href=&#34;#文件位置&#34; class=&#34;headerlink&#34; title=&#34;文件位置&#34;&gt;&lt;/a&gt;文件位置&lt;/h3&gt;&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;文件&lt;/th&gt;
+&lt;th&gt;说明&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;lib/lib_fg.c&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;核心算法实现&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;flash/sbs.c&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;SBS接口封装&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;lib/lib_fg.h&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;库函数声明&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;&lt;/table&gt;"><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/03/25/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E6%BB%A1%E5%85%85%E6%97%B6%E9%97%B4%E9%A2%84%E4%BC%B0%E5%8A%9F%E8%83%BD%E8%AF%B4%E6%98%8E/&t=电量计 -- 满充时间预估功能说明"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%BB%A1%E5%85%85%E6%97%B6%E9%97%B4%E9%A2%84%E4%BC%B0%E5%8A%9F%E8%83%BD%E8%AF%B4%E6%98%8E"><span class="toc-number">1.</span> <span class="toc-text">满充时间预估功能说明</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%9B%AE%E5%BD%95"><span class="toc-number">1.1.</span> <span class="toc-text">目录</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8A%9F%E8%83%BD%E6%A6%82%E8%BF%B0"><span class="toc-number">1.2.</span> <span class="toc-text">功能概述</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%89%B9%E6%80%A7"><span class="toc-number">1.2.1.</span> <span class="toc-text">特性</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%96%87%E4%BB%B6%E4%BD%8D%E7%BD%AE"><span class="toc-number">1.2.2.</span> <span class="toc-text">文件位置</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8E%9F%E7%90%86%E8%AF%B4%E6%98%8E"><span class="toc-number">1.3.</span> <span class="toc-text">原理说明</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%AE%A1%E7%AE%97%E6%A8%A1%E5%BC%8F%E9%80%89%E6%8B%A9"><span class="toc-number">1.3.1.</span> <span class="toc-text">计算模式选择</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Mode-1-%E7%AE%97%E6%B3%95%E5%8E%9F%E7%90%86"><span class="toc-number">1.3.2.</span> <span class="toc-text">Mode 1 算法原理</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#1-%E5%85%85%E7%94%B5%E9%98%B6%E6%AE%B5%E8%AF%86%E5%88%AB"><span class="toc-number">1.3.2.1.</span> <span class="toc-text">1. 充电阶段识别</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-CC%E9%98%B6%E6%AE%B5%E6%97%B6%E9%97%B4%E8%AE%A1%E7%AE%97"><span class="toc-number">1.3.2.2.</span> <span class="toc-text">2. CC阶段时间计算</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-CV%E9%98%B6%E6%AE%B5%E6%97%B6%E9%97%B4%E8%AE%A1%E7%AE%97"><span class="toc-number">1.3.2.3.</span> <span class="toc-text">3. CV阶段时间计算</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%8E%A5%E5%8F%A3%E5%AE%9A%E4%B9%89"><span class="toc-number">1.4.</span> <span class="toc-text">接口定义</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#SBS%E5%AF%84%E5%AD%98%E5%99%A8"><span class="toc-number">1.4.1.</span> <span class="toc-text">SBS寄存器</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%95%B0%E6%8D%AE%E6%BA%90%E5%AF%84%E5%AD%98%E5%99%A8"><span class="toc-number">1.4.2.</span> <span class="toc-text">数据源寄存器</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%A4%96%E9%83%A8%E5%8F%98%E9%87%8F"><span class="toc-number">1.4.3.</span> <span class="toc-text">外部变量</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%95%B0%E6%8D%AE%E6%B5%81%E7%A8%8B"><span class="toc-number">1.5.</span> <span class="toc-text">数据流程</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%8C%E6%95%B4%E8%B0%83%E7%94%A8%E9%93%BE"><span class="toc-number">1.5.1.</span> <span class="toc-text">完整调用链</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%86%85%E9%83%A8%E8%AE%A1%E7%AE%97%E6%B5%81%E7%A8%8B"><span class="toc-number">1.5.2.</span> <span class="toc-text">内部计算流程</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#fg-time-estimation-%E5%88%86%E6%94%AF%E9%80%BB%E8%BE%91"><span class="toc-number">1.5.3.</span> <span class="toc-text">fg_time_estimation() 分支逻辑</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%B3%E9%94%AE%E5%8F%82%E6%95%B0"><span class="toc-number">1.6.</span> <span class="toc-text">关键参数</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%97%B6%E9%97%B4%E4%BC%B0%E7%AE%97%E5%B8%B8%E9%87%8F-lib-fg-c"><span class="toc-number">1.6.1.</span> <span class="toc-text">时间估算常量 (lib_fg.c)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%94%B5%E6%B5%81%E9%98%88%E5%80%BC-lib-fg-c"><span class="toc-number">1.6.2.</span> <span class="toc-text">电流阈值 (lib_fg.c)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B9%B3%E6%BB%91%E5%8F%82%E6%95%B0"><span class="toc-number">1.6.3.</span> <span class="toc-text">平滑参数</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#GPM%E8%B0%83%E6%95%B4%E5%8F%82%E6%95%B0-flash-sbs-c-Mode-0"><span class="toc-number">1.6.4.</span> <span class="toc-text">GPM调整参数 (flash&#x2F;sbs.c Mode 0)</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%B0%83%E8%AF%95%E6%96%B9%E6%B3%95"><span class="toc-number">1.7.</span> <span class="toc-text">调试方法</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E5%90%AF%E7%94%A8%E8%B0%83%E8%AF%95%E6%97%A5%E5%BF%97"><span class="toc-number">1.7.1.</span> <span class="toc-text">1. 启用调试日志</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-%E5%AF%84%E5%AD%98%E5%99%A8%E8%AF%BB%E5%8F%96%E9%AA%8C%E8%AF%81"><span class="toc-number">1.7.2.</span> <span class="toc-text">2. 寄存器读取验证</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-%E8%AE%A1%E7%AE%97%E9%AA%8C%E8%AF%81"><span class="toc-number">1.7.3.</span> <span class="toc-text">3. 计算验证</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-%E8%B0%83%E8%AF%95%E6%A3%80%E6%9F%A5%E7%82%B9"><span class="toc-number">1.7.4.</span> <span class="toc-text">4. 调试检查点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-%E5%B8%B8%E8%A7%81%E6%B3%A2%E5%BD%A2%E8%A7%82%E5%AF%9F"><span class="toc-number">1.7.5.</span> <span class="toc-text">5. 常见波形观察</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98"><span class="toc-number">1.8.</span> <span class="toc-text">常见问题</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Q1-ATTF%E8%BF%94%E5%9B%9E%E5%80%BC%E4%B8%BA0"><span class="toc-number">1.8.1.</span> <span class="toc-text">Q1: ATTF返回值为0</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Q2-%E9%A2%84%E4%BC%B0%E6%97%B6%E9%97%B4%E5%81%8F%E5%B7%AE%E5%A4%A7"><span class="toc-number">1.8.2.</span> <span class="toc-text">Q2: 预估时间偏差大</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Q3-%E6%A8%A1%E5%BC%8F%E5%88%87%E6%8D%A2%E6%97%B6%E9%A2%84%E4%BC%B0%E9%87%8D%E7%BD%AE"><span class="toc-number">1.8.3.</span> <span class="toc-text">Q3: 模式切换时预估重置</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Q4-MODE-0%E5%92%8CMODE-1%E7%BB%93%E6%9E%9C%E4%B8%8D%E4%B8%80%E8%87%B4"><span class="toc-number">1.8.4.</span> <span class="toc-text">Q4: MODE 0和MODE 1结果不一致</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%85%8D%E7%BD%AE%E7%A4%BA%E4%BE%8B"><span class="toc-number">1.9.</span> <span class="toc-text">配置示例</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%A0%87%E5%87%86%E9%85%8D%E7%BD%AE-Mode-1"><span class="toc-number">1.9.1.</span> <span class="toc-text">标准配置 (Mode 1)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%BF%AB%E9%80%9F%E5%85%85%E7%94%B5%E9%85%8D%E7%BD%AE"><span class="toc-number">1.9.2.</span> <span class="toc-text">快速充电配置</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%89%88%E6%9C%AC%E4%BF%A1%E6%81%AF"><span class="toc-number">1.10.</span> <span class="toc-text">版本信息</span></a></li></ol></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        电量计 -- 满充时间预估功能说明
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">cursorhu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2026-03-25T07:50:54.000Z" class="dt-published" itemprop="datePublished">2026-03-25</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fa-solid fa-archive"></i>
+        <a class="category-link" href="/categories/%E7%94%B5%E9%87%8F%E8%AE%A1/">电量计</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/%E7%94%B5%E9%87%8F%E8%AE%A1/" rel="tag">电量计</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <h1 id="满充时间预估功能说明"><a href="#满充时间预估功能说明" class="headerlink" title="满充时间预估功能说明"></a>满充时间预估功能说明</h1><h2 id="目录"><a href="#目录" class="headerlink" title="目录"></a>目录</h2><ul>
+<li><a href="#%E5%8A%9F%E8%83%BD%E6%A6%82%E8%BF%B0">功能概述</a></li>
+<li><a href="#%E5%8E%9F%E7%90%86%E8%AF%B4%E6%98%8E">原理说明</a></li>
+<li><a href="#%E6%8E%A5%E5%8F%A3%E5%AE%9A%E4%B9%89">接口定义</a></li>
+<li><a href="#%E6%95%B0%E6%8D%AE%E6%B5%81%E7%A8%8B">数据流程</a></li>
+<li><a href="#%E5%85%B3%E9%94%AE%E5%8F%82%E6%95%B0">关键参数</a></li>
+<li><a href="#%E8%B0%83%E8%AF%95%E6%96%B9%E6%B3%95">调试方法</a></li>
+<li><a href="#%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98">常见问题</a></li>
+</ul>
+<hr>
+<h2 id="功能概述"><a href="#功能概述" class="headerlink" title="功能概述"></a>功能概述</h2><p>满充时间预估(Time To Full, TTF)功能用于估算电池从当前状态充满到100%SOC所需的时间。</p>
+<h3 id="特性"><a href="#特性" class="headerlink" title="特性"></a>特性</h3><ul>
+<li>支持两种计算模式（由<code>TIME_ESTIMATION_MODE</code>宏控制）</li>
+<li>通过SBS标准接口对外提供数据</li>
+<li>支持充电时间(TTF)和放电时间(TTE)两种预估</li>
+<li>输出单位为分钟</li>
+</ul>
+<h3 id="文件位置"><a href="#文件位置" class="headerlink" title="文件位置"></a>文件位置</h3><table>
+<thead>
+<tr>
+<th>文件</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>lib/lib_fg.c</code></td>
+<td>核心算法实现</td>
+</tr>
+<tr>
+<td><code>flash/sbs.c</code></td>
+<td>SBS接口封装</td>
+</tr>
+<tr>
+<td><code>lib/lib_fg.h</code></td>
+<td>库函数声明</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="原理说明"><a href="#原理说明" class="headerlink" title="原理说明"></a>原理说明</h2><h3 id="计算模式选择"><a href="#计算模式选择" class="headerlink" title="计算模式选择"></a>计算模式选择</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// lib/lib_fg.c 和 flash/sbs.c 必须同步配置</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> TIME_ESTIMATION_MODE    1   <span class="comment">// 0=简单线性模式, 1=CC-CV分阶段模式</span></span></span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>模式</th>
+<th>描述</th>
+<th>适用场景</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Mode 0</strong></td>
+<td>简单线性模式：<code>时间 = 容量/电流</code></td>
+<td>快速估算</td>
+</tr>
+<tr>
+<td><strong>Mode 1</strong></td>
+<td>CC-CV分阶段模式（推荐）</td>
+<td>精确预估，考虑充电曲线特性</td>
+</tr>
+</tbody></table>
+<h3 id="Mode-1-算法原理"><a href="#Mode-1-算法原理" class="headerlink" title="Mode 1 算法原理"></a>Mode 1 算法原理</h3><h4 id="1-充电阶段识别"><a href="#1-充电阶段识别" class="headerlink" title="1. 充电阶段识别"></a>1. 充电阶段识别</h4><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────┐</span><br><span class="line">│                    充电曲线示意图                             │</span><br><span class="line">├─────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                             │</span><br><span class="line">│  电压     ┌────────────────── CC阶段 ─────────────────┐    │</span><br><span class="line">│  ▲        │                   (恒流)                    │    │</span><br><span class="line">│  │        │                                              │    │</span><br><span class="line">│  │        │    电流固定 ↑                                 │    │</span><br><span class="line">│  │        │    电压上升 →                                 │    │</span><br><span class="line">│  │        │    SOC: 0% → 70%                             │    │</span><br><span class="line">│  │        └─────────────────────────────────────────────  │    │</span><br><span class="line">│  │                                    ┌────── CV阶段 ────┐ │    │</span><br><span class="line">│  │                                    │   (恒压)         │ │    │</span><br><span class="line">│  │        电流下降 ↓                  │   电压固定       │ │    │</span><br><span class="line">│  │        SOC: 70% → 100%            │   电流衰减       │ │    │</span><br><span class="line">│  └────────────────────────────────────┴──────────────────┘ │    │</span><br><span class="line">│                                                             │</span><br><span class="line">│  ●──────────── CC2CV_SOC ──────────────────●─────────100% │</span><br><span class="line">│  0%                                       70%              │</span><br><span class="line">│                                                             │</span><br><span class="line">│  SOC分界点: TTE_CC2CV_SOC = 7000 (即70%)                    │</span><br><span class="line">└─────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<h4 id="2-CC阶段时间计算"><a href="#2-CC阶段时间计算" class="headerlink" title="2. CC阶段时间计算"></a>2. CC阶段时间计算</h4><p>当SOC &lt; 70%时：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">CC阶段时间 = (CC2CV_SOC - 当前SOC) × CC典型时间 / CC2CV_SOC × (默认CC电流 / 当前电流)</span><br></pre></td></tr></table></figure>
+
+<h4 id="3-CV阶段时间计算"><a href="#3-CV阶段时间计算" class="headerlink" title="3. CV阶段时间计算"></a>3. CV阶段时间计算</h4><p>当SOC ≥ 70%时：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">CV阶段时间 = CV典型时间 × (1 - 阶段进度比例)</span><br></pre></td></tr></table></figure>
+
+<p>其中阶段进度使用二次函数计算：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 总分段数 = ((1 + SHIFT) + (总阶段数 + SHIFT)) × 总阶段数 / 200</span></span><br><span class="line">total_pieces = ((<span class="number">1</span> + <span class="number">100</span>) + (<span class="number">3000</span> + <span class="number">100</span>)) × <span class="number">3000</span> / <span class="number">200</span> = <span class="number">46500</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 剩余分段数</span></span><br><span class="line">remain_pieces = ((<span class="number">1</span> + SHIFT) + (当前阶段 + SHIFT)) × 当前阶段 / <span class="number">200</span></span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="接口定义"><a href="#接口定义" class="headerlink" title="接口定义"></a>接口定义</h2><h3 id="SBS寄存器"><a href="#SBS寄存器" class="headerlink" title="SBS寄存器"></a>SBS寄存器</h3><table>
+<thead>
+<tr>
+<th>地址</th>
+<th>名称</th>
+<th>类型</th>
+<th>说明</th>
+<th>单位</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>0x13</code></td>
+<td>ATTF</td>
+<td>只读</td>
+<td>满充时间预估 (Average Time To Full)</td>
+<td>分钟</td>
+</tr>
+<tr>
+<td><code>0x12</code></td>
+<td>ATTE</td>
+<td>只读</td>
+<td>放空时间预估 (Average Time To Empty)</td>
+<td>分钟</td>
+</tr>
+</tbody></table>
+<h3 id="数据源寄存器"><a href="#数据源寄存器" class="headerlink" title="数据源寄存器"></a>数据源寄存器</h3><table>
+<thead>
+<tr>
+<th>地址</th>
+<th>名称</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>0x0B</code></td>
+<td>AVGCURR</td>
+<td>平均电流 (mA)</td>
+</tr>
+<tr>
+<td><code>0x0D</code></td>
+<td>RSOC</td>
+<td>相对剩余容量 (0.01%分辨率)</td>
+</tr>
+<tr>
+<td><code>0x0F</code></td>
+<td>RC</td>
+<td>剩余容量 (mAh)</td>
+</tr>
+<tr>
+<td><code>0x18</code></td>
+<td>DSNCAP</td>
+<td>设计容量 (mAh)</td>
+</tr>
+</tbody></table>
+<h3 id="外部变量"><a href="#外部变量" class="headerlink" title="外部变量"></a>外部变量</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// lib/lib_fg.c - 全局变量</span></span><br><span class="line"><span class="keyword">extern</span> <span class="type">signed</span> <span class="type">int</span> fg_est_time_sec;  <span class="comment">// 预估时间，单位秒</span></span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="数据流程"><a href="#数据流程" class="headerlink" title="数据流程"></a>数据流程</h2><h3 id="完整调用链"><a href="#完整调用链" class="headerlink" title="完整调用链"></a>完整调用链</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">┌──────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                         主机读取流程                              │</span><br><span class="line">├──────────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                                  │</span><br><span class="line">│  1. 主机发送I2C读取命令 [0x16, 0x13]                              │</span><br><span class="line">│           ↓                                                       │</span><br><span class="line">│  2. sbsif_get_data(SBS13_ATTF)                                   │</span><br><span class="line">│           ↓                                                       │</span><br><span class="line">│  3. sbs_get_attf() [flash/sbs.c]                                 │</span><br><span class="line">│           ↓                                                       │</span><br><span class="line">│  4. 检查TIME_ESTIMATION_MODE:                                    │</span><br><span class="line">│     ├─ Mode 1: 直接使用fg_est_time_sec (秒→分钟)                 │</span><br><span class="line">│     └─ Mode 0: 调用sbs_time_to_full() 线性计算                   │</span><br><span class="line">│           ↓                                                       │</span><br><span class="line">│  5. 返回预估时间(分钟)                                           │</span><br><span class="line">│                                                                  │</span><br><span class="line">└──────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<h3 id="内部计算流程"><a href="#内部计算流程" class="headerlink" title="内部计算流程"></a>内部计算流程</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">┌──────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                    oz8806_time_estimation()                      │</span><br><span class="line">├──────────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                                  │</span><br><span class="line">│  1. 判断充电/放电/空闲状态                                        │</span><br><span class="line">│     ├─ 充电(AC): imode = 1                                       │</span><br><span class="line">│     ├─ 放电: imode = -1                                          │</span><br><span class="line">│     └─ 空闲: imode = 0                                           │</span><br><span class="line">│           ↓                                                       │</span><br><span class="line">│  2. 模式切换检测                                                  │</span><br><span class="line">│     └─ 状态变化时重置: fg_est_time_sec = -1                      │</span><br><span class="line">│           ↓                                                       │</span><br><span class="line">│  3. 平滑平均电流计算                                              │</span><br><span class="line">│     └─ fg_est_cavgln_curr = (前一值×(n-1) + 当前值) / n         │</span><br><span class="line">│           ↓                                                       │</span><br><span class="line">│  4. 每5秒调用fg_time_estimation()重新计算                         │</span><br><span class="line">│           ↓                                                       │</span><br><span class="line">│  5. 返回 fg_est_time_sec (秒)                                    │</span><br><span class="line">│                                                                  │</span><br><span class="line">└──────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<h3 id="fg-time-estimation-分支逻辑"><a href="#fg-time-estimation-分支逻辑" class="headerlink" title="fg_time_estimation() 分支逻辑"></a>fg_time_estimation() 分支逻辑</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">                          ┌─────────────────┐</span><br><span class="line">                          │   fg_time_estimation()  │</span><br><span class="line">                          └─────────┬───────────┘</span><br><span class="line">                                    │</span><br><span class="line">          ┌──────────────────────────┼──────────────────────────┐</span><br><span class="line">          ↓                          ↓                          ↓</span><br><span class="line">┌─────────────────┐      ┌──────────────────┐      ┌─────────────────┐</span><br><span class="line">│  电流接近0/静置  │      │     放电模式       │      │     充电模式     │</span><br><span class="line">│ imode=0 且|电流│      │ imode&lt;0 且|电流│      │ imode&gt;0 且电流│</span><br><span class="line">│       &lt;30mA     │      │       &gt;70mA        │      │      &gt;70mA       │</span><br><span class="line">└────────┬────────┘      └─────────┬─────────┘      └────────┬────────┘</span><br><span class="line">         │                          │                          │</span><br><span class="line">         ↓                          ↓                          ↓</span><br><span class="line">┌─────────────────┐      ┌──────────────────┐      ┌─────────────────┐</span><br><span class="line">│  SOC=100%:       │      │  TTE计算:         │      │ SOC&lt;70%(CC阶段) │</span><br><span class="line">│  每秒-5秒        │      │  容量×36/电流     │      │ (CC2CV-SOC)×    │</span><br><span class="line">│                  │      │                   │      │ CC_TIME × Idef/I</span><br><span class="line">│  SOC&gt;70%且CV状态:│      │  例: 3000mAh      │      │  + CV_TIME     │</span><br><span class="line">│  快速估算        │      │  @500mA放电       │      │                 │</span><br><span class="line">│                  │      │  = 3000×36/500    │      │  SOC≥70%(CV阶段)│</span><br><span class="line">│  其他: -1        │      │  = 216秒 ≈ 3.6分钟│      │  二次函数计算    │</span><br><span class="line">└─────────────────┘      └──────────────────┘      └─────────────────┘</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="关键参数"><a href="#关键参数" class="headerlink" title="关键参数"></a>关键参数</h2><h3 id="时间估算常量-lib-fg-c"><a href="#时间估算常量-lib-fg-c" class="headerlink" title="时间估算常量 (lib_fg.c)"></a>时间估算常量 (lib_fg.c)</h3><table>
+<thead>
+<tr>
+<th>参数</th>
+<th>值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>TTE_CC2CV_SOC</code></td>
+<td>7000</td>
+<td>CC→CV分界点 (70%)</td>
+</tr>
+<tr>
+<td><code>TTE_DEFAULT_CC_CURRENT</code></td>
+<td>4000 mA</td>
+<td>默认CC充电电流</td>
+</tr>
+<tr>
+<td><code>TTE_CC_TIME_SEC</code></td>
+<td>2700秒</td>
+<td>CC阶段典型时长</td>
+</tr>
+<tr>
+<td><code>TTE_CV_TIME_SEC</code></td>
+<td>2000秒</td>
+<td>CV阶段典型时长</td>
+</tr>
+<tr>
+<td><code>TTE_STAGE_SHIFT</code></td>
+<td>100</td>
+<td>CV阶段二次函数偏移</td>
+</tr>
+</tbody></table>
+<h3 id="电流阈值-lib-fg-c"><a href="#电流阈值-lib-fg-c" class="headerlink" title="电流阈值 (lib_fg.c)"></a>电流阈值 (lib_fg.c)</h3><table>
+<thead>
+<tr>
+<th>参数</th>
+<th>值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>CALC_TIME_CURRENT_TH</code></td>
+<td>30 mA</td>
+<td>静置判定阈值</td>
+</tr>
+<tr>
+<td><code>DISCH_CURRENT_TH</code></td>
+<td>70 mA</td>
+<td>放电判定阈值</td>
+</tr>
+<tr>
+<td><code>MW_CHG_CURR</code></td>
+<td>30 mA</td>
+<td>满充后充电电流阈值</td>
+</tr>
+<tr>
+<td><code>MW_IDLE_CURR</code></td>
+<td>-50 mA</td>
+<td>静置电流下限</td>
+</tr>
+</tbody></table>
+<h3 id="平滑参数"><a href="#平滑参数" class="headerlink" title="平滑参数"></a>平滑参数</h3><table>
+<thead>
+<tr>
+<th>参数</th>
+<th>值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>TIMENUM</code></td>
+<td>5</td>
+<td>采样平均次数</td>
+</tr>
+<tr>
+<td><code>FG_SHORT_AVG_CNTR</code></td>
+<td>15</td>
+<td>短时电流平均窗口</td>
+</tr>
+<tr>
+<td><code>FG_LONG_AVG_CNTR</code></td>
+<td>45</td>
+<td>长时电流平均窗口</td>
+</tr>
+</tbody></table>
+<h3 id="GPM调整参数-flash-sbs-c-Mode-0"><a href="#GPM调整参数-flash-sbs-c-Mode-0" class="headerlink" title="GPM调整参数 (flash&#x2F;sbs.c Mode 0)"></a>GPM调整参数 (flash&#x2F;sbs.c Mode 0)</h3><table>
+<thead>
+<tr>
+<th>参数</th>
+<th>值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>GPM_ATTFADJMUL</code></td>
+<td>40</td>
+<td>SOC&gt;75%时的时间调整分子</td>
+</tr>
+<tr>
+<td><code>GPM_ATTFADJDIV</code></td>
+<td>25</td>
+<td>SOC&gt;75%时的时间调整分母</td>
+</tr>
+</tbody></table>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Mode 0 修正公式 (SOC &gt; 75%)</span></span><br><span class="line">调整值 = (<span class="number">100</span> - SOC) × <span class="number">40</span> / <span class="number">25</span></span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="调试方法"><a href="#调试方法" class="headerlink" title="调试方法"></a>调试方法</h2><h3 id="1-启用调试日志"><a href="#1-启用调试日志" class="headerlink" title="1. 启用调试日志"></a>1. 启用调试日志</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// lib_fg.c 中启用</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> LIB_FG_MSG   1   <span class="comment">// 开启时间估算日志</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 日志输出示例:</span></span><br><span class="line"><span class="comment">// oz8806_time_estimation: imode=1, curr=1500mA, rsoc=4500, tte=3650sec</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="2-寄存器读取验证"><a href="#2-寄存器读取验证" class="headerlink" title="2. 寄存器读取验证"></a>2. 寄存器读取验证</h3><p>通过I2C读取关键寄存器：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 读取预估时间</span></span><br><span class="line">i2c_read 0x13  <span class="comment"># ATTF - 应返回分钟数</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 读取平均电流</span></span><br><span class="line">i2c_read 0x0B  <span class="comment"># AVGCURR - 确认充电电流</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 读取SOC</span></span><br><span class="line">i2c_read 0x0D  <span class="comment"># RSOC - 确认当前SOC</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="3-计算验证"><a href="#3-计算验证" class="headerlink" title="3. 计算验证"></a>3. 计算验证</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 手动验证计算</span></span><br><span class="line"><span class="type">int</span> expected_time = (<span class="number">10000</span> - rsoc) * TTE_CC_TIME_SEC / <span class="number">10000</span>;</span><br><span class="line">expected_time = expected_time * TTE_DEFAULT_CC_CURRENT / current_mA;</span><br><span class="line">expected_time = expected_time + TTE_CV_TIME_SEC;</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-调试检查点"><a href="#4-调试检查点" class="headerlink" title="4. 调试检查点"></a>4. 调试检查点</h3><table>
+<thead>
+<tr>
+<th>检查点</th>
+<th>预期值</th>
+<th>异常排查</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>充电时ATTF</td>
+<td>&gt; 0</td>
+<td>检查适配器状态</td>
+</tr>
+<tr>
+<td>SOC&#x3D;0时ATTF</td>
+<td>≈ CC+CV总时间</td>
+<td>检查DSNCAP配置</td>
+</tr>
+<tr>
+<td>SOC&#x3D;100时ATTF</td>
+<td>0 或递减</td>
+<td>检查充电结束判定</td>
+</tr>
+<tr>
+<td>放电时ATTE</td>
+<td>&gt; 0</td>
+<td>检查放电状态</td>
+</tr>
+</tbody></table>
+<h3 id="5-常见波形观察"><a href="#5-常见波形观察" class="headerlink" title="5. 常见波形观察"></a>5. 常见波形观察</h3><p>使用示波器或数据记录观察：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">正常充电曲线示例:</span><br><span class="line">SOC:  0%  →  10%  →  30%  →  50%  →  70%  →  90%  →  100%</span><br><span class="line">TTF:  90m  →  80m  →  65m  →  50m  →  35m  →  20m  →   0m</span><br><span class="line">      └──── CC阶段 ────┘    └────── CV阶段 ────────┘</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="常见问题"><a href="#常见问题" class="headerlink" title="常见问题"></a>常见问题</h2><h3 id="Q1-ATTF返回值为0"><a href="#Q1-ATTF返回值为0" class="headerlink" title="Q1: ATTF返回值为0"></a>Q1: ATTF返回值为0</h3><p><strong>可能原因:</strong></p>
+<ul>
+<li>未在充电状态</li>
+<li>电流小于阈值(30mA)</li>
+<li>fg_est_time_sec &lt; 0</li>
+</ul>
+<p><strong>排查步骤:</strong></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 检查适配器状态</span></span><br><span class="line"><span class="keyword">if</span> (g_adapter_status != O2_CHARGER_AC) &#123;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;未连接充电器\r\n&quot;</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 检查电流</span></span><br><span class="line"><span class="keyword">if</span> (batt_info.fCurr &lt; <span class="number">30</span>) &#123;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;充电电流太小\r\n&quot;</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 检查预估变量</span></span><br><span class="line"><span class="built_in">printf</span>(<span class="string">&quot;fg_est_time_sec = %d\r\n&quot;</span>, fg_est_time_sec);</span><br></pre></td></tr></table></figure>
+
+<h3 id="Q2-预估时间偏差大"><a href="#Q2-预估时间偏差大" class="headerlink" title="Q2: 预估时间偏差大"></a>Q2: 预估时间偏差大</h3><p><strong>可能原因:</strong></p>
+<ul>
+<li>充电电流波动大</li>
+<li>温度影响</li>
+<li>电池老化</li>
+</ul>
+<p><strong>优化方法:</strong></p>
+<ol>
+<li>检查充电曲线是否符合CC-CV特性</li>
+<li>调整<code>TTE_CC_TIME_SEC</code>和<code>TTE_CV_TIME_SEC</code></li>
+<li>检查<code>O2_CONFIG_EOC</code>充电截止电流配置</li>
+</ol>
+<h3 id="Q3-模式切换时预估重置"><a href="#Q3-模式切换时预估重置" class="headerlink" title="Q3: 模式切换时预估重置"></a>Q3: 模式切换时预估重置</h3><p><strong>现象:</strong></p>
+<ul>
+<li>拔插充电器时预估时间变为负值</li>
+</ul>
+<p><strong>原因:</strong> 这是正常行为 - 模式切换时<code>fg_est_time_sec</code>被重置为-1</p>
+<p><strong>预期恢复时间:</strong> 约5秒后恢复正常预估</p>
+<h3 id="Q4-MODE-0和MODE-1结果不一致"><a href="#Q4-MODE-0和MODE-1结果不一致" class="headerlink" title="Q4: MODE 0和MODE 1结果不一致"></a>Q4: MODE 0和MODE 1结果不一致</h3><p><strong>原因:</strong> 两种模式算法不同</p>
+<ul>
+<li>Mode 0: 简单线性 <code>(剩余容量×60)/电流</code></li>
+<li>Mode 1: CC-CV分阶段，考虑充电曲线特性</li>
+</ul>
+<p><strong>建议:</strong> 使用Mode 1(推荐)以获得更精确的预估</p>
+<hr>
+<h2 id="配置示例"><a href="#配置示例" class="headerlink" title="配置示例"></a>配置示例</h2><h3 id="标准配置-Mode-1"><a href="#标准配置-Mode-1" class="headerlink" title="标准配置 (Mode 1)"></a>标准配置 (Mode 1)</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// lib/lib_fg.c</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> TIME_ESTIMATION_MODE    1</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// CC-CV分界点: 70% SOC</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> TTE_CC2CV_SOC           7000</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 针对4000mAh电池 @ 2000mA充电</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> TTE_DEFAULT_CC_CURRENT   2000    <span class="comment">// mA</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> TTE_CC_TIME_SEC          1890    <span class="comment">// (7000/10000)*2700*2000/4000 ≈ 1890s</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> TTE_CV_TIME_SEC          1500    <span class="comment">// CV阶段约25分钟</span></span></span><br></pre></td></tr></table></figure>
+
+<h3 id="快速充电配置"><a href="#快速充电配置" class="headerlink" title="快速充电配置"></a>快速充电配置</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 针对快充充电器 @ 4000mA</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> TTE_DEFAULT_CC_CURRENT   4000    <span class="comment">// mA</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> TTE_CC_TIME_SEC          2700    <span class="comment">// 典型值</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> TTE_CV_TIME_SEC          2000    <span class="comment">// 典型值</span></span></span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="版本信息"><a href="#版本信息" class="headerlink" title="版本信息"></a>版本信息</h2><table>
+<thead>
+<tr>
+<th>版本</th>
+<th>日期</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>v1.0</td>
+<td>2025-12</td>
+<td>初始版本，支持CC-CV分阶段预估</td>
+</tr>
+<tr>
+<td>v1.1</td>
+<td>2026-02</td>
+<td>优化充放电阻抗曲线参数</td>
+</tr>
+</tbody></table>
+<hr>
+<p><em>文档生成日期: 2026-03-25</em></p>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">首页</a></li>
+        
+          <li><a href="/about/">关于</a></li>
+        
+          <li><a href="/archives/">归档</a></li>
+        
+          <li><a href="/tags/">标签</a></li>
+        
+          <li><a href="/categories/">分类</a></li>
+        
+          <li><a href="/search/">搜索</a></li>
+        
+          <li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%BB%A1%E5%85%85%E6%97%B6%E9%97%B4%E9%A2%84%E4%BC%B0%E5%8A%9F%E8%83%BD%E8%AF%B4%E6%98%8E"><span class="toc-number">1.</span> <span class="toc-text">满充时间预估功能说明</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%9B%AE%E5%BD%95"><span class="toc-number">1.1.</span> <span class="toc-text">目录</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8A%9F%E8%83%BD%E6%A6%82%E8%BF%B0"><span class="toc-number">1.2.</span> <span class="toc-text">功能概述</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%89%B9%E6%80%A7"><span class="toc-number">1.2.1.</span> <span class="toc-text">特性</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%96%87%E4%BB%B6%E4%BD%8D%E7%BD%AE"><span class="toc-number">1.2.2.</span> <span class="toc-text">文件位置</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8E%9F%E7%90%86%E8%AF%B4%E6%98%8E"><span class="toc-number">1.3.</span> <span class="toc-text">原理说明</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%AE%A1%E7%AE%97%E6%A8%A1%E5%BC%8F%E9%80%89%E6%8B%A9"><span class="toc-number">1.3.1.</span> <span class="toc-text">计算模式选择</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Mode-1-%E7%AE%97%E6%B3%95%E5%8E%9F%E7%90%86"><span class="toc-number">1.3.2.</span> <span class="toc-text">Mode 1 算法原理</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#1-%E5%85%85%E7%94%B5%E9%98%B6%E6%AE%B5%E8%AF%86%E5%88%AB"><span class="toc-number">1.3.2.1.</span> <span class="toc-text">1. 充电阶段识别</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-CC%E9%98%B6%E6%AE%B5%E6%97%B6%E9%97%B4%E8%AE%A1%E7%AE%97"><span class="toc-number">1.3.2.2.</span> <span class="toc-text">2. CC阶段时间计算</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-CV%E9%98%B6%E6%AE%B5%E6%97%B6%E9%97%B4%E8%AE%A1%E7%AE%97"><span class="toc-number">1.3.2.3.</span> <span class="toc-text">3. CV阶段时间计算</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%8E%A5%E5%8F%A3%E5%AE%9A%E4%B9%89"><span class="toc-number">1.4.</span> <span class="toc-text">接口定义</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#SBS%E5%AF%84%E5%AD%98%E5%99%A8"><span class="toc-number">1.4.1.</span> <span class="toc-text">SBS寄存器</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%95%B0%E6%8D%AE%E6%BA%90%E5%AF%84%E5%AD%98%E5%99%A8"><span class="toc-number">1.4.2.</span> <span class="toc-text">数据源寄存器</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%A4%96%E9%83%A8%E5%8F%98%E9%87%8F"><span class="toc-number">1.4.3.</span> <span class="toc-text">外部变量</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%95%B0%E6%8D%AE%E6%B5%81%E7%A8%8B"><span class="toc-number">1.5.</span> <span class="toc-text">数据流程</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%8C%E6%95%B4%E8%B0%83%E7%94%A8%E9%93%BE"><span class="toc-number">1.5.1.</span> <span class="toc-text">完整调用链</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%86%85%E9%83%A8%E8%AE%A1%E7%AE%97%E6%B5%81%E7%A8%8B"><span class="toc-number">1.5.2.</span> <span class="toc-text">内部计算流程</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#fg-time-estimation-%E5%88%86%E6%94%AF%E9%80%BB%E8%BE%91"><span class="toc-number">1.5.3.</span> <span class="toc-text">fg_time_estimation() 分支逻辑</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%B3%E9%94%AE%E5%8F%82%E6%95%B0"><span class="toc-number">1.6.</span> <span class="toc-text">关键参数</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%97%B6%E9%97%B4%E4%BC%B0%E7%AE%97%E5%B8%B8%E9%87%8F-lib-fg-c"><span class="toc-number">1.6.1.</span> <span class="toc-text">时间估算常量 (lib_fg.c)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%94%B5%E6%B5%81%E9%98%88%E5%80%BC-lib-fg-c"><span class="toc-number">1.6.2.</span> <span class="toc-text">电流阈值 (lib_fg.c)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B9%B3%E6%BB%91%E5%8F%82%E6%95%B0"><span class="toc-number">1.6.3.</span> <span class="toc-text">平滑参数</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#GPM%E8%B0%83%E6%95%B4%E5%8F%82%E6%95%B0-flash-sbs-c-Mode-0"><span class="toc-number">1.6.4.</span> <span class="toc-text">GPM调整参数 (flash&#x2F;sbs.c Mode 0)</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%B0%83%E8%AF%95%E6%96%B9%E6%B3%95"><span class="toc-number">1.7.</span> <span class="toc-text">调试方法</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E5%90%AF%E7%94%A8%E8%B0%83%E8%AF%95%E6%97%A5%E5%BF%97"><span class="toc-number">1.7.1.</span> <span class="toc-text">1. 启用调试日志</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-%E5%AF%84%E5%AD%98%E5%99%A8%E8%AF%BB%E5%8F%96%E9%AA%8C%E8%AF%81"><span class="toc-number">1.7.2.</span> <span class="toc-text">2. 寄存器读取验证</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-%E8%AE%A1%E7%AE%97%E9%AA%8C%E8%AF%81"><span class="toc-number">1.7.3.</span> <span class="toc-text">3. 计算验证</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-%E8%B0%83%E8%AF%95%E6%A3%80%E6%9F%A5%E7%82%B9"><span class="toc-number">1.7.4.</span> <span class="toc-text">4. 调试检查点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-%E5%B8%B8%E8%A7%81%E6%B3%A2%E5%BD%A2%E8%A7%82%E5%AF%9F"><span class="toc-number">1.7.5.</span> <span class="toc-text">5. 常见波形观察</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98"><span class="toc-number">1.8.</span> <span class="toc-text">常见问题</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Q1-ATTF%E8%BF%94%E5%9B%9E%E5%80%BC%E4%B8%BA0"><span class="toc-number">1.8.1.</span> <span class="toc-text">Q1: ATTF返回值为0</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Q2-%E9%A2%84%E4%BC%B0%E6%97%B6%E9%97%B4%E5%81%8F%E5%B7%AE%E5%A4%A7"><span class="toc-number">1.8.2.</span> <span class="toc-text">Q2: 预估时间偏差大</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Q3-%E6%A8%A1%E5%BC%8F%E5%88%87%E6%8D%A2%E6%97%B6%E9%A2%84%E4%BC%B0%E9%87%8D%E7%BD%AE"><span class="toc-number">1.8.3.</span> <span class="toc-text">Q3: 模式切换时预估重置</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Q4-MODE-0%E5%92%8CMODE-1%E7%BB%93%E6%9E%9C%E4%B8%8D%E4%B8%80%E8%87%B4"><span class="toc-number">1.8.4.</span> <span class="toc-text">Q4: MODE 0和MODE 1结果不一致</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%85%8D%E7%BD%AE%E7%A4%BA%E4%BE%8B"><span class="toc-number">1.9.</span> <span class="toc-text">配置示例</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%A0%87%E5%87%86%E9%85%8D%E7%BD%AE-Mode-1"><span class="toc-number">1.9.1.</span> <span class="toc-text">标准配置 (Mode 1)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%BF%AB%E9%80%9F%E5%85%85%E7%94%B5%E9%85%8D%E7%BD%AE"><span class="toc-number">1.9.2.</span> <span class="toc-text">快速充电配置</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%89%88%E6%9C%AC%E4%BF%A1%E6%81%AF"><span class="toc-number">1.10.</span> <span class="toc-text">版本信息</span></a></li></ol></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/03/25/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E6%BB%A1%E5%85%85%E6%97%B6%E9%97%B4%E9%A2%84%E4%BC%B0%E5%8A%9F%E8%83%BD%E8%AF%B4%E6%98%8E/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/03/25/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E6%BB%A1%E5%85%85%E6%97%B6%E9%97%B4%E9%A2%84%E4%BC%B0%E5%8A%9F%E8%83%BD%E8%AF%B4%E6%98%8E/&text=电量计 -- 满充时间预估功能说明"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/03/25/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E6%BB%A1%E5%85%85%E6%97%B6%E9%97%B4%E9%A2%84%E4%BC%B0%E5%8A%9F%E8%83%BD%E8%AF%B4%E6%98%8E/&title=电量计 -- 满充时间预估功能说明"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/03/25/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E6%BB%A1%E5%85%85%E6%97%B6%E9%97%B4%E9%A2%84%E4%BC%B0%E5%8A%9F%E8%83%BD%E8%AF%B4%E6%98%8E/&is_video=false&description=电量计 -- 满充时间预估功能说明"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=电量计 -- 满充时间预估功能说明&body=Check out this article: https://cursorhu.github.io/2026/03/25/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E6%BB%A1%E5%85%85%E6%97%B6%E9%97%B4%E9%A2%84%E4%BC%B0%E5%8A%9F%E8%83%BD%E8%AF%B4%E6%98%8E/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/03/25/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E6%BB%A1%E5%85%85%E6%97%B6%E9%97%B4%E9%A2%84%E4%BC%B0%E5%8A%9F%E8%83%BD%E8%AF%B4%E6%98%8E/&title=电量计 -- 满充时间预估功能说明"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/03/25/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E6%BB%A1%E5%85%85%E6%97%B6%E9%97%B4%E9%A2%84%E4%BC%B0%E5%8A%9F%E8%83%BD%E8%AF%B4%E6%98%8E/&title=电量计 -- 满充时间预估功能说明"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/03/25/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E6%BB%A1%E5%85%85%E6%97%B6%E9%97%B4%E9%A2%84%E4%BC%B0%E5%8A%9F%E8%83%BD%E8%AF%B4%E6%98%8E/&title=电量计 -- 满充时间预估功能说明"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/03/25/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E6%BB%A1%E5%85%85%E6%97%B6%E9%97%B4%E9%A2%84%E4%BC%B0%E5%8A%9F%E8%83%BD%E8%AF%B4%E6%98%8E/&title=电量计 -- 满充时间预估功能说明"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/03/25/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E6%BB%A1%E5%85%85%E6%97%B6%E9%97%B4%E9%A2%84%E4%BC%B0%E5%8A%9F%E8%83%BD%E8%AF%B4%E6%98%8E/&name=电量计 -- 满充时间预估功能说明&description=&lt;h1 id=&#34;满充时间预估功能说明&#34;&gt;&lt;a href=&#34;#满充时间预估功能说明&#34; class=&#34;headerlink&#34; title=&#34;满充时间预估功能说明&#34;&gt;&lt;/a&gt;满充时间预估功能说明&lt;/h1&gt;&lt;h2 id=&#34;目录&#34;&gt;&lt;a href=&#34;#目录&#34; class=&#34;headerlink&#34; title=&#34;目录&#34;&gt;&lt;/a&gt;目录&lt;/h2&gt;&lt;ul&gt;
+&lt;li&gt;&lt;a href=&#34;#%E5%8A%9F%E8%83%BD%E6%A6%82%E8%BF%B0&#34;&gt;功能概述&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;#%E5%8E%9F%E7%90%86%E8%AF%B4%E6%98%8E&#34;&gt;原理说明&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;#%E6%8E%A5%E5%8F%A3%E5%AE%9A%E4%B9%89&#34;&gt;接口定义&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;#%E6%95%B0%E6%8D%AE%E6%B5%81%E7%A8%8B&#34;&gt;数据流程&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;#%E5%85%B3%E9%94%AE%E5%8F%82%E6%95%B0&#34;&gt;关键参数&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;#%E8%B0%83%E8%AF%95%E6%96%B9%E6%B3%95&#34;&gt;调试方法&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;#%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98&#34;&gt;常见问题&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;功能概述&#34;&gt;&lt;a href=&#34;#功能概述&#34; class=&#34;headerlink&#34; title=&#34;功能概述&#34;&gt;&lt;/a&gt;功能概述&lt;/h2&gt;&lt;p&gt;满充时间预估(Time To Full, TTF)功能用于估算电池从当前状态充满到100%SOC所需的时间。&lt;/p&gt;
+&lt;h3 id=&#34;特性&#34;&gt;&lt;a href=&#34;#特性&#34; class=&#34;headerlink&#34; title=&#34;特性&#34;&gt;&lt;/a&gt;特性&lt;/h3&gt;&lt;ul&gt;
+&lt;li&gt;支持两种计算模式（由&lt;code&gt;TIME_ESTIMATION_MODE&lt;/code&gt;宏控制）&lt;/li&gt;
+&lt;li&gt;通过SBS标准接口对外提供数据&lt;/li&gt;
+&lt;li&gt;支持充电时间(TTF)和放电时间(TTE)两种预估&lt;/li&gt;
+&lt;li&gt;输出单位为分钟&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id=&#34;文件位置&#34;&gt;&lt;a href=&#34;#文件位置&#34; class=&#34;headerlink&#34; title=&#34;文件位置&#34;&gt;&lt;/a&gt;文件位置&lt;/h3&gt;&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;文件&lt;/th&gt;
+&lt;th&gt;说明&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;lib/lib_fg.c&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;核心算法实现&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;flash/sbs.c&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;SBS接口封装&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;lib/lib_fg.h&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;库函数声明&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;&lt;/table&gt;"><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/03/25/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E6%BB%A1%E5%85%85%E6%97%B6%E9%97%B4%E9%A2%84%E4%BC%B0%E5%8A%9F%E8%83%BD%E8%AF%B4%E6%98%8E/&t=电量计 -- 满充时间预估功能说明"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> 菜单</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> 目录</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> 分享</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> 返回顶部</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2026
+    cursorhu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"复制到粘贴板！\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "复制成功！");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+</body>
+</html>
