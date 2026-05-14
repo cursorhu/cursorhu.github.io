@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="大模型原理 (一) 从RNN到Transformer最近从Cursor迁移到ClaudeCode和Codex原生环境，GPT5.5体验大幅提升，简直有2023年ChatGPT刚问世的那种惊讶的体验感 于是回顾了大模型起源相关论文  Transformer架构论文(2017)：https:&#x2F;&#x2F;arxiv.org&#x2F;pdf&#x2F;1706.03762  ChatGPT原理(2023)：https:&#x2F;&#x2F;writ">
+<meta property="og:type" content="article">
+<meta property="og:title" content="大模型原理 (一) 从RNN到Transformer">
+<meta property="og:url" content="https://cursorhu.github.io/2026/05/12/%E5%A4%A7%E6%A8%A1%E5%9E%8B%E5%8E%9F%E7%90%86%20(%E4%B8%80)%20%E4%BB%8ERNN%E5%88%B0Transformer/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="大模型原理 (一) 从RNN到Transformer最近从Cursor迁移到ClaudeCode和Codex原生环境，GPT5.5体验大幅提升，简直有2023年ChatGPT刚问世的那种惊讶的体验感 于是回顾了大模型起源相关论文  Transformer架构论文(2017)：https:&#x2F;&#x2F;arxiv.org&#x2F;pdf&#x2F;1706.03762  ChatGPT原理(2023)：https:&#x2F;&#x2F;writ">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-05-12T10:30:00.000Z">
+<meta property="article:modified_time" content="2026-05-14T08:52:49.706Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="Transformer">
+<meta name="twitter:card" content="summary">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>大模型原理 (一) 从RNN到Transformer</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+<meta name="generator" content="Hexo 8.0.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="顶部" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        
+        <li><a class="icon" aria-label="下一篇" href="/2026/04/10/AI%E7%BC%96%E7%A8%8B(%E4%BA%8C)%20-%20%E5%9F%BA%E4%BA%8EOpenSkills%E7%9A%84FPGA%E5%BC%80%E5%8F%91%E8%87%AA%E5%8A%A8%E5%8C%96/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="返回顶部" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="分享文章" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">上一篇</span>
+      <span id="i-next" class="info" style="display:none;">下一篇</span>
+      <span id="i-top" class="info" style="display:none;">返回顶部</span>
+      <span id="i-share" class="info" style="display:none;">分享文章</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/05/12/%E5%A4%A7%E6%A8%A1%E5%9E%8B%E5%8E%9F%E7%90%86%20(%E4%B8%80)%20%E4%BB%8ERNN%E5%88%B0Transformer/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/05/12/%E5%A4%A7%E6%A8%A1%E5%9E%8B%E5%8E%9F%E7%90%86%20(%E4%B8%80)%20%E4%BB%8ERNN%E5%88%B0Transformer/&text=大模型原理 (一) 从RNN到Transformer"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/05/12/%E5%A4%A7%E6%A8%A1%E5%9E%8B%E5%8E%9F%E7%90%86%20(%E4%B8%80)%20%E4%BB%8ERNN%E5%88%B0Transformer/&title=大模型原理 (一) 从RNN到Transformer"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/05/12/%E5%A4%A7%E6%A8%A1%E5%9E%8B%E5%8E%9F%E7%90%86%20(%E4%B8%80)%20%E4%BB%8ERNN%E5%88%B0Transformer/&is_video=false&description=大模型原理 (一) 从RNN到Transformer"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=大模型原理 (一) 从RNN到Transformer&body=Check out this article: https://cursorhu.github.io/2026/05/12/%E5%A4%A7%E6%A8%A1%E5%9E%8B%E5%8E%9F%E7%90%86%20(%E4%B8%80)%20%E4%BB%8ERNN%E5%88%B0Transformer/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/05/12/%E5%A4%A7%E6%A8%A1%E5%9E%8B%E5%8E%9F%E7%90%86%20(%E4%B8%80)%20%E4%BB%8ERNN%E5%88%B0Transformer/&title=大模型原理 (一) 从RNN到Transformer"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/05/12/%E5%A4%A7%E6%A8%A1%E5%9E%8B%E5%8E%9F%E7%90%86%20(%E4%B8%80)%20%E4%BB%8ERNN%E5%88%B0Transformer/&title=大模型原理 (一) 从RNN到Transformer"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/05/12/%E5%A4%A7%E6%A8%A1%E5%9E%8B%E5%8E%9F%E7%90%86%20(%E4%B8%80)%20%E4%BB%8ERNN%E5%88%B0Transformer/&title=大模型原理 (一) 从RNN到Transformer"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/05/12/%E5%A4%A7%E6%A8%A1%E5%9E%8B%E5%8E%9F%E7%90%86%20(%E4%B8%80)%20%E4%BB%8ERNN%E5%88%B0Transformer/&title=大模型原理 (一) 从RNN到Transformer"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/05/12/%E5%A4%A7%E6%A8%A1%E5%9E%8B%E5%8E%9F%E7%90%86%20(%E4%B8%80)%20%E4%BB%8ERNN%E5%88%B0Transformer/&name=大模型原理 (一) 从RNN到Transformer&description=&lt;h1 id=&#34;大模型原理-一-从RNN到Transformer&#34;&gt;&lt;a href=&#34;#大模型原理-一-从RNN到Transformer&#34; class=&#34;headerlink&#34; title=&#34;大模型原理 (一) 从RNN到Transformer&#34;&gt;&lt;/a&gt;大模型原理 (一) 从RNN到Transformer&lt;/h1&gt;&lt;p&gt;最近从Cursor迁移到ClaudeCode和Codex原生环境，GPT5.5体验大幅提升，简直有2023年ChatGPT刚问世的那种惊讶的体验感&lt;/p&gt;
+&lt;p&gt;于是回顾了大模型起源相关论文&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;p&gt;Transformer架构论文(2017)：&lt;a href=&#34;https://arxiv.org/pdf/1706.03762&#34;&gt;https://arxiv.org/pdf/1706.03762&lt;/a&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;&lt;p&gt;ChatGPT原理(2023)：&lt;a href=&#34;https://writings.stephenwolfram.com/2023/02/what-is-chatgpt-doing-and-why-does-it-work/&#34;&gt;https://writings.stephenwolfram.com/2023/02/what-is-chatgpt-doing-and-why-does-it-work/&lt;/a&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;再找Deepseek梳理了一下Transformer到底解决传统神经网络的什么问题，内容如下：&lt;/p&gt;
+&lt;hr&gt;
+&lt;p&gt;我们要聊的，是站在今天大语言模型浪潮之巅的那个核心架构——&lt;strong&gt;Transformer&lt;/strong&gt;。要真正理解它为什么能催生“智能”，我们需要先回到过去，看看传统的神经网络，特别是曾经统治序列建模的 RNN，到底卡在了哪里。&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;1-神经元与最朴素的神经网络&#34;&gt;&lt;a href=&#34;#1-神经元与最朴素的神经网络&#34; class=&#34;headerlink&#34; title=&#34;1. 神经元与最朴素的神经网络&#34;&gt;&lt;/a&gt;1. 神经元与最朴素的神经网络&lt;/h2&gt;&lt;p&gt;一个神经网络，可以看作一个复杂的函数。它由大量“神经元”组成，每个神经元对输入做加权求和，再经过一个非线性激活函数输出。&lt;/p&gt;"><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/05/12/%E5%A4%A7%E6%A8%A1%E5%9E%8B%E5%8E%9F%E7%90%86%20(%E4%B8%80)%20%E4%BB%8ERNN%E5%88%B0Transformer/&t=大模型原理 (一) 从RNN到Transformer"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%A4%A7%E6%A8%A1%E5%9E%8B%E5%8E%9F%E7%90%86-%E4%B8%80-%E4%BB%8ERNN%E5%88%B0Transformer"><span class="toc-number">1.</span> <span class="toc-text">大模型原理 (一) 从RNN到Transformer</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E7%A5%9E%E7%BB%8F%E5%85%83%E4%B8%8E%E6%9C%80%E6%9C%B4%E7%B4%A0%E7%9A%84%E7%A5%9E%E7%BB%8F%E7%BD%91%E7%BB%9C"><span class="toc-number">1.1.</span> <span class="toc-text">1. 神经元与最朴素的神经网络</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-RNN-%E7%9A%84%E8%BE%89%E7%85%8C%E4%B8%8E%E6%9E%B7%E9%94%81"><span class="toc-number">1.2.</span> <span class="toc-text">2. RNN 的辉煌与枷锁</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-Transformer-%E7%9A%84%E7%A0%B4%E5%B1%80%EF%BC%9A%E6%B3%A8%E6%84%8F%E5%8A%9B%E5%8D%B3%E4%B8%80%E5%88%87"><span class="toc-number">1.3.</span> <span class="toc-text">3. Transformer 的破局：注意力即一切</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E7%9B%B4%E8%A7%82%E7%90%86%E8%A7%A3%E8%87%AA%E6%B3%A8%E6%84%8F%E5%8A%9B"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 直观理解自注意力</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E6%95%B0%E5%AD%A6%E5%8E%9F%E7%90%86%EF%BC%9A%E6%9F%A5%E8%AF%A2%E3%80%81%E9%94%AE%E3%80%81%E5%80%BC"><span class="toc-number">1.3.2.</span> <span class="toc-text">3.2 数学原理：查询、键、值</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-%E5%A4%9A%E5%A4%B4%E6%B3%A8%E6%84%8F%E5%8A%9B%E4%B8%8E%E4%BD%8D%E7%BD%AE%E7%BC%96%E7%A0%81"><span class="toc-number">1.3.3.</span> <span class="toc-text">3.3 多头注意力与位置编码</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-4-%E6%9E%B6%E6%9E%84%E9%AA%A8%E6%9E%B6%EF%BC%9A%E6%AE%8B%E5%B7%AE%E8%BF%9E%E6%8E%A5%E4%B8%8E%E5%B1%82%E5%BD%92%E4%B8%80%E5%8C%96"><span class="toc-number">1.3.4.</span> <span class="toc-text">3.4 架构骨架：残差连接与层归一化</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-%E4%B8%BA%E4%BB%80%E4%B9%88-Transformer-%E8%83%BD%E4%BA%A7%E7%94%9F%E5%A4%A7%E6%A8%A1%E5%9E%8B%E6%99%BA%E8%83%BD%EF%BC%9F"><span class="toc-number">1.4.</span> <span class="toc-text">4. 为什么 Transformer 能产生大模型智能？</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-Transformer-%E8%AE%AD%E7%BB%83%E7%9A%84%E6%A0%B8%E5%BF%83"><span class="toc-number">1.5.</span> <span class="toc-text">5. Transformer 训练的核心</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E8%87%AA%E7%9B%91%E7%9D%A3%E9%A2%84%E8%AE%AD%E7%BB%83%EF%BC%9A%E9%A2%84%E6%B5%8B%E4%B8%8B%E4%B8%80%E4%B8%AA%E8%AF%8D"><span class="toc-number">1.5.1.</span> <span class="toc-text">5.1 自监督预训练：预测下一个词</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E6%8D%9F%E5%A4%B1%E5%87%BD%E6%95%B0%E4%B8%8E%E4%BC%98%E5%8C%96%E5%99%A8"><span class="toc-number">1.5.2.</span> <span class="toc-text">5.2 损失函数与优化器</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-%E7%A8%B3%E5%AE%9A%E6%B7%B1%E9%87%8D%E7%BD%91%E7%BB%9C%E7%9A%84%E6%A0%B8%E5%BF%83%E6%8A%80%E5%B7%A7"><span class="toc-number">1.5.3.</span> <span class="toc-text">5.3 稳定深重网络的核心技巧</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-4-%E6%8A%8A%E5%A4%A7%E8%B1%A1%E8%A3%85%E8%BF%9B%E5%86%B0%E7%AE%B1%EF%BC%9A%E5%88%86%E5%B8%83%E5%BC%8F%E8%AE%AD%E7%BB%83"><span class="toc-number">1.5.4.</span> <span class="toc-text">5.4 把大象装进冰箱：分布式训练</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-5-%E5%90%8E%E8%AE%AD%E7%BB%83%E5%AF%B9%E9%BD%90%EF%BC%9A%E8%AE%A9%E6%A8%A1%E5%9E%8B%E5%90%AC%E8%AF%9D"><span class="toc-number">1.5.5.</span> <span class="toc-text">5.5 后训练对齐：让模型听话</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6-%E6%80%BB%E7%BB%93%EF%BC%9A%E5%A4%A7%E6%A8%A1%E5%9E%8B%E6%99%BA%E8%83%BD%E7%9A%84%E5%85%AC%E5%BC%8F"><span class="toc-number">1.6.</span> <span class="toc-text">6. 总结：大模型智能的公式</span></a></li></ol></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        大模型原理 (一) 从RNN到Transformer
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">cursorhu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2026-05-12T10:30:00.000Z" class="dt-published" itemprop="datePublished">2026-05-12</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fa-solid fa-archive"></i>
+        <a class="category-link" href="/categories/AI%E7%BC%96%E7%A8%8B/">AI编程</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/Transformer/" rel="tag">Transformer</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <h1 id="大模型原理-一-从RNN到Transformer"><a href="#大模型原理-一-从RNN到Transformer" class="headerlink" title="大模型原理 (一) 从RNN到Transformer"></a>大模型原理 (一) 从RNN到Transformer</h1><p>最近从Cursor迁移到ClaudeCode和Codex原生环境，GPT5.5体验大幅提升，简直有2023年ChatGPT刚问世的那种惊讶的体验感</p>
+<p>于是回顾了大模型起源相关论文</p>
+<ul>
+<li><p>Transformer架构论文(2017)：<a target="_blank" rel="noopener" href="https://arxiv.org/pdf/1706.03762">https://arxiv.org/pdf/1706.03762</a></p>
+</li>
+<li><p>ChatGPT原理(2023)：<a target="_blank" rel="noopener" href="https://writings.stephenwolfram.com/2023/02/what-is-chatgpt-doing-and-why-does-it-work/">https://writings.stephenwolfram.com/2023/02/what-is-chatgpt-doing-and-why-does-it-work/</a></p>
+</li>
+</ul>
+<p>再找Deepseek梳理了一下Transformer到底解决传统神经网络的什么问题，内容如下：</p>
+<hr>
+<p>我们要聊的，是站在今天大语言模型浪潮之巅的那个核心架构——<strong>Transformer</strong>。要真正理解它为什么能催生“智能”，我们需要先回到过去，看看传统的神经网络，特别是曾经统治序列建模的 RNN，到底卡在了哪里。</p>
+<hr>
+<h2 id="1-神经元与最朴素的神经网络"><a href="#1-神经元与最朴素的神经网络" class="headerlink" title="1. 神经元与最朴素的神经网络"></a>1. 神经元与最朴素的神经网络</h2><p>一个神经网络，可以看作一个复杂的函数。它由大量“神经元”组成，每个神经元对输入做加权求和，再经过一个非线性激活函数输出。</p>
+<ul>
+<li><strong>全连接网络（MLP）</strong> 是最原始的形式：上一层每个神经元都连接下一层每个神经元。  </li>
+<li>但它有一个致命问题：<strong>输入大小是固定的</strong>。一句话如果长短不一，我们必须截断或填充到固定长度。而且它天然认为输入的每个位置彼此独立，没有顺序概念。比如“我爱你”和“你爱我”，在全连接眼里，打乱顺序的输入向量可能毫无差别。</li>
+</ul>
+<p>这就注定，传统 MLP 无法胜任语言这样的序列任务。</p>
+<hr>
+<h2 id="2-RNN-的辉煌与枷锁"><a href="#2-RNN-的辉煌与枷锁" class="headerlink" title="2. RNN 的辉煌与枷锁"></a>2. RNN 的辉煌与枷锁</h2><p>为了让网络拥有“记忆”，<strong>循环神经网络（RNN）</strong> 诞生了。它的核心思想是：有一个隐藏状态 ( h_t )，在读取序列的每一步时，都会把当前输入 ( x_t ) 和上一时刻状态 ( h_{t-1} ) 融合，产生新状态 ( h_t )，并输出 ( y_t )。</p>
+<p>这就像人在阅读：每读一个词，都会结合前文的理解，更新脑中的含义。</p>
+<p><strong>那么，为什么 RNN 没能直接催生出今天的大模型智能呢？有三大死穴：</strong></p>
+<ul>
+<li><p><strong>① 顺序计算的诅咒（无法并行）</strong><br>计算 ( h_t ) 必须先算完 ( h_{t-1} )，这意味着处理一个长度为 1000 的序列，必须串行走过 1000 步。GPU 有成千上万个核心，但 RNN 只能一个时间步一个时间步地跑，<strong>训练速度极慢</strong>。当模型参数量大到数百亿时，这种时间成本是完全不可接受的。</p>
+</li>
+<li><p><strong>② 梯度消失&#x2F;爆炸（长程遗忘）</strong><br>RNN 通过时间反向传播（BPTT）来学习。每一步的梯度要连乘一个雅可比矩阵。如果这个矩阵的最大特征值小于 1，连乘后梯度会指数级衰减到 0，这就是<strong>梯度消失</strong>；大于 1 则爆炸。<br>虽然 LSTM、GRU 通过“门控”机制缓解了这个问题，但它们也只是把记忆拉长了几十步，依然无法真正处理相隔千词的复杂依赖。比如让 RNN 理解“我 30 年前种下的那棵……苹果树终于结果了”，它读到“结果了”时，早已遗忘“种下”的信息。</p>
+</li>
+<li><p><strong>③ 难以规模化</strong><br>想把 RNN 堆深、加宽来扩大容量？很困难。因为顺序依赖限制了并行度，深层的 RNN 训练不仅极慢，而且梯度路径太长，极不稳定。历史上最大的 RNN 模型，参数量也远远无法与今天的 Transformer 大模型相比，更不会涌现出惊人的推理能力。</p>
+</li>
+</ul>
+<p>简单说：<strong>RNN 有智能的愿望，却没有可扩展的体格。</strong></p>
+<hr>
+<h2 id="3-Transformer-的破局：注意力即一切"><a href="#3-Transformer-的破局：注意力即一切" class="headerlink" title="3. Transformer 的破局：注意力即一切"></a>3. Transformer 的破局：注意力即一切</h2><p>2017 年，Transformer 架构横空出世，它的核心不是更深的记忆，而是一个全新的机制——<strong>自注意力（Self-Attention）</strong>。</p>
+<h3 id="3-1-直观理解自注意力"><a href="#3-1-直观理解自注意力" class="headerlink" title="3.1 直观理解自注意力"></a>3.1 直观理解自注意力</h3><p>想象你读一句话：“<strong>银行</strong>在河对岸，但它今天关门了”。<br>在理解“它”指代什么时，你的大脑会同时关注“银行”、“关门”等所有词，并迅速判断“它”最可能与“银行”相关。自注意力做的就是这件事：<strong>让序列中的每个词，都去“看”序列中的所有其他词，并直接计算出它们之间的关联强度。</strong></p>
+<h3 id="3-2-数学原理：查询、键、值"><a href="#3-2-数学原理：查询、键、值" class="headerlink" title="3.2 数学原理：查询、键、值"></a>3.2 数学原理：查询、键、值</h3><p>每个输入的词向量 ( x_i ) 会通过三个不同的矩阵，投影成三个向量：</p>
+<ul>
+<li><strong>查询（Query, Q）</strong>：代表“我在找什么”。</li>
+<li><strong>键（Key, K）</strong>：代表“我身上有什么标签”。</li>
+<li><strong>值（Value, V）</strong>：代表“我的实际内容”。</li>
+</ul>
+<p>对于词 ( i )，它和词 ( j ) 的注意力权重，由 ( $$Q_i$$ ) 与 ( $$K_j $$) 的点积决定，再经过 Softmax 归一化。最后用这个权重对所有的 ( V ) 向量加权求和，得到词 ( i ) 的新表示。</p>
+<p>公式就是著名的：</p>
+<p>$$<br>\text{Attention}(Q,K,V) &#x3D; \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right) V<br>$$</p>
+<ul>
+<li>( $$ QK^T $$ ) 一次性计算了<strong>所有词对</strong>之间的相关性分数。</li>
+<li>除以 ( $$\sqrt{d_k}$$ ) 是为了防止点积过大，让 Softmax 梯度太平滑。</li>
+<li>整句所有词的计算可以<strong>打包成矩阵乘法并行执行</strong>。</li>
+</ul>
+<h3 id="3-3-多头注意力与位置编码"><a href="#3-3-多头注意力与位置编码" class="headerlink" title="3.3 多头注意力与位置编码"></a>3.3 多头注意力与位置编码</h3><ul>
+<li><strong>多头注意力</strong>：单个注意力头可能只捕捉一种关系（比如语法依赖），而 Transformer 使用多组不同的 ( Q,K,V ) 投影，让模型能同时关注不同子空间的信息（语义、位置、指代等）。  </li>
+<li><strong>位置编码</strong>：自注意力本身不区分词的顺序，需要人为注入位置信息。Transformer 使用正弦位置编码，或者让模型学出位置嵌入，加在输入上。</li>
+</ul>
+<h3 id="3-4-架构骨架：残差连接与层归一化"><a href="#3-4-架构骨架：残差连接与层归一化" class="headerlink" title="3.4 架构骨架：残差连接与层归一化"></a>3.4 架构骨架：残差连接与层归一化</h3><p>Transformer 块不仅仅是自注意力，还有完全连接的前馈网络。最关键的是，每个子层（自注意力、前馈网络）外面都包了一层 <strong>残差连接</strong> 和 <strong>层归一化</strong>：</p>
+<p>$$<br>\text{输出} &#x3D; \text{LayerNorm}(x + \text{子层}(x))<br>$$</p>
+<ul>
+<li><strong>残差连接</strong> 提供了梯度高速通道，使得即使模型有上百层，梯度也能无损地传播，彻底解决了深层网络的训练难题。</li>
+<li><strong>层归一化</strong> 稳定了每一层的输入分布，让训练对超参数不敏感。</li>
+</ul>
+<p>这样，一个 Transformer 模型可以轻松堆叠几十甚至上百层，每层都用自注意力获取全局信息，然后用前馈网络进行非线性变换。</p>
+<hr>
+<h2 id="4-为什么-Transformer-能产生大模型智能？"><a href="#4-为什么-Transformer-能产生大模型智能？" class="headerlink" title="4. 为什么 Transformer 能产生大模型智能？"></a>4. 为什么 Transformer 能产生大模型智能？</h2><p>现在我们可以正面回答：<strong>Transformer 把“序列建模”从一条串行的羊肠小道，变成了一个广阔的、可完全并行计算的广场。</strong></p>
+<table>
+<thead>
+<tr>
+<th>特性</th>
+<th>RNN</th>
+<th>Transformer</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>计算方式</td>
+<td>顺序，步与步依赖</td>
+<td>完全并行（训练时整句矩阵乘法）</td>
+</tr>
+<tr>
+<td>长距离依赖</td>
+<td>路径长度 O(n)，梯度消失</td>
+<td>路径长度 O(1)，直接交互</td>
+</tr>
+<tr>
+<td>深度扩展</td>
+<td>梯度不稳定，很难堆深</td>
+<td>残差+LN，可轻松堆上百层</td>
+</tr>
+<tr>
+<td>规模扩展</td>
+<td>瓶颈明显</td>
+<td>天然的并行结构，线性扩展</td>
+</tr>
+</tbody></table>
+<p>正是由于这种<strong>极致的并行性和可扩展性</strong>，我们才可以将模型参数从百万级，一口气推向千亿甚至万亿级。当模型尺寸、数据量、计算量跨越某个阈值后，<strong>涌现能力</strong>出现了——模型开始具备上下文学习、逐步推理、甚至看起来拥有某种常识和逻辑能力。这在 RNN 时代是不可想象的。</p>
+<hr>
+<h2 id="5-Transformer-训练的核心"><a href="#5-Transformer-训练的核心" class="headerlink" title="5. Transformer 训练的核心"></a>5. Transformer 训练的核心</h2><p>结构只是舞台，真正的魔法来自于训练范式。</p>
+<h3 id="5-1-自监督预训练：预测下一个词"><a href="#5-1-自监督预训练：预测下一个词" class="headerlink" title="5.1 自监督预训练：预测下一个词"></a>5.1 自监督预训练：预测下一个词</h3><p>大模型的最核心训练任务是<strong>语言模型</strong>：给一段前缀，预测下一个词的概率分布。<br>对于句子 “Transformer 改变了 AI 的世界”，模型会依次看到 “Transformer” 预测 “改变”，看到 “Transformer 改变” 预测 “了”，以此类推。</p>
+<p>这种任务的好处是：<strong>数据无限，标签自包含</strong>。互联网上所有文本都可以直接拿来训练，无需人工标注。</p>
+<h3 id="5-2-损失函数与优化器"><a href="#5-2-损失函数与优化器" class="headerlink" title="5.2 损失函数与优化器"></a>5.2 损失函数与优化器</h3><ul>
+<li>损失函数是 <strong>交叉熵损失</strong>，衡量预测概率分布与真实词（one-hot）的差距。</li>
+<li>优化器通常使用 <strong>AdamW</strong>，它结合了 Adam 的自适应学习率和去耦的权重衰减。</li>
+<li>学习率调度极其关键：一般是 <strong>warmup（线性增加）→ 保持稳定 → 余弦衰减</strong>。Warmup 能避免训练初期模型混乱时产生过大的破坏性梯度。</li>
+</ul>
+<h3 id="5-3-稳定深重网络的核心技巧"><a href="#5-3-稳定深重网络的核心技巧" class="headerlink" title="5.3 稳定深重网络的核心技巧"></a>5.3 稳定深重网络的核心技巧</h3><ul>
+<li><strong>梯度裁剪</strong>：把梯度的范数限制在阈值内，防止参数更新过猛。</li>
+<li><strong>混合精度训练</strong>：用 16 位浮点数做前向和反向计算，保留 32 位主权重副本，既加速训练又省显存。</li>
+<li><strong>高质量数据去重与过滤</strong>：数据质量直接决定模型智力的上限，“垃圾进，垃圾出”在大模型中更加明显。</li>
+<li><strong>Dropout 与权重衰减</strong>：提供正则化，防止过拟合。</li>
+</ul>
+<h3 id="5-4-把大象装进冰箱：分布式训练"><a href="#5-4-把大象装进冰箱：分布式训练" class="headerlink" title="5.4 把大象装进冰箱：分布式训练"></a>5.4 把大象装进冰箱：分布式训练</h3><p>千亿参数模型不可能放进一块 GPU。必须并行：</p>
+<ul>
+<li><strong>数据并行</strong>：每张卡上有完整模型副本，处理不同批次数据。</li>
+<li><strong>模型并行（张量并行）</strong>：把单层的矩阵乘法切分到多卡。</li>
+<li><strong>流水线并行</strong>：不同层放在不同卡上，像流水线一样传递激活。</li>
+<li>现代框架（如 Megatron-LM, DeepSpeed）将三者结合，达到千卡级高效训练。</li>
+</ul>
+<h3 id="5-5-后训练对齐：让模型听话"><a href="#5-5-后训练对齐：让模型听话" class="headerlink" title="5.5 后训练对齐：让模型听话"></a>5.5 后训练对齐：让模型听话</h3><p>预训练完成后，模型只是一个“文本补全器”，可能会胡言乱语。我们需要：</p>
+<ul>
+<li><strong>指令微调</strong>：用大量（指令，回答）配对数据微调，让模型学会遵循人类意图。</li>
+<li><strong>RLHF（基于人类反馈的强化学习）</strong>：训练一个奖励模型来评价回答的质量，再用强化学习调整模型，使其输出更符合人类偏好，如更安全、更有帮助。</li>
+</ul>
+<hr>
+<h2 id="6-总结：大模型智能的公式"><a href="#6-总结：大模型智能的公式" class="headerlink" title="6. 总结：大模型智能的公式"></a>6. 总结：大模型智能的公式</h2><p>如果我们把“大模型智能”拆解，它其实是一个乘积：</p>
+<p>$$\boxed{智能涌现 \approx Transformer 架构 \times 海量数据 \times 大规模并行训练}$$</p>
+<ul>
+<li><strong>Transformer</strong> 提供了可无限扩展、并行的完美骨架，让任意词之间的交互不再有距离壁垒。</li>
+<li><strong>自监督预训练</strong> 让模型能从整个互联网的知识中汲取养分，学会语言的模式、世界的常识，甚至推理的路径。</li>
+<li><strong>工程与算法的合力</strong> 使我们能真正训练出数百层、千亿参数的庞然大物，并使之稳定收敛。</li>
+</ul>
+<p>所以说，不是 RNN 的“脑子”不行，而是它的身体结构注定无法生长为巨人。Transformer 的出现，第一次让模型规模突破了物理极限，智能也就随之如黎明般悄然涌现。</p>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">首页</a></li>
+        
+          <li><a href="/about/">关于</a></li>
+        
+          <li><a href="/archives/">归档</a></li>
+        
+          <li><a href="/tags/">标签</a></li>
+        
+          <li><a href="/categories/">分类</a></li>
+        
+          <li><a href="/search/">搜索</a></li>
+        
+          <li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%A4%A7%E6%A8%A1%E5%9E%8B%E5%8E%9F%E7%90%86-%E4%B8%80-%E4%BB%8ERNN%E5%88%B0Transformer"><span class="toc-number">1.</span> <span class="toc-text">大模型原理 (一) 从RNN到Transformer</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E7%A5%9E%E7%BB%8F%E5%85%83%E4%B8%8E%E6%9C%80%E6%9C%B4%E7%B4%A0%E7%9A%84%E7%A5%9E%E7%BB%8F%E7%BD%91%E7%BB%9C"><span class="toc-number">1.1.</span> <span class="toc-text">1. 神经元与最朴素的神经网络</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-RNN-%E7%9A%84%E8%BE%89%E7%85%8C%E4%B8%8E%E6%9E%B7%E9%94%81"><span class="toc-number">1.2.</span> <span class="toc-text">2. RNN 的辉煌与枷锁</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-Transformer-%E7%9A%84%E7%A0%B4%E5%B1%80%EF%BC%9A%E6%B3%A8%E6%84%8F%E5%8A%9B%E5%8D%B3%E4%B8%80%E5%88%87"><span class="toc-number">1.3.</span> <span class="toc-text">3. Transformer 的破局：注意力即一切</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E7%9B%B4%E8%A7%82%E7%90%86%E8%A7%A3%E8%87%AA%E6%B3%A8%E6%84%8F%E5%8A%9B"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 直观理解自注意力</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E6%95%B0%E5%AD%A6%E5%8E%9F%E7%90%86%EF%BC%9A%E6%9F%A5%E8%AF%A2%E3%80%81%E9%94%AE%E3%80%81%E5%80%BC"><span class="toc-number">1.3.2.</span> <span class="toc-text">3.2 数学原理：查询、键、值</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-%E5%A4%9A%E5%A4%B4%E6%B3%A8%E6%84%8F%E5%8A%9B%E4%B8%8E%E4%BD%8D%E7%BD%AE%E7%BC%96%E7%A0%81"><span class="toc-number">1.3.3.</span> <span class="toc-text">3.3 多头注意力与位置编码</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-4-%E6%9E%B6%E6%9E%84%E9%AA%A8%E6%9E%B6%EF%BC%9A%E6%AE%8B%E5%B7%AE%E8%BF%9E%E6%8E%A5%E4%B8%8E%E5%B1%82%E5%BD%92%E4%B8%80%E5%8C%96"><span class="toc-number">1.3.4.</span> <span class="toc-text">3.4 架构骨架：残差连接与层归一化</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-%E4%B8%BA%E4%BB%80%E4%B9%88-Transformer-%E8%83%BD%E4%BA%A7%E7%94%9F%E5%A4%A7%E6%A8%A1%E5%9E%8B%E6%99%BA%E8%83%BD%EF%BC%9F"><span class="toc-number">1.4.</span> <span class="toc-text">4. 为什么 Transformer 能产生大模型智能？</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-Transformer-%E8%AE%AD%E7%BB%83%E7%9A%84%E6%A0%B8%E5%BF%83"><span class="toc-number">1.5.</span> <span class="toc-text">5. Transformer 训练的核心</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E8%87%AA%E7%9B%91%E7%9D%A3%E9%A2%84%E8%AE%AD%E7%BB%83%EF%BC%9A%E9%A2%84%E6%B5%8B%E4%B8%8B%E4%B8%80%E4%B8%AA%E8%AF%8D"><span class="toc-number">1.5.1.</span> <span class="toc-text">5.1 自监督预训练：预测下一个词</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E6%8D%9F%E5%A4%B1%E5%87%BD%E6%95%B0%E4%B8%8E%E4%BC%98%E5%8C%96%E5%99%A8"><span class="toc-number">1.5.2.</span> <span class="toc-text">5.2 损失函数与优化器</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-%E7%A8%B3%E5%AE%9A%E6%B7%B1%E9%87%8D%E7%BD%91%E7%BB%9C%E7%9A%84%E6%A0%B8%E5%BF%83%E6%8A%80%E5%B7%A7"><span class="toc-number">1.5.3.</span> <span class="toc-text">5.3 稳定深重网络的核心技巧</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-4-%E6%8A%8A%E5%A4%A7%E8%B1%A1%E8%A3%85%E8%BF%9B%E5%86%B0%E7%AE%B1%EF%BC%9A%E5%88%86%E5%B8%83%E5%BC%8F%E8%AE%AD%E7%BB%83"><span class="toc-number">1.5.4.</span> <span class="toc-text">5.4 把大象装进冰箱：分布式训练</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-5-%E5%90%8E%E8%AE%AD%E7%BB%83%E5%AF%B9%E9%BD%90%EF%BC%9A%E8%AE%A9%E6%A8%A1%E5%9E%8B%E5%90%AC%E8%AF%9D"><span class="toc-number">1.5.5.</span> <span class="toc-text">5.5 后训练对齐：让模型听话</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6-%E6%80%BB%E7%BB%93%EF%BC%9A%E5%A4%A7%E6%A8%A1%E5%9E%8B%E6%99%BA%E8%83%BD%E7%9A%84%E5%85%AC%E5%BC%8F"><span class="toc-number">1.6.</span> <span class="toc-text">6. 总结：大模型智能的公式</span></a></li></ol></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/05/12/%E5%A4%A7%E6%A8%A1%E5%9E%8B%E5%8E%9F%E7%90%86%20(%E4%B8%80)%20%E4%BB%8ERNN%E5%88%B0Transformer/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/05/12/%E5%A4%A7%E6%A8%A1%E5%9E%8B%E5%8E%9F%E7%90%86%20(%E4%B8%80)%20%E4%BB%8ERNN%E5%88%B0Transformer/&text=大模型原理 (一) 从RNN到Transformer"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/05/12/%E5%A4%A7%E6%A8%A1%E5%9E%8B%E5%8E%9F%E7%90%86%20(%E4%B8%80)%20%E4%BB%8ERNN%E5%88%B0Transformer/&title=大模型原理 (一) 从RNN到Transformer"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/05/12/%E5%A4%A7%E6%A8%A1%E5%9E%8B%E5%8E%9F%E7%90%86%20(%E4%B8%80)%20%E4%BB%8ERNN%E5%88%B0Transformer/&is_video=false&description=大模型原理 (一) 从RNN到Transformer"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=大模型原理 (一) 从RNN到Transformer&body=Check out this article: https://cursorhu.github.io/2026/05/12/%E5%A4%A7%E6%A8%A1%E5%9E%8B%E5%8E%9F%E7%90%86%20(%E4%B8%80)%20%E4%BB%8ERNN%E5%88%B0Transformer/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/05/12/%E5%A4%A7%E6%A8%A1%E5%9E%8B%E5%8E%9F%E7%90%86%20(%E4%B8%80)%20%E4%BB%8ERNN%E5%88%B0Transformer/&title=大模型原理 (一) 从RNN到Transformer"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/05/12/%E5%A4%A7%E6%A8%A1%E5%9E%8B%E5%8E%9F%E7%90%86%20(%E4%B8%80)%20%E4%BB%8ERNN%E5%88%B0Transformer/&title=大模型原理 (一) 从RNN到Transformer"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/05/12/%E5%A4%A7%E6%A8%A1%E5%9E%8B%E5%8E%9F%E7%90%86%20(%E4%B8%80)%20%E4%BB%8ERNN%E5%88%B0Transformer/&title=大模型原理 (一) 从RNN到Transformer"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/05/12/%E5%A4%A7%E6%A8%A1%E5%9E%8B%E5%8E%9F%E7%90%86%20(%E4%B8%80)%20%E4%BB%8ERNN%E5%88%B0Transformer/&title=大模型原理 (一) 从RNN到Transformer"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/05/12/%E5%A4%A7%E6%A8%A1%E5%9E%8B%E5%8E%9F%E7%90%86%20(%E4%B8%80)%20%E4%BB%8ERNN%E5%88%B0Transformer/&name=大模型原理 (一) 从RNN到Transformer&description=&lt;h1 id=&#34;大模型原理-一-从RNN到Transformer&#34;&gt;&lt;a href=&#34;#大模型原理-一-从RNN到Transformer&#34; class=&#34;headerlink&#34; title=&#34;大模型原理 (一) 从RNN到Transformer&#34;&gt;&lt;/a&gt;大模型原理 (一) 从RNN到Transformer&lt;/h1&gt;&lt;p&gt;最近从Cursor迁移到ClaudeCode和Codex原生环境，GPT5.5体验大幅提升，简直有2023年ChatGPT刚问世的那种惊讶的体验感&lt;/p&gt;
+&lt;p&gt;于是回顾了大模型起源相关论文&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;p&gt;Transformer架构论文(2017)：&lt;a href=&#34;https://arxiv.org/pdf/1706.03762&#34;&gt;https://arxiv.org/pdf/1706.03762&lt;/a&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;&lt;p&gt;ChatGPT原理(2023)：&lt;a href=&#34;https://writings.stephenwolfram.com/2023/02/what-is-chatgpt-doing-and-why-does-it-work/&#34;&gt;https://writings.stephenwolfram.com/2023/02/what-is-chatgpt-doing-and-why-does-it-work/&lt;/a&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;再找Deepseek梳理了一下Transformer到底解决传统神经网络的什么问题，内容如下：&lt;/p&gt;
+&lt;hr&gt;
+&lt;p&gt;我们要聊的，是站在今天大语言模型浪潮之巅的那个核心架构——&lt;strong&gt;Transformer&lt;/strong&gt;。要真正理解它为什么能催生“智能”，我们需要先回到过去，看看传统的神经网络，特别是曾经统治序列建模的 RNN，到底卡在了哪里。&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;1-神经元与最朴素的神经网络&#34;&gt;&lt;a href=&#34;#1-神经元与最朴素的神经网络&#34; class=&#34;headerlink&#34; title=&#34;1. 神经元与最朴素的神经网络&#34;&gt;&lt;/a&gt;1. 神经元与最朴素的神经网络&lt;/h2&gt;&lt;p&gt;一个神经网络，可以看作一个复杂的函数。它由大量“神经元”组成，每个神经元对输入做加权求和，再经过一个非线性激活函数输出。&lt;/p&gt;"><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/05/12/%E5%A4%A7%E6%A8%A1%E5%9E%8B%E5%8E%9F%E7%90%86%20(%E4%B8%80)%20%E4%BB%8ERNN%E5%88%B0Transformer/&t=大模型原理 (一) 从RNN到Transformer"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> 菜单</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> 目录</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> 分享</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> 返回顶部</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2026
+    cursorhu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"复制到粘贴板！\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "复制成功！");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+</body>
+</html>
