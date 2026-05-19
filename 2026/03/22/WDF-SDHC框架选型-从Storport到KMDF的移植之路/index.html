@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="WDF-SDHC框架选型：从Storport到KMDF的架构移植概述本文介绍将O2Micro SD Host Controller驱动从Storport框架移植到WDF（KMDF）的完整过程：移植动机、框架选型决策、逐子系统的接口对标关系、sdstor_legacy复用层设计，以及移植方法论总结。  1. 移植动机1.1 Storport 框架的架构性缺陷原项目基于 Storport Minipo">
+<meta property="og:type" content="article">
+<meta property="og:title" content="WDF-SDHC框架选型：从Storport到KMDF的架构移植">
+<meta property="og:url" content="https://cursorhu.github.io/2026/03/22/WDF-SDHC%E6%A1%86%E6%9E%B6%E9%80%89%E5%9E%8B-%E4%BB%8EStorport%E5%88%B0KMDF%E7%9A%84%E7%A7%BB%E6%A4%8D%E4%B9%8B%E8%B7%AF/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="WDF-SDHC框架选型：从Storport到KMDF的架构移植概述本文介绍将O2Micro SD Host Controller驱动从Storport框架移植到WDF（KMDF）的完整过程：移植动机、框架选型决策、逐子系统的接口对标关系、sdstor_legacy复用层设计，以及移植方法论总结。  1. 移植动机1.1 Storport 框架的架构性缺陷原项目基于 Storport Minipo">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-03-21T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-05-19T08:02:31.509Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="KMDF">
+<meta property="article:tag" content="SD卡">
+<meta property="article:tag" content="Storport">
+<meta property="article:tag" content="WDF">
+<meta property="article:tag" content="Windows驱动">
+<meta property="article:tag" content="架构移植">
+<meta name="twitter:card" content="summary">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>WDF-SDHC框架选型：从Storport到KMDF的架构移植</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+		<script type="text/x-mathjax-config">
+		  MathJax.Hub.Config({
+			tex2jax: {
+			  skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+			  inlineMath: [['$','$']]
+			}
+		  });
+		</script>
+		<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-MML-AM_CHTML' async></script>
+	
+<meta name="generator" content="Hexo 8.0.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="顶部" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="上一篇" href="/2026/03/22/WDF-SDHC%E5%AD%98%E5%82%A8%E9%A9%B1%E5%8A%A8%E6%A1%86%E6%9E%B6%E5%88%86%E5%B1%82%E8%AE%BE%E8%AE%A1-Storage-Driver%E5%88%B0Disk-Driver/"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="下一篇" href="/2026/03/21/Qcom_ARM%E5%B9%B3%E5%8F%B0%E9%A9%B1%E5%8A%A8_01_SD_Host%E9%85%8D%E7%BD%AE%E4%B8%8EDLL%E8%B0%83%E8%B0%90/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="返回顶部" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="分享文章" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">上一篇</span>
+      <span id="i-next" class="info" style="display:none;">下一篇</span>
+      <span id="i-top" class="info" style="display:none;">返回顶部</span>
+      <span id="i-share" class="info" style="display:none;">分享文章</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/03/22/WDF-SDHC%E6%A1%86%E6%9E%B6%E9%80%89%E5%9E%8B-%E4%BB%8EStorport%E5%88%B0KMDF%E7%9A%84%E7%A7%BB%E6%A4%8D%E4%B9%8B%E8%B7%AF/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/03/22/WDF-SDHC%E6%A1%86%E6%9E%B6%E9%80%89%E5%9E%8B-%E4%BB%8EStorport%E5%88%B0KMDF%E7%9A%84%E7%A7%BB%E6%A4%8D%E4%B9%8B%E8%B7%AF/&text=WDF-SDHC框架选型：从Storport到KMDF的架构移植"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/03/22/WDF-SDHC%E6%A1%86%E6%9E%B6%E9%80%89%E5%9E%8B-%E4%BB%8EStorport%E5%88%B0KMDF%E7%9A%84%E7%A7%BB%E6%A4%8D%E4%B9%8B%E8%B7%AF/&title=WDF-SDHC框架选型：从Storport到KMDF的架构移植"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/03/22/WDF-SDHC%E6%A1%86%E6%9E%B6%E9%80%89%E5%9E%8B-%E4%BB%8EStorport%E5%88%B0KMDF%E7%9A%84%E7%A7%BB%E6%A4%8D%E4%B9%8B%E8%B7%AF/&is_video=false&description=WDF-SDHC框架选型：从Storport到KMDF的架构移植"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=WDF-SDHC框架选型：从Storport到KMDF的架构移植&body=Check out this article: https://cursorhu.github.io/2026/03/22/WDF-SDHC%E6%A1%86%E6%9E%B6%E9%80%89%E5%9E%8B-%E4%BB%8EStorport%E5%88%B0KMDF%E7%9A%84%E7%A7%BB%E6%A4%8D%E4%B9%8B%E8%B7%AF/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/03/22/WDF-SDHC%E6%A1%86%E6%9E%B6%E9%80%89%E5%9E%8B-%E4%BB%8EStorport%E5%88%B0KMDF%E7%9A%84%E7%A7%BB%E6%A4%8D%E4%B9%8B%E8%B7%AF/&title=WDF-SDHC框架选型：从Storport到KMDF的架构移植"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/03/22/WDF-SDHC%E6%A1%86%E6%9E%B6%E9%80%89%E5%9E%8B-%E4%BB%8EStorport%E5%88%B0KMDF%E7%9A%84%E7%A7%BB%E6%A4%8D%E4%B9%8B%E8%B7%AF/&title=WDF-SDHC框架选型：从Storport到KMDF的架构移植"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/03/22/WDF-SDHC%E6%A1%86%E6%9E%B6%E9%80%89%E5%9E%8B-%E4%BB%8EStorport%E5%88%B0KMDF%E7%9A%84%E7%A7%BB%E6%A4%8D%E4%B9%8B%E8%B7%AF/&title=WDF-SDHC框架选型：从Storport到KMDF的架构移植"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/03/22/WDF-SDHC%E6%A1%86%E6%9E%B6%E9%80%89%E5%9E%8B-%E4%BB%8EStorport%E5%88%B0KMDF%E7%9A%84%E7%A7%BB%E6%A4%8D%E4%B9%8B%E8%B7%AF/&title=WDF-SDHC框架选型：从Storport到KMDF的架构移植"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/03/22/WDF-SDHC%E6%A1%86%E6%9E%B6%E9%80%89%E5%9E%8B-%E4%BB%8EStorport%E5%88%B0KMDF%E7%9A%84%E7%A7%BB%E6%A4%8D%E4%B9%8B%E8%B7%AF/&name=WDF-SDHC框架选型：从Storport到KMDF的架构移植&description=&lt;h1 id=&#34;WDF-SDHC框架选型：从Storport到KMDF的架构移植&#34;&gt;&lt;a href=&#34;#WDF-SDHC框架选型：从Storport到KMDF的架构移植&#34; class=&#34;headerlink&#34; title=&#34;WDF-SDHC框架选型：从Storport到KMDF的架构移植&#34;&gt;&lt;/a&gt;WDF-SDHC框架选型：从Storport到KMDF的架构移植&lt;/h1&gt;&lt;h2 id=&#34;概述&#34;&gt;&lt;a href=&#34;#概述&#34; class=&#34;headerlink&#34; title=&#34;概述&#34;&gt;&lt;/a&gt;概述&lt;/h2&gt;&lt;p&gt;本文介绍将O2Micro SD Host Controller驱动从Storport框架移植到WDF（KMDF）的完整过程：移植动机、框架选型决策、逐子系统的接口对标关系、sdstor_legacy复用层设计，以及移植方法论总结。&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;1-移植动机&#34;&gt;&lt;a href=&#34;#1-移植动机&#34; class=&#34;headerlink&#34; title=&#34;1. 移植动机&#34;&gt;&lt;/a&gt;1. 移植动机&lt;/h2&gt;&lt;h3 id=&#34;1-1-Storport-框架的架构性缺陷&#34;&gt;&lt;a href=&#34;#1-1-Storport-框架的架构性缺陷&#34; class=&#34;headerlink&#34; title=&#34;1.1 Storport 框架的架构性缺陷&#34;&gt;&lt;/a&gt;1.1 Storport 框架的架构性缺陷&lt;/h3&gt;&lt;p&gt;原项目基于 Storport Miniport 框架，在 Win11 上暴露出以下问题：&lt;/p&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;问题&lt;/th&gt;
+&lt;th&gt;根因&lt;/th&gt;
+&lt;th&gt;影响&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;DDI 限制&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;Storport 禁止调用大量 WDM DDI（MmMapIoSpace、IoConnectInterrupt 等）&lt;/td&gt;
+&lt;td&gt;无法灵活管理硬件资源&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;DMA-Remapping 不兼容&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;Win11 24H2 强制 DMA 安全限制，Storport 内部 DMA 管理与 IOMMU 冲突&lt;/td&gt;
+&lt;td&gt;驱动加载失败或蓝屏&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;线程模型僵化&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;必须自建 thread_main + Tag Queue 管理并发&lt;/td&gt;
+&lt;td&gt;代码复杂度高，竞态问题多&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;电源管理受限&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;HwAdapterControl 回调粒度粗，PoFx 集成需大量 workaround&lt;/td&gt;
+&lt;td&gt;RTD3 实现困难&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;&lt;/table&gt;
+&lt;h3 id=&#34;1-2-移植目标&#34;&gt;&lt;a href=&#34;#1-2-移植目标&#34; class=&#34;headerlink&#34; title=&#34;1.2 移植目标&#34;&gt;&lt;/a&gt;1.2 移植目标&lt;/h3&gt;&lt;figure class=&#34;highlight plaintext&#34;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&#34;gutter&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;3&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;4&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;5&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;6&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;7&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;8&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;9&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;10&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;11&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;12&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;13&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;14&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;15&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;16&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;17&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;18&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;19&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;20&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;21&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;22&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;23&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&#34;code&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;┌─────────────────────────────────────────────────────────────────────────┐&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│              Storport 架构 → WDF (KMDF) 架构                             │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;├─────────────────────────────────────────────────────────────────────────┤&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                                                                          │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   Storport 架构                        WDF 架构                          │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   ┌──────────────────────┐            ┌──────────────────────┐          │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   │  Storport.sys        │            │  WDF Framework       │          │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   │  (Port Driver)       │            │  (WdfLdr.sys)        │          │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   ├──────────────────────┤            ├──────────────────────┤          │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   │  winscsientry.c      │  ────►     │  O2SDHC.C           │          │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   │  (HW callbacks)      │  重写      │  (WDF callbacks)     │          │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   ├──────────────────────┤            ├──────────────────────┤          │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   │  tagqueue/           │  ────►     │  sdhc_queue.c        │          │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   │  thread_main         │  替代      │  (WDF Queue)         │          │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   ├──────────────────────┤            ├──────────────────────┤          │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   │  host/ card/ cmd/    │  ════►     │  sdstor_legacy/      │          │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   │  (SD Protocol)       │  直接复用   │  (SD Protocol)       │          │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   ├──────────────────────┤            ├──────────────────────┤          │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   │  (Storport内置       │  ────►     │  sdhcstor/           │          │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   │   Disk/SCSI层)       │  新增自建   │  (WDM Port Driver)   │          │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   └──────────────────────┘            └──────────────────────┘          │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                                                                          │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;└─────────────────────────────────────────────────────────────────────────┘&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;"><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/03/22/WDF-SDHC%E6%A1%86%E6%9E%B6%E9%80%89%E5%9E%8B-%E4%BB%8EStorport%E5%88%B0KMDF%E7%9A%84%E7%A7%BB%E6%A4%8D%E4%B9%8B%E8%B7%AF/&t=WDF-SDHC框架选型：从Storport到KMDF的架构移植"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#WDF-SDHC%E6%A1%86%E6%9E%B6%E9%80%89%E5%9E%8B%EF%BC%9A%E4%BB%8EStorport%E5%88%B0KMDF%E7%9A%84%E6%9E%B6%E6%9E%84%E7%A7%BB%E6%A4%8D"><span class="toc-number">1.</span> <span class="toc-text">WDF-SDHC框架选型：从Storport到KMDF的架构移植</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%A6%82%E8%BF%B0"><span class="toc-number">1.1.</span> <span class="toc-text">概述</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E7%A7%BB%E6%A4%8D%E5%8A%A8%E6%9C%BA"><span class="toc-number">1.2.</span> <span class="toc-text">1. 移植动机</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-Storport-%E6%A1%86%E6%9E%B6%E7%9A%84%E6%9E%B6%E6%9E%84%E6%80%A7%E7%BC%BA%E9%99%B7"><span class="toc-number">1.2.1.</span> <span class="toc-text">1.1 Storport 框架的架构性缺陷</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-2-%E7%A7%BB%E6%A4%8D%E7%9B%AE%E6%A0%87"><span class="toc-number">1.2.2.</span> <span class="toc-text">1.2 移植目标</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-%E6%A1%86%E6%9E%B6%E9%80%89%E5%9E%8B%E5%86%B3%E7%AD%96"><span class="toc-number">1.3.</span> <span class="toc-text">2. 框架选型决策</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E5%80%99%E9%80%89%E6%96%B9%E6%A1%88%E5%AF%B9%E6%AF%94"><span class="toc-number">1.3.1.</span> <span class="toc-text">2.1 候选方案对比</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-%E6%9C%80%E7%BB%88%E9%80%89%E6%8B%A9%EF%BC%9A%E8%87%AA%E5%AE%9A%E4%B9%89-KMDF"><span class="toc-number">1.3.2.</span> <span class="toc-text">2.2 最终选择：自定义 KMDF</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-%E9%80%90%E5%AD%90%E7%B3%BB%E7%BB%9F%E7%A7%BB%E6%A4%8D%E5%AF%B9%E6%A0%87"><span class="toc-number">1.4.</span> <span class="toc-text">3. 逐子系统移植对标</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E9%A9%B1%E5%8A%A8%E5%85%A5%E5%8F%A3"><span class="toc-number">1.4.1.</span> <span class="toc-text">3.1 驱动入口</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E8%AE%BE%E5%A4%87%E5%8F%91%E7%8E%B0%E4%B8%8E%E8%B5%84%E6%BA%90%E6%98%A0%E5%B0%84"><span class="toc-number">1.4.2.</span> <span class="toc-text">3.2 设备发现与资源映射</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-I-O-%E8%AF%B7%E6%B1%82%E5%A4%84%E7%90%86"><span class="toc-number">1.4.3.</span> <span class="toc-text">3.3 I&#x2F;O 请求处理</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-4-DMA-%E4%BC%A0%E8%BE%93"><span class="toc-number">1.4.4.</span> <span class="toc-text">3.4 DMA 传输</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-5-%E4%B8%AD%E6%96%AD%E5%A4%84%E7%90%86"><span class="toc-number">1.4.5.</span> <span class="toc-text">3.5 中断处理</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-6-%E7%94%B5%E6%BA%90%E7%AE%A1%E7%90%86"><span class="toc-number">1.4.6.</span> <span class="toc-text">3.6 电源管理</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-7-%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8B"><span class="toc-number">1.4.7.</span> <span class="toc-text">3.7 线程模型</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-sdstor-legacy-%E5%A4%8D%E7%94%A8%E5%B1%82"><span class="toc-number">1.5.</span> <span class="toc-text">4. sdstor_legacy 复用层</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-%E5%A4%8D%E7%94%A8%E7%AD%96%E7%95%A5"><span class="toc-number">1.5.1.</span> <span class="toc-text">4.1 复用策略</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-%E5%A4%8D%E7%94%A8%E6%A8%A1%E5%9D%97%E6%B8%85%E5%8D%95"><span class="toc-number">1.5.2.</span> <span class="toc-text">4.2 复用模块清单</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-membase-%E6%8C%87%E9%92%88%E4%BC%A0%E9%80%92%E6%9C%BA%E5%88%B6"><span class="toc-number">1.5.3.</span> <span class="toc-text">4.3 membase 指针传递机制</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-4-DMA-%E7%BC%93%E5%86%B2%E5%8C%BA%E4%BC%A0%E9%80%92"><span class="toc-number">1.5.4.</span> <span class="toc-text">4.4 DMA 缓冲区传递</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-%E5%AD%98%E5%82%A8%E6%A0%88%E5%88%86%E5%B1%82%E5%8F%98%E5%8C%96"><span class="toc-number">1.6.</span> <span class="toc-text">5. 存储栈分层变化</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-Storport-%E6%9E%B6%E6%9E%84%EF%BC%88%E5%86%85%E7%BD%AE-Disk-SCSI%EF%BC%89"><span class="toc-number">1.6.1.</span> <span class="toc-text">5.1 Storport 架构（内置 Disk&#x2F;SCSI）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-WDF-%E6%9E%B6%E6%9E%84%EF%BC%88%E9%9C%80%E8%87%AA%E5%BB%BA%E5%AD%98%E5%82%A8%E5%B1%82%EF%BC%89"><span class="toc-number">1.6.2.</span> <span class="toc-text">5.2 WDF 架构（需自建存储层）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6-%E5%AE%8C%E6%95%B4%E5%AD%90%E7%B3%BB%E7%BB%9F%E5%AF%B9%E6%AF%94%E8%A1%A8"><span class="toc-number">1.7.</span> <span class="toc-text">6. 完整子系统对比表</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#7-%E7%A7%BB%E6%A4%8D%E6%96%B9%E6%B3%95%E8%AE%BA"><span class="toc-number">1.8.</span> <span class="toc-text">7. 移植方法论</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#7-1-%E7%A7%BB%E6%A4%8D%E6%AD%A5%E9%AA%A4"><span class="toc-number">1.8.1.</span> <span class="toc-text">7.1 移植步骤</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-2-%E5%A4%8D%E7%94%A8-vs-%E9%87%8D%E5%86%99%E5%86%B3%E7%AD%96%E7%9F%A9%E9%98%B5"><span class="toc-number">1.8.2.</span> <span class="toc-text">7.2 复用 vs 重写决策矩阵</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-3-%E5%B8%B8%E8%A7%81%E7%A7%BB%E6%A4%8D%E9%99%B7%E9%98%B1"><span class="toc-number">1.8.3.</span> <span class="toc-text">7.3 常见移植陷阱</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#8-%E6%80%BB%E7%BB%93"><span class="toc-number">1.9.</span> <span class="toc-text">8. 总结</span></a></li></ol></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        WDF-SDHC框架选型：从Storport到KMDF的架构移植
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">cursorhu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2026-03-21T16:00:00.000Z" class="dt-published" itemprop="datePublished">2026-03-22</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fa-solid fa-archive"></i>
+        <a class="category-link" href="/categories/Windows%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91/">Windows驱动开发</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/KMDF/" rel="tag">KMDF</a>, <a class="p-category" href="/tags/SD%E5%8D%A1/" rel="tag">SD卡</a>, <a class="p-category" href="/tags/Storport/" rel="tag">Storport</a>, <a class="p-category" href="/tags/WDF/" rel="tag">WDF</a>, <a class="p-category" href="/tags/Windows%E9%A9%B1%E5%8A%A8/" rel="tag">Windows驱动</a>, <a class="p-category" href="/tags/%E6%9E%B6%E6%9E%84%E7%A7%BB%E6%A4%8D/" rel="tag">架构移植</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <h1 id="WDF-SDHC框架选型：从Storport到KMDF的架构移植"><a href="#WDF-SDHC框架选型：从Storport到KMDF的架构移植" class="headerlink" title="WDF-SDHC框架选型：从Storport到KMDF的架构移植"></a>WDF-SDHC框架选型：从Storport到KMDF的架构移植</h1><h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><p>本文介绍将O2Micro SD Host Controller驱动从Storport框架移植到WDF（KMDF）的完整过程：移植动机、框架选型决策、逐子系统的接口对标关系、sdstor_legacy复用层设计，以及移植方法论总结。</p>
+<hr>
+<h2 id="1-移植动机"><a href="#1-移植动机" class="headerlink" title="1. 移植动机"></a>1. 移植动机</h2><h3 id="1-1-Storport-框架的架构性缺陷"><a href="#1-1-Storport-框架的架构性缺陷" class="headerlink" title="1.1 Storport 框架的架构性缺陷"></a>1.1 Storport 框架的架构性缺陷</h3><p>原项目基于 Storport Miniport 框架，在 Win11 上暴露出以下问题：</p>
+<table>
+<thead>
+<tr>
+<th>问题</th>
+<th>根因</th>
+<th>影响</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>DDI 限制</strong></td>
+<td>Storport 禁止调用大量 WDM DDI（MmMapIoSpace、IoConnectInterrupt 等）</td>
+<td>无法灵活管理硬件资源</td>
+</tr>
+<tr>
+<td><strong>DMA-Remapping 不兼容</strong></td>
+<td>Win11 24H2 强制 DMA 安全限制，Storport 内部 DMA 管理与 IOMMU 冲突</td>
+<td>驱动加载失败或蓝屏</td>
+</tr>
+<tr>
+<td><strong>线程模型僵化</strong></td>
+<td>必须自建 thread_main + Tag Queue 管理并发</td>
+<td>代码复杂度高，竞态问题多</td>
+</tr>
+<tr>
+<td><strong>电源管理受限</strong></td>
+<td>HwAdapterControl 回调粒度粗，PoFx 集成需大量 workaround</td>
+<td>RTD3 实现困难</td>
+</tr>
+</tbody></table>
+<h3 id="1-2-移植目标"><a href="#1-2-移植目标" class="headerlink" title="1.2 移植目标"></a>1.2 移植目标</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────────────────┐</span><br><span class="line">│              Storport 架构 → WDF (KMDF) 架构                             │</span><br><span class="line">├─────────────────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                                          │</span><br><span class="line">│   Storport 架构                        WDF 架构                          │</span><br><span class="line">│   ┌──────────────────────┐            ┌──────────────────────┐          │</span><br><span class="line">│   │  Storport.sys        │            │  WDF Framework       │          │</span><br><span class="line">│   │  (Port Driver)       │            │  (WdfLdr.sys)        │          │</span><br><span class="line">│   ├──────────────────────┤            ├──────────────────────┤          │</span><br><span class="line">│   │  winscsientry.c      │  ────►     │  O2SDHC.C           │          │</span><br><span class="line">│   │  (HW callbacks)      │  重写      │  (WDF callbacks)     │          │</span><br><span class="line">│   ├──────────────────────┤            ├──────────────────────┤          │</span><br><span class="line">│   │  tagqueue/           │  ────►     │  sdhc_queue.c        │          │</span><br><span class="line">│   │  thread_main         │  替代      │  (WDF Queue)         │          │</span><br><span class="line">│   ├──────────────────────┤            ├──────────────────────┤          │</span><br><span class="line">│   │  host/ card/ cmd/    │  ════►     │  sdstor_legacy/      │          │</span><br><span class="line">│   │  (SD Protocol)       │  直接复用   │  (SD Protocol)       │          │</span><br><span class="line">│   ├──────────────────────┤            ├──────────────────────┤          │</span><br><span class="line">│   │  (Storport内置       │  ────►     │  sdhcstor/           │          │</span><br><span class="line">│   │   Disk/SCSI层)       │  新增自建   │  (WDM Port Driver)   │          │</span><br><span class="line">│   └──────────────────────┘            └──────────────────────┘          │</span><br><span class="line">│                                                                          │</span><br><span class="line">└─────────────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="2-框架选型决策"><a href="#2-框架选型决策" class="headerlink" title="2. 框架选型决策"></a>2. 框架选型决策</h2><h3 id="2-1-候选方案对比"><a href="#2-1-候选方案对比" class="headerlink" title="2.1 候选方案对比"></a>2.1 候选方案对比</h3><table>
+<thead>
+<tr>
+<th>特性</th>
+<th>Inbox Sdbus.sys</th>
+<th>自定义 KMDF</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>协议栈控制</td>
+<td>❌ 不可控（黑盒）</td>
+<td>✅ 完全可控</td>
+</tr>
+<tr>
+<td>SD Express 支持</td>
+<td>⚠️ 有限</td>
+<td>✅ 可定制模式切换</td>
+</tr>
+<tr>
+<td>BBR 热插拔模拟</td>
+<td>❌ 不支持</td>
+<td>✅ 支持</td>
+</tr>
+<tr>
+<td>调试可见性</td>
+<td>❌ 黑盒</td>
+<td>✅ 完全透明</td>
+</tr>
+<tr>
+<td>DMA-Remapping 兼容</td>
+<td>✅ 框架处理</td>
+<td>✅ WDF DMA API</td>
+</tr>
+<tr>
+<td>开发复杂度</td>
+<td>低</td>
+<td>中（有 PCIDRV 参考）</td>
+</tr>
+</tbody></table>
+<h3 id="2-2-最终选择：自定义-KMDF"><a href="#2-2-最终选择：自定义-KMDF" class="headerlink" title="2.2 最终选择：自定义 KMDF"></a>2.2 最终选择：自定义 KMDF</h3><p>基于微软 <a target="_blank" rel="noopener" href="https://github.com/microsoft/windows-driver-samples/tree/main/general/pcidrv">PCIDRV</a> 示例，KMDF 提供完整的 PCI 设备驱动能力：</p>
+<table>
+<thead>
+<tr>
+<th>KMDF 接口</th>
+<th>PCIDRV 示例</th>
+<th>WDF-sdhcstor 应用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>PnP&#x2F;Power 事件</td>
+<td><code>EvtDeviceAdd</code>, <code>EvtDeviceD0Entry</code></td>
+<td>✅ 相同</td>
+</tr>
+<tr>
+<td>硬件资源映射</td>
+<td><code>EvtDevicePrepareHardware</code></td>
+<td>✅ BAR0&#x2F;BAR1 映射</td>
+</tr>
+<tr>
+<td>DMA 接口</td>
+<td>Scatter-Gather DMA</td>
+<td>✅ ADMA2 描述符</td>
+</tr>
+<tr>
+<td>中断处理</td>
+<td><code>EvtInterruptIsr</code> + <code>EvtInterruptDpc</code></td>
+<td>✅ SDHC 中断</td>
+</tr>
+<tr>
+<td>I&#x2F;O 队列</td>
+<td><code>WdfIoQueueCreate</code></td>
+<td>✅ Sequential Queue</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="3-逐子系统移植对标"><a href="#3-逐子系统移植对标" class="headerlink" title="3. 逐子系统移植对标"></a>3. 逐子系统移植对标</h2><h3 id="3-1-驱动入口"><a href="#3-1-驱动入口" class="headerlink" title="3.1 驱动入口"></a>3.1 驱动入口</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">Storport:                                    WDF (KMDF):</span><br><span class="line">─────────────────────────────────────────────────────────────────────────</span><br><span class="line">HW_INITIALIZATION_DATA HwInitData;           WDF_DRIVER_CONFIG config;</span><br><span class="line">HwInitData.HwFindAdapter = ...;              WDF_DRIVER_CONFIG_INIT(&amp;config,</span><br><span class="line">HwInitData.HwInitialize = ...;                   O2SDHCEvtDeviceAdd);</span><br><span class="line">HwInitData.HwStartIo = ...;                  WdfDriverCreate(DriverObject,</span><br><span class="line">HwInitData.HwInterrupt = ...;                    RegistryPath, &amp;attrib,</span><br><span class="line">StorPortInitialize(DriverObject,                 &amp;config, &amp;driverObject);</span><br><span class="line">    RegistryPath, &amp;HwInitData, NULL);</span><br></pre></td></tr></table></figure>
+
+<p><strong>关键差异</strong>：Storport 在 DriverEntry 中一次性注册所有回调（声明式），WDF 在 EvtDeviceAdd 中分步注册各类回调（命令式、按需组合）。</p>
+<h3 id="3-2-设备发现与资源映射"><a href="#3-2-设备发现与资源映射" class="headerlink" title="3.2 设备发现与资源映射"></a>3.2 设备发现与资源映射</h3><table>
+<thead>
+<tr>
+<th>阶段</th>
+<th>Storport</th>
+<th>WDF</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>设备发现</td>
+<td><code>HwFindAdapter</code> — Storport 传入 ConfigInfo</td>
+<td><code>EvtDevicePrepareHardware</code> — 遍历 ResourcesTranslated</td>
+</tr>
+<tr>
+<td>BAR 映射</td>
+<td><code>StorPortGetDeviceBase(ConfigInfo-&gt;AccessRanges[0])</code></td>
+<td><code>MmMapIoSpace(resDesc-&gt;u.Memory.Start, Length)</code></td>
+</tr>
+<tr>
+<td>设备扩展</td>
+<td>Storport 分配 <code>bht_dev_ext_t</code></td>
+<td>WDF 分配 <code>DEVICE_EXTENSION</code>（内嵌 <code>bht_dev_ext_t pdx</code>）</td>
+</tr>
+<tr>
+<td>初始化时机</td>
+<td><code>HwInitialize</code> + <code>HwPassiveInitialize</code></td>
+<td><code>EvtDeviceSelfManagedIoInit</code>（PASSIVE_LEVEL）</td>
+</tr>
+</tbody></table>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// WDF: O2SDHCEvtDevicePrepareHardware (O2SDHC.C:842)</span></span><br><span class="line"><span class="keyword">for</span> (i = <span class="number">0</span>; i &lt; WdfCmResourceListGetCount(ResourcesTranslated); i++) &#123;</span><br><span class="line">    resDesc = WdfCmResourceListGetDescriptor(ResourcesTranslated, i);</span><br><span class="line">    <span class="keyword">if</span> (resDesc-&gt;Type == CmResourceTypeMemory) &#123;</span><br><span class="line">        devExt-&gt;RegsBase[barIndex] = MmMapIoSpace(</span><br><span class="line">            resDesc-&gt;u.Memory.Start,</span><br><span class="line">            resDesc-&gt;u.Memory.Length, MmNonCached);</span><br><span class="line">        <span class="comment">// 传递给 sdstor_legacy 复用层</span></span><br><span class="line">        devExt-&gt;pdx.host.pci_dev.membase = devExt-&gt;RegsBase[<span class="number">0</span>];</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-3-I-O-请求处理"><a href="#3-3-I-O-请求处理" class="headerlink" title="3.3 I&#x2F;O 请求处理"></a>3.3 I&#x2F;O 请求处理</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">Storport I/O 路径:                           WDF I/O 路径:</span><br><span class="line">─────────────────────────────────────────────────────────────────────────</span><br><span class="line">Storport.sys 收到 SRB                        WDF Framework 收到 IRP</span><br><span class="line">    │                                            │</span><br><span class="line">    ▼                                            ▼</span><br><span class="line">HwBuildIo (DISPATCH_LEVEL)                   SequentialQueueEvtIoReadWrite</span><br><span class="line">    │                                            │</span><br><span class="line">    ▼                                            ▼</span><br><span class="line">HwStartIo (DISPATCH_LEVEL, 串行)             解析 WDF_REQUEST_PARAMETERS</span><br><span class="line">    │                                            │</span><br><span class="line">    ▼                                            ▼</span><br><span class="line">thread_main → Tag Queue 入队                  WdfDmaTransactionInitialize</span><br><span class="line">    │                                            │</span><br><span class="line">    ▼                                            ▼</span><br><span class="line">Tag 状态机: FREE→BUILT→EXECUTING             SDEvtProgramDmaFunction</span><br><span class="line">    │                                            │</span><br><span class="line">    ▼                                            ▼</span><br><span class="line">card_adma2_rw_data (SD命令)                  card_adma2_rw_data (复用!)</span><br><span class="line">    │                                            │</span><br><span class="line">    ▼                                            ▼</span><br><span class="line">HwInterrupt → DPC → 完成 SRB                 ISR → DPC → RequestCompletion</span><br></pre></td></tr></table></figure>
+
+<p><strong>核心变化</strong>：</p>
+<ul>
+<li>Storport 需要自建 <code>thread_main</code> 工作线程 + Tag Queue 状态机管理并发</li>
+<li>WDF 的 Sequential Queue 天然串行化，<strong>无需手动线程管理</strong></li>
+<li><code>SynchronizationScopeDevice</code> 确保 Queue 回调和 DPC 不会并发执行</li>
+</ul>
+<h3 id="3-4-DMA-传输"><a href="#3-4-DMA-传输" class="headerlink" title="3.4 DMA 传输"></a>3.4 DMA 传输</h3><table>
+<thead>
+<tr>
+<th>方面</th>
+<th>Storport</th>
+<th>WDF</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>SGL 获取</td>
+<td><code>StorPortGetScatterGatherList</code></td>
+<td><code>EvtProgramDma</code> 回调参数直接提供</td>
+</tr>
+<tr>
+<td>ADMA2 描述符</td>
+<td>自管理（tagqueue&#x2F;tqadma2.c）</td>
+<td>复用 sdstor_legacy&#x2F;transhandler.c</td>
+</tr>
+<tr>
+<td>DMA 缓冲区</td>
+<td><code>StorPortGetUncachedExtension</code></td>
+<td><code>WdfCommonBufferCreate</code>（4KB）</td>
+</tr>
+<tr>
+<td>事务管理</td>
+<td>手动跟踪 Tag 状态</td>
+<td><code>WdfDmaTransaction</code> 对象自动管理</td>
+</tr>
+<tr>
+<td>IOMMU 兼容</td>
+<td>❌ 框架内部冲突</td>
+<td>✅ WDF DMA API 原生支持</td>
+</tr>
+</tbody></table>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// WDF DMA 初始化 (sdhc_init.c:187-288)</span></span><br><span class="line">WDF_DMA_ENABLER_CONFIG_INIT(&amp;dmaConfig,</span><br><span class="line">    WdfDmaProfileScatterGather, <span class="number">1024</span>*<span class="number">1024</span>);</span><br><span class="line">dmaConfig.WdmDmaVersionOverride = <span class="number">3</span>;  <span class="comment">// DMA v3 支持 IOMMU</span></span><br><span class="line">WdfDmaEnablerCreate(DevExt-&gt;WdfDevice, &amp;dmaConfig, ...);</span><br><span class="line"></span><br><span class="line"><span class="comment">// Common Buffer 用于 ADMA2 描述符表</span></span><br><span class="line">WdfCommonBufferCreate(DevExt-&gt;DmaEnabler, <span class="number">4096</span>, ...);</span><br><span class="line">pdev_ext-&gt;dma_buff.va = WdfCommonBufferGetAlignedVirtualAddress(...);</span><br><span class="line">pdev_ext-&gt;dma_buff.pa = WdfCommonBufferGetAlignedLogicalAddress(...);</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-5-中断处理"><a href="#3-5-中断处理" class="headerlink" title="3.5 中断处理"></a>3.5 中断处理</h3><table>
+<thead>
+<tr>
+<th>方面</th>
+<th>Storport</th>
+<th>WDF</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>注册方式</td>
+<td><code>HwInitData.HwInterrupt = scsi_HwInterrupt</code></td>
+<td><code>WdfInterruptCreate</code> + ISR&#x2F;DPC 分离</td>
+</tr>
+<tr>
+<td>ISR 级别</td>
+<td>DIRQL，单一回调处理所有逻辑</td>
+<td>DIRQL ISR + DISPATCH DPC 分层</td>
+</tr>
+<tr>
+<td>同步机制</td>
+<td>Storport 内置串行化</td>
+<td><code>AutomaticSerialization = TRUE</code></td>
+</tr>
+<tr>
+<td>连接&#x2F;断开</td>
+<td>手动管理</td>
+<td><strong>框架自动</strong>：D0Entry 后连接，D0Exit 前断开</td>
+</tr>
+</tbody></table>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// WDF 中断创建 (sdhc_isr.c:34-90)</span></span><br><span class="line">WDF_INTERRUPT_CONFIG_INIT(&amp;InterruptConfig,</span><br><span class="line">    SDHCEvtInterruptIsr,      <span class="comment">// DIRQL: 读状态、清中断、判断来源</span></span><br><span class="line">    SDHCEvtInterruptDpc);     <span class="comment">// DISPATCH: card_init、创建 Child PDO</span></span><br><span class="line">InterruptConfig.AutomaticSerialization = TRUE;</span><br><span class="line">WdfInterruptCreate(DevExt-&gt;WdfDevice, &amp;InterruptConfig, ...);</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-6-电源管理"><a href="#3-6-电源管理" class="headerlink" title="3.6 电源管理"></a>3.6 电源管理</h3><table>
+<thead>
+<tr>
+<th>方面</th>
+<th>Storport</th>
+<th>WDF</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>回调入口</td>
+<td><code>HwAdapterControl</code>（ScsiStopAdapter&#x2F;ScsiRestartAdapter）</td>
+<td><code>EvtDeviceD0Entry</code> &#x2F; <code>EvtDeviceD0Exit</code></td>
+</tr>
+<tr>
+<td>状态粒度</td>
+<td>仅 Stop&#x2F;Restart 两态</td>
+<td>D0&#x2F;D1&#x2F;D2&#x2F;D3hot&#x2F;D3cold 完整状态机</td>
+</tr>
+<tr>
+<td>PoFx 集成</td>
+<td>需手动调用 <code>StorPortInitializePoFxPower</code></td>
+<td>WDF Power Policy 框架原生支持</td>
+</tr>
+<tr>
+<td>RTD3</td>
+<td>大量 workaround 代码</td>
+<td><code>WdfDeviceInitSetPowerPolicyOwnership</code> + Idle 设置</td>
+</tr>
+</tbody></table>
+<h3 id="3-7-线程模型"><a href="#3-7-线程模型" class="headerlink" title="3.7 线程模型"></a>3.7 线程模型</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">Storport 线程模型:                           WDF 线程模型:</span><br><span class="line">─────────────────────────────────────────────────────────────────────────</span><br><span class="line">┌─────────────────────┐                     ┌─────────────────────┐</span><br><span class="line">│  thread_main        │                     │  WDF Sequential     │</span><br><span class="line">│  (自建工作线程)      │                     │  Queue              │</span><br><span class="line">│                     │                     │  (框架管理)          │</span><br><span class="line">│  ┌───────────────┐  │                     │                     │</span><br><span class="line">│  │ Tag Queue     │  │     替代为          │  请求天然串行分发    │</span><br><span class="line">│  │ FREE→BUILT→   │  │  ──────────►       │  无需手动同步        │</span><br><span class="line">│  │ EXECUTING→    │  │                     │                     │</span><br><span class="line">│  │ COMPLETED     │  │                     │  SynchronizationScope│</span><br><span class="line">│  └───────────────┘  │                     │  = Device           │</span><br><span class="line">│                     │                     │  (Queue+DPC 互斥)   │</span><br><span class="line">│  手动 SpinLock 同步  │                     │                     │</span><br><span class="line">└─────────────────────┘                     └─────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="4-sdstor-legacy-复用层"><a href="#4-sdstor-legacy-复用层" class="headerlink" title="4. sdstor_legacy 复用层"></a>4. sdstor_legacy 复用层</h2><h3 id="4-1-复用策略"><a href="#4-1-复用策略" class="headerlink" title="4.1 复用策略"></a>4.1 复用策略</h3><p>移植的核心原则：<strong>框架层重写，协议层复用</strong>。SD 协议栈（卡识别、命令发送、数据传输）与框架无关，可直接复用。</p>
+<h3 id="4-2-复用模块清单"><a href="#4-2-复用模块清单" class="headerlink" title="4.2 复用模块清单"></a>4.2 复用模块清单</h3><table>
+<thead>
+<tr>
+<th>模块</th>
+<th>文件</th>
+<th>功能</th>
+<th>复用方式</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Host 寄存器访问</td>
+<td>host.c</td>
+<td><code>sdhci_readl/writel/readw/writew</code></td>
+<td>直接复用，membase 指针传递</td>
+</tr>
+<tr>
+<td>SD 卡初始化</td>
+<td>cardinterface.c</td>
+<td><code>card_init</code> 完整流程</td>
+<td>直接复用</td>
+</tr>
+<tr>
+<td>SD 命令处理</td>
+<td>cmdhandler.c</td>
+<td><code>cmd_generate_reg</code>, <code>cmd_execute_sync</code></td>
+<td>直接复用</td>
+</tr>
+<tr>
+<td>DMA 描述符</td>
+<td>transhandler.c</td>
+<td><code>build_adma2_desc</code>, <code>link_adma2_desc</code></td>
+<td>直接复用</td>
+</tr>
+<tr>
+<td>中断逻辑</td>
+<td>irqhandler.c</td>
+<td>中断状态解析</td>
+<td>直接复用</td>
+</tr>
+<tr>
+<td>配置管理</td>
+<td>cfgmng.c</td>
+<td>INF&#x2F;注册表配置读取</td>
+<td>直接复用</td>
+</tr>
+<tr>
+<td>SD 协议</td>
+<td>sd.c</td>
+<td>卡识别、速度切换、tuning</td>
+<td>直接复用</td>
+</tr>
+<tr>
+<td>通用卡操作</td>
+<td>cardcommon.c</td>
+<td>PIO 读写、命令发送封装</td>
+<td>直接复用</td>
+</tr>
+</tbody></table>
+<h3 id="4-3-membase-指针传递机制"><a href="#4-3-membase-指针传递机制" class="headerlink" title="4.3 membase 指针传递机制"></a>4.3 membase 指针传递机制</h3><p>复用层通过 <code>sd_host_t.pci_dev.membase</code> 访问硬件寄存器，WDF 层在 PrepareHardware 时注入：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// WDF 层注入 (O2SDHCEvtDevicePrepareHardware)</span></span><br><span class="line">devExt-&gt;pdx.host.pci_dev.membase = devExt-&gt;RegsBase[<span class="number">0</span>];  <span class="comment">// BAR0 映射地址</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// sdstor_legacy 层使用 (host.c)</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> u32 <span class="title function_">sdhci_readl</span><span class="params">(<span class="type">sd_host_t</span>* host, u32 reg)</span> &#123;</span><br><span class="line">    <span class="keyword">return</span> READ_REGISTER_ULONG((PULONG)(host-&gt;pci_dev.membase + reg));</span><br><span class="line">&#125;</span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">void</span> <span class="title function_">sdhci_writel</span><span class="params">(<span class="type">sd_host_t</span>* host, u32 reg, u32 val)</span> &#123;</span><br><span class="line">    WRITE_REGISTER_ULONG((PULONG)(host-&gt;pci_dev.membase + reg), val);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-4-DMA-缓冲区传递"><a href="#4-4-DMA-缓冲区传递" class="headerlink" title="4.4 DMA 缓冲区传递"></a>4.4 DMA 缓冲区传递</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// WDF 层分配 Common Buffer 并注入到复用层</span></span><br><span class="line">pdev_ext-&gt;dma_buff.va = WdfCommonBufferGetAlignedVirtualAddress(DevExt-&gt;dmadescbuf);</span><br><span class="line">pdev_ext-&gt;dma_buff.pa = WdfCommonBufferGetAlignedLogicalAddress(DevExt-&gt;dmadescbuf);</span><br><span class="line">pdev_ext-&gt;dma_buff.len = <span class="number">4096</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">// sdstor_legacy/transhandler.c 使用 dma_buff 构建 ADMA2 描述符</span></span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="5-存储栈分层变化"><a href="#5-存储栈分层变化" class="headerlink" title="5. 存储栈分层变化"></a>5. 存储栈分层变化</h2><h3 id="5-1-Storport-架构（内置-Disk-SCSI）"><a href="#5-1-Storport-架构（内置-Disk-SCSI）" class="headerlink" title="5.1 Storport 架构（内置 Disk&#x2F;SCSI）"></a>5.1 Storport 架构（内置 Disk&#x2F;SCSI）</h3><p>Storport.sys 自身提供完整的存储栈：Disk.sys 直接发 SRB 给 Storport，Storport 分发给 Miniport。驱动只需实现 HW 回调。</p>
+<h3 id="5-2-WDF-架构（需自建存储层）"><a href="#5-2-WDF-架构（需自建存储层）" class="headerlink" title="5.2 WDF 架构（需自建存储层）"></a>5.2 WDF 架构（需自建存储层）</h3><p>WDF 是通用框架，不提供存储栈。需要自建 <code>sdhcstor</code> WDM 驱动来承接 Disk.sys 的 SCSI 请求：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">┌────────────────────────────────────────────────────────────────────┐</span><br><span class="line">│  Storport 架构                    WDF 架构                          │</span><br><span class="line">├────────────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                                     │</span><br><span class="line">│  Disk.sys                         Disk.sys                          │</span><br><span class="line">│     │                                │                              │</span><br><span class="line">│     ▼                                ▼                              │</span><br><span class="line">│  Storport.sys ◄── 内置              sdhcstor.sys ◄── 自建 WDM      │</span><br><span class="line">│     │              SCSI/Disk层          │              SCSI 处理     │</span><br><span class="line">│     ▼                                ▼                              │</span><br><span class="line">│  Miniport (HW callbacks)          o2sdhc.sys (KMDF)                │</span><br><span class="line">│     │                                │                              │</span><br><span class="line">│     ▼                                ▼                              │</span><br><span class="line">│  SD Host Controller               SD Host Controller               │</span><br><span class="line">│                                                                     │</span><br><span class="line">└────────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<p>sdhcstor 层处理：INQUIRY、READ_CAPACITY、TEST_UNIT_READY、READ&#x2F;WRITE 等 SCSI 命令，转换为 SD 协议操作。</p>
+<hr>
+<h2 id="6-完整子系统对比表"><a href="#6-完整子系统对比表" class="headerlink" title="6. 完整子系统对比表"></a>6. 完整子系统对比表</h2><table>
+<thead>
+<tr>
+<th>子系统</th>
+<th>Storport 实现</th>
+<th>WDF 实现</th>
+<th>变化</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>驱动入口</td>
+<td><code>HW_INITIALIZATION_DATA</code> + <code>StorPortInitialize</code></td>
+<td><code>WDF_DRIVER_CONFIG</code> + <code>WdfDriverCreate</code></td>
+<td>重写</td>
+</tr>
+<tr>
+<td>设备发现</td>
+<td><code>HwFindAdapter</code>（ConfigInfo）</td>
+<td><code>EvtDevicePrepareHardware</code>（ResourceList）</td>
+<td>重写</td>
+</tr>
+<tr>
+<td>I&#x2F;O 入口</td>
+<td><code>HwStartIo</code> + SRB</td>
+<td>Sequential Queue + WDFREQUEST</td>
+<td>重写</td>
+</tr>
+<tr>
+<td>线程模型</td>
+<td><code>thread_main</code> + Tag Queue + SpinLock</td>
+<td>WDF Sequential Queue（框架串行化）</td>
+<td>替代</td>
+</tr>
+<tr>
+<td>DMA 管理</td>
+<td><code>StorPortGetScatterGatherList</code> + 自管理</td>
+<td><code>WdfDmaTransaction</code> + <code>EvtProgramDma</code></td>
+<td>重写</td>
+</tr>
+<tr>
+<td>DMA 缓冲</td>
+<td><code>StorPortGetUncachedExtension</code></td>
+<td><code>WdfCommonBufferCreate</code></td>
+<td>重写</td>
+</tr>
+<tr>
+<td>中断</td>
+<td><code>HwInterrupt</code>（单一回调）</td>
+<td>ISR + DPC 分离 + AutomaticSerialization</td>
+<td>重写</td>
+</tr>
+<tr>
+<td>电源管理</td>
+<td><code>HwAdapterControl</code> + 手动 PoFx</td>
+<td><code>EvtDeviceD0Entry/Exit</code> + Power Policy</td>
+<td>重写</td>
+</tr>
+<tr>
+<td>子设备</td>
+<td>Storport 内置 LUN 管理</td>
+<td><code>WdfChildList</code> + PDO 创建</td>
+<td>重写</td>
+</tr>
+<tr>
+<td>SD 协议栈</td>
+<td>host.c &#x2F; card.c &#x2F; cmdhandler.c &#x2F; transhandler.c</td>
+<td>sdstor_legacy&#x2F;（同一套代码）</td>
+<td><strong>复用</strong></td>
+</tr>
+<tr>
+<td>寄存器访问</td>
+<td><code>sdhci_readl/writel</code> via membase</td>
+<td><code>sdhci_readl/writel</code> via membase（相同）</td>
+<td><strong>复用</strong></td>
+</tr>
+<tr>
+<td>配置管理</td>
+<td>cfgmng.c</td>
+<td>cfgmng.c</td>
+<td><strong>复用</strong></td>
+</tr>
+<tr>
+<td>SCSI&#x2F;Disk 层</td>
+<td>Storport.sys 内置</td>
+<td>sdhcstor&#x2F;（自建 WDM）</td>
+<td><strong>新增</strong></td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="7-移植方法论"><a href="#7-移植方法论" class="headerlink" title="7. 移植方法论"></a>7. 移植方法论</h2><h3 id="7-1-移植步骤"><a href="#7-1-移植步骤" class="headerlink" title="7.1 移植步骤"></a>7.1 移植步骤</h3><ol>
+<li><strong>搭建 KMDF 骨架</strong>：基于 PCIDRV 示例，实现 DriverEntry → EvtDeviceAdd → PrepareHardware</li>
+<li><strong>注入复用层</strong>：将 sdstor_legacy 目录整体引入，通过 membase 指针桥接</li>
+<li><strong>实现 I&#x2F;O 路径</strong>：Sequential Queue → DMA Transaction → 复用层 card_adma2_rw_data</li>
+<li><strong>实现中断</strong>：ISR 读状态&#x2F;清中断，DPC 处理卡插拔和传输完成</li>
+<li><strong>自建存储层</strong>：sdhcstor WDM 驱动处理 SCSI 命令</li>
+<li><strong>电源管理</strong>：D0Entry&#x2F;D0Exit 中保存&#x2F;恢复 Host 寄存器状态</li>
+</ol>
+<h3 id="7-2-复用-vs-重写决策矩阵"><a href="#7-2-复用-vs-重写决策矩阵" class="headerlink" title="7.2 复用 vs 重写决策矩阵"></a>7.2 复用 vs 重写决策矩阵</h3><table>
+<thead>
+<tr>
+<th>判断条件</th>
+<th>决策</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>代码依赖 Storport DDI（StorPortXxx）</td>
+<td>重写</td>
+</tr>
+<tr>
+<td>代码依赖自建线程&#x2F;同步原语</td>
+<td>替代为 WDF 机制</td>
+</tr>
+<tr>
+<td>代码仅依赖 membase 寄存器访问</td>
+<td>直接复用</td>
+</tr>
+<tr>
+<td>代码仅依赖 SD 协议规范</td>
+<td>直接复用</td>
+</tr>
+<tr>
+<td>功能由 Storport.sys 内置提供</td>
+<td>新增自建</td>
+</tr>
+</tbody></table>
+<h3 id="7-3-常见移植陷阱"><a href="#7-3-常见移植陷阱" class="headerlink" title="7.3 常见移植陷阱"></a>7.3 常见移植陷阱</h3><table>
+<thead>
+<tr>
+<th>陷阱</th>
+<th>说明</th>
+<th>解决方案</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>IRQL 不匹配</td>
+<td>Storport HwStartIo 在 DISPATCH，WDF Queue 回调可能在 PASSIVE</td>
+<td>确认 <code>WdfExecutionLevelDispatch</code> 设置</td>
+</tr>
+<tr>
+<td>DMA 地址宽度</td>
+<td>Storport 自动处理 32&#x2F;64-bit，WDF 需显式配置</td>
+<td><code>WdmDmaVersionOverride = 3</code></td>
+</tr>
+<tr>
+<td>中断共享</td>
+<td>Storport 自动处理，WDF 需在 ISR 中验证中断来源</td>
+<td>读 INT_STATUS 判断是否为本设备中断</td>
+</tr>
+<tr>
+<td>存储栈缺失</td>
+<td>Storport 内置 Disk&#x2F;SCSI，WDF 无此功能</td>
+<td>自建 sdhcstor WDM 层</td>
+</tr>
+<tr>
+<td>Power Policy Owner</td>
+<td>Storport 是 PPO，WDF 默认也是 PPO</td>
+<td>存储栈中需协调，设置 <code>SetPowerPolicyOwnership(FALSE)</code></td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="8-总结"><a href="#8-总结" class="headerlink" title="8. 总结"></a>8. 总结</h2><p>本次架构移植的核心策略：</p>
+<ul>
+<li><strong>框架层全部重写</strong>（约 40% 代码）：利用 WDF 对象模型替代 Storport 回调</li>
+<li><strong>协议层全部复用</strong>（约 50% 代码）：sdstor_legacy 通过指针注入无缝桥接</li>
+<li><strong>存储层全新开发</strong>（约 10% 代码）：sdhcstor 补齐 WDF 缺失的 SCSI&#x2F;Disk 功能</li>
+</ul>
+<p>移植后获得的收益：</p>
+<ol>
+<li><strong>Win11 兼容性</strong>：WDF DMA API 原生支持 IOMMU&#x2F;DMA-Remapping</li>
+<li><strong>代码简化</strong>：消除 thread_main + Tag Queue + SpinLock 复杂同步</li>
+<li><strong>电源管理</strong>：WDF Power Policy 框架原生支持 RTD3</li>
+<li><strong>可维护性</strong>：WDF 对象生命周期自动管理，减少资源泄漏风险</li>
+</ol>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">首页</a></li>
+        
+          <li><a href="/about/">关于</a></li>
+        
+          <li><a href="/archives/">归档</a></li>
+        
+          <li><a href="/tags/">标签</a></li>
+        
+          <li><a href="/categories/">分类</a></li>
+        
+          <li><a href="/search/">搜索</a></li>
+        
+          <li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#WDF-SDHC%E6%A1%86%E6%9E%B6%E9%80%89%E5%9E%8B%EF%BC%9A%E4%BB%8EStorport%E5%88%B0KMDF%E7%9A%84%E6%9E%B6%E6%9E%84%E7%A7%BB%E6%A4%8D"><span class="toc-number">1.</span> <span class="toc-text">WDF-SDHC框架选型：从Storport到KMDF的架构移植</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%A6%82%E8%BF%B0"><span class="toc-number">1.1.</span> <span class="toc-text">概述</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E7%A7%BB%E6%A4%8D%E5%8A%A8%E6%9C%BA"><span class="toc-number">1.2.</span> <span class="toc-text">1. 移植动机</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-Storport-%E6%A1%86%E6%9E%B6%E7%9A%84%E6%9E%B6%E6%9E%84%E6%80%A7%E7%BC%BA%E9%99%B7"><span class="toc-number">1.2.1.</span> <span class="toc-text">1.1 Storport 框架的架构性缺陷</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-2-%E7%A7%BB%E6%A4%8D%E7%9B%AE%E6%A0%87"><span class="toc-number">1.2.2.</span> <span class="toc-text">1.2 移植目标</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-%E6%A1%86%E6%9E%B6%E9%80%89%E5%9E%8B%E5%86%B3%E7%AD%96"><span class="toc-number">1.3.</span> <span class="toc-text">2. 框架选型决策</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E5%80%99%E9%80%89%E6%96%B9%E6%A1%88%E5%AF%B9%E6%AF%94"><span class="toc-number">1.3.1.</span> <span class="toc-text">2.1 候选方案对比</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-%E6%9C%80%E7%BB%88%E9%80%89%E6%8B%A9%EF%BC%9A%E8%87%AA%E5%AE%9A%E4%B9%89-KMDF"><span class="toc-number">1.3.2.</span> <span class="toc-text">2.2 最终选择：自定义 KMDF</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-%E9%80%90%E5%AD%90%E7%B3%BB%E7%BB%9F%E7%A7%BB%E6%A4%8D%E5%AF%B9%E6%A0%87"><span class="toc-number">1.4.</span> <span class="toc-text">3. 逐子系统移植对标</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E9%A9%B1%E5%8A%A8%E5%85%A5%E5%8F%A3"><span class="toc-number">1.4.1.</span> <span class="toc-text">3.1 驱动入口</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E8%AE%BE%E5%A4%87%E5%8F%91%E7%8E%B0%E4%B8%8E%E8%B5%84%E6%BA%90%E6%98%A0%E5%B0%84"><span class="toc-number">1.4.2.</span> <span class="toc-text">3.2 设备发现与资源映射</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-I-O-%E8%AF%B7%E6%B1%82%E5%A4%84%E7%90%86"><span class="toc-number">1.4.3.</span> <span class="toc-text">3.3 I&#x2F;O 请求处理</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-4-DMA-%E4%BC%A0%E8%BE%93"><span class="toc-number">1.4.4.</span> <span class="toc-text">3.4 DMA 传输</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-5-%E4%B8%AD%E6%96%AD%E5%A4%84%E7%90%86"><span class="toc-number">1.4.5.</span> <span class="toc-text">3.5 中断处理</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-6-%E7%94%B5%E6%BA%90%E7%AE%A1%E7%90%86"><span class="toc-number">1.4.6.</span> <span class="toc-text">3.6 电源管理</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-7-%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8B"><span class="toc-number">1.4.7.</span> <span class="toc-text">3.7 线程模型</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-sdstor-legacy-%E5%A4%8D%E7%94%A8%E5%B1%82"><span class="toc-number">1.5.</span> <span class="toc-text">4. sdstor_legacy 复用层</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-%E5%A4%8D%E7%94%A8%E7%AD%96%E7%95%A5"><span class="toc-number">1.5.1.</span> <span class="toc-text">4.1 复用策略</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-%E5%A4%8D%E7%94%A8%E6%A8%A1%E5%9D%97%E6%B8%85%E5%8D%95"><span class="toc-number">1.5.2.</span> <span class="toc-text">4.2 复用模块清单</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-membase-%E6%8C%87%E9%92%88%E4%BC%A0%E9%80%92%E6%9C%BA%E5%88%B6"><span class="toc-number">1.5.3.</span> <span class="toc-text">4.3 membase 指针传递机制</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-4-DMA-%E7%BC%93%E5%86%B2%E5%8C%BA%E4%BC%A0%E9%80%92"><span class="toc-number">1.5.4.</span> <span class="toc-text">4.4 DMA 缓冲区传递</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-%E5%AD%98%E5%82%A8%E6%A0%88%E5%88%86%E5%B1%82%E5%8F%98%E5%8C%96"><span class="toc-number">1.6.</span> <span class="toc-text">5. 存储栈分层变化</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-Storport-%E6%9E%B6%E6%9E%84%EF%BC%88%E5%86%85%E7%BD%AE-Disk-SCSI%EF%BC%89"><span class="toc-number">1.6.1.</span> <span class="toc-text">5.1 Storport 架构（内置 Disk&#x2F;SCSI）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-WDF-%E6%9E%B6%E6%9E%84%EF%BC%88%E9%9C%80%E8%87%AA%E5%BB%BA%E5%AD%98%E5%82%A8%E5%B1%82%EF%BC%89"><span class="toc-number">1.6.2.</span> <span class="toc-text">5.2 WDF 架构（需自建存储层）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6-%E5%AE%8C%E6%95%B4%E5%AD%90%E7%B3%BB%E7%BB%9F%E5%AF%B9%E6%AF%94%E8%A1%A8"><span class="toc-number">1.7.</span> <span class="toc-text">6. 完整子系统对比表</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#7-%E7%A7%BB%E6%A4%8D%E6%96%B9%E6%B3%95%E8%AE%BA"><span class="toc-number">1.8.</span> <span class="toc-text">7. 移植方法论</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#7-1-%E7%A7%BB%E6%A4%8D%E6%AD%A5%E9%AA%A4"><span class="toc-number">1.8.1.</span> <span class="toc-text">7.1 移植步骤</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-2-%E5%A4%8D%E7%94%A8-vs-%E9%87%8D%E5%86%99%E5%86%B3%E7%AD%96%E7%9F%A9%E9%98%B5"><span class="toc-number">1.8.2.</span> <span class="toc-text">7.2 复用 vs 重写决策矩阵</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-3-%E5%B8%B8%E8%A7%81%E7%A7%BB%E6%A4%8D%E9%99%B7%E9%98%B1"><span class="toc-number">1.8.3.</span> <span class="toc-text">7.3 常见移植陷阱</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#8-%E6%80%BB%E7%BB%93"><span class="toc-number">1.9.</span> <span class="toc-text">8. 总结</span></a></li></ol></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/03/22/WDF-SDHC%E6%A1%86%E6%9E%B6%E9%80%89%E5%9E%8B-%E4%BB%8EStorport%E5%88%B0KMDF%E7%9A%84%E7%A7%BB%E6%A4%8D%E4%B9%8B%E8%B7%AF/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/03/22/WDF-SDHC%E6%A1%86%E6%9E%B6%E9%80%89%E5%9E%8B-%E4%BB%8EStorport%E5%88%B0KMDF%E7%9A%84%E7%A7%BB%E6%A4%8D%E4%B9%8B%E8%B7%AF/&text=WDF-SDHC框架选型：从Storport到KMDF的架构移植"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/03/22/WDF-SDHC%E6%A1%86%E6%9E%B6%E9%80%89%E5%9E%8B-%E4%BB%8EStorport%E5%88%B0KMDF%E7%9A%84%E7%A7%BB%E6%A4%8D%E4%B9%8B%E8%B7%AF/&title=WDF-SDHC框架选型：从Storport到KMDF的架构移植"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/03/22/WDF-SDHC%E6%A1%86%E6%9E%B6%E9%80%89%E5%9E%8B-%E4%BB%8EStorport%E5%88%B0KMDF%E7%9A%84%E7%A7%BB%E6%A4%8D%E4%B9%8B%E8%B7%AF/&is_video=false&description=WDF-SDHC框架选型：从Storport到KMDF的架构移植"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=WDF-SDHC框架选型：从Storport到KMDF的架构移植&body=Check out this article: https://cursorhu.github.io/2026/03/22/WDF-SDHC%E6%A1%86%E6%9E%B6%E9%80%89%E5%9E%8B-%E4%BB%8EStorport%E5%88%B0KMDF%E7%9A%84%E7%A7%BB%E6%A4%8D%E4%B9%8B%E8%B7%AF/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/03/22/WDF-SDHC%E6%A1%86%E6%9E%B6%E9%80%89%E5%9E%8B-%E4%BB%8EStorport%E5%88%B0KMDF%E7%9A%84%E7%A7%BB%E6%A4%8D%E4%B9%8B%E8%B7%AF/&title=WDF-SDHC框架选型：从Storport到KMDF的架构移植"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/03/22/WDF-SDHC%E6%A1%86%E6%9E%B6%E9%80%89%E5%9E%8B-%E4%BB%8EStorport%E5%88%B0KMDF%E7%9A%84%E7%A7%BB%E6%A4%8D%E4%B9%8B%E8%B7%AF/&title=WDF-SDHC框架选型：从Storport到KMDF的架构移植"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/03/22/WDF-SDHC%E6%A1%86%E6%9E%B6%E9%80%89%E5%9E%8B-%E4%BB%8EStorport%E5%88%B0KMDF%E7%9A%84%E7%A7%BB%E6%A4%8D%E4%B9%8B%E8%B7%AF/&title=WDF-SDHC框架选型：从Storport到KMDF的架构移植"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/03/22/WDF-SDHC%E6%A1%86%E6%9E%B6%E9%80%89%E5%9E%8B-%E4%BB%8EStorport%E5%88%B0KMDF%E7%9A%84%E7%A7%BB%E6%A4%8D%E4%B9%8B%E8%B7%AF/&title=WDF-SDHC框架选型：从Storport到KMDF的架构移植"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/03/22/WDF-SDHC%E6%A1%86%E6%9E%B6%E9%80%89%E5%9E%8B-%E4%BB%8EStorport%E5%88%B0KMDF%E7%9A%84%E7%A7%BB%E6%A4%8D%E4%B9%8B%E8%B7%AF/&name=WDF-SDHC框架选型：从Storport到KMDF的架构移植&description=&lt;h1 id=&#34;WDF-SDHC框架选型：从Storport到KMDF的架构移植&#34;&gt;&lt;a href=&#34;#WDF-SDHC框架选型：从Storport到KMDF的架构移植&#34; class=&#34;headerlink&#34; title=&#34;WDF-SDHC框架选型：从Storport到KMDF的架构移植&#34;&gt;&lt;/a&gt;WDF-SDHC框架选型：从Storport到KMDF的架构移植&lt;/h1&gt;&lt;h2 id=&#34;概述&#34;&gt;&lt;a href=&#34;#概述&#34; class=&#34;headerlink&#34; title=&#34;概述&#34;&gt;&lt;/a&gt;概述&lt;/h2&gt;&lt;p&gt;本文介绍将O2Micro SD Host Controller驱动从Storport框架移植到WDF（KMDF）的完整过程：移植动机、框架选型决策、逐子系统的接口对标关系、sdstor_legacy复用层设计，以及移植方法论总结。&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;1-移植动机&#34;&gt;&lt;a href=&#34;#1-移植动机&#34; class=&#34;headerlink&#34; title=&#34;1. 移植动机&#34;&gt;&lt;/a&gt;1. 移植动机&lt;/h2&gt;&lt;h3 id=&#34;1-1-Storport-框架的架构性缺陷&#34;&gt;&lt;a href=&#34;#1-1-Storport-框架的架构性缺陷&#34; class=&#34;headerlink&#34; title=&#34;1.1 Storport 框架的架构性缺陷&#34;&gt;&lt;/a&gt;1.1 Storport 框架的架构性缺陷&lt;/h3&gt;&lt;p&gt;原项目基于 Storport Miniport 框架，在 Win11 上暴露出以下问题：&lt;/p&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;问题&lt;/th&gt;
+&lt;th&gt;根因&lt;/th&gt;
+&lt;th&gt;影响&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;DDI 限制&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;Storport 禁止调用大量 WDM DDI（MmMapIoSpace、IoConnectInterrupt 等）&lt;/td&gt;
+&lt;td&gt;无法灵活管理硬件资源&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;DMA-Remapping 不兼容&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;Win11 24H2 强制 DMA 安全限制，Storport 内部 DMA 管理与 IOMMU 冲突&lt;/td&gt;
+&lt;td&gt;驱动加载失败或蓝屏&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;线程模型僵化&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;必须自建 thread_main + Tag Queue 管理并发&lt;/td&gt;
+&lt;td&gt;代码复杂度高，竞态问题多&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;电源管理受限&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;HwAdapterControl 回调粒度粗，PoFx 集成需大量 workaround&lt;/td&gt;
+&lt;td&gt;RTD3 实现困难&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;&lt;/table&gt;
+&lt;h3 id=&#34;1-2-移植目标&#34;&gt;&lt;a href=&#34;#1-2-移植目标&#34; class=&#34;headerlink&#34; title=&#34;1.2 移植目标&#34;&gt;&lt;/a&gt;1.2 移植目标&lt;/h3&gt;&lt;figure class=&#34;highlight plaintext&#34;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&#34;gutter&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;3&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;4&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;5&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;6&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;7&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;8&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;9&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;10&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;11&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;12&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;13&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;14&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;15&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;16&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;17&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;18&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;19&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;20&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;21&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;22&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;23&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&#34;code&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;┌─────────────────────────────────────────────────────────────────────────┐&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│              Storport 架构 → WDF (KMDF) 架构                             │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;├─────────────────────────────────────────────────────────────────────────┤&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                                                                          │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   Storport 架构                        WDF 架构                          │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   ┌──────────────────────┐            ┌──────────────────────┐          │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   │  Storport.sys        │            │  WDF Framework       │          │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   │  (Port Driver)       │            │  (WdfLdr.sys)        │          │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   ├──────────────────────┤            ├──────────────────────┤          │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   │  winscsientry.c      │  ────►     │  O2SDHC.C           │          │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   │  (HW callbacks)      │  重写      │  (WDF callbacks)     │          │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   ├──────────────────────┤            ├──────────────────────┤          │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   │  tagqueue/           │  ────►     │  sdhc_queue.c        │          │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   │  thread_main         │  替代      │  (WDF Queue)         │          │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   ├──────────────────────┤            ├──────────────────────┤          │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   │  host/ card/ cmd/    │  ════►     │  sdstor_legacy/      │          │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   │  (SD Protocol)       │  直接复用   │  (SD Protocol)       │          │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   ├──────────────────────┤            ├──────────────────────┤          │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   │  (Storport内置       │  ────►     │  sdhcstor/           │          │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   │   Disk/SCSI层)       │  新增自建   │  (WDM Port Driver)   │          │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   └──────────────────────┘            └──────────────────────┘          │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                                                                          │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;└─────────────────────────────────────────────────────────────────────────┘&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;"><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/03/22/WDF-SDHC%E6%A1%86%E6%9E%B6%E9%80%89%E5%9E%8B-%E4%BB%8EStorport%E5%88%B0KMDF%E7%9A%84%E7%A7%BB%E6%A4%8D%E4%B9%8B%E8%B7%AF/&t=WDF-SDHC框架选型：从Storport到KMDF的架构移植"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> 菜单</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> 目录</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> 分享</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> 返回顶部</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2026
+    cursorhu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"复制到粘贴板！\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "复制成功！");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+</body>
+</html>
