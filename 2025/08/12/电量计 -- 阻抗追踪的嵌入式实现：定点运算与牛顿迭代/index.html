@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="阻抗追踪的嵌入式实现：定点运算与牛顿迭代上一篇介绍了阻抗追踪的算法原理：二阶RC等效电路模型、动态R_LF更新、温度补偿机制。Python版本使用 numpy、scipy.fsolve 轻松实现了完整算法。但要将其部署到没有浮点运算单元（FPU）的电量计MCU上，需要解决三个核心工程问题：  浮点→定点：所有运算必须用整数完成，保持足够精度 数学函数替代：exp()、sqrt() 需要用泰勒级数和">
+<meta property="og:type" content="article">
+<meta property="og:title" content="电量计 -- 阻抗追踪的嵌入式实现：定点运算与牛顿迭代">
+<meta property="og:url" content="https://cursorhu.github.io/2025/08/12/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E9%98%BB%E6%8A%97%E8%BF%BD%E8%B8%AA%E7%9A%84%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%AE%9E%E7%8E%B0%EF%BC%9A%E5%AE%9A%E7%82%B9%E8%BF%90%E7%AE%97%E4%B8%8E%E7%89%9B%E9%A1%BF%E8%BF%AD%E4%BB%A3/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="阻抗追踪的嵌入式实现：定点运算与牛顿迭代上一篇介绍了阻抗追踪的算法原理：二阶RC等效电路模型、动态R_LF更新、温度补偿机制。Python版本使用 numpy、scipy.fsolve 轻松实现了完整算法。但要将其部署到没有浮点运算单元（FPU）的电量计MCU上，需要解决三个核心工程问题：  浮点→定点：所有运算必须用整数完成，保持足够精度 数学函数替代：exp()、sqrt() 需要用泰勒级数和">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2025-08-12T02:00:00.000Z">
+<meta property="article:modified_time" content="2026-05-20T11:43:36.749Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="电量计">
+<meta name="twitter:card" content="summary">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>电量计 -- 阻抗追踪的嵌入式实现：定点运算与牛顿迭代</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+		<script type="text/x-mathjax-config">
+		  MathJax.Hub.Config({
+			tex2jax: {
+			  skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+			  inlineMath: [['$','$']]
+			}
+		  });
+		</script>
+		<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-MML-AM_CHTML' async></script>
+	
+<meta name="generator" content="Hexo 8.0.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="顶部" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="上一篇" href="/2025/08/15/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20SOC%E7%94%B5%E9%87%8F%E7%AE%97%E6%B3%95%E6%9E%B6%E6%9E%84%EF%BC%9A%E5%BA%93%E4%BB%91%E7%A7%AF%E5%88%86%E3%80%81%E5%BC%80%E8%B7%AF%E7%94%B5%E5%8E%8B%E4%B8%8E%E7%94%B5%E9%87%8F%E8%BF%BD%E8%B5%B6%E6%9C%BA%E5%88%B6/"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="下一篇" href="/2025/08/10/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E9%98%BB%E6%8A%97%E8%BF%BD%E8%B8%AA%E7%AE%97%E6%B3%95%E5%8E%9F%E7%90%86%EF%BC%9A%E7%94%B5%E6%B1%A0%E6%A8%A1%E5%9E%8B%E4%B8%8E%E5%8A%A8%E6%80%81%E9%98%BB%E6%8A%97%E4%BC%B0%E8%AE%A1/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="返回顶部" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="分享文章" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">上一篇</span>
+      <span id="i-next" class="info" style="display:none;">下一篇</span>
+      <span id="i-top" class="info" style="display:none;">返回顶部</span>
+      <span id="i-share" class="info" style="display:none;">分享文章</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2025/08/12/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E9%98%BB%E6%8A%97%E8%BF%BD%E8%B8%AA%E7%9A%84%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%AE%9E%E7%8E%B0%EF%BC%9A%E5%AE%9A%E7%82%B9%E8%BF%90%E7%AE%97%E4%B8%8E%E7%89%9B%E9%A1%BF%E8%BF%AD%E4%BB%A3/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2025/08/12/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E9%98%BB%E6%8A%97%E8%BF%BD%E8%B8%AA%E7%9A%84%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%AE%9E%E7%8E%B0%EF%BC%9A%E5%AE%9A%E7%82%B9%E8%BF%90%E7%AE%97%E4%B8%8E%E7%89%9B%E9%A1%BF%E8%BF%AD%E4%BB%A3/&text=电量计 -- 阻抗追踪的嵌入式实现：定点运算与牛顿迭代"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2025/08/12/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E9%98%BB%E6%8A%97%E8%BF%BD%E8%B8%AA%E7%9A%84%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%AE%9E%E7%8E%B0%EF%BC%9A%E5%AE%9A%E7%82%B9%E8%BF%90%E7%AE%97%E4%B8%8E%E7%89%9B%E9%A1%BF%E8%BF%AD%E4%BB%A3/&title=电量计 -- 阻抗追踪的嵌入式实现：定点运算与牛顿迭代"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2025/08/12/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E9%98%BB%E6%8A%97%E8%BF%BD%E8%B8%AA%E7%9A%84%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%AE%9E%E7%8E%B0%EF%BC%9A%E5%AE%9A%E7%82%B9%E8%BF%90%E7%AE%97%E4%B8%8E%E7%89%9B%E9%A1%BF%E8%BF%AD%E4%BB%A3/&is_video=false&description=电量计 -- 阻抗追踪的嵌入式实现：定点运算与牛顿迭代"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=电量计 -- 阻抗追踪的嵌入式实现：定点运算与牛顿迭代&body=Check out this article: https://cursorhu.github.io/2025/08/12/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E9%98%BB%E6%8A%97%E8%BF%BD%E8%B8%AA%E7%9A%84%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%AE%9E%E7%8E%B0%EF%BC%9A%E5%AE%9A%E7%82%B9%E8%BF%90%E7%AE%97%E4%B8%8E%E7%89%9B%E9%A1%BF%E8%BF%AD%E4%BB%A3/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2025/08/12/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E9%98%BB%E6%8A%97%E8%BF%BD%E8%B8%AA%E7%9A%84%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%AE%9E%E7%8E%B0%EF%BC%9A%E5%AE%9A%E7%82%B9%E8%BF%90%E7%AE%97%E4%B8%8E%E7%89%9B%E9%A1%BF%E8%BF%AD%E4%BB%A3/&title=电量计 -- 阻抗追踪的嵌入式实现：定点运算与牛顿迭代"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2025/08/12/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E9%98%BB%E6%8A%97%E8%BF%BD%E8%B8%AA%E7%9A%84%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%AE%9E%E7%8E%B0%EF%BC%9A%E5%AE%9A%E7%82%B9%E8%BF%90%E7%AE%97%E4%B8%8E%E7%89%9B%E9%A1%BF%E8%BF%AD%E4%BB%A3/&title=电量计 -- 阻抗追踪的嵌入式实现：定点运算与牛顿迭代"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2025/08/12/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E9%98%BB%E6%8A%97%E8%BF%BD%E8%B8%AA%E7%9A%84%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%AE%9E%E7%8E%B0%EF%BC%9A%E5%AE%9A%E7%82%B9%E8%BF%90%E7%AE%97%E4%B8%8E%E7%89%9B%E9%A1%BF%E8%BF%AD%E4%BB%A3/&title=电量计 -- 阻抗追踪的嵌入式实现：定点运算与牛顿迭代"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2025/08/12/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E9%98%BB%E6%8A%97%E8%BF%BD%E8%B8%AA%E7%9A%84%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%AE%9E%E7%8E%B0%EF%BC%9A%E5%AE%9A%E7%82%B9%E8%BF%90%E7%AE%97%E4%B8%8E%E7%89%9B%E9%A1%BF%E8%BF%AD%E4%BB%A3/&title=电量计 -- 阻抗追踪的嵌入式实现：定点运算与牛顿迭代"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2025/08/12/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E9%98%BB%E6%8A%97%E8%BF%BD%E8%B8%AA%E7%9A%84%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%AE%9E%E7%8E%B0%EF%BC%9A%E5%AE%9A%E7%82%B9%E8%BF%90%E7%AE%97%E4%B8%8E%E7%89%9B%E9%A1%BF%E8%BF%AD%E4%BB%A3/&name=电量计 -- 阻抗追踪的嵌入式实现：定点运算与牛顿迭代&description=&lt;h1 id=&#34;阻抗追踪的嵌入式实现：定点运算与牛顿迭代&#34;&gt;&lt;a href=&#34;#阻抗追踪的嵌入式实现：定点运算与牛顿迭代&#34; class=&#34;headerlink&#34; title=&#34;阻抗追踪的嵌入式实现：定点运算与牛顿迭代&#34;&gt;&lt;/a&gt;阻抗追踪的嵌入式实现：定点运算与牛顿迭代&lt;/h1&gt;&lt;p&gt;上一篇介绍了阻抗追踪的算法原理：二阶RC等效电路模型、动态R_LF更新、温度补偿机制。Python版本使用 &lt;code&gt;numpy&lt;/code&gt;、&lt;code&gt;scipy.fsolve&lt;/code&gt; 轻松实现了完整算法。但要将其部署到没有浮点运算单元（FPU）的电量计MCU上，需要解决三个核心工程问题：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;&lt;strong&gt;浮点→定点&lt;/strong&gt;：所有运算必须用整数完成，保持足够精度&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;数学函数替代&lt;/strong&gt;：&lt;code&gt;exp()&lt;/code&gt;、&lt;code&gt;sqrt()&lt;/code&gt; 需要用泰勒级数和牛顿迭代实现&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;溢出防护&lt;/strong&gt;：32位整数的乘法链随时可能溢出&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;本文详细介绍这些工程实现，代码基于STM32平台的实际产品。&lt;/p&gt;
+&lt;h2 id=&#34;定点数运算体系&#34;&gt;&lt;a href=&#34;#定点数运算体系&#34; class=&#34;headerlink&#34; title=&#34;定点数运算体系&#34;&gt;&lt;/a&gt;定点数运算体系&lt;/h2&gt;&lt;h3 id=&#34;缩放策略&#34;&gt;&lt;a href=&#34;#缩放策略&#34; class=&#34;headerlink&#34; title=&#34;缩放策略&#34;&gt;&lt;/a&gt;缩放策略&lt;/h3&gt;&lt;p&gt;核心思想：将所有浮点数统一乘以1000，用整数存储和运算。&lt;/p&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;物理量&lt;/th&gt;
+&lt;th&gt;Python类型&lt;/th&gt;
+&lt;th&gt;MCU类型&lt;/th&gt;
+&lt;th&gt;单位&amp;#x2F;缩放&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;&lt;tr&gt;
+&lt;td&gt;电阻 R_LF&lt;/td&gt;
+&lt;td&gt;float (Ω)&lt;/td&gt;
+&lt;td&gt;int32_t&lt;/td&gt;
+&lt;td&gt;mΩ (×1000)&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;电压 V&lt;/td&gt;
+&lt;td&gt;float (V)&lt;/td&gt;
+&lt;td&gt;uint32_t&lt;/td&gt;
+&lt;td&gt;mV (×1000)&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;电流 I&lt;/td&gt;
+&lt;td&gt;float (A)&lt;/td&gt;
+&lt;td&gt;int32_t&lt;/td&gt;
+&lt;td&gt;mA (×1000)&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;电容 C&lt;/td&gt;
+&lt;td&gt;float (F)&lt;/td&gt;
+&lt;td&gt;int32_t&lt;/td&gt;
+&lt;td&gt;原值×1000&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;gamma系数&lt;/td&gt;
+&lt;td&gt;float (0~1)&lt;/td&gt;
+&lt;td&gt;int32_t&lt;/td&gt;
+&lt;td&gt;原值×1000&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;温度系数 β&lt;/td&gt;
+&lt;td&gt;float (~-0.08)&lt;/td&gt;
+&lt;td&gt;int32_t&lt;/td&gt;
+&lt;td&gt;原值×1000&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;exp()结果&lt;/td&gt;
+&lt;td&gt;float&lt;/td&gt;
+&lt;td&gt;int32_t&lt;/td&gt;
+&lt;td&gt;原值×1000&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;&lt;/table&gt;
+&lt;p&gt;运算宏定义：&lt;/p&gt;
+&lt;figure class=&#34;highlight c&#34;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&#34;gutter&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;3&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&#34;code&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;meta&#34;&gt;#&lt;span class=&#34;keyword&#34;&gt;define&lt;/span&gt; IT_SCALE_1000           1000&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;meta&#34;&gt;#&lt;span class=&#34;keyword&#34;&gt;define&lt;/span&gt; IT_MUL_SCALE(a, b, s)   (((int32_t)(a) * (int32_t)(b)) / (s))&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;meta&#34;&gt;#&lt;span class=&#34;keyword&#34;&gt;define&lt;/span&gt; IT_DIV_SCALE(a, b, s)   (((int32_t)(a) * (s)) / (int32_t)(b))&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;"><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2025/08/12/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E9%98%BB%E6%8A%97%E8%BF%BD%E8%B8%AA%E7%9A%84%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%AE%9E%E7%8E%B0%EF%BC%9A%E5%AE%9A%E7%82%B9%E8%BF%90%E7%AE%97%E4%B8%8E%E7%89%9B%E9%A1%BF%E8%BF%AD%E4%BB%A3/&t=电量计 -- 阻抗追踪的嵌入式实现：定点运算与牛顿迭代"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E9%98%BB%E6%8A%97%E8%BF%BD%E8%B8%AA%E7%9A%84%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%AE%9E%E7%8E%B0%EF%BC%9A%E5%AE%9A%E7%82%B9%E8%BF%90%E7%AE%97%E4%B8%8E%E7%89%9B%E9%A1%BF%E8%BF%AD%E4%BB%A3"><span class="toc-number">1.</span> <span class="toc-text">阻抗追踪的嵌入式实现：定点运算与牛顿迭代</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AE%9A%E7%82%B9%E6%95%B0%E8%BF%90%E7%AE%97%E4%BD%93%E7%B3%BB"><span class="toc-number">1.1.</span> <span class="toc-text">定点数运算体系</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BC%A9%E6%94%BE%E7%AD%96%E7%95%A5"><span class="toc-number">1.1.1.</span> <span class="toc-text">缩放策略</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BC%A9%E6%94%BE%E4%B9%98%E6%B3%95%E9%93%BE%E7%9A%84%E7%B2%BE%E5%BA%A6%E9%97%AE%E9%A2%98"><span class="toc-number">1.1.2.</span> <span class="toc-text">缩放乘法链的精度问题</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#int32-t-vs-uint32-t"><span class="toc-number">1.1.3.</span> <span class="toc-text">int32_t vs uint32_t</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%8C%87%E6%95%B0%E5%87%BD%E6%95%B0%E7%9A%84%E6%B3%B0%E5%8B%92%E7%BA%A7%E6%95%B0%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.2.</span> <span class="toc-text">指数函数的泰勒级数实现</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%89%9B%E9%A1%BF%E8%BF%AD%E4%BB%A3%E6%B1%82%E5%B9%B3%E6%96%B9%E6%A0%B9"><span class="toc-number">1.3.</span> <span class="toc-text">牛顿迭代求平方根</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E6%AC%A1%E6%96%B9%E7%A8%8B%E6%B1%82%E8%A7%A3"><span class="toc-number">1.4.</span> <span class="toc-text">二次方程求解</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9E%84%E5%BB%BA%E6%A0%87%E5%87%86%E5%BD%A2%E5%BC%8F"><span class="toc-number">1.4.1.</span> <span class="toc-text">构建标准形式</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%B1%82%E6%A0%B9"><span class="toc-number">1.4.2.</span> <span class="toc-text">求根</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E5%88%86%E5%AD%90%E8%A6%81%C3%971000%EF%BC%9F"><span class="toc-number">1.4.3.</span> <span class="toc-text">为什么分子要×1000？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%9B%9E%E9%80%80%E7%AD%96%E7%95%A5"><span class="toc-number">1.4.4.</span> <span class="toc-text">回退策略</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%95%B0%E6%8D%AE%E7%A8%B3%E5%AE%9A%E5%8C%96%EF%BC%9A%E6%BB%91%E5%8A%A8%E7%AA%97%E5%8F%A3%E5%9D%87%E5%80%BC"><span class="toc-number">1.5.</span> <span class="toc-text">数据稳定化：滑动窗口均值</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%9F%A5%E8%A1%A8%E4%B8%8E%E6%8F%92%E5%80%BC%E7%9A%84%E6%95%B4%E6%95%B0%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.6.</span> <span class="toc-text">查表与插值的整数实现</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#DoD%E2%86%92%E8%A1%A8%E7%B4%A2%E5%BC%95%E6%98%A0%E5%B0%84"><span class="toc-number">1.6.1.</span> <span class="toc-text">DoD→表索引映射</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#OCV-65%E7%82%B9%E6%9F%A5%E8%A1%A8"><span class="toc-number">1.6.2.</span> <span class="toc-text">OCV 65点查表</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%BD%AF%E4%BB%B6%E6%9E%B6%E6%9E%84"><span class="toc-number">1.7.</span> <span class="toc-text">软件架构</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84"><span class="toc-number">1.7.1.</span> <span class="toc-text">数据结构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#API%E8%AE%BE%E8%AE%A1"><span class="toc-number">1.7.2.</span> <span class="toc-text">API设计</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%B5%84%E6%BA%90%E5%8D%A0%E7%94%A8"><span class="toc-number">1.7.3.</span> <span class="toc-text">资源占用</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Python-vs-MCU-%E5%AF%B9%E6%AF%94"><span class="toc-number">1.8.</span> <span class="toc-text">Python vs MCU 对比</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%B7%A5%E7%A8%8B%E7%BB%8F%E9%AA%8C%E6%80%BB%E7%BB%93"><span class="toc-number">1.9.</span> <span class="toc-text">工程经验总结</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E2%80%9C%E6%89%A9%E5%A4%A7%E5%86%8D%E9%99%A4%E2%80%9D%E6%8A%80%E5%B7%A7"><span class="toc-number">1.9.1.</span> <span class="toc-text">1. “扩大再除”技巧</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-int-uint%E6%B7%B7%E7%94%A8%E7%9A%84%E9%9A%90%E8%94%BDbug"><span class="toc-number">1.9.2.</span> <span class="toc-text">2. int&#x2F;uint混用的隐蔽bug</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-%E9%99%A4%E9%9B%B6%E4%BF%9D%E6%8A%A4"><span class="toc-number">1.9.3.</span> <span class="toc-text">3. 除零保护</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-%E8%B0%83%E8%AF%95%E6%89%8B%E6%AE%B5"><span class="toc-number">1.9.4.</span> <span class="toc-text">4. 调试手段</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%B3%BB%E5%88%97%E6%96%87%E7%AB%A0"><span class="toc-number">1.10.</span> <span class="toc-text">系列文章</span></a></li></ol></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        电量计 -- 阻抗追踪的嵌入式实现：定点运算与牛顿迭代
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">cursorhu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2025-08-12T02:00:00.000Z" class="dt-published" itemprop="datePublished">2025-08-12</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fa-solid fa-archive"></i>
+        <a class="category-link" href="/categories/%E7%94%B5%E9%87%8F%E8%AE%A1/">电量计</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/%E7%94%B5%E9%87%8F%E8%AE%A1/" rel="tag">电量计</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <h1 id="阻抗追踪的嵌入式实现：定点运算与牛顿迭代"><a href="#阻抗追踪的嵌入式实现：定点运算与牛顿迭代" class="headerlink" title="阻抗追踪的嵌入式实现：定点运算与牛顿迭代"></a>阻抗追踪的嵌入式实现：定点运算与牛顿迭代</h1><p>上一篇介绍了阻抗追踪的算法原理：二阶RC等效电路模型、动态R_LF更新、温度补偿机制。Python版本使用 <code>numpy</code>、<code>scipy.fsolve</code> 轻松实现了完整算法。但要将其部署到没有浮点运算单元（FPU）的电量计MCU上，需要解决三个核心工程问题：</p>
+<ol>
+<li><strong>浮点→定点</strong>：所有运算必须用整数完成，保持足够精度</li>
+<li><strong>数学函数替代</strong>：<code>exp()</code>、<code>sqrt()</code> 需要用泰勒级数和牛顿迭代实现</li>
+<li><strong>溢出防护</strong>：32位整数的乘法链随时可能溢出</li>
+</ol>
+<p>本文详细介绍这些工程实现，代码基于STM32平台的实际产品。</p>
+<h2 id="定点数运算体系"><a href="#定点数运算体系" class="headerlink" title="定点数运算体系"></a>定点数运算体系</h2><h3 id="缩放策略"><a href="#缩放策略" class="headerlink" title="缩放策略"></a>缩放策略</h3><p>核心思想：将所有浮点数统一乘以1000，用整数存储和运算。</p>
+<table>
+<thead>
+<tr>
+<th>物理量</th>
+<th>Python类型</th>
+<th>MCU类型</th>
+<th>单位&#x2F;缩放</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>电阻 R_LF</td>
+<td>float (Ω)</td>
+<td>int32_t</td>
+<td>mΩ (×1000)</td>
+</tr>
+<tr>
+<td>电压 V</td>
+<td>float (V)</td>
+<td>uint32_t</td>
+<td>mV (×1000)</td>
+</tr>
+<tr>
+<td>电流 I</td>
+<td>float (A)</td>
+<td>int32_t</td>
+<td>mA (×1000)</td>
+</tr>
+<tr>
+<td>电容 C</td>
+<td>float (F)</td>
+<td>int32_t</td>
+<td>原值×1000</td>
+</tr>
+<tr>
+<td>gamma系数</td>
+<td>float (0~1)</td>
+<td>int32_t</td>
+<td>原值×1000</td>
+</tr>
+<tr>
+<td>温度系数 β</td>
+<td>float (~-0.08)</td>
+<td>int32_t</td>
+<td>原值×1000</td>
+</tr>
+<tr>
+<td>exp()结果</td>
+<td>float</td>
+<td>int32_t</td>
+<td>原值×1000</td>
+</tr>
+</tbody></table>
+<p>运算宏定义：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">define</span> IT_SCALE_1000           1000</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> IT_MUL_SCALE(a, b, s)   (((int32_t)(a) * (int32_t)(b)) / (s))</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> IT_DIV_SCALE(a, b, s)   (((int32_t)(a) * (s)) / (int32_t)(b))</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="缩放乘法链的精度问题"><a href="#缩放乘法链的精度问题" class="headerlink" title="缩放乘法链的精度问题"></a>缩放乘法链的精度问题</h3><p>计算温度补偿后的电阻时：</p>
+<p>$$R_k &#x3D; R_{LF} \times \gamma_{Rk} \times e^{\beta_{Rk} \times \Delta T}$$</p>
+<p>三个操作数都是×1000缩放，直接相乘结果是×10^9，需要除以10^6回到×1000。但如果 gamma 和 exp_factor 都小于1000（即实际值&lt;1），中间结果可能在除法后变为0。</p>
+<p>解决方案：额外乘以10，保留一位小数精度：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// r_k结果保持×10×1000缩放，使用时除以10</span></span><br><span class="line">r_k[<span class="number">0</span>] = ((<span class="type">uint32_t</span>)handle-&gt;r_lf * gamma_rk[<span class="number">0</span>] * exp_factor_r1) * <span class="number">10</span> / (<span class="number">1000</span> * <span class="number">1000</span>);</span><br><span class="line">r_k[<span class="number">1</span>] = ((<span class="type">uint32_t</span>)handle-&gt;r_lf * gamma_rk[<span class="number">1</span>] * exp_factor_r2) * <span class="number">10</span> / (<span class="number">1000</span> * <span class="number">1000</span>);</span><br><span class="line">*r_s = ((<span class="type">uint32_t</span>)handle-&gt;r_lf * (*gamma_rs) * exp_factor_rs) * <span class="number">10</span> / (<span class="number">1000</span> * <span class="number">1000</span>);</span><br></pre></td></tr></table></figure>
+
+<h3 id="int32-t-vs-uint32-t"><a href="#int32-t-vs-uint32-t" class="headerlink" title="int32_t vs uint32_t"></a>int32_t vs uint32_t</h3><p>温度系数 $\beta_{Rk}$ 为负数（电阻随温度升高而降低），温度差也可能为负，所以 <code>exp_arg</code> 必须使用有符号类型：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int32_t</span> exp_arg_r1 = rbk[<span class="number">0</span>] * temp_diff;  <span class="comment">// 可能为负</span></span><br><span class="line"><span class="type">uint32_t</span> exp_factor_r1 = (<span class="type">uint32_t</span>)it_exp_approx(exp_arg_r1);  <span class="comment">// 结果恒正</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="指数函数的泰勒级数实现"><a href="#指数函数的泰勒级数实现" class="headerlink" title="指数函数的泰勒级数实现"></a>指数函数的泰勒级数实现</h2><p>MCU没有 <code>math.h</code> 的 <code>exp()</code> 函数（或者有但依赖软浮点，极慢）。我们用5阶泰勒展开来逼近：</p>
+<p>$$e^x \approx 1 + x + \frac{x^2}{2!} + \frac{x^3}{3!} + \frac{x^4}{4!} + \frac{x^5}{5!}$$</p>
+<p>定点实现的关键在于：输入 <code>x_scaled</code> 是实际值×1000，输出也是×1000。每一项的迭代计算中，除以 <code>n * 1000</code> 来维持缩放不变。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">int32_t</span> <span class="title function_">it_exp_approx</span><span class="params">(<span class="type">int32_t</span> x_scaled)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">// 范围限制：避免溢出和无意义计算</span></span><br><span class="line">    <span class="keyword">if</span> (x_scaled &gt; <span class="number">2000</span>) <span class="keyword">return</span> <span class="number">10000</span>;      <span class="comment">// exp(2) ≈ 7.39, cap at 10</span></span><br><span class="line">    <span class="keyword">if</span> (x_scaled &lt; <span class="number">-50000</span>) <span class="keyword">return</span> <span class="number">1</span>;        <span class="comment">// exp(-50) ≈ 0</span></span><br><span class="line">    <span class="keyword">if</span> (x_scaled &lt; <span class="number">-10000</span>) <span class="keyword">return</span> <span class="number">10</span>;       <span class="comment">// exp(-10) ≈ 0.00005</span></span><br><span class="line"></span><br><span class="line">    <span class="type">int64_t</span> x = x_scaled;  <span class="comment">// 用int64防止中间结果溢出</span></span><br><span class="line">    <span class="type">int64_t</span> result = <span class="number">1000</span>; <span class="comment">// 第零项: 1.0 × 1000</span></span><br><span class="line"></span><br><span class="line">    <span class="type">int64_t</span> term = x;      <span class="comment">// 第一项: x (已是×1000)</span></span><br><span class="line">    result += term;</span><br><span class="line"></span><br><span class="line">    term = (term * x) / (<span class="number">2</span> * <span class="number">1000</span>);  <span class="comment">// 第二项: x²/2!</span></span><br><span class="line">    result += term;</span><br><span class="line"></span><br><span class="line">    term = (term * x) / (<span class="number">3</span> * <span class="number">1000</span>);  <span class="comment">// 第三项: x³/3!</span></span><br><span class="line">    result += term;</span><br><span class="line"></span><br><span class="line">    term = (term * x) / (<span class="number">4</span> * <span class="number">1000</span>);  <span class="comment">// 第四项: x⁴/4!</span></span><br><span class="line">    result += term;</span><br><span class="line"></span><br><span class="line">    term = (term * x) / (<span class="number">5</span> * <span class="number">1000</span>);  <span class="comment">// 第五项: x⁵/5!</span></span><br><span class="line">    result += term;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 输出钳位</span></span><br><span class="line">    <span class="keyword">if</span> (result &lt; <span class="number">100</span>) result = <span class="number">100</span>;      <span class="comment">// 最小0.1</span></span><br><span class="line">    <span class="keyword">if</span> (result &gt; <span class="number">10000</span>) result = <span class="number">10000</span>;  <span class="comment">// 最大10.0</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> (<span class="type">int32_t</span>)result;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>为什么每一项除以 <code>n * 1000</code>？</strong></p>
+<p>设 <code>term_prev</code> 表示第 n-1 项（已×1000），则第 n 项为：</p>
+<p>$$term_n &#x3D; \frac{term_{n-1} \times x}{n} &#x3D; \frac{(term_{prev} \times 1000) \times (x_{actual} \times 1000)}{n}$$</p>
+<p>为保持结果仍为×1000缩放：<code>term = (term * x) / (n * 1000)</code></p>
+<p><strong>为什么用 int64_t？</strong></p>
+<p>当 x_scaled &#x3D; -3000（即 x &#x3D; -3）时，第二项 <code>term * x = (-3000) * (-3000) = 9,000,000</code>，仍在int32范围内。但后续项的乘法可能超过 $2^{31}$，使用int64彻底消除风险。</p>
+<p><strong>精度分析：</strong></p>
+<ul>
+<li>在 x ∈ [-3, 2] 范围内（对应温度补偿的典型输入），5阶泰勒展开误差 &lt; 1%</li>
+<li>对于 x &lt; -10 的强衰减场景，直接返回近似零值，不影响物理结果</li>
+</ul>
+<h2 id="牛顿迭代求平方根"><a href="#牛顿迭代求平方根" class="headerlink" title="牛顿迭代求平方根"></a>牛顿迭代求平方根</h2><p>解二次方程需要计算判别式的平方根。MCU没有 <code>sqrt()</code>，用<strong>牛顿迭代法</strong>（巴比伦法）实现：</p>
+<p>$$x_{n+1} &#x3D; \frac{x_n + \frac{a}{x_n}}{2}$$</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">uint32_t</span> <span class="title function_">it_sqrt_newton</span><span class="params">(<span class="type">uint32_t</span> x)</span> &#123;</span><br><span class="line">    <span class="keyword">if</span> (x == <span class="number">0</span>) <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">if</span> (x == <span class="number">1</span>) <span class="keyword">return</span> <span class="number">1</span>;</span><br><span class="line"></span><br><span class="line">    <span class="type">uint32_t</span> guess = x / <span class="number">2000</span>;  <span class="comment">// 初始猜测</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> (<span class="type">int</span> i = <span class="number">0</span>; i &lt; <span class="number">10</span>; i++) &#123;</span><br><span class="line">        <span class="keyword">if</span> (guess == <span class="number">0</span>) <span class="keyword">break</span>;</span><br><span class="line">        <span class="type">uint32_t</span> new_guess = (guess + x / guess) / <span class="number">2</span>;</span><br><span class="line">        <span class="keyword">if</span> (<span class="built_in">abs</span>((<span class="type">int32_t</span>)new_guess - (<span class="type">int32_t</span>)guess) &lt; <span class="number">5</span>) <span class="keyword">break</span>;  <span class="comment">// 收敛</span></span><br><span class="line">        guess = new_guess;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> guess;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>初始猜测值为什么是 x&#x2F;2000？</strong></p>
+<p>判别式 <code>discriminant = B² - 4AC</code>，其中B和C都是×1000缩放，所以判别式量级是×10^6。其平方根量级是×1000。初始猜测 <code>x/2000</code> 大约是正确结果的一半，牛顿法从这里出发只需3-4次迭代就能收敛。</p>
+<p><strong>收敛速度：</strong> 牛顿法求平方根具有二次收敛性——每次迭代有效精度翻倍。10次迭代可以覆盖32位整数的全部精度范围。实际测试中通常3-5次即满足 <code>|new - old| &lt; 5</code> 的收敛条件。</p>
+<h2 id="二次方程求解"><a href="#二次方程求解" class="headerlink" title="二次方程求解"></a>二次方程求解</h2><p>这是整个移植中最关键的部分。Python用 <code>scipy.fsolve</code> 一行代码搞定的事情，MCU需要手动构建和求解二次方程。</p>
+<h3 id="构建标准形式"><a href="#构建标准形式" class="headerlink" title="构建标准形式"></a>构建标准形式</h3><p>从原始非线性方程整理为 $A \times R_{LF}^2 + B \times R_{LF} + C &#x3D; 0$：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// A = gamma_rs × I × exp(Rbs × ΔT)</span></span><br><span class="line"><span class="comment">// 三个×1000的数相乘，除以10^6保持×1000</span></span><br><span class="line"><span class="type">int32_t</span> A = ((<span class="type">int32_t</span>)gamma_rs * (<span class="type">int32_t</span>)abs_current * (<span class="type">int32_t</span>)exp_rbs) / <span class="number">1000000</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">// B = -(OCV - V_term - Σ(V_k + I×Δt/C_k))</span></span><br><span class="line"><span class="type">int32_t</span> B = -((<span class="type">int32_t</span>)ocv - (<span class="type">int32_t</span>)v_term - (<span class="type">int32_t</span>)vk_sum);</span><br><span class="line"></span><br><span class="line"><span class="comment">// C = -Δt × Σ(V_k / (gamma_Rk × C_k × exp(Rbk×ΔT)))</span></span><br><span class="line"><span class="type">int32_t</span> C = -(<span class="type">int32_t</span>)term3;</span><br></pre></td></tr></table></figure>
+
+<h3 id="求根"><a href="#求根" class="headerlink" title="求根"></a>求根</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int32_t</span> discriminant = B * B - <span class="number">4</span> * A * C;</span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> (discriminant &gt;= <span class="number">0</span> &amp;&amp; A != <span class="number">0</span>) &#123;</span><br><span class="line">    <span class="type">uint32_t</span> sqrt_disc = it_sqrt_newton((<span class="type">uint32_t</span>)discriminant);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 关键：分子×1000防止整除截断</span></span><br><span class="line">    <span class="type">int32_t</span> sol1 = ((-B + (<span class="type">int32_t</span>)sqrt_disc) * <span class="number">1000</span>) / (<span class="number">2</span> * A);</span><br><span class="line">    <span class="type">int32_t</span> sol2 = ((-B - (<span class="type">int32_t</span>)sqrt_disc) * <span class="number">1000</span>) / (<span class="number">2</span> * A);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 选择物理合理解</span></span><br><span class="line">    <span class="keyword">if</span> (sol1 &gt; IT_MIN_R_LF &amp;&amp; sol1 &lt; IT_MAX_R_LF) &#123;</span><br><span class="line">        new_r_lf = (<span class="type">uint32_t</span>)sol1;</span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (sol2 &gt; IT_MIN_R_LF &amp;&amp; sol2 &lt; IT_MAX_R_LF) &#123;</span><br><span class="line">        new_r_lf = (<span class="type">uint32_t</span>)sol2;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">// 回退：使用DoD查表值</span></span><br><span class="line">        <span class="type">uint8_t</span> dod_index = handle-&gt;dod / <span class="number">10</span>;</span><br><span class="line">        new_r_lf = R_LF_Table[dod_index];</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="为什么分子要×1000？"><a href="#为什么分子要×1000？" class="headerlink" title="为什么分子要×1000？"></a>为什么分子要×1000？</h3><p><code>-B</code> 和 <code>sqrt_disc</code> 都是×1000缩放，<code>2*A</code> 也是×1000。如果直接除，×1000&#x2F;×1000 &#x3D; ×1，结果变成实际欧姆值，对于毫欧级的电阻会被整除为0。乘以1000后得到毫欧单位的结果。</p>
+<h3 id="回退策略"><a href="#回退策略" class="headerlink" title="回退策略"></a>回退策略</h3><p>方程可能无解（discriminant &lt; 0）或两个解都不在物理合理范围内（1~500mΩ）。此时使用R_LF查表的默认值作为回退，避免算法发散。</p>
+<h2 id="数据稳定化：滑动窗口均值"><a href="#数据稳定化：滑动窗口均值" class="headerlink" title="数据稳定化：滑动窗口均值"></a>数据稳定化：滑动窗口均值</h2><p>二次方程求解的结果受测量噪声影响较大，单次计算可能出现跳变。采用4样本滑动窗口平均来平滑R_LF：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">uint32_t</span> <span class="title function_">it_calculate_sliding_window_average</span><span class="params">(IT_HANDLE_T *handle, <span class="type">uint32_t</span> new_r_lf)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">// 范围限制</span></span><br><span class="line">    <span class="keyword">if</span> (new_r_lf &lt; IT_MIN_R_LF) new_r_lf = IT_MIN_R_LF;</span><br><span class="line">    <span class="keyword">if</span> (new_r_lf &gt; IT_MAX_R_LF) new_r_lf = IT_MAX_R_LF;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 异常跳变限制：新值不超过当前均值的±50%</span></span><br><span class="line">    <span class="keyword">if</span> (handle-&gt;buffer_count &gt; <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="type">uint32_t</span> current_avg = sum / handle-&gt;buffer_count;</span><br><span class="line">        <span class="keyword">if</span> (new_r_lf &gt; current_avg * <span class="number">3</span> / <span class="number">2</span>)</span><br><span class="line">            new_r_lf = current_avg * <span class="number">3</span> / <span class="number">2</span>;</span><br><span class="line">        <span class="keyword">else</span> <span class="keyword">if</span> (new_r_lf &lt; current_avg / <span class="number">2</span>)</span><br><span class="line">            new_r_lf = current_avg / <span class="number">2</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 环形缓冲区写入</span></span><br><span class="line">    handle-&gt;r_lf_buffer[handle-&gt;buffer_index] = new_r_lf;</span><br><span class="line">    handle-&gt;buffer_index = (handle-&gt;buffer_index + <span class="number">1</span>) % <span class="number">4</span>;</span><br><span class="line">    <span class="keyword">if</span> (handle-&gt;buffer_count &lt; <span class="number">4</span>) handle-&gt;buffer_count++;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 计算均值</span></span><br><span class="line">    <span class="type">uint32_t</span> sum = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">for</span> (<span class="type">int</span> i = <span class="number">0</span>; i &lt; handle-&gt;buffer_count; i++)</span><br><span class="line">        sum += handle-&gt;r_lf_buffer[i];</span><br><span class="line">    <span class="keyword">return</span> sum / handle-&gt;buffer_count;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>为什么不用卡尔曼滤波？R_LF变化缓慢（分钟级），简单的滑动窗口均值足够抑制测量噪声，且只需16字节（4个uint32_t），代码量极小。</p>
+<h2 id="查表与插值的整数实现"><a href="#查表与插值的整数实现" class="headerlink" title="查表与插值的整数实现"></a>查表与插值的整数实现</h2><h3 id="DoD→表索引映射"><a href="#DoD→表索引映射" class="headerlink" title="DoD→表索引映射"></a>DoD→表索引映射</h3><p>所有参数表以DoD 10%为步长，共11个点。DoD范围0-100映射为索引0-10：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">uint32_t</span> index = dod / <span class="number">10</span>;       <span class="comment">// 主索引</span></span><br><span class="line"><span class="type">uint32_t</span> remainder = dod % <span class="number">10</span>;   <span class="comment">// 插值权重 (0-9)</span></span><br><span class="line"><span class="type">uint8_t</span> id1 = (<span class="type">uint8_t</span>)index;</span><br><span class="line"><span class="type">uint8_t</span> id2 = (id1 + <span class="number">1</span> &gt; <span class="number">10</span>) ? <span class="number">10</span> : (id1 + <span class="number">1</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 线性插值</span></span><br><span class="line">gamma_rk[i] = gamma_Rk_Table[id1][i] +</span><br><span class="line">    (<span class="type">int32_t</span>)(remainder * (<span class="type">int32_t</span>)(gamma_Rk_Table[id2][i] - gamma_Rk_Table[id1][i])) / <span class="number">10</span>;</span><br></pre></td></tr></table></figure>
+
+<p>注意 <code>remainder * diff</code> 可能为负（表值非单调），必须强转 <code>int32_t</code> 后再除以10。</p>
+<h3 id="OCV-65点查表"><a href="#OCV-65点查表" class="headerlink" title="OCV 65点查表"></a>OCV 65点查表</h3><p>SOC-OCV表使用65个点（步长约1.56%），以0.01%精度索引：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">uint32_t</span> soc_scaled = soc * <span class="number">100</span>;  <span class="comment">// SOC 0-100 → 0-10000</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">for</span> (<span class="type">int</span> i = <span class="number">0</span>; i &lt; <span class="number">64</span>; i++) &#123;</span><br><span class="line">    <span class="keyword">if</span> (soc_scaled &gt;= soc_points[i] &amp;&amp; soc_scaled &lt;= soc_points[i+<span class="number">1</span>]) &#123;</span><br><span class="line">        <span class="type">uint32_t</span> weight_numerator = soc_scaled - soc_points[i];</span><br><span class="line">        <span class="type">int32_t</span> ocv_diff = (<span class="type">int32_t</span>)ocv_values[i+<span class="number">1</span>] - (<span class="type">int32_t</span>)ocv_values[i];</span><br><span class="line">        *ocv = ocv_values[i] + (weight_numerator * ocv_diff) / soc_diff;</span><br><span class="line">        <span class="keyword">break</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="软件架构"><a href="#软件架构" class="headerlink" title="软件架构"></a>软件架构</h2><h3 id="数据结构"><a href="#数据结构" class="headerlink" title="数据结构"></a>数据结构</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> &#123;</span></span><br><span class="line">    <span class="type">uint32_t</span> q_max;          <span class="comment">// 电池容量 (mAh)</span></span><br><span class="line">    <span class="type">uint32_t</span> dod;            <span class="comment">// 放电深度 (0-100%)</span></span><br><span class="line">    <span class="type">uint32_t</span> r_lf;           <span class="comment">// 低频阻抗 (mΩ)</span></span><br><span class="line">    <span class="type">int32_t</span> t_ref;           <span class="comment">// 参考温度 (0.1°C)</span></span><br><span class="line">    <span class="type">uint32_t</span> c_ref;          <span class="comment">// 参考电容 (μF)</span></span><br><span class="line">    <span class="type">int32_t</span> v_k_curr[<span class="number">2</span>];     <span class="comment">// RC电压当前值 (mV)</span></span><br><span class="line">    <span class="type">int32_t</span> v_k_prev[<span class="number">2</span>];     <span class="comment">// RC电压前值 (mV)</span></span><br><span class="line">    <span class="type">uint8_t</span> initialized;     <span class="comment">// 初始化标志</span></span><br><span class="line">    <span class="type">uint8_t</span> update_counter;  <span class="comment">// 更新计数</span></span><br><span class="line">    <span class="type">uint32_t</span> r_lf_buffer[<span class="number">4</span>]; <span class="comment">// 滑动窗口</span></span><br><span class="line">    <span class="type">uint8_t</span> buffer_count;    <span class="comment">// 窗口有效数</span></span><br><span class="line">    <span class="type">uint8_t</span> buffer_index;    <span class="comment">// 窗口索引</span></span><br><span class="line">&#125; IT_HANDLE_T;</span><br></pre></td></tr></table></figure>
+
+<h3 id="API设计"><a href="#API设计" class="headerlink" title="API设计"></a>API设计</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">IT_ERROR_T <span class="title function_">it_init</span><span class="params">(IT_HANDLE_T *handle, IT_CONFIG_T *cfg)</span>;</span><br><span class="line">IT_ERROR_T <span class="title function_">it_update</span><span class="params">(IT_HANDLE_T *handle, IT_PARAM_T *param, IT_RESULT_T *result)</span>;</span><br><span class="line">IT_ERROR_T <span class="title function_">it_get_soc</span><span class="params">(IT_HANDLE_T *handle, <span class="type">uint32_t</span> *soc)</span>;</span><br><span class="line">IT_ERROR_T <span class="title function_">it_lookup_ocv</span><span class="params">(<span class="type">uint32_t</span> soc, <span class="type">uint32_t</span> *ocv)</span>;</span><br></pre></td></tr></table></figure>
+
+<p><code>it_update</code> 是核心函数，每秒调用一次，输入当前V&#x2F;I&#x2F;T，输出SOC和阻抗信息。</p>
+<h3 id="资源占用"><a href="#资源占用" class="headerlink" title="资源占用"></a>资源占用</h3><table>
+<thead>
+<tr>
+<th>资源</th>
+<th>占用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>代码 (Flash)</td>
+<td>~3.5KB</td>
+</tr>
+<tr>
+<td>查表数据 (Flash)</td>
+<td>~200B</td>
+</tr>
+<tr>
+<td>运行时内存 (RAM)</td>
+<td>~50B (IT_HANDLE_T)</td>
+</tr>
+<tr>
+<td>计算时间</td>
+<td>&lt;1ms per update</td>
+</tr>
+<tr>
+<td>CPU占用率</td>
+<td>&lt;0.1% (1s周期)</td>
+</tr>
+</tbody></table>
+<h2 id="Python-vs-MCU-对比"><a href="#Python-vs-MCU-对比" class="headerlink" title="Python vs MCU 对比"></a>Python vs MCU 对比</h2><table>
+<thead>
+<tr>
+<th>维度</th>
+<th>Python</th>
+<th>MCU C</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>算术类型</td>
+<td>float64 (15位精度)</td>
+<td>int32_t (×1000, 3-4位)</td>
+</tr>
+<tr>
+<td>exp()</td>
+<td>np.exp (IEEE 754)</td>
+<td>5阶Taylor级数</td>
+</tr>
+<tr>
+<td>sqrt()</td>
+<td>np.sqrt</td>
+<td>牛顿迭代 (10次)</td>
+</tr>
+<tr>
+<td>方程求解</td>
+<td>scipy.fsolve (通用迭代)</td>
+<td>二次方程公式解</td>
+</tr>
+<tr>
+<td>内存</td>
+<td>动态分配 (KB级)</td>
+<td>静态50B</td>
+</tr>
+<tr>
+<td>计算性能</td>
+<td>~ms (解释执行)</td>
+<td>&lt;1ms (O(1) 编译执行)</td>
+</tr>
+<tr>
+<td>代码体量</td>
+<td>~200行</td>
+<td>~800行 (含查表)</td>
+</tr>
+<tr>
+<td>回退策略</td>
+<td>无 (依赖fsolve收敛)</td>
+<td>查表回退 + 跳变限制</td>
+</tr>
+</tbody></table>
+<h2 id="工程经验总结"><a href="#工程经验总结" class="headerlink" title="工程经验总结"></a>工程经验总结</h2><h3 id="1-“扩大再除”技巧"><a href="#1-“扩大再除”技巧" class="headerlink" title="1. “扩大再除”技巧"></a>1. “扩大再除”技巧</h3><p>整数除法的精度损失是最常见的bug来源。原则是：<strong>先乘后除，将被除数扩大到足够大再做除法</strong>。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 错误：分子分母同量级，结果可能为0</span></span><br><span class="line"><span class="type">int32_t</span> result = (-B + sqrt_disc) / (<span class="number">2</span> * A);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 正确：分子×1000扩大后除，得到毫欧单位结果</span></span><br><span class="line"><span class="type">int32_t</span> result = ((-B + sqrt_disc) * <span class="number">1000</span>) / (<span class="number">2</span> * A);</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-int-uint混用的隐蔽bug"><a href="#2-int-uint混用的隐蔽bug" class="headerlink" title="2. int&#x2F;uint混用的隐蔽bug"></a>2. int&#x2F;uint混用的隐蔽bug</h3><p>温度差、温度系数、电容电压都可能为负。如果误用uint32_t，负数会变成极大的正数：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 危险：temp_diff可能为负，uint32_t会回绕</span></span><br><span class="line"><span class="type">uint32_t</span> temp_diff = (temp - handle-&gt;t_ref) / <span class="number">10</span>;  <span class="comment">// BUG!</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 正确</span></span><br><span class="line"><span class="type">int32_t</span> temp_diff = (temp - handle-&gt;t_ref) / <span class="number">10</span>;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-除零保护"><a href="#3-除零保护" class="headerlink" title="3. 除零保护"></a>3. 除零保护</h3><p>查表插值、RC参数计算中多处可能出现0值除数：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (c_k[i] &gt; <span class="number">0</span> &amp;&amp; gamma_rk[i] &gt; <span class="number">0</span> &amp;&amp; exp_rbk[i] &gt; <span class="number">0</span>) &#123;</span><br><span class="line">    <span class="comment">// 安全计算</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-调试手段"><a href="#4-调试手段" class="headerlink" title="4. 调试手段"></a>4. 调试手段</h3><p>条件编译的调试输出是嵌入式开发的标配：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">define</span> IT_DEBUG 1</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">ifdef</span> IT_DEBUG</span></span><br><span class="line">dbg_print(<span class="string">&quot;A=%d, B=%d, C=%d\r\n&quot;</span>, A, B, C);</span><br><span class="line">dbg_print(<span class="string">&quot;discriminant=%d, sqrt_disc=%d\r\n&quot;</span>, discriminant, sqrt_disc);</span><br><span class="line">dbg_print(<span class="string">&quot;R_LF SOLVE: sol1=%d, sol2=%d\r\n&quot;</span>, sol1, sol2);</span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br></pre></td></tr></table></figure>
+
+<p>通过打印中间变量，可以逐步对照Python仿真结果来定位精度偏差。</p>
+<h2 id="系列文章"><a href="#系列文章" class="headerlink" title="系列文章"></a>系列文章</h2><ul>
+<li><strong>上一篇</strong>：阻抗追踪算法原理 - 电池模型与动态阻抗估计</li>
+<li><strong>本文</strong>：阻抗追踪的嵌入式实现 - 定点运算与牛顿迭代</li>
+</ul>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">首页</a></li>
+        
+          <li><a href="/about/">关于</a></li>
+        
+          <li><a href="/archives/">归档</a></li>
+        
+          <li><a href="/tags/">标签</a></li>
+        
+          <li><a href="/categories/">分类</a></li>
+        
+          <li><a href="/search/">搜索</a></li>
+        
+          <li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E9%98%BB%E6%8A%97%E8%BF%BD%E8%B8%AA%E7%9A%84%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%AE%9E%E7%8E%B0%EF%BC%9A%E5%AE%9A%E7%82%B9%E8%BF%90%E7%AE%97%E4%B8%8E%E7%89%9B%E9%A1%BF%E8%BF%AD%E4%BB%A3"><span class="toc-number">1.</span> <span class="toc-text">阻抗追踪的嵌入式实现：定点运算与牛顿迭代</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AE%9A%E7%82%B9%E6%95%B0%E8%BF%90%E7%AE%97%E4%BD%93%E7%B3%BB"><span class="toc-number">1.1.</span> <span class="toc-text">定点数运算体系</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BC%A9%E6%94%BE%E7%AD%96%E7%95%A5"><span class="toc-number">1.1.1.</span> <span class="toc-text">缩放策略</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BC%A9%E6%94%BE%E4%B9%98%E6%B3%95%E9%93%BE%E7%9A%84%E7%B2%BE%E5%BA%A6%E9%97%AE%E9%A2%98"><span class="toc-number">1.1.2.</span> <span class="toc-text">缩放乘法链的精度问题</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#int32-t-vs-uint32-t"><span class="toc-number">1.1.3.</span> <span class="toc-text">int32_t vs uint32_t</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%8C%87%E6%95%B0%E5%87%BD%E6%95%B0%E7%9A%84%E6%B3%B0%E5%8B%92%E7%BA%A7%E6%95%B0%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.2.</span> <span class="toc-text">指数函数的泰勒级数实现</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%89%9B%E9%A1%BF%E8%BF%AD%E4%BB%A3%E6%B1%82%E5%B9%B3%E6%96%B9%E6%A0%B9"><span class="toc-number">1.3.</span> <span class="toc-text">牛顿迭代求平方根</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E6%AC%A1%E6%96%B9%E7%A8%8B%E6%B1%82%E8%A7%A3"><span class="toc-number">1.4.</span> <span class="toc-text">二次方程求解</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9E%84%E5%BB%BA%E6%A0%87%E5%87%86%E5%BD%A2%E5%BC%8F"><span class="toc-number">1.4.1.</span> <span class="toc-text">构建标准形式</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%B1%82%E6%A0%B9"><span class="toc-number">1.4.2.</span> <span class="toc-text">求根</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E5%88%86%E5%AD%90%E8%A6%81%C3%971000%EF%BC%9F"><span class="toc-number">1.4.3.</span> <span class="toc-text">为什么分子要×1000？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%9B%9E%E9%80%80%E7%AD%96%E7%95%A5"><span class="toc-number">1.4.4.</span> <span class="toc-text">回退策略</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%95%B0%E6%8D%AE%E7%A8%B3%E5%AE%9A%E5%8C%96%EF%BC%9A%E6%BB%91%E5%8A%A8%E7%AA%97%E5%8F%A3%E5%9D%87%E5%80%BC"><span class="toc-number">1.5.</span> <span class="toc-text">数据稳定化：滑动窗口均值</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%9F%A5%E8%A1%A8%E4%B8%8E%E6%8F%92%E5%80%BC%E7%9A%84%E6%95%B4%E6%95%B0%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.6.</span> <span class="toc-text">查表与插值的整数实现</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#DoD%E2%86%92%E8%A1%A8%E7%B4%A2%E5%BC%95%E6%98%A0%E5%B0%84"><span class="toc-number">1.6.1.</span> <span class="toc-text">DoD→表索引映射</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#OCV-65%E7%82%B9%E6%9F%A5%E8%A1%A8"><span class="toc-number">1.6.2.</span> <span class="toc-text">OCV 65点查表</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%BD%AF%E4%BB%B6%E6%9E%B6%E6%9E%84"><span class="toc-number">1.7.</span> <span class="toc-text">软件架构</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84"><span class="toc-number">1.7.1.</span> <span class="toc-text">数据结构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#API%E8%AE%BE%E8%AE%A1"><span class="toc-number">1.7.2.</span> <span class="toc-text">API设计</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%B5%84%E6%BA%90%E5%8D%A0%E7%94%A8"><span class="toc-number">1.7.3.</span> <span class="toc-text">资源占用</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Python-vs-MCU-%E5%AF%B9%E6%AF%94"><span class="toc-number">1.8.</span> <span class="toc-text">Python vs MCU 对比</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%B7%A5%E7%A8%8B%E7%BB%8F%E9%AA%8C%E6%80%BB%E7%BB%93"><span class="toc-number">1.9.</span> <span class="toc-text">工程经验总结</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E2%80%9C%E6%89%A9%E5%A4%A7%E5%86%8D%E9%99%A4%E2%80%9D%E6%8A%80%E5%B7%A7"><span class="toc-number">1.9.1.</span> <span class="toc-text">1. “扩大再除”技巧</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-int-uint%E6%B7%B7%E7%94%A8%E7%9A%84%E9%9A%90%E8%94%BDbug"><span class="toc-number">1.9.2.</span> <span class="toc-text">2. int&#x2F;uint混用的隐蔽bug</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-%E9%99%A4%E9%9B%B6%E4%BF%9D%E6%8A%A4"><span class="toc-number">1.9.3.</span> <span class="toc-text">3. 除零保护</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-%E8%B0%83%E8%AF%95%E6%89%8B%E6%AE%B5"><span class="toc-number">1.9.4.</span> <span class="toc-text">4. 调试手段</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%B3%BB%E5%88%97%E6%96%87%E7%AB%A0"><span class="toc-number">1.10.</span> <span class="toc-text">系列文章</span></a></li></ol></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2025/08/12/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E9%98%BB%E6%8A%97%E8%BF%BD%E8%B8%AA%E7%9A%84%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%AE%9E%E7%8E%B0%EF%BC%9A%E5%AE%9A%E7%82%B9%E8%BF%90%E7%AE%97%E4%B8%8E%E7%89%9B%E9%A1%BF%E8%BF%AD%E4%BB%A3/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2025/08/12/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E9%98%BB%E6%8A%97%E8%BF%BD%E8%B8%AA%E7%9A%84%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%AE%9E%E7%8E%B0%EF%BC%9A%E5%AE%9A%E7%82%B9%E8%BF%90%E7%AE%97%E4%B8%8E%E7%89%9B%E9%A1%BF%E8%BF%AD%E4%BB%A3/&text=电量计 -- 阻抗追踪的嵌入式实现：定点运算与牛顿迭代"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2025/08/12/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E9%98%BB%E6%8A%97%E8%BF%BD%E8%B8%AA%E7%9A%84%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%AE%9E%E7%8E%B0%EF%BC%9A%E5%AE%9A%E7%82%B9%E8%BF%90%E7%AE%97%E4%B8%8E%E7%89%9B%E9%A1%BF%E8%BF%AD%E4%BB%A3/&title=电量计 -- 阻抗追踪的嵌入式实现：定点运算与牛顿迭代"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2025/08/12/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E9%98%BB%E6%8A%97%E8%BF%BD%E8%B8%AA%E7%9A%84%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%AE%9E%E7%8E%B0%EF%BC%9A%E5%AE%9A%E7%82%B9%E8%BF%90%E7%AE%97%E4%B8%8E%E7%89%9B%E9%A1%BF%E8%BF%AD%E4%BB%A3/&is_video=false&description=电量计 -- 阻抗追踪的嵌入式实现：定点运算与牛顿迭代"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=电量计 -- 阻抗追踪的嵌入式实现：定点运算与牛顿迭代&body=Check out this article: https://cursorhu.github.io/2025/08/12/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E9%98%BB%E6%8A%97%E8%BF%BD%E8%B8%AA%E7%9A%84%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%AE%9E%E7%8E%B0%EF%BC%9A%E5%AE%9A%E7%82%B9%E8%BF%90%E7%AE%97%E4%B8%8E%E7%89%9B%E9%A1%BF%E8%BF%AD%E4%BB%A3/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2025/08/12/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E9%98%BB%E6%8A%97%E8%BF%BD%E8%B8%AA%E7%9A%84%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%AE%9E%E7%8E%B0%EF%BC%9A%E5%AE%9A%E7%82%B9%E8%BF%90%E7%AE%97%E4%B8%8E%E7%89%9B%E9%A1%BF%E8%BF%AD%E4%BB%A3/&title=电量计 -- 阻抗追踪的嵌入式实现：定点运算与牛顿迭代"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2025/08/12/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E9%98%BB%E6%8A%97%E8%BF%BD%E8%B8%AA%E7%9A%84%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%AE%9E%E7%8E%B0%EF%BC%9A%E5%AE%9A%E7%82%B9%E8%BF%90%E7%AE%97%E4%B8%8E%E7%89%9B%E9%A1%BF%E8%BF%AD%E4%BB%A3/&title=电量计 -- 阻抗追踪的嵌入式实现：定点运算与牛顿迭代"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2025/08/12/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E9%98%BB%E6%8A%97%E8%BF%BD%E8%B8%AA%E7%9A%84%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%AE%9E%E7%8E%B0%EF%BC%9A%E5%AE%9A%E7%82%B9%E8%BF%90%E7%AE%97%E4%B8%8E%E7%89%9B%E9%A1%BF%E8%BF%AD%E4%BB%A3/&title=电量计 -- 阻抗追踪的嵌入式实现：定点运算与牛顿迭代"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2025/08/12/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E9%98%BB%E6%8A%97%E8%BF%BD%E8%B8%AA%E7%9A%84%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%AE%9E%E7%8E%B0%EF%BC%9A%E5%AE%9A%E7%82%B9%E8%BF%90%E7%AE%97%E4%B8%8E%E7%89%9B%E9%A1%BF%E8%BF%AD%E4%BB%A3/&title=电量计 -- 阻抗追踪的嵌入式实现：定点运算与牛顿迭代"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2025/08/12/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E9%98%BB%E6%8A%97%E8%BF%BD%E8%B8%AA%E7%9A%84%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%AE%9E%E7%8E%B0%EF%BC%9A%E5%AE%9A%E7%82%B9%E8%BF%90%E7%AE%97%E4%B8%8E%E7%89%9B%E9%A1%BF%E8%BF%AD%E4%BB%A3/&name=电量计 -- 阻抗追踪的嵌入式实现：定点运算与牛顿迭代&description=&lt;h1 id=&#34;阻抗追踪的嵌入式实现：定点运算与牛顿迭代&#34;&gt;&lt;a href=&#34;#阻抗追踪的嵌入式实现：定点运算与牛顿迭代&#34; class=&#34;headerlink&#34; title=&#34;阻抗追踪的嵌入式实现：定点运算与牛顿迭代&#34;&gt;&lt;/a&gt;阻抗追踪的嵌入式实现：定点运算与牛顿迭代&lt;/h1&gt;&lt;p&gt;上一篇介绍了阻抗追踪的算法原理：二阶RC等效电路模型、动态R_LF更新、温度补偿机制。Python版本使用 &lt;code&gt;numpy&lt;/code&gt;、&lt;code&gt;scipy.fsolve&lt;/code&gt; 轻松实现了完整算法。但要将其部署到没有浮点运算单元（FPU）的电量计MCU上，需要解决三个核心工程问题：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;&lt;strong&gt;浮点→定点&lt;/strong&gt;：所有运算必须用整数完成，保持足够精度&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;数学函数替代&lt;/strong&gt;：&lt;code&gt;exp()&lt;/code&gt;、&lt;code&gt;sqrt()&lt;/code&gt; 需要用泰勒级数和牛顿迭代实现&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;溢出防护&lt;/strong&gt;：32位整数的乘法链随时可能溢出&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;本文详细介绍这些工程实现，代码基于STM32平台的实际产品。&lt;/p&gt;
+&lt;h2 id=&#34;定点数运算体系&#34;&gt;&lt;a href=&#34;#定点数运算体系&#34; class=&#34;headerlink&#34; title=&#34;定点数运算体系&#34;&gt;&lt;/a&gt;定点数运算体系&lt;/h2&gt;&lt;h3 id=&#34;缩放策略&#34;&gt;&lt;a href=&#34;#缩放策略&#34; class=&#34;headerlink&#34; title=&#34;缩放策略&#34;&gt;&lt;/a&gt;缩放策略&lt;/h3&gt;&lt;p&gt;核心思想：将所有浮点数统一乘以1000，用整数存储和运算。&lt;/p&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;物理量&lt;/th&gt;
+&lt;th&gt;Python类型&lt;/th&gt;
+&lt;th&gt;MCU类型&lt;/th&gt;
+&lt;th&gt;单位&amp;#x2F;缩放&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;&lt;tr&gt;
+&lt;td&gt;电阻 R_LF&lt;/td&gt;
+&lt;td&gt;float (Ω)&lt;/td&gt;
+&lt;td&gt;int32_t&lt;/td&gt;
+&lt;td&gt;mΩ (×1000)&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;电压 V&lt;/td&gt;
+&lt;td&gt;float (V)&lt;/td&gt;
+&lt;td&gt;uint32_t&lt;/td&gt;
+&lt;td&gt;mV (×1000)&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;电流 I&lt;/td&gt;
+&lt;td&gt;float (A)&lt;/td&gt;
+&lt;td&gt;int32_t&lt;/td&gt;
+&lt;td&gt;mA (×1000)&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;电容 C&lt;/td&gt;
+&lt;td&gt;float (F)&lt;/td&gt;
+&lt;td&gt;int32_t&lt;/td&gt;
+&lt;td&gt;原值×1000&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;gamma系数&lt;/td&gt;
+&lt;td&gt;float (0~1)&lt;/td&gt;
+&lt;td&gt;int32_t&lt;/td&gt;
+&lt;td&gt;原值×1000&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;温度系数 β&lt;/td&gt;
+&lt;td&gt;float (~-0.08)&lt;/td&gt;
+&lt;td&gt;int32_t&lt;/td&gt;
+&lt;td&gt;原值×1000&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;exp()结果&lt;/td&gt;
+&lt;td&gt;float&lt;/td&gt;
+&lt;td&gt;int32_t&lt;/td&gt;
+&lt;td&gt;原值×1000&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;&lt;/table&gt;
+&lt;p&gt;运算宏定义：&lt;/p&gt;
+&lt;figure class=&#34;highlight c&#34;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&#34;gutter&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;3&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&#34;code&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;meta&#34;&gt;#&lt;span class=&#34;keyword&#34;&gt;define&lt;/span&gt; IT_SCALE_1000           1000&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;meta&#34;&gt;#&lt;span class=&#34;keyword&#34;&gt;define&lt;/span&gt; IT_MUL_SCALE(a, b, s)   (((int32_t)(a) * (int32_t)(b)) / (s))&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;meta&#34;&gt;#&lt;span class=&#34;keyword&#34;&gt;define&lt;/span&gt; IT_DIV_SCALE(a, b, s)   (((int32_t)(a) * (s)) / (int32_t)(b))&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;"><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2025/08/12/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E9%98%BB%E6%8A%97%E8%BF%BD%E8%B8%AA%E7%9A%84%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%AE%9E%E7%8E%B0%EF%BC%9A%E5%AE%9A%E7%82%B9%E8%BF%90%E7%AE%97%E4%B8%8E%E7%89%9B%E9%A1%BF%E8%BF%AD%E4%BB%A3/&t=电量计 -- 阻抗追踪的嵌入式实现：定点运算与牛顿迭代"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> 菜单</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> 目录</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> 分享</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> 返回顶部</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2026
+    cursorhu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"复制到粘贴板！\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "复制成功！");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+</body>
+</html>

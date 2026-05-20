@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="SOC电量算法架构：库仑积分、开路电压与电量追赶机制电量计的核心任务是回答一个看似简单的问题：电池还剩多少电？但由于电池的非线性特性、温度影响、老化效应，这个问题远比想象中复杂。本文基于实际产品固件（Newton平台 lib_fg.c），详细拆解SOC算法的完整架构。 整体架构概览SOC算法不是单一方法，而是多种方法的协同： 1234567flowchart TD    A[&quot;开路电压法">
+<meta property="og:type" content="article">
+<meta property="og:title" content="电量计 -- SOC电量算法架构：库仑积分、开路电压与电量追赶机制">
+<meta property="og:url" content="https://cursorhu.github.io/2025/08/15/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20SOC%E7%94%B5%E9%87%8F%E7%AE%97%E6%B3%95%E6%9E%B6%E6%9E%84%EF%BC%9A%E5%BA%93%E4%BB%91%E7%A7%AF%E5%88%86%E3%80%81%E5%BC%80%E8%B7%AF%E7%94%B5%E5%8E%8B%E4%B8%8E%E7%94%B5%E9%87%8F%E8%BF%BD%E8%B5%B6%E6%9C%BA%E5%88%B6/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="SOC电量算法架构：库仑积分、开路电压与电量追赶机制电量计的核心任务是回答一个看似简单的问题：电池还剩多少电？但由于电池的非线性特性、温度影响、老化效应，这个问题远比想象中复杂。本文基于实际产品固件（Newton平台 lib_fg.c），详细拆解SOC算法的完整架构。 整体架构概览SOC算法不是单一方法，而是多种方法的协同： 1234567flowchart TD    A[&quot;开路电压法">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2025-08-15T02:00:00.000Z">
+<meta property="article:modified_time" content="2026-05-20T12:22:42.542Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="电量计">
+<meta name="twitter:card" content="summary">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>电量计 -- SOC电量算法架构：库仑积分、开路电压与电量追赶机制</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+		<script type="text/x-mathjax-config">
+		  MathJax.Hub.Config({
+			tex2jax: {
+			  skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+			  inlineMath: [['$','$']]
+			}
+		  });
+		</script>
+		<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-MML-AM_CHTML' async></script>
+	
+<meta name="generator" content="Hexo 8.0.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="顶部" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="上一篇" href="/2025/08/30/AI%E7%BC%96%E7%A8%8B%20--%20Cursor%20%E7%8E%AF%E5%A2%83%E9%85%8D%E7%BD%AE%E5%92%8C%E7%AE%80%E5%8D%95%E4%BD%BF%E7%94%A8/"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="下一篇" href="/2025/08/12/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E9%98%BB%E6%8A%97%E8%BF%BD%E8%B8%AA%E7%9A%84%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%AE%9E%E7%8E%B0%EF%BC%9A%E5%AE%9A%E7%82%B9%E8%BF%90%E7%AE%97%E4%B8%8E%E7%89%9B%E9%A1%BF%E8%BF%AD%E4%BB%A3/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="返回顶部" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="分享文章" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">上一篇</span>
+      <span id="i-next" class="info" style="display:none;">下一篇</span>
+      <span id="i-top" class="info" style="display:none;">返回顶部</span>
+      <span id="i-share" class="info" style="display:none;">分享文章</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2025/08/15/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20SOC%E7%94%B5%E9%87%8F%E7%AE%97%E6%B3%95%E6%9E%B6%E6%9E%84%EF%BC%9A%E5%BA%93%E4%BB%91%E7%A7%AF%E5%88%86%E3%80%81%E5%BC%80%E8%B7%AF%E7%94%B5%E5%8E%8B%E4%B8%8E%E7%94%B5%E9%87%8F%E8%BF%BD%E8%B5%B6%E6%9C%BA%E5%88%B6/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2025/08/15/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20SOC%E7%94%B5%E9%87%8F%E7%AE%97%E6%B3%95%E6%9E%B6%E6%9E%84%EF%BC%9A%E5%BA%93%E4%BB%91%E7%A7%AF%E5%88%86%E3%80%81%E5%BC%80%E8%B7%AF%E7%94%B5%E5%8E%8B%E4%B8%8E%E7%94%B5%E9%87%8F%E8%BF%BD%E8%B5%B6%E6%9C%BA%E5%88%B6/&text=电量计 -- SOC电量算法架构：库仑积分、开路电压与电量追赶机制"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2025/08/15/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20SOC%E7%94%B5%E9%87%8F%E7%AE%97%E6%B3%95%E6%9E%B6%E6%9E%84%EF%BC%9A%E5%BA%93%E4%BB%91%E7%A7%AF%E5%88%86%E3%80%81%E5%BC%80%E8%B7%AF%E7%94%B5%E5%8E%8B%E4%B8%8E%E7%94%B5%E9%87%8F%E8%BF%BD%E8%B5%B6%E6%9C%BA%E5%88%B6/&title=电量计 -- SOC电量算法架构：库仑积分、开路电压与电量追赶机制"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2025/08/15/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20SOC%E7%94%B5%E9%87%8F%E7%AE%97%E6%B3%95%E6%9E%B6%E6%9E%84%EF%BC%9A%E5%BA%93%E4%BB%91%E7%A7%AF%E5%88%86%E3%80%81%E5%BC%80%E8%B7%AF%E7%94%B5%E5%8E%8B%E4%B8%8E%E7%94%B5%E9%87%8F%E8%BF%BD%E8%B5%B6%E6%9C%BA%E5%88%B6/&is_video=false&description=电量计 -- SOC电量算法架构：库仑积分、开路电压与电量追赶机制"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=电量计 -- SOC电量算法架构：库仑积分、开路电压与电量追赶机制&body=Check out this article: https://cursorhu.github.io/2025/08/15/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20SOC%E7%94%B5%E9%87%8F%E7%AE%97%E6%B3%95%E6%9E%B6%E6%9E%84%EF%BC%9A%E5%BA%93%E4%BB%91%E7%A7%AF%E5%88%86%E3%80%81%E5%BC%80%E8%B7%AF%E7%94%B5%E5%8E%8B%E4%B8%8E%E7%94%B5%E9%87%8F%E8%BF%BD%E8%B5%B6%E6%9C%BA%E5%88%B6/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2025/08/15/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20SOC%E7%94%B5%E9%87%8F%E7%AE%97%E6%B3%95%E6%9E%B6%E6%9E%84%EF%BC%9A%E5%BA%93%E4%BB%91%E7%A7%AF%E5%88%86%E3%80%81%E5%BC%80%E8%B7%AF%E7%94%B5%E5%8E%8B%E4%B8%8E%E7%94%B5%E9%87%8F%E8%BF%BD%E8%B5%B6%E6%9C%BA%E5%88%B6/&title=电量计 -- SOC电量算法架构：库仑积分、开路电压与电量追赶机制"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2025/08/15/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20SOC%E7%94%B5%E9%87%8F%E7%AE%97%E6%B3%95%E6%9E%B6%E6%9E%84%EF%BC%9A%E5%BA%93%E4%BB%91%E7%A7%AF%E5%88%86%E3%80%81%E5%BC%80%E8%B7%AF%E7%94%B5%E5%8E%8B%E4%B8%8E%E7%94%B5%E9%87%8F%E8%BF%BD%E8%B5%B6%E6%9C%BA%E5%88%B6/&title=电量计 -- SOC电量算法架构：库仑积分、开路电压与电量追赶机制"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2025/08/15/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20SOC%E7%94%B5%E9%87%8F%E7%AE%97%E6%B3%95%E6%9E%B6%E6%9E%84%EF%BC%9A%E5%BA%93%E4%BB%91%E7%A7%AF%E5%88%86%E3%80%81%E5%BC%80%E8%B7%AF%E7%94%B5%E5%8E%8B%E4%B8%8E%E7%94%B5%E9%87%8F%E8%BF%BD%E8%B5%B6%E6%9C%BA%E5%88%B6/&title=电量计 -- SOC电量算法架构：库仑积分、开路电压与电量追赶机制"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2025/08/15/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20SOC%E7%94%B5%E9%87%8F%E7%AE%97%E6%B3%95%E6%9E%B6%E6%9E%84%EF%BC%9A%E5%BA%93%E4%BB%91%E7%A7%AF%E5%88%86%E3%80%81%E5%BC%80%E8%B7%AF%E7%94%B5%E5%8E%8B%E4%B8%8E%E7%94%B5%E9%87%8F%E8%BF%BD%E8%B5%B6%E6%9C%BA%E5%88%B6/&title=电量计 -- SOC电量算法架构：库仑积分、开路电压与电量追赶机制"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2025/08/15/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20SOC%E7%94%B5%E9%87%8F%E7%AE%97%E6%B3%95%E6%9E%B6%E6%9E%84%EF%BC%9A%E5%BA%93%E4%BB%91%E7%A7%AF%E5%88%86%E3%80%81%E5%BC%80%E8%B7%AF%E7%94%B5%E5%8E%8B%E4%B8%8E%E7%94%B5%E9%87%8F%E8%BF%BD%E8%B5%B6%E6%9C%BA%E5%88%B6/&name=电量计 -- SOC电量算法架构：库仑积分、开路电压与电量追赶机制&description=&lt;h1 id=&#34;SOC电量算法架构：库仑积分、开路电压与电量追赶机制&#34;&gt;&lt;a href=&#34;#SOC电量算法架构：库仑积分、开路电压与电量追赶机制&#34; class=&#34;headerlink&#34; title=&#34;SOC电量算法架构：库仑积分、开路电压与电量追赶机制&#34;&gt;&lt;/a&gt;SOC电量算法架构：库仑积分、开路电压与电量追赶机制&lt;/h1&gt;&lt;p&gt;电量计的核心任务是回答一个看似简单的问题：电池还剩多少电？但由于电池的非线性特性、温度影响、老化效应，这个问题远比想象中复杂。本文基于实际产品固件（Newton平台 lib_fg.c），详细拆解SOC算法的完整架构。&lt;/p&gt;
+&lt;h2 id=&#34;整体架构概览&#34;&gt;&lt;a href=&#34;#整体架构概览&#34; class=&#34;headerlink&#34; title=&#34;整体架构概览&#34;&gt;&lt;/a&gt;整体架构概览&lt;/h2&gt;&lt;p&gt;SOC算法不是单一方法，而是多种方法的协同：&lt;/p&gt;
+&lt;figure class=&#34;highlight plaintext&#34;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&#34;gutter&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;3&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;4&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;5&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;6&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;7&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&#34;code&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;flowchart TD&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    A[&amp;quot;开路电压法 OCV&amp;quot;] --&amp;gt;|&amp;quot;初始化/静置&amp;quot;| D[&amp;quot;RSOC&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    B[&amp;quot;库仑积分法 CC&amp;quot;] --&amp;gt;|&amp;quot;充放电过程&amp;quot;| D&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    C[&amp;quot;电量追赶机制&amp;quot;] --&amp;gt;|&amp;quot;尾部修正&amp;quot;| D&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    E[&amp;quot;DFCC动态容量&amp;quot;] --&amp;gt;|&amp;quot;修正FCC&amp;quot;| B&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    F[&amp;quot;温度阻抗补偿&amp;quot;] --&amp;gt;|&amp;quot;修正电压&amp;quot;| A&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    F --&amp;gt;|&amp;quot;修正容量&amp;quot;| E&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;
+
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;方法&lt;/th&gt;
+&lt;th&gt;使用场景&lt;/th&gt;
+&lt;th&gt;解决的问题&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;&lt;tr&gt;
+&lt;td&gt;OCV查表&lt;/td&gt;
+&lt;td&gt;初始化、长时间静置&lt;/td&gt;
+&lt;td&gt;提供绝对SOC基准，消除累积误差&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;库仑积分&lt;/td&gt;
+&lt;td&gt;充放电过程中&lt;/td&gt;
+&lt;td&gt;连续追踪SOC变化，响应快&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;电量追赶&lt;/td&gt;
+&lt;td&gt;充电CV段、放电尾部&lt;/td&gt;
+&lt;td&gt;保证报满&amp;#x2F;报空的用户体验&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;DFCC&lt;/td&gt;
+&lt;td&gt;放电过程&lt;/td&gt;
+&lt;td&gt;补偿温度和电流对可用容量的影响&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;温度补偿&lt;/td&gt;
+&lt;td&gt;全程&lt;/td&gt;
+&lt;td&gt;消除温度对电压和容量的影响&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;&lt;/table&gt;
+&lt;h2 id=&#34;库仑积分：连续追踪SOC变化&#34;&gt;&lt;a href=&#34;#库仑积分：连续追踪SOC变化&#34; class=&#34;headerlink&#34; title=&#34;库仑积分：连续追踪SOC变化&#34;&gt;&lt;/a&gt;库仑积分：连续追踪SOC变化&lt;/h2&gt;&lt;h3 id=&#34;原理&#34;&gt;&lt;a href=&#34;#原理&#34; class=&#34;headerlink&#34; title=&#34;原理&#34;&gt;&lt;/a&gt;原理&lt;/h3&gt;&lt;p&gt;库仑积分（Coulomb Counting）的思想极其朴素：&lt;strong&gt;累加流入&amp;#x2F;流出电池的电荷量，得到容量变化&lt;/strong&gt;。&lt;/p&gt;
+&lt;p&gt;$$SOC(t) &amp;#x3D; SOC(t_0) + \frac{1}{FCC} \int_{t_0}^{t} I(\tau) , d\tau$$&lt;/p&gt;"><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2025/08/15/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20SOC%E7%94%B5%E9%87%8F%E7%AE%97%E6%B3%95%E6%9E%B6%E6%9E%84%EF%BC%9A%E5%BA%93%E4%BB%91%E7%A7%AF%E5%88%86%E3%80%81%E5%BC%80%E8%B7%AF%E7%94%B5%E5%8E%8B%E4%B8%8E%E7%94%B5%E9%87%8F%E8%BF%BD%E8%B5%B6%E6%9C%BA%E5%88%B6/&t=电量计 -- SOC电量算法架构：库仑积分、开路电压与电量追赶机制"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#SOC%E7%94%B5%E9%87%8F%E7%AE%97%E6%B3%95%E6%9E%B6%E6%9E%84%EF%BC%9A%E5%BA%93%E4%BB%91%E7%A7%AF%E5%88%86%E3%80%81%E5%BC%80%E8%B7%AF%E7%94%B5%E5%8E%8B%E4%B8%8E%E7%94%B5%E9%87%8F%E8%BF%BD%E8%B5%B6%E6%9C%BA%E5%88%B6"><span class="toc-number">1.</span> <span class="toc-text">SOC电量算法架构：库仑积分、开路电压与电量追赶机制</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%95%B4%E4%BD%93%E6%9E%B6%E6%9E%84%E6%A6%82%E8%A7%88"><span class="toc-number">1.1.</span> <span class="toc-text">整体架构概览</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%BA%93%E4%BB%91%E7%A7%AF%E5%88%86%EF%BC%9A%E8%BF%9E%E7%BB%AD%E8%BF%BD%E8%B8%AASOC%E5%8F%98%E5%8C%96"><span class="toc-number">1.2.</span> <span class="toc-text">库仑积分：连续追踪SOC变化</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E7%90%86"><span class="toc-number">1.2.1.</span> <span class="toc-text">原理</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%9B%BA%E4%BB%B6%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.2.2.</span> <span class="toc-text">固件实现</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%A6%82%E4%BD%95%E9%81%BF%E5%85%8D%E8%AF%AF%E5%B7%AE%E7%B4%AF%E7%A7%AF"><span class="toc-number">1.2.3.</span> <span class="toc-text">如何避免误差累积</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%BC%80%E8%B7%AF%E7%94%B5%E5%8E%8B%E6%B3%95%EF%BC%9A%E6%8F%90%E4%BE%9B%E7%BB%9D%E5%AF%B9SOC%E5%9F%BA%E5%87%86"><span class="toc-number">1.3.</span> <span class="toc-text">开路电压法：提供绝对SOC基准</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E7%90%86-1"><span class="toc-number">1.3.1.</span> <span class="toc-text">原理</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BD%BF%E7%94%A8%E5%9C%BA%E6%99%AF"><span class="toc-number">1.3.2.</span> <span class="toc-text">使用场景</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#OCV-vs-%E5%BA%93%E4%BB%91%E7%A7%AF%E5%88%86%E7%9A%84%E5%8D%8F%E4%BD%9C"><span class="toc-number">1.3.3.</span> <span class="toc-text">OCV vs 库仑积分的协作</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%94%B5%E9%87%8F%E8%BF%BD%E8%B5%B6%E6%9C%BA%E5%88%B6"><span class="toc-number">1.4.</span> <span class="toc-text">电量追赶机制</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%97%AE%E9%A2%98%E8%83%8C%E6%99%AF"><span class="toc-number">1.4.1.</span> <span class="toc-text">问题背景</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%85%E7%94%B5CV%E6%AE%B5%E8%BF%BD%E8%B5%B6%EF%BC%88%E6%8A%A5%E6%BB%A1%E6%9C%BA%E5%88%B6%EF%BC%89"><span class="toc-number">1.4.2.</span> <span class="toc-text">充电CV段追赶（报满机制）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%94%BE%E7%94%B5%E5%B0%BE%E9%83%A8%E8%BF%BD%E8%B5%B6%EF%BC%88%E6%8A%A5%E7%A9%BA%E6%9C%BA%E5%88%B6%EF%BC%89"><span class="toc-number">1.4.3.</span> <span class="toc-text">放电尾部追赶（报空机制）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%B8%A9%E5%BA%A6%E9%98%BB%E6%8A%97%E8%A1%A5%E5%81%BF"><span class="toc-number">1.5.</span> <span class="toc-text">温度阻抗补偿</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%B8%A9%E5%BA%A6%E5%AF%B9%E5%AE%B9%E9%87%8F%E7%9A%84%E5%BD%B1%E5%93%8D"><span class="toc-number">1.5.1.</span> <span class="toc-text">温度对容量的影响</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%B3%BB%E7%BB%9F%E9%98%BB%E6%8A%97%E8%A1%A5%E5%81%BF"><span class="toc-number">1.5.2.</span> <span class="toc-text">系统阻抗补偿</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#DFCC%E5%8A%A8%E6%80%81%E5%AE%B9%E9%87%8F%E8%A1%A5%E5%81%BF"><span class="toc-number">1.6.</span> <span class="toc-text">DFCC动态容量补偿</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%97%AE%E9%A2%98"><span class="toc-number">1.6.1.</span> <span class="toc-text">问题</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%89%E7%BB%B4%E6%9F%A5%E8%A1%A8%E8%A1%A5%E5%81%BF"><span class="toc-number">1.6.2.</span> <span class="toc-text">三维查表补偿</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%B3%BB%E7%BB%9F%E6%A0%A1%E5%87%86"><span class="toc-number">1.7.</span> <span class="toc-text">系统校准</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%A0%A1%E5%87%86%E6%97%B6%E6%9C%BA"><span class="toc-number">1.7.1.</span> <span class="toc-text">校准时机</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%A0%A1%E5%87%86%E5%AF%B9FCC%E7%9A%84%E6%9B%B4%E6%96%B0"><span class="toc-number">1.7.2.</span> <span class="toc-text">校准对FCC的更新</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%8A%B6%E6%80%81%E6%9C%BA%E4%B8%8E%E7%AE%97%E6%B3%95%E6%B5%81%E7%A8%8B"><span class="toc-number">1.8.</span> <span class="toc-text">状态机与算法流程</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%9D%99%E7%BD%AE%E5%A4%84%E7%90%86-fg-idle-process"><span class="toc-number">1.8.1.</span> <span class="toc-text">静置处理 (fg_idle_process)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%85%E7%94%B5%E5%A4%84%E7%90%86-fg-mobile-charge-process"><span class="toc-number">1.8.2.</span> <span class="toc-text">充电处理 (fg_mobile_charge_process)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%94%BE%E7%94%B5%E5%A4%84%E7%90%86-fg-mobile-discharge-process"><span class="toc-number">1.8.3.</span> <span class="toc-text">放电处理 (fg_mobile_discharge_process)</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%B3%E9%94%AE%E8%AE%BE%E8%AE%A1%E6%80%9D%E6%83%B3%E6%80%BB%E7%BB%93"><span class="toc-number">1.9.</span> <span class="toc-text">关键设计思想总结</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%B3%BB%E5%88%97%E6%96%87%E7%AB%A0"><span class="toc-number">1.10.</span> <span class="toc-text">系列文章</span></a></li></ol></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        电量计 -- SOC电量算法架构：库仑积分、开路电压与电量追赶机制
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">cursorhu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2025-08-15T02:00:00.000Z" class="dt-published" itemprop="datePublished">2025-08-15</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fa-solid fa-archive"></i>
+        <a class="category-link" href="/categories/%E7%94%B5%E9%87%8F%E8%AE%A1/">电量计</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/%E7%94%B5%E9%87%8F%E8%AE%A1/" rel="tag">电量计</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <h1 id="SOC电量算法架构：库仑积分、开路电压与电量追赶机制"><a href="#SOC电量算法架构：库仑积分、开路电压与电量追赶机制" class="headerlink" title="SOC电量算法架构：库仑积分、开路电压与电量追赶机制"></a>SOC电量算法架构：库仑积分、开路电压与电量追赶机制</h1><p>电量计的核心任务是回答一个看似简单的问题：电池还剩多少电？但由于电池的非线性特性、温度影响、老化效应，这个问题远比想象中复杂。本文基于实际产品固件（Newton平台 lib_fg.c），详细拆解SOC算法的完整架构。</p>
+<h2 id="整体架构概览"><a href="#整体架构概览" class="headerlink" title="整体架构概览"></a>整体架构概览</h2><p>SOC算法不是单一方法，而是多种方法的协同：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">flowchart TD</span><br><span class="line">    A[&quot;开路电压法 OCV&quot;] --&gt;|&quot;初始化/静置&quot;| D[&quot;RSOC&quot;]</span><br><span class="line">    B[&quot;库仑积分法 CC&quot;] --&gt;|&quot;充放电过程&quot;| D</span><br><span class="line">    C[&quot;电量追赶机制&quot;] --&gt;|&quot;尾部修正&quot;| D</span><br><span class="line">    E[&quot;DFCC动态容量&quot;] --&gt;|&quot;修正FCC&quot;| B</span><br><span class="line">    F[&quot;温度阻抗补偿&quot;] --&gt;|&quot;修正电压&quot;| A</span><br><span class="line">    F --&gt;|&quot;修正容量&quot;| E</span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>方法</th>
+<th>使用场景</th>
+<th>解决的问题</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>OCV查表</td>
+<td>初始化、长时间静置</td>
+<td>提供绝对SOC基准，消除累积误差</td>
+</tr>
+<tr>
+<td>库仑积分</td>
+<td>充放电过程中</td>
+<td>连续追踪SOC变化，响应快</td>
+</tr>
+<tr>
+<td>电量追赶</td>
+<td>充电CV段、放电尾部</td>
+<td>保证报满&#x2F;报空的用户体验</td>
+</tr>
+<tr>
+<td>DFCC</td>
+<td>放电过程</td>
+<td>补偿温度和电流对可用容量的影响</td>
+</tr>
+<tr>
+<td>温度补偿</td>
+<td>全程</td>
+<td>消除温度对电压和容量的影响</td>
+</tr>
+</tbody></table>
+<h2 id="库仑积分：连续追踪SOC变化"><a href="#库仑积分：连续追踪SOC变化" class="headerlink" title="库仑积分：连续追踪SOC变化"></a>库仑积分：连续追踪SOC变化</h2><h3 id="原理"><a href="#原理" class="headerlink" title="原理"></a>原理</h3><p>库仑积分（Coulomb Counting）的思想极其朴素：<strong>累加流入&#x2F;流出电池的电荷量，得到容量变化</strong>。</p>
+<p>$$SOC(t) &#x3D; SOC(t_0) + \frac{1}{FCC} \int_{t_0}^{t} I(\tau) , d\tau$$</p>
+<p>离散化后：</p>
+<p>$$\Delta Q &#x3D; \sum I_k \times \Delta t$$</p>
+<p>$$RSOC &#x3D; \frac{RCA}{FCC} \times 100%$$</p>
+<p>其中 RCA（Remaining Capacity Available）是当前剩余容量，FCC（Full Charge Capacity）是满充容量。</p>
+<h3 id="固件实现"><a href="#固件实现" class="headerlink" title="固件实现"></a>固件实现</h3><p>核心累加逻辑在 <code>fg_update</code> 函数中，每秒执行一次：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 输入验证：单次变化不超过0.1C，防止异常数据污染</span></span><br><span class="line"><span class="keyword">if</span> ((param-&gt;delta_mah * <span class="number">10</span>) &gt; dsncap || (param-&gt;delta_mah * (<span class="number">-10</span>)) &gt; dsncap) &#123;</span><br><span class="line">    <span class="keyword">return</span> ERR_FG_PARAM;  <span class="comment">// 拒绝异常值</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 微安时精度累加</span></span><br><span class="line">deltauah += (param-&gt;delta_mah * <span class="number">1000</span>);  <span class="comment">// mAh → μAh</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 整毫安时部分更新到cc_prv</span></span><br><span class="line">cc_prv += deltauah / <span class="number">1000</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 保留不足1mAh的余数，避免截断误差</span></span><br><span class="line">deltauah = fg_imod(deltauah, <span class="number">1000</span>);  <span class="comment">// 余数继续累加</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="如何避免误差累积"><a href="#如何避免误差累积" class="headerlink" title="如何避免误差累积"></a>如何避免误差累积</h3><p>库仑积分最大的问题是<strong>误差会无限累积</strong>——电流传感器的偏置误差、ADC量化噪声、温度漂移都会随时间积分。算法通过以下机制控制累积误差：</p>
+<p><strong>1. 输入校验与异常拒绝</strong></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 单次delta超过设计容量的10%视为异常，直接丢弃</span></span><br><span class="line"><span class="keyword">if</span> ((param-&gt;delta_mah * <span class="number">10</span>) &gt; dsncap) &#123;</span><br><span class="line">    <span class="keyword">return</span> ERR_FG_PARAM;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>2. 微安时精度的余数累加</strong></p>
+<p>库仑计硬件每秒输出的是整数mAh，但实际电荷可能是小数。算法用μAh（微安时）精度累加，只在凑够整毫安时后才更新容量：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">deltauah += (param-&gt;delta_mah * <span class="number">1000</span>);  <span class="comment">// 保持μAh精度</span></span><br><span class="line">cc_prv += deltauah / <span class="number">1000</span>;              <span class="comment">// 整数部分进入容量</span></span><br><span class="line">deltauah = fg_imod(deltauah, <span class="number">1000</span>);     <span class="comment">// 余数保留到下次</span></span><br></pre></td></tr></table></figure>
+
+<p>这避免了每秒截断1次带来的系统性误差。</p>
+<p><strong>3. FACC累积容量上限</strong></p>
+<p>FACC（Full Accumulated Capacity）记录从充满到当前的累计放电量，设有上限：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// FACC不超过设计容量的110%</span></span><br><span class="line"><span class="keyword">if</span> (facc &gt; dsncap * FG_FACC_MAX / <span class="number">100</span>) &#123;</span><br><span class="line">    facc = dsncap * FG_FACC_MAX / <span class="number">100</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>防止漏电流或传感器偏置导致FACC无限增长。</p>
+<p><strong>4. 满充&#x2F;满放校准点</strong></p>
+<p>最有效的误差消除手段是<strong>在已知SOC点重置累积误差</strong>：</p>
+<ul>
+<li>满充时：<code>RSOC = 10000</code>（100%），<code>RCA = FCC</code></li>
+<li>满放时：<code>RSOC = 0</code>，标记校准完成</li>
+</ul>
+<p>每次经过校准点，之前累积的所有误差一次性清零。</p>
+<h2 id="开路电压法：提供绝对SOC基准"><a href="#开路电压法：提供绝对SOC基准" class="headerlink" title="开路电压法：提供绝对SOC基准"></a>开路电压法：提供绝对SOC基准</h2><h3 id="原理-1"><a href="#原理-1" class="headerlink" title="原理"></a>原理</h3><p>OCV（Open Circuit Voltage）与SOC存在确定的单调映射关系。当电池静置足够长时间（极化效应消失），测量端电压即可直接查表得到SOC。</p>
+<p>$$SOC &#x3D; f_{OCV \to SOC}(V_{terminal})$$</p>
+<p>OCV法的优势是<strong>不累积误差</strong>——每次查表都是独立的绝对估计。劣势是需要电池处于静置状态，充放电过程中端电压受极化和IR压降影响，不能直接使用。</p>
+<h3 id="使用场景"><a href="#使用场景" class="headerlink" title="使用场景"></a>使用场景</h3><p><strong>场景一：系统初始化</strong></p>
+<p>上电时没有历史SOC信息，用OCV给出初始值：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// fg_init_soc: 系统启动时的SOC初始化</span></span><br><span class="line">error = lut_soc_by_ocv(handle, tmp_volt, &amp;tmp_soc_now);</span><br><span class="line">rsoc_now = tmp_soc_now;</span><br><span class="line">rca = fg_idiv(fcc * rsoc_now, <span class="number">10000</span>);</span><br></pre></td></tr></table></figure>
+
+<p><strong>场景二：长时间静置后修正</strong></p>
+<p>电池静置时（|I| &lt; 20mA），OCV法重新校准SOC，消除库仑积分的累积漂移：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (param-&gt;current_ma &gt;= <span class="number">-20</span> &amp;&amp; param-&gt;current_ma &lt;= <span class="number">20</span>) &#123;</span><br><span class="line">    <span class="comment">// 近零电流：直接用OCV查表</span></span><br><span class="line">    error = lut_soc_by_ocv(handle, tmp_volt, &amp;tmp_soc_now);</span><br><span class="line">&#125; <span class="keyword">else</span> <span class="keyword">if</span> (param-&gt;current_ma &gt; <span class="number">20</span>) &#123;</span><br><span class="line">    <span class="comment">// 有电流时：用RC表（考虑阻抗压降）</span></span><br><span class="line">    error = lut_rc_f(handle, tmp_volt, param-&gt;current_ma, tmp_cellthm, &amp;tmp_soc_now);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>场景三：充放电过程中的RC表查询</strong></p>
+<p>当电流 &gt; 20mA时，端电压与OCV偏差较大。此时使用<strong>RC表</strong>（三维查找表：SOC × 电流 × 温度），本质是预先标定了不同工况下的电压-SOC关系，等价于”带负载的OCV表”。</p>
+<h3 id="OCV-vs-库仑积分的协作"><a href="#OCV-vs-库仑积分的协作" class="headerlink" title="OCV vs 库仑积分的协作"></a>OCV vs 库仑积分的协作</h3><p>两种方法互补：</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>OCV法</th>
+<th>库仑积分</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>精度类型</td>
+<td>绝对精度（不累积）</td>
+<td>相对精度（会漂移）</td>
+</tr>
+<tr>
+<td>适用状态</td>
+<td>静置&#x2F;低电流</td>
+<td>充放电过程</td>
+</tr>
+<tr>
+<td>响应速度</td>
+<td>需等待极化消失</td>
+<td>实时响应</td>
+</tr>
+<tr>
+<td>核心作用</td>
+<td>校准基准</td>
+<td>连续追踪</td>
+</tr>
+</tbody></table>
+<p>实际运行策略：<strong>库仑积分负责连续追踪，OCV在静置时校准，满充&#x2F;满放时重置</strong>。</p>
+<h2 id="电量追赶机制"><a href="#电量追赶机制" class="headerlink" title="电量追赶机制"></a>电量追赶机制</h2><h3 id="问题背景"><a href="#问题背景" class="headerlink" title="问题背景"></a>问题背景</h3><p>库仑积分从一个校准点出发持续累加，但由于误差累积和容量估计偏差，到达充满或放空时，显示的SOC往往不是精确的100%或0%。如果不做处理，用户会看到：</p>
+<ul>
+<li>充电结束但SOC显示98%（永远充不到100%）</li>
+<li>电池已到截止电压但SOC还显示3%（突然关机）</li>
+</ul>
+<p>电量追赶机制就是为了解决这个”最后几公里”的问题。</p>
+<h3 id="充电CV段追赶（报满机制）"><a href="#充电CV段追赶（报满机制）" class="headerlink" title="充电CV段追赶（报满机制）"></a>充电CV段追赶（报满机制）</h3><p>锂电池充电分CC（恒流）和CV（恒压）两个阶段。进入CV后，电流逐渐减小直到截止（EOC）。追赶机制利用CV段的电流下降速率来推算剩余容量：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// CV段：SOC从当前值线性追赶到100%</span></span><br><span class="line"><span class="comment">// 计算&quot;每mA电流下降对应多少SOC上升&quot;</span></span><br><span class="line">unit_soc_upratio = fg_idiv(</span><br><span class="line">    (<span class="number">10000</span> - rsoc_now) * <span class="number">1000</span>,       <span class="comment">// 剩余SOC空间</span></span><br><span class="line">    tmp_tail_current - eocma          <span class="comment">// 剩余电流下降空间</span></span><br><span class="line">);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 根据电流实际下降量计算SOC增加量</span></span><br><span class="line">tmp_soc_up = (save_tail_current - tmp_tail_current) * unit_soc_upratio / <span class="number">1000</span>;</span><br><span class="line">tmp_soc_up += <span class="number">5</span>;  <span class="comment">// 最少0.05%/次，保证单调递增</span></span><br><span class="line"></span><br><span class="line">rsoc_now += tmp_soc_up;</span><br></pre></td></tr></table></figure>
+
+<p><strong>直觉</strong>：CV段电流从（比如）500mA降到100mA时，SOC应从95%升到100%。算法计算出”每降1mA → SOC升多少”的比例，按实际电流变化推进SOC。</p>
+<p><strong>满充判定条件</strong>：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (rsoc_now &gt;= <span class="number">9950</span>) &#123;  <span class="comment">// SOC &gt;= 99.5%</span></span><br><span class="line">    <span class="keyword">if</span> (time_elapsed &gt; parm_eocsec       <span class="comment">// 超过EOC等待时间</span></span><br><span class="line">        || (status &amp; FG_STAT_CHG_EOC))   <span class="comment">// 或硬件报EOC</span></span><br><span class="line">    &#123;</span><br><span class="line">        rsoc_now = <span class="number">10000</span>;  <span class="comment">// 报100%</span></span><br><span class="line">        rca = fcc;         <span class="comment">// 剩余容量 = 满充容量</span></span><br><span class="line">        status |= FG_STAT_CHG_FULL;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="放电尾部追赶（报空机制）"><a href="#放电尾部追赶（报空机制）" class="headerlink" title="放电尾部追赶（报空机制）"></a>放电尾部追赶（报空机制）</h3><p>放电末期（SOC &lt; 5%），电压曲线陡峭，库仑积分的小误差也会导致提前或延迟报空。追赶机制切换为<strong>电压驱动</strong>：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (rsoc_now &lt;= DISCHARGE_TAIL_TH) &#123;  <span class="comment">// SOC &lt; 5%</span></span><br><span class="line">    <span class="comment">// 计算&quot;每mV电压下降对应多少SOC下降&quot;</span></span><br><span class="line">    unit_soc_dratio = fg_idiv(</span><br><span class="line">        rsoc_now * <span class="number">1000</span>,</span><br><span class="line">        tail_volt - parm_eodmv    <span class="comment">// 当前电压到截止电压的距离</span></span><br><span class="line">    );</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 根据电压实际下降量计算SOC减少量</span></span><br><span class="line">    tmp_soc_drop = fg_idiv(</span><br><span class="line">        unit_soc_dratio * (save_tail_voltage - tail_volt + <span class="number">1</span>),</span><br><span class="line">        <span class="number">1000</span></span><br><span class="line">    );</span><br><span class="line"></span><br><span class="line">    rsoc_now -= tmp_soc_drop;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>直觉</strong>：SOC还剩3%，电压距截止还有50mV。那么每降1mV，SOC应降 3%&#x2F;50 &#x3D; 0.06%。这样SOC和电压同步到达终点，避免突然关机。</p>
+<h2 id="温度阻抗补偿"><a href="#温度阻抗补偿" class="headerlink" title="温度阻抗补偿"></a>温度阻抗补偿</h2><h3 id="温度对容量的影响"><a href="#温度对容量的影响" class="headerlink" title="温度对容量的影响"></a>温度对容量的影响</h3><p>锂电池的可用容量随温度显著变化：低温下内阻增大，电压提前跌到截止线，实际可放出的容量减少。算法在充电初始化时根据温度调整FCC：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 极低温 (-10°C以下): 每降1°C容量减少约0.1%</span></span><br><span class="line"><span class="keyword">if</span> (tmp_thm &lt;= <span class="number">-100</span>) tmp_thm = <span class="number">-100</span>;</span><br><span class="line">fcc -= fg_idiv(fcc * (<span class="number">0</span> - tmp_thm), <span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 低温 (0°C~10°C): 基础减5%，每降1°C额外减约0.13%</span></span><br><span class="line"><span class="keyword">else</span> <span class="keyword">if</span> (tmp_thm &lt;= <span class="number">100</span>) &#123;</span><br><span class="line">    fcc -= fg_idiv(fcc * <span class="number">100</span>, <span class="number">2000</span>);</span><br><span class="line">    fcc -= fg_idiv(fcc * (<span class="number">100</span> - tmp_thm), <span class="number">750</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 高温 (&gt;40°C): 适当增加容量(最多3.3%)</span></span><br><span class="line"><span class="keyword">else</span> <span class="keyword">if</span> (tmp_thm &gt;= <span class="number">400</span>) &#123;</span><br><span class="line">    fcc += fg_idiv(fcc * (tmp_thm - <span class="number">400</span>), <span class="number">4000</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="系统阻抗补偿"><a href="#系统阻抗补偿" class="headerlink" title="系统阻抗补偿"></a>系统阻抗补偿</h3><p>电池到ADC采样点之间有PCB走线、保护MOSFET、连接器等系统阻抗。大电流时这些阻抗产生的压降会让采样电压偏低，导致SOC估计偏低。补偿方法：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 从采样电压中去除系统阻抗压降</span></span><br><span class="line">cellrv = param-&gt;volt_lo_mv - fg_idiv(param-&gt;current_ma * parm_sysim, <span class="number">1000</span>);</span><br></pre></td></tr></table></figure>
+
+<p><code>parm_sysim</code> 是系统阻抗参数（单位mΩ），在产线校准时标定。</p>
+<h2 id="DFCC动态容量补偿"><a href="#DFCC动态容量补偿" class="headerlink" title="DFCC动态容量补偿"></a>DFCC动态容量补偿</h2><h3 id="问题"><a href="#问题" class="headerlink" title="问题"></a>问题</h3><p>FCC在充满时标定，但放电过程中实际可用容量受电流大小和温度影响。大电流放电时，内阻压降更大，电压更早到达截止线，可用容量比标称值少。</p>
+<h3 id="三维查表补偿"><a href="#三维查表补偿" class="headerlink" title="三维查表补偿"></a>三维查表补偿</h3><p>DFCC（Dynamic Full Charge Capacity）使用三维查找表 <code>DFCC_table[SOC][电流][温度]</code> 给出容量补偿系数：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 获取当前工况的DFCC补偿系数 (基准10000 = 1.0)</span></span><br><span class="line">error = lut_dfcc_f(handle, rsoc_now, -curr_now, cellthm, &amp;dfcc_comp);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 计算补偿后的FCC</span></span><br><span class="line">rca_prv = (fg_idiv(tmp_soh_mah, rsoc_now) * dfcc_comp) / <span class="number">10000</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 平滑更新: 30%新值 + 70%旧值，防止跳变</span></span><br><span class="line">rca_prv = fg_idiv(rca_prv * <span class="number">3</span>, <span class="number">10</span>) + fg_idiv(fcc * <span class="number">7</span>, <span class="number">10</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 限幅: 20%~200% 的FACC范围内</span></span><br><span class="line"><span class="keyword">if</span> (rca_prv &gt; facc * <span class="number">2</span>) rca_prv = facc * <span class="number">2</span>;</span><br><span class="line"><span class="keyword">if</span> (rca_prv &lt; facc / <span class="number">5</span>) rca_prv = facc / <span class="number">5</span>;</span><br><span class="line"></span><br><span class="line">fcc = rca_prv;</span><br></pre></td></tr></table></figure>
+
+<p>这样在大电流低温放电时，FCC被下调，SOC下降更快，避免到截止电压时SOC还显示很高。</p>
+<h2 id="系统校准"><a href="#系统校准" class="headerlink" title="系统校准"></a>系统校准</h2><h3 id="校准时机"><a href="#校准时机" class="headerlink" title="校准时机"></a>校准时机</h3><p>算法在特定条件下标记校准点，用于修正长期漂移：</p>
+<p><strong>满充校准</strong>：充电到100%且满足条件时标记</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> ((timesec &gt; FG_CALI_TIME) &amp;&amp;           <span class="comment">// 运行超过5分钟</span></span><br><span class="line">    (!(status &amp; FG_STAT_CHG_FST)) &amp;&amp;      <span class="comment">// 非首次充电</span></span><br><span class="line">    (cellthm &lt;= FG_DC_THM_HI) &amp;&amp;          <span class="comment">// 温度在15~40°C之间</span></span><br><span class="line">    (cellthm &gt;= FG_DC_THM_LO))</span><br><span class="line">&#123;</span><br><span class="line">    status |= FG_STAT_CALI_FC;  <span class="comment">// 标记满充校准完成</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>满放校准</strong>：放电到截止电压时标记</p>
+<p>满充校准点将RCA重置为FCC，满放校准点将RCA重置为0。两次校准之间的库仑积分误差被一次性消除。</p>
+<h3 id="校准对FCC的更新"><a href="#校准对FCC的更新" class="headerlink" title="校准对FCC的更新"></a>校准对FCC的更新</h3><p>经过一个完整的充放电循环后，实际放出的容量可以用来更新FCC（电池健康状态SOH的体现）：</p>
+<p>$$FCC_{new} &#x3D; \alpha \times FCC_{measured} + (1 - \alpha) \times FCC_{old}$$</p>
+<p>平滑因子 $\alpha$ 通常取0.3，避免单次测量误差过大影响FCC。</p>
+<h2 id="状态机与算法流程"><a href="#状态机与算法流程" class="headerlink" title="状态机与算法流程"></a>状态机与算法流程</h2><p>整体算法由状态机驱动，根据电池工作状态选择不同的处理分支：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">flowchart TD</span><br><span class="line">    A[&quot;fg_update - 每秒调用&quot;] --&gt; B[&quot;电压/电流平均值计算&quot;]</span><br><span class="line">    B --&gt; C[&quot;库仑计数累加&quot;]</span><br><span class="line">    C --&gt; D&#123;&quot;当前工作模式?&quot;&#125;</span><br><span class="line">    D --&gt;|&quot;静置 imode=0&quot;| E[&quot;fg_idle_process&quot;]</span><br><span class="line">    D --&gt;|&quot;充电 imode&gt;0&quot;| F[&quot;fg_mobile_charge_process&quot;]</span><br><span class="line">    D --&gt;|&quot;放电 imode&lt;0&quot;| G[&quot;fg_mobile_discharge_process&quot;]</span><br><span class="line">    E --&gt; H[&quot;OCV校准 / 伪充电&quot;]</span><br><span class="line">    F --&gt; I[&quot;CC段比例计算 → CV追赶 → 报满&quot;]</span><br><span class="line">    G --&gt; J[&quot;DFCC补偿 → 尾部追赶 → 报空&quot;]</span><br><span class="line">    H &amp; I &amp; J --&gt; K[&quot;更新FACC/CC_PRV&quot;]</span><br><span class="line">    K --&gt; L[&quot;计算最终RSOC和RCA&quot;]</span><br><span class="line">    L --&gt; M[&quot;输出结果&quot;]</span><br></pre></td></tr></table></figure>
+
+<h3 id="静置处理-fg-idle-process"><a href="#静置处理-fg-idle-process" class="headerlink" title="静置处理 (fg_idle_process)"></a>静置处理 (fg_idle_process)</h3><ul>
+<li>电压稳定性检测（50mV窗口内）</li>
+<li>温度稳定性检测（5°C窗口内）</li>
+<li>满足条件后用OCV重新估算SOC</li>
+<li>如果检测到充电器接入但未进入充电模式，执行”伪充电”逻辑</li>
+</ul>
+<h3 id="充电处理-fg-mobile-charge-process"><a href="#充电处理-fg-mobile-charge-process" class="headerlink" title="充电处理 (fg_mobile_charge_process)"></a>充电处理 (fg_mobile_charge_process)</h3><ol>
+<li><strong>初始化</strong>：计算温度补偿后的FCC，确定充电SOC起点</li>
+<li><strong>CC段</strong>：库仑积分正常累加，SOC按比例上升</li>
+<li><strong>CV检测</strong>：电压达到充电截止且电流开始下降 → 进入CV</li>
+<li><strong>CV追赶</strong>：SOC从当前值线性追赶到100%</li>
+<li><strong>报满</strong>：SOC &gt;&#x3D; 99.5% 且满足时间&#x2F;EOC条件 → 报100%</li>
+</ol>
+<h3 id="放电处理-fg-mobile-discharge-process"><a href="#放电处理-fg-mobile-discharge-process" class="headerlink" title="放电处理 (fg_mobile_discharge_process)"></a>放电处理 (fg_mobile_discharge_process)</h3><ol>
+<li><strong>初始化</strong>：加载FCC，考虑老化和温度</li>
+<li><strong>正常段</strong>：库仑积分 + DFCC动态补偿</li>
+<li><strong>RC表辅助</strong>：用电压&#x2F;电流&#x2F;温度三维表验证SOC合理性</li>
+<li><strong>尾部追赶</strong>：SOC &lt; 5% 时切换为电压驱动</li>
+<li><strong>报空</strong>：电压到截止线 → SOC &#x3D; 0%</li>
+</ol>
+<h2 id="关键设计思想总结"><a href="#关键设计思想总结" class="headerlink" title="关键设计思想总结"></a>关键设计思想总结</h2><ol>
+<li><p><strong>库仑积分是主线</strong>：充放电过程中SOC的变化完全由库仑积分驱动，保证连续性和实时性</p>
+</li>
+<li><p><strong>OCV是校准锚点</strong>：在静置和满充&#x2F;满放时用OCV重置SOC，定期消除累积误差</p>
+</li>
+<li><p><strong>追赶机制保证用户体验</strong>：充电必须报满、放电不能突然关机，这是产品层面的硬性要求</p>
+</li>
+<li><p><strong>DFCC补偿物理现实</strong>：大电流和低温下可用容量减少是物理事实，必须在算法中体现</p>
+</li>
+<li><p><strong>多级防护</strong>：输入校验、范围限幅、平滑滤波、异常回退，层层保护避免SOC跳变</p>
+</li>
+</ol>
+<h2 id="系列文章"><a href="#系列文章" class="headerlink" title="系列文章"></a>系列文章</h2><ul>
+<li><strong>本文</strong>：SOC电量算法架构 - 库仑积分、开路电压与电量追赶机制</li>
+<li><strong>相关</strong>：阻抗追踪算法原理 - 电池模型与动态阻抗估计</li>
+<li><strong>相关</strong>：DFCC动态FCC自适应补偿算法</li>
+</ul>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">首页</a></li>
+        
+          <li><a href="/about/">关于</a></li>
+        
+          <li><a href="/archives/">归档</a></li>
+        
+          <li><a href="/tags/">标签</a></li>
+        
+          <li><a href="/categories/">分类</a></li>
+        
+          <li><a href="/search/">搜索</a></li>
+        
+          <li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#SOC%E7%94%B5%E9%87%8F%E7%AE%97%E6%B3%95%E6%9E%B6%E6%9E%84%EF%BC%9A%E5%BA%93%E4%BB%91%E7%A7%AF%E5%88%86%E3%80%81%E5%BC%80%E8%B7%AF%E7%94%B5%E5%8E%8B%E4%B8%8E%E7%94%B5%E9%87%8F%E8%BF%BD%E8%B5%B6%E6%9C%BA%E5%88%B6"><span class="toc-number">1.</span> <span class="toc-text">SOC电量算法架构：库仑积分、开路电压与电量追赶机制</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%95%B4%E4%BD%93%E6%9E%B6%E6%9E%84%E6%A6%82%E8%A7%88"><span class="toc-number">1.1.</span> <span class="toc-text">整体架构概览</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%BA%93%E4%BB%91%E7%A7%AF%E5%88%86%EF%BC%9A%E8%BF%9E%E7%BB%AD%E8%BF%BD%E8%B8%AASOC%E5%8F%98%E5%8C%96"><span class="toc-number">1.2.</span> <span class="toc-text">库仑积分：连续追踪SOC变化</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E7%90%86"><span class="toc-number">1.2.1.</span> <span class="toc-text">原理</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%9B%BA%E4%BB%B6%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.2.2.</span> <span class="toc-text">固件实现</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%A6%82%E4%BD%95%E9%81%BF%E5%85%8D%E8%AF%AF%E5%B7%AE%E7%B4%AF%E7%A7%AF"><span class="toc-number">1.2.3.</span> <span class="toc-text">如何避免误差累积</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%BC%80%E8%B7%AF%E7%94%B5%E5%8E%8B%E6%B3%95%EF%BC%9A%E6%8F%90%E4%BE%9B%E7%BB%9D%E5%AF%B9SOC%E5%9F%BA%E5%87%86"><span class="toc-number">1.3.</span> <span class="toc-text">开路电压法：提供绝对SOC基准</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E7%90%86-1"><span class="toc-number">1.3.1.</span> <span class="toc-text">原理</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BD%BF%E7%94%A8%E5%9C%BA%E6%99%AF"><span class="toc-number">1.3.2.</span> <span class="toc-text">使用场景</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#OCV-vs-%E5%BA%93%E4%BB%91%E7%A7%AF%E5%88%86%E7%9A%84%E5%8D%8F%E4%BD%9C"><span class="toc-number">1.3.3.</span> <span class="toc-text">OCV vs 库仑积分的协作</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%94%B5%E9%87%8F%E8%BF%BD%E8%B5%B6%E6%9C%BA%E5%88%B6"><span class="toc-number">1.4.</span> <span class="toc-text">电量追赶机制</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%97%AE%E9%A2%98%E8%83%8C%E6%99%AF"><span class="toc-number">1.4.1.</span> <span class="toc-text">问题背景</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%85%E7%94%B5CV%E6%AE%B5%E8%BF%BD%E8%B5%B6%EF%BC%88%E6%8A%A5%E6%BB%A1%E6%9C%BA%E5%88%B6%EF%BC%89"><span class="toc-number">1.4.2.</span> <span class="toc-text">充电CV段追赶（报满机制）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%94%BE%E7%94%B5%E5%B0%BE%E9%83%A8%E8%BF%BD%E8%B5%B6%EF%BC%88%E6%8A%A5%E7%A9%BA%E6%9C%BA%E5%88%B6%EF%BC%89"><span class="toc-number">1.4.3.</span> <span class="toc-text">放电尾部追赶（报空机制）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%B8%A9%E5%BA%A6%E9%98%BB%E6%8A%97%E8%A1%A5%E5%81%BF"><span class="toc-number">1.5.</span> <span class="toc-text">温度阻抗补偿</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%B8%A9%E5%BA%A6%E5%AF%B9%E5%AE%B9%E9%87%8F%E7%9A%84%E5%BD%B1%E5%93%8D"><span class="toc-number">1.5.1.</span> <span class="toc-text">温度对容量的影响</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%B3%BB%E7%BB%9F%E9%98%BB%E6%8A%97%E8%A1%A5%E5%81%BF"><span class="toc-number">1.5.2.</span> <span class="toc-text">系统阻抗补偿</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#DFCC%E5%8A%A8%E6%80%81%E5%AE%B9%E9%87%8F%E8%A1%A5%E5%81%BF"><span class="toc-number">1.6.</span> <span class="toc-text">DFCC动态容量补偿</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%97%AE%E9%A2%98"><span class="toc-number">1.6.1.</span> <span class="toc-text">问题</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%89%E7%BB%B4%E6%9F%A5%E8%A1%A8%E8%A1%A5%E5%81%BF"><span class="toc-number">1.6.2.</span> <span class="toc-text">三维查表补偿</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%B3%BB%E7%BB%9F%E6%A0%A1%E5%87%86"><span class="toc-number">1.7.</span> <span class="toc-text">系统校准</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%A0%A1%E5%87%86%E6%97%B6%E6%9C%BA"><span class="toc-number">1.7.1.</span> <span class="toc-text">校准时机</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%A0%A1%E5%87%86%E5%AF%B9FCC%E7%9A%84%E6%9B%B4%E6%96%B0"><span class="toc-number">1.7.2.</span> <span class="toc-text">校准对FCC的更新</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%8A%B6%E6%80%81%E6%9C%BA%E4%B8%8E%E7%AE%97%E6%B3%95%E6%B5%81%E7%A8%8B"><span class="toc-number">1.8.</span> <span class="toc-text">状态机与算法流程</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%9D%99%E7%BD%AE%E5%A4%84%E7%90%86-fg-idle-process"><span class="toc-number">1.8.1.</span> <span class="toc-text">静置处理 (fg_idle_process)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%85%E7%94%B5%E5%A4%84%E7%90%86-fg-mobile-charge-process"><span class="toc-number">1.8.2.</span> <span class="toc-text">充电处理 (fg_mobile_charge_process)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%94%BE%E7%94%B5%E5%A4%84%E7%90%86-fg-mobile-discharge-process"><span class="toc-number">1.8.3.</span> <span class="toc-text">放电处理 (fg_mobile_discharge_process)</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%B3%E9%94%AE%E8%AE%BE%E8%AE%A1%E6%80%9D%E6%83%B3%E6%80%BB%E7%BB%93"><span class="toc-number">1.9.</span> <span class="toc-text">关键设计思想总结</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%B3%BB%E5%88%97%E6%96%87%E7%AB%A0"><span class="toc-number">1.10.</span> <span class="toc-text">系列文章</span></a></li></ol></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2025/08/15/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20SOC%E7%94%B5%E9%87%8F%E7%AE%97%E6%B3%95%E6%9E%B6%E6%9E%84%EF%BC%9A%E5%BA%93%E4%BB%91%E7%A7%AF%E5%88%86%E3%80%81%E5%BC%80%E8%B7%AF%E7%94%B5%E5%8E%8B%E4%B8%8E%E7%94%B5%E9%87%8F%E8%BF%BD%E8%B5%B6%E6%9C%BA%E5%88%B6/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2025/08/15/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20SOC%E7%94%B5%E9%87%8F%E7%AE%97%E6%B3%95%E6%9E%B6%E6%9E%84%EF%BC%9A%E5%BA%93%E4%BB%91%E7%A7%AF%E5%88%86%E3%80%81%E5%BC%80%E8%B7%AF%E7%94%B5%E5%8E%8B%E4%B8%8E%E7%94%B5%E9%87%8F%E8%BF%BD%E8%B5%B6%E6%9C%BA%E5%88%B6/&text=电量计 -- SOC电量算法架构：库仑积分、开路电压与电量追赶机制"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2025/08/15/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20SOC%E7%94%B5%E9%87%8F%E7%AE%97%E6%B3%95%E6%9E%B6%E6%9E%84%EF%BC%9A%E5%BA%93%E4%BB%91%E7%A7%AF%E5%88%86%E3%80%81%E5%BC%80%E8%B7%AF%E7%94%B5%E5%8E%8B%E4%B8%8E%E7%94%B5%E9%87%8F%E8%BF%BD%E8%B5%B6%E6%9C%BA%E5%88%B6/&title=电量计 -- SOC电量算法架构：库仑积分、开路电压与电量追赶机制"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2025/08/15/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20SOC%E7%94%B5%E9%87%8F%E7%AE%97%E6%B3%95%E6%9E%B6%E6%9E%84%EF%BC%9A%E5%BA%93%E4%BB%91%E7%A7%AF%E5%88%86%E3%80%81%E5%BC%80%E8%B7%AF%E7%94%B5%E5%8E%8B%E4%B8%8E%E7%94%B5%E9%87%8F%E8%BF%BD%E8%B5%B6%E6%9C%BA%E5%88%B6/&is_video=false&description=电量计 -- SOC电量算法架构：库仑积分、开路电压与电量追赶机制"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=电量计 -- SOC电量算法架构：库仑积分、开路电压与电量追赶机制&body=Check out this article: https://cursorhu.github.io/2025/08/15/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20SOC%E7%94%B5%E9%87%8F%E7%AE%97%E6%B3%95%E6%9E%B6%E6%9E%84%EF%BC%9A%E5%BA%93%E4%BB%91%E7%A7%AF%E5%88%86%E3%80%81%E5%BC%80%E8%B7%AF%E7%94%B5%E5%8E%8B%E4%B8%8E%E7%94%B5%E9%87%8F%E8%BF%BD%E8%B5%B6%E6%9C%BA%E5%88%B6/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2025/08/15/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20SOC%E7%94%B5%E9%87%8F%E7%AE%97%E6%B3%95%E6%9E%B6%E6%9E%84%EF%BC%9A%E5%BA%93%E4%BB%91%E7%A7%AF%E5%88%86%E3%80%81%E5%BC%80%E8%B7%AF%E7%94%B5%E5%8E%8B%E4%B8%8E%E7%94%B5%E9%87%8F%E8%BF%BD%E8%B5%B6%E6%9C%BA%E5%88%B6/&title=电量计 -- SOC电量算法架构：库仑积分、开路电压与电量追赶机制"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2025/08/15/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20SOC%E7%94%B5%E9%87%8F%E7%AE%97%E6%B3%95%E6%9E%B6%E6%9E%84%EF%BC%9A%E5%BA%93%E4%BB%91%E7%A7%AF%E5%88%86%E3%80%81%E5%BC%80%E8%B7%AF%E7%94%B5%E5%8E%8B%E4%B8%8E%E7%94%B5%E9%87%8F%E8%BF%BD%E8%B5%B6%E6%9C%BA%E5%88%B6/&title=电量计 -- SOC电量算法架构：库仑积分、开路电压与电量追赶机制"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2025/08/15/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20SOC%E7%94%B5%E9%87%8F%E7%AE%97%E6%B3%95%E6%9E%B6%E6%9E%84%EF%BC%9A%E5%BA%93%E4%BB%91%E7%A7%AF%E5%88%86%E3%80%81%E5%BC%80%E8%B7%AF%E7%94%B5%E5%8E%8B%E4%B8%8E%E7%94%B5%E9%87%8F%E8%BF%BD%E8%B5%B6%E6%9C%BA%E5%88%B6/&title=电量计 -- SOC电量算法架构：库仑积分、开路电压与电量追赶机制"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2025/08/15/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20SOC%E7%94%B5%E9%87%8F%E7%AE%97%E6%B3%95%E6%9E%B6%E6%9E%84%EF%BC%9A%E5%BA%93%E4%BB%91%E7%A7%AF%E5%88%86%E3%80%81%E5%BC%80%E8%B7%AF%E7%94%B5%E5%8E%8B%E4%B8%8E%E7%94%B5%E9%87%8F%E8%BF%BD%E8%B5%B6%E6%9C%BA%E5%88%B6/&title=电量计 -- SOC电量算法架构：库仑积分、开路电压与电量追赶机制"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2025/08/15/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20SOC%E7%94%B5%E9%87%8F%E7%AE%97%E6%B3%95%E6%9E%B6%E6%9E%84%EF%BC%9A%E5%BA%93%E4%BB%91%E7%A7%AF%E5%88%86%E3%80%81%E5%BC%80%E8%B7%AF%E7%94%B5%E5%8E%8B%E4%B8%8E%E7%94%B5%E9%87%8F%E8%BF%BD%E8%B5%B6%E6%9C%BA%E5%88%B6/&name=电量计 -- SOC电量算法架构：库仑积分、开路电压与电量追赶机制&description=&lt;h1 id=&#34;SOC电量算法架构：库仑积分、开路电压与电量追赶机制&#34;&gt;&lt;a href=&#34;#SOC电量算法架构：库仑积分、开路电压与电量追赶机制&#34; class=&#34;headerlink&#34; title=&#34;SOC电量算法架构：库仑积分、开路电压与电量追赶机制&#34;&gt;&lt;/a&gt;SOC电量算法架构：库仑积分、开路电压与电量追赶机制&lt;/h1&gt;&lt;p&gt;电量计的核心任务是回答一个看似简单的问题：电池还剩多少电？但由于电池的非线性特性、温度影响、老化效应，这个问题远比想象中复杂。本文基于实际产品固件（Newton平台 lib_fg.c），详细拆解SOC算法的完整架构。&lt;/p&gt;
+&lt;h2 id=&#34;整体架构概览&#34;&gt;&lt;a href=&#34;#整体架构概览&#34; class=&#34;headerlink&#34; title=&#34;整体架构概览&#34;&gt;&lt;/a&gt;整体架构概览&lt;/h2&gt;&lt;p&gt;SOC算法不是单一方法，而是多种方法的协同：&lt;/p&gt;
+&lt;figure class=&#34;highlight plaintext&#34;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&#34;gutter&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;3&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;4&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;5&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;6&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;7&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&#34;code&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;flowchart TD&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    A[&amp;quot;开路电压法 OCV&amp;quot;] --&amp;gt;|&amp;quot;初始化/静置&amp;quot;| D[&amp;quot;RSOC&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    B[&amp;quot;库仑积分法 CC&amp;quot;] --&amp;gt;|&amp;quot;充放电过程&amp;quot;| D&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    C[&amp;quot;电量追赶机制&amp;quot;] --&amp;gt;|&amp;quot;尾部修正&amp;quot;| D&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    E[&amp;quot;DFCC动态容量&amp;quot;] --&amp;gt;|&amp;quot;修正FCC&amp;quot;| B&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    F[&amp;quot;温度阻抗补偿&amp;quot;] --&amp;gt;|&amp;quot;修正电压&amp;quot;| A&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    F --&amp;gt;|&amp;quot;修正容量&amp;quot;| E&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;
+
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;方法&lt;/th&gt;
+&lt;th&gt;使用场景&lt;/th&gt;
+&lt;th&gt;解决的问题&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;&lt;tr&gt;
+&lt;td&gt;OCV查表&lt;/td&gt;
+&lt;td&gt;初始化、长时间静置&lt;/td&gt;
+&lt;td&gt;提供绝对SOC基准，消除累积误差&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;库仑积分&lt;/td&gt;
+&lt;td&gt;充放电过程中&lt;/td&gt;
+&lt;td&gt;连续追踪SOC变化，响应快&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;电量追赶&lt;/td&gt;
+&lt;td&gt;充电CV段、放电尾部&lt;/td&gt;
+&lt;td&gt;保证报满&amp;#x2F;报空的用户体验&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;DFCC&lt;/td&gt;
+&lt;td&gt;放电过程&lt;/td&gt;
+&lt;td&gt;补偿温度和电流对可用容量的影响&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;温度补偿&lt;/td&gt;
+&lt;td&gt;全程&lt;/td&gt;
+&lt;td&gt;消除温度对电压和容量的影响&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;&lt;/table&gt;
+&lt;h2 id=&#34;库仑积分：连续追踪SOC变化&#34;&gt;&lt;a href=&#34;#库仑积分：连续追踪SOC变化&#34; class=&#34;headerlink&#34; title=&#34;库仑积分：连续追踪SOC变化&#34;&gt;&lt;/a&gt;库仑积分：连续追踪SOC变化&lt;/h2&gt;&lt;h3 id=&#34;原理&#34;&gt;&lt;a href=&#34;#原理&#34; class=&#34;headerlink&#34; title=&#34;原理&#34;&gt;&lt;/a&gt;原理&lt;/h3&gt;&lt;p&gt;库仑积分（Coulomb Counting）的思想极其朴素：&lt;strong&gt;累加流入&amp;#x2F;流出电池的电荷量，得到容量变化&lt;/strong&gt;。&lt;/p&gt;
+&lt;p&gt;$$SOC(t) &amp;#x3D; SOC(t_0) + \frac{1}{FCC} \int_{t_0}^{t} I(\tau) , d\tau$$&lt;/p&gt;"><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2025/08/15/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20SOC%E7%94%B5%E9%87%8F%E7%AE%97%E6%B3%95%E6%9E%B6%E6%9E%84%EF%BC%9A%E5%BA%93%E4%BB%91%E7%A7%AF%E5%88%86%E3%80%81%E5%BC%80%E8%B7%AF%E7%94%B5%E5%8E%8B%E4%B8%8E%E7%94%B5%E9%87%8F%E8%BF%BD%E8%B5%B6%E6%9C%BA%E5%88%B6/&t=电量计 -- SOC电量算法架构：库仑积分、开路电压与电量追赶机制"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> 菜单</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> 目录</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> 分享</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> 返回顶部</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2026
+    cursorhu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"复制到粘贴板！\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "复制成功！");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+</body>
+</html>
