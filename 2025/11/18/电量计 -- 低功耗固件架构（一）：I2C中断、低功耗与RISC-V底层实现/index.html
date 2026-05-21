@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="低功耗与响应性能设计（一）：I2C中断、低功耗与RISC-V底层实现电量计芯片的固件面临三重约束：低功耗（电池供电，待机电流μA级）、实时响应（I2C从机必须在协议时序内应答）、资源受限（RISC-V小核，KB级RAM）。这三者相互矛盾——低功耗要求CPU尽量睡眠，实时响应要求CPU随时可用，资源受限要求代码路径尽可能短。 本文以purdy_g2电量计固件为例，展示如何在RISC-V平台上做这些工">
+<meta property="og:type" content="article">
+<meta property="og:title" content="电量计 -- 低功耗与响应性能设计（一）：I2C中断、低功耗与RISC-V底层实现">
+<meta property="og:url" content="https://cursorhu.github.io/2025/11/18/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E4%BD%8E%E5%8A%9F%E8%80%97%E5%9B%BA%E4%BB%B6%E6%9E%B6%E6%9E%84%EF%BC%88%E4%B8%80%EF%BC%89%EF%BC%9AI2C%E4%B8%AD%E6%96%AD%E3%80%81%E4%BD%8E%E5%8A%9F%E8%80%97%E4%B8%8ERISC-V%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="低功耗与响应性能设计（一）：I2C中断、低功耗与RISC-V底层实现电量计芯片的固件面临三重约束：低功耗（电池供电，待机电流μA级）、实时响应（I2C从机必须在协议时序内应答）、资源受限（RISC-V小核，KB级RAM）。这三者相互矛盾——低功耗要求CPU尽量睡眠，实时响应要求CPU随时可用，资源受限要求代码路径尽可能短。 本文以purdy_g2电量计固件为例，展示如何在RISC-V平台上做这些工">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2025-11-18T02:00:00.000Z">
+<meta property="article:modified_time" content="2026-05-21T08:08:31.058Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="电量计">
+<meta name="twitter:card" content="summary">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>电量计 -- 低功耗与响应性能设计（一）：I2C中断、低功耗与RISC-V底层实现</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+		<script type="text/x-mathjax-config">
+		  MathJax.Hub.Config({
+			tex2jax: {
+			  skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+			  inlineMath: [['$','$']]
+			}
+		  });
+		</script>
+		<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-MML-AM_CHTML' async></script>
+	
+<meta name="generator" content="Hexo 8.0.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="顶部" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="上一篇" href="/2025/11/20/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E4%BD%8E%E5%8A%9F%E8%80%97%E5%9B%BA%E4%BB%B6%E6%9E%B6%E6%9E%84%EF%BC%88%E4%BA%8C%EF%BC%89%EF%BC%9AI2C%E4%B8%AD%E6%96%AD%E3%80%81%E4%BD%8E%E5%8A%9F%E8%80%97%E4%B8%8ECortex-M0%E5%AE%9E%E7%8E%B0/"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="下一篇" href="/2025/11/17/Blog%E9%85%8D%E7%BD%AE%20--%20hexo%E5%8D%9A%E5%AE%A2%E5%92%8Cnext%E4%B8%BB%E9%A2%98%E7%8E%AF%E5%A2%83%E6%90%AD%E5%BB%BA/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="返回顶部" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="分享文章" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">上一篇</span>
+      <span id="i-next" class="info" style="display:none;">下一篇</span>
+      <span id="i-top" class="info" style="display:none;">返回顶部</span>
+      <span id="i-share" class="info" style="display:none;">分享文章</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2025/11/18/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E4%BD%8E%E5%8A%9F%E8%80%97%E5%9B%BA%E4%BB%B6%E6%9E%B6%E6%9E%84%EF%BC%88%E4%B8%80%EF%BC%89%EF%BC%9AI2C%E4%B8%AD%E6%96%AD%E3%80%81%E4%BD%8E%E5%8A%9F%E8%80%97%E4%B8%8ERISC-V%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2025/11/18/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E4%BD%8E%E5%8A%9F%E8%80%97%E5%9B%BA%E4%BB%B6%E6%9E%B6%E6%9E%84%EF%BC%88%E4%B8%80%EF%BC%89%EF%BC%9AI2C%E4%B8%AD%E6%96%AD%E3%80%81%E4%BD%8E%E5%8A%9F%E8%80%97%E4%B8%8ERISC-V%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0/&text=电量计 -- 低功耗与响应性能设计（一）：I2C中断、低功耗与RISC-V底层实现"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2025/11/18/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E4%BD%8E%E5%8A%9F%E8%80%97%E5%9B%BA%E4%BB%B6%E6%9E%B6%E6%9E%84%EF%BC%88%E4%B8%80%EF%BC%89%EF%BC%9AI2C%E4%B8%AD%E6%96%AD%E3%80%81%E4%BD%8E%E5%8A%9F%E8%80%97%E4%B8%8ERISC-V%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0/&title=电量计 -- 低功耗与响应性能设计（一）：I2C中断、低功耗与RISC-V底层实现"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2025/11/18/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E4%BD%8E%E5%8A%9F%E8%80%97%E5%9B%BA%E4%BB%B6%E6%9E%B6%E6%9E%84%EF%BC%88%E4%B8%80%EF%BC%89%EF%BC%9AI2C%E4%B8%AD%E6%96%AD%E3%80%81%E4%BD%8E%E5%8A%9F%E8%80%97%E4%B8%8ERISC-V%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0/&is_video=false&description=电量计 -- 低功耗与响应性能设计（一）：I2C中断、低功耗与RISC-V底层实现"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=电量计 -- 低功耗与响应性能设计（一）：I2C中断、低功耗与RISC-V底层实现&body=Check out this article: https://cursorhu.github.io/2025/11/18/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E4%BD%8E%E5%8A%9F%E8%80%97%E5%9B%BA%E4%BB%B6%E6%9E%B6%E6%9E%84%EF%BC%88%E4%B8%80%EF%BC%89%EF%BC%9AI2C%E4%B8%AD%E6%96%AD%E3%80%81%E4%BD%8E%E5%8A%9F%E8%80%97%E4%B8%8ERISC-V%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2025/11/18/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E4%BD%8E%E5%8A%9F%E8%80%97%E5%9B%BA%E4%BB%B6%E6%9E%B6%E6%9E%84%EF%BC%88%E4%B8%80%EF%BC%89%EF%BC%9AI2C%E4%B8%AD%E6%96%AD%E3%80%81%E4%BD%8E%E5%8A%9F%E8%80%97%E4%B8%8ERISC-V%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0/&title=电量计 -- 低功耗与响应性能设计（一）：I2C中断、低功耗与RISC-V底层实现"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2025/11/18/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E4%BD%8E%E5%8A%9F%E8%80%97%E5%9B%BA%E4%BB%B6%E6%9E%B6%E6%9E%84%EF%BC%88%E4%B8%80%EF%BC%89%EF%BC%9AI2C%E4%B8%AD%E6%96%AD%E3%80%81%E4%BD%8E%E5%8A%9F%E8%80%97%E4%B8%8ERISC-V%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0/&title=电量计 -- 低功耗与响应性能设计（一）：I2C中断、低功耗与RISC-V底层实现"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2025/11/18/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E4%BD%8E%E5%8A%9F%E8%80%97%E5%9B%BA%E4%BB%B6%E6%9E%B6%E6%9E%84%EF%BC%88%E4%B8%80%EF%BC%89%EF%BC%9AI2C%E4%B8%AD%E6%96%AD%E3%80%81%E4%BD%8E%E5%8A%9F%E8%80%97%E4%B8%8ERISC-V%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0/&title=电量计 -- 低功耗与响应性能设计（一）：I2C中断、低功耗与RISC-V底层实现"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2025/11/18/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E4%BD%8E%E5%8A%9F%E8%80%97%E5%9B%BA%E4%BB%B6%E6%9E%B6%E6%9E%84%EF%BC%88%E4%B8%80%EF%BC%89%EF%BC%9AI2C%E4%B8%AD%E6%96%AD%E3%80%81%E4%BD%8E%E5%8A%9F%E8%80%97%E4%B8%8ERISC-V%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0/&title=电量计 -- 低功耗与响应性能设计（一）：I2C中断、低功耗与RISC-V底层实现"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2025/11/18/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E4%BD%8E%E5%8A%9F%E8%80%97%E5%9B%BA%E4%BB%B6%E6%9E%B6%E6%9E%84%EF%BC%88%E4%B8%80%EF%BC%89%EF%BC%9AI2C%E4%B8%AD%E6%96%AD%E3%80%81%E4%BD%8E%E5%8A%9F%E8%80%97%E4%B8%8ERISC-V%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0/&name=电量计 -- 低功耗与响应性能设计（一）：I2C中断、低功耗与RISC-V底层实现&description=&lt;h1 id=&#34;低功耗与响应性能设计（一）：I2C中断、低功耗与RISC-V底层实现&#34;&gt;&lt;a href=&#34;#低功耗与响应性能设计（一）：I2C中断、低功耗与RISC-V底层实现&#34; class=&#34;headerlink&#34; title=&#34;低功耗与响应性能设计（一）：I2C中断、低功耗与RISC-V底层实现&#34;&gt;&lt;/a&gt;低功耗与响应性能设计（一）：I2C中断、低功耗与RISC-V底层实现&lt;/h1&gt;&lt;p&gt;电量计芯片的固件面临三重约束：&lt;strong&gt;低功耗&lt;/strong&gt;（电池供电，待机电流μA级）、&lt;strong&gt;实时响应&lt;/strong&gt;（I2C从机必须在协议时序内应答）、&lt;strong&gt;资源受限&lt;/strong&gt;（RISC-V小核，KB级RAM）。这三者相互矛盾——低功耗要求CPU尽量睡眠，实时响应要求CPU随时可用，资源受限要求代码路径尽可能短。&lt;/p&gt;
+&lt;p&gt;本文以purdy_g2电量计固件为例，展示如何在RISC-V平台上做这些工程权衡。该芯片基于HBird E200 RISC-V内核，32MHz主频，配备PLIC中断控制器、硬件I2C从机、VADC&amp;#x2F;CADC双ADC子系统。&lt;/p&gt;
+&lt;h2 id=&#34;I2C从机中断驱动架构&#34;&gt;&lt;a href=&#34;#I2C从机中断驱动架构&#34; class=&#34;headerlink&#34; title=&#34;I2C从机中断驱动架构&#34;&gt;&lt;/a&gt;I2C从机中断驱动架构&lt;/h2&gt;&lt;p&gt;电量计通过I2C&amp;#x2F;SMBus与主机通信，遵循SBS（Smart Battery Specification）协议。主机随时可能发起读写请求，固件必须在I2C时钟的SCL周期内完成应答，否则总线超时。&lt;/p&gt;
+&lt;h3 id=&#34;状态机设计&#34;&gt;&lt;a href=&#34;#状态机设计&#34; class=&#34;headerlink&#34; title=&#34;状态机设计&#34;&gt;&lt;/a&gt;状态机设计&lt;/h3&gt;&lt;p&gt;I2C从机采用三态状态机，完全由中断驱动：&lt;/p&gt;
+&lt;figure class=&#34;highlight plaintext&#34;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&#34;gutter&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;3&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;4&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;5&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;6&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&#34;code&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;stateDiagram-v2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    [*] --&amp;gt; IDLE&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    IDLE --&amp;gt; SLVRCV : &amp;quot;地址匹配 (写方向)&amp;quot;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    SLVRCV --&amp;gt; SLVSND : &amp;quot;重复START (读方向)&amp;quot;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    SLVRCV --&amp;gt; IDLE : &amp;quot;STOP / NACK&amp;quot;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    SLVSND --&amp;gt; IDLE : &amp;quot;STOP / NACK&amp;quot;&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;
+
+&lt;p&gt;典型的SMBus读事务流程：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;主机发START + 从机地址(W) → 进入SLVRCV&lt;/li&gt;
+&lt;li&gt;主机发命令字节 → 从机查表确定数据长度&lt;/li&gt;
+&lt;li&gt;主机发重复START + 从机地址(R) → 进入SLVSND&lt;/li&gt;
+&lt;li&gt;从机逐字节发送数据 + PEC校验字节&lt;/li&gt;
+&lt;li&gt;主机发NACK + STOP → 回到IDLE&lt;/li&gt;
+&lt;/ol&gt;"><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2025/11/18/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E4%BD%8E%E5%8A%9F%E8%80%97%E5%9B%BA%E4%BB%B6%E6%9E%B6%E6%9E%84%EF%BC%88%E4%B8%80%EF%BC%89%EF%BC%9AI2C%E4%B8%AD%E6%96%AD%E3%80%81%E4%BD%8E%E5%8A%9F%E8%80%97%E4%B8%8ERISC-V%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0/&t=电量计 -- 低功耗与响应性能设计（一）：I2C中断、低功耗与RISC-V底层实现"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E4%BD%8E%E5%8A%9F%E8%80%97%E4%B8%8E%E5%93%8D%E5%BA%94%E6%80%A7%E8%83%BD%E8%AE%BE%E8%AE%A1%EF%BC%88%E4%B8%80%EF%BC%89%EF%BC%9AI2C%E4%B8%AD%E6%96%AD%E3%80%81%E4%BD%8E%E5%8A%9F%E8%80%97%E4%B8%8ERISC-V%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.</span> <span class="toc-text">低功耗与响应性能设计（一）：I2C中断、低功耗与RISC-V底层实现</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#I2C%E4%BB%8E%E6%9C%BA%E4%B8%AD%E6%96%AD%E9%A9%B1%E5%8A%A8%E6%9E%B6%E6%9E%84"><span class="toc-number">1.1.</span> <span class="toc-text">I2C从机中断驱动架构</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%8A%B6%E6%80%81%E6%9C%BA%E8%AE%BE%E8%AE%A1"><span class="toc-number">1.1.1.</span> <span class="toc-text">状态机设计</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%AD%E6%96%AD%E5%A4%84%E7%90%86%E6%A0%B8%E5%BF%83%E9%80%BB%E8%BE%91"><span class="toc-number">1.1.2.</span> <span class="toc-text">中断处理核心逻辑</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%91%BD%E4%BB%A4%E5%AE%9A%E4%B9%89%E8%A1%A8"><span class="toc-number">1.1.3.</span> <span class="toc-text">命令定义表</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#PEC%E6%A0%A1%E9%AA%8C"><span class="toc-number">1.1.4.</span> <span class="toc-text">PEC校验</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#I2C%E6%B4%BB%E5%8A%A8%E5%AF%B9%E7%9D%A1%E7%9C%A0%E7%9A%84%E5%BD%B1%E5%93%8D"><span class="toc-number">1.1.5.</span> <span class="toc-text">I2C活动对睡眠的影响</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BD%8E%E5%8A%9F%E8%80%97%E8%AE%BE%E8%AE%A1"><span class="toc-number">1.2.</span> <span class="toc-text">低功耗设计</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%9D%A1%E7%9C%A0%E6%A8%A1%E5%BC%8F%E7%AD%96%E7%95%A5"><span class="toc-number">1.2.1.</span> <span class="toc-text">睡眠模式策略</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%BB%E5%BE%AA%E7%8E%AF%E4%B8%8EWFI"><span class="toc-number">1.2.2.</span> <span class="toc-text">主循环与WFI</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%9A%E6%97%B6%E5%99%A8%E4%B8%8E%E5%94%A4%E9%86%92"><span class="toc-number">1.2.3.</span> <span class="toc-text">定时器与唤醒</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%9D%A1%E7%9C%A0%E6%9C%9F%E9%97%B4ADC%E8%87%AA%E5%8A%A8%E9%87%87%E9%9B%86"><span class="toc-number">1.2.4.</span> <span class="toc-text">睡眠期间ADC自动采集</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#RISC-V%E4%B8%AD%E6%96%AD%E4%B8%8E%E5%BC%82%E5%B8%B8%E5%A4%84%E7%90%86"><span class="toc-number">1.3.</span> <span class="toc-text">RISC-V中断与异常处理</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Trap%E5%85%A5%E5%8F%A3"><span class="toc-number">1.3.1.</span> <span class="toc-text">Trap入口</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Trap%E5%88%86%E5%8F%91"><span class="toc-number">1.3.2.</span> <span class="toc-text">Trap分发</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#PLIC%E4%B8%AD%E6%96%AD%E6%8E%A7%E5%88%B6%E5%99%A8"><span class="toc-number">1.3.3.</span> <span class="toc-text">PLIC中断控制器</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B5%8C%E5%A5%97%E4%B8%AD%E6%96%AD%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.3.4.</span> <span class="toc-text">嵌套中断实现</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#mtime%E4%B8%AD%E6%96%AD%E5%A4%84%E7%90%86"><span class="toc-number">1.3.5.</span> <span class="toc-text">mtime中断处理</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%BB%E5%BE%AA%E7%8E%AF%E6%9E%B6%E6%9E%84%E4%B8%8E%E7%8A%B6%E6%80%81%E6%9C%BA"><span class="toc-number">1.4.</span> <span class="toc-text">主循环架构与状态机</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%B6%85%E7%BA%A7%E5%BE%AA%E7%8E%AF%E6%A8%A1%E5%BC%8F"><span class="toc-number">1.4.1.</span> <span class="toc-text">超级循环模式</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8A%9F%E8%80%97%E7%8A%B6%E6%80%81%E8%BD%AC%E6%8D%A2"><span class="toc-number">1.4.2.</span> <span class="toc-text">功耗状态转换</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%80%A7%E8%83%BD%E4%B8%8E%E5%8A%9F%E8%80%97%E7%9A%84%E6%9D%83%E8%A1%A1%E6%80%BB%E7%BB%93"><span class="toc-number">1.5.</span> <span class="toc-text">性能与功耗的权衡总结</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%B3%BB%E5%88%97%E6%96%87%E7%AB%A0"><span class="toc-number">1.6.</span> <span class="toc-text">系列文章</span></a></li></ol></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        电量计 -- 低功耗与响应性能设计（一）：I2C中断、低功耗与RISC-V底层实现
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">cursorhu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2025-11-18T02:00:00.000Z" class="dt-published" itemprop="datePublished">2025-11-18</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fa-solid fa-archive"></i>
+        <a class="category-link" href="/categories/%E7%94%B5%E9%87%8F%E8%AE%A1/">电量计</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/%E7%94%B5%E9%87%8F%E8%AE%A1/" rel="tag">电量计</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <h1 id="低功耗与响应性能设计（一）：I2C中断、低功耗与RISC-V底层实现"><a href="#低功耗与响应性能设计（一）：I2C中断、低功耗与RISC-V底层实现" class="headerlink" title="低功耗与响应性能设计（一）：I2C中断、低功耗与RISC-V底层实现"></a>低功耗与响应性能设计（一）：I2C中断、低功耗与RISC-V底层实现</h1><p>电量计芯片的固件面临三重约束：<strong>低功耗</strong>（电池供电，待机电流μA级）、<strong>实时响应</strong>（I2C从机必须在协议时序内应答）、<strong>资源受限</strong>（RISC-V小核，KB级RAM）。这三者相互矛盾——低功耗要求CPU尽量睡眠，实时响应要求CPU随时可用，资源受限要求代码路径尽可能短。</p>
+<p>本文以purdy_g2电量计固件为例，展示如何在RISC-V平台上做这些工程权衡。该芯片基于HBird E200 RISC-V内核，32MHz主频，配备PLIC中断控制器、硬件I2C从机、VADC&#x2F;CADC双ADC子系统。</p>
+<h2 id="I2C从机中断驱动架构"><a href="#I2C从机中断驱动架构" class="headerlink" title="I2C从机中断驱动架构"></a>I2C从机中断驱动架构</h2><p>电量计通过I2C&#x2F;SMBus与主机通信，遵循SBS（Smart Battery Specification）协议。主机随时可能发起读写请求，固件必须在I2C时钟的SCL周期内完成应答，否则总线超时。</p>
+<h3 id="状态机设计"><a href="#状态机设计" class="headerlink" title="状态机设计"></a>状态机设计</h3><p>I2C从机采用三态状态机，完全由中断驱动：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">stateDiagram-v2</span><br><span class="line">    [*] --&gt; IDLE</span><br><span class="line">    IDLE --&gt; SLVRCV : &quot;地址匹配 (写方向)&quot;</span><br><span class="line">    SLVRCV --&gt; SLVSND : &quot;重复START (读方向)&quot;</span><br><span class="line">    SLVRCV --&gt; IDLE : &quot;STOP / NACK&quot;</span><br><span class="line">    SLVSND --&gt; IDLE : &quot;STOP / NACK&quot;</span><br></pre></td></tr></table></figure>
+
+<p>典型的SMBus读事务流程：</p>
+<ol>
+<li>主机发START + 从机地址(W) → 进入SLVRCV</li>
+<li>主机发命令字节 → 从机查表确定数据长度</li>
+<li>主机发重复START + 从机地址(R) → 进入SLVSND</li>
+<li>从机逐字节发送数据 + PEC校验字节</li>
+<li>主机发NACK + STOP → 回到IDLE</li>
+</ol>
+<h3 id="中断处理核心逻辑"><a href="#中断处理核心逻辑" class="headerlink" title="中断处理核心逻辑"></a>中断处理核心逻辑</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> <span class="title function_">I2C_IRQHandler</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">if</span> ((i2cif_p-&gt;i2c_state == I2C_XFER_MSTSND) ||</span><br><span class="line">        (i2cif_p-&gt;i2c_state == I2C_XFER_MSTRCV))</span><br><span class="line">        i2cif_master_handle();</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">        i2cif_slave_handle();   <span class="comment">// 正常路径：始终为从机模式</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>i2cif_slave_handle()</code> 是状态机的核心，约300行代码处理所有I2C事件：</p>
+<p><strong>地址匹配 → 进入接收状态：</strong></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// START检测，写方向</span></span><br><span class="line">i2cif_p-&gt;i2c_state = I2C_XFER_SLVRCV;</span><br><span class="line">i2cif_p-&gt;rx_idx = <span class="number">0</span>;</span><br><span class="line">i2cif_p-&gt;tx_idx = <span class="number">0</span>;</span><br><span class="line">i2cif_p-&gt;i2c_cmd = <span class="number">0</span>;</span><br><span class="line">i2cif_p-&gt;i2c_pec = i2cif_calc_pec((<span class="type">uint8_t</span>)i2cif_p-&gt;slv_addr, <span class="number">0x00</span>);</span><br></pre></td></tr></table></figure>
+
+<p><strong>第一个数据字节是命令码，查表确定协议参数：</strong></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (i2cif_p-&gt;rx_idx == <span class="number">0</span>) &#123;</span><br><span class="line">    i2cif_p-&gt;i2c_cmd = (<span class="type">uint8_t</span>)i2cif_p-&gt;data;</span><br><span class="line">    <span class="comment">// 线性查找命令定义表</span></span><br><span class="line">    <span class="keyword">do</span> &#123;</span><br><span class="line">        <span class="keyword">if</span> (((sbsd_cmd_def[i2cif_p-&gt;sbd_idx] &amp; SBSD_CMD_Msk)</span><br><span class="line">             &gt;&gt; SBSD_CMD_Pos) == i2cif_p-&gt;i2c_cmd)</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">    &#125; <span class="keyword">while</span> ((i2cif_p-&gt;sbd_idx++) &lt; SBSD_CMD_MAX);</span><br><span class="line">    <span class="comment">// 从命令定义中提取数据长度</span></span><br><span class="line">    i2cif_p-&gt;rx_size = ((sbsd_cmd_def[i2cif_p-&gt;sbd_idx]</span><br><span class="line">                         &amp; SBSD_LEN_Msk) &gt;&gt; SBSD_LEN_Pos) + <span class="number">1</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>接收完成后通过回调通知业务层：</strong></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (i2cif_p-&gt;rx_idx == i2cif_p-&gt;rx_size &amp;&amp; !i2cif_p-&gt;i2c_pec_enable) &#123;</span><br><span class="line">    i2cif_p-&gt;i2c_status = I2C_STATUS_RXDONE;</span><br><span class="line">    <span class="keyword">if</span> (i2cif_p-&gt;i2c_callback_f)</span><br><span class="line">        i2cif_p-&gt;i2c_callback_f(i2cif_p-&gt;i2c_status, i2cif_p-&gt;sbd_idx);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="命令定义表"><a href="#命令定义表" class="headerlink" title="命令定义表"></a>命令定义表</h3><p>每个SBS命令用一个32位整数编码所有协议信息：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// sbsd_cmd_def[] 每个条目的位域编码：</span></span><br><span class="line"><span class="comment">// [7:0]   命令号 (如 0x09 = Voltage, 0x0A = Current)</span></span><br><span class="line"><span class="comment">// [11:8]  数据长度 (字节数 - 1)</span></span><br><span class="line"><span class="comment">// [13:12] 方向 (读/写/读写)</span></span><br><span class="line"><span class="comment">// [15:14] 类型 (word/block/string)</span></span><br></pre></td></tr></table></figure>
+
+<p>这种紧凑编码使得整个命令表只占几百字节Flash，查表时一次内存访问即可获取所有协议参数。</p>
+<h3 id="PEC校验"><a href="#PEC校验" class="headerlink" title="PEC校验"></a>PEC校验</h3><p>SMBus的PEC（Packet Error Checking）是CRC-8校验，覆盖从地址字节到最后一个数据字节的所有内容。固件在每个字节收发时递增计算PEC：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 发送阶段：数据发完后追加PEC字节</span></span><br><span class="line"><span class="keyword">if</span> (tx_idx == tx_size &amp;&amp; i2cif_p-&gt;i2c_pec_enable)</span><br><span class="line">    data = i2cif_p-&gt;i2c_pec;   <span class="comment">// PEC作为最后一个字节发出</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="I2C活动对睡眠的影响"><a href="#I2C活动对睡眠的影响" class="headerlink" title="I2C活动对睡眠的影响"></a>I2C活动对睡眠的影响</h3><p>I2C通信会清除睡眠准备标志，推迟CPU进入低功耗模式：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// sbs_callback_i2c_slave() 中</span></span><br><span class="line"><span class="keyword">if</span> (status == I2C_STATUS_TXDATA) &#123;</span><br><span class="line">    stm_p-&gt;stm_flag &amp;= (~STMFLAG_SLEEP_PREPARE);</span><br><span class="line">    stm_p-&gt;stm_sleep_delay = DEFAULT_TIMER_VAL;  <span class="comment">// 重置睡眠延迟</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这确保了一次I2C事务的多个阶段（写命令→读数据）不会被睡眠打断。</p>
+<h2 id="低功耗设计"><a href="#低功耗设计" class="headerlink" title="低功耗设计"></a>低功耗设计</h2><h3 id="睡眠模式策略"><a href="#睡眠模式策略" class="headerlink" title="睡眠模式策略"></a>睡眠模式策略</h3><p>固件支持两级睡眠：Sleep（浅睡眠）和Deep Sleep（深度睡眠）。两者的区别在于哪些硬件模块保持运行：</p>
+<table>
+<thead>
+<tr>
+<th>模式</th>
+<th>CPU</th>
+<th>MTIMER</th>
+<th>VADC</th>
+<th>CADC</th>
+<th>I2C唤醒</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Active</td>
+<td>运行</td>
+<td>运行</td>
+<td>运行</td>
+<td>运行</td>
+<td>-</td>
+</tr>
+<tr>
+<td>Sleep</td>
+<td>停止</td>
+<td>运行</td>
+<td>自动扫描</td>
+<td>运行</td>
+<td>支持</td>
+</tr>
+<tr>
+<td>Deep Sleep</td>
+<td>停止</td>
+<td>停止</td>
+<td>停止</td>
+<td>可选</td>
+<td>支持</td>
+</tr>
+</tbody></table>
+<p>睡眠进入由状态机控制，不是简单的空闲检测：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// stm_translate_pwrmd() — 睡眠延迟倒计时</span></span><br><span class="line"><span class="keyword">if</span> (stm_p-&gt;stm_flag &amp; STMFLAG_SLEEP_PREPARE) &#123;</span><br><span class="line">    <span class="comment">// 首次设置：启动延迟计时器</span></span><br><span class="line">    <span class="keyword">if</span> (stm_p-&gt;stm_sleep_delay == DEFAULT_TIMER_VAL) &#123;</span><br><span class="line">        stm_p-&gt;stm_sleep_delay = timer_set_target(</span><br><span class="line">            param_board_cfg[PARM_BCFG_IDLETOSLEEP] - <span class="number">1</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 延迟到期：进入睡眠</span></span><br><span class="line">    <span class="keyword">if</span> (systime_get_sec() &gt;= stm_p-&gt;stm_sleep_delay) &#123;</span><br><span class="line">        stm_p-&gt;pwrmd = STM_PWRMD_SLEEP_START;</span><br><span class="line">        uSleepTime = stm_drive_sleep(uSleepTime, STM_SLPMD_SLEEP);</span><br><span class="line">        stm_p-&gt;stm_flag &amp;= (~STMFLAG_SLEEP_PREPARE);</span><br><span class="line">        stm_p-&gt;stm_sleep_delay = DEFAULT_TIMER_VAL;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>stm_drive_sleep()</code> 是实际进入硬件睡眠的函数：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">uint32_t</span> <span class="title function_">stm_drive_sleep</span><span class="params">(<span class="type">uint32_t</span> slptime, STM_SLPMD_T slpmd_ctrl)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">// 安全检查：充电满电校准期间不允许睡眠</span></span><br><span class="line">    <span class="keyword">if</span> (g_internal_charge_full_flag == <span class="number">1</span>) <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">if</span> (calibration_flag == <span class="number">1</span>) <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 配置唤醒源</span></span><br><span class="line">    Chip_DFE_ClearWakeupFLAG(WAKEUP_SOURCE_ALL);</span><br><span class="line">    wake_source = PROT_WKUP_SAFETY_ENABLE | PROT_WKUP_CADC_ENABLE</span><br><span class="line">                | PROT_WKUP_TIMER1_ENABLE | PROT_WKUP_I2C_ENABLE</span><br><span class="line">                | PROT_WKUP_STP_ENABLE;</span><br><span class="line">    Chip_DFE_SetWakeupOption(wake_source);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 设置Timer1作为睡眠时长看门狗</span></span><br><span class="line">    timer_setup_timer1((slptime) - <span class="number">1</span>, <span class="number">15</span>);  <span class="comment">// mark=15 → 1Hz时钟</span></span><br><span class="line">    Chip_Timer_reload(CH_TIMER1);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 进入睡眠</span></span><br><span class="line">    <span class="keyword">if</span> (slpmd_ctrl == STM_SLPMD_DEEPSLP)</span><br><span class="line">        syshw_enter_deepslp();</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">        syshw_enter_sleep();</span><br><span class="line">    <span class="comment">// ... 唤醒后继续执行</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="主循环与WFI"><a href="#主循环与WFI" class="headerlink" title="主循环与WFI"></a>主循环与WFI</h3><p>主循环采用经典的超级循环（super loop）模式，每次迭代末尾执行<code>__WFI()</code>：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> <span class="title function_">main_loop</span><span class="params">()</span></span><br><span class="line">&#123;</span><br><span class="line">    systime_update_EX();</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (systime_passed_sec()) &#123;    <span class="comment">// 1秒周期任务</span></span><br><span class="line">        dacq_update_cadc();        <span class="comment">// 读取CADC数据</span></span><br><span class="line">        syshw_feed_wdt();          <span class="comment">// 喂狗</span></span><br><span class="line">        dacq_update();             <span class="comment">// 更新ADC通道</span></span><br><span class="line">        sbsif_update();            <span class="comment">// 更新SBS数据</span></span><br><span class="line">        stm_check_imode();         <span class="comment">// 判断充电/放电/静置</span></span><br><span class="line"></span><br><span class="line">        sleep_time = stm_update(); <span class="comment">// 状态机，可能进入睡眠</span></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    __WFI();  <span class="comment">// CPU停止，等待下一个中断（125ms mtime tick）</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>__WFI()</code>是RISC-V的Wait For Interrupt指令，CPU时钟门控但不关断电源域。mtime每125ms产生一次中断唤醒CPU，<code>systime_passed_sec()</code>在8次125ms tick后返回true，触发1秒周期的业务逻辑。</p>
+<h3 id="定时器与唤醒"><a href="#定时器与唤醒" class="headerlink" title="定时器与唤醒"></a>定时器与唤醒</h3><p>MTIMER是RISC-V标准的机器级定时器，由32.768kHz低频振荡器驱动，在Sleep模式下保持运行：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">define</span> MTIMER_FREQ     32768          <span class="comment">// 32kHz时钟源</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> INTERVAL_125MS  (MTIMER_FREQ / 8)   <span class="comment">// = 4096 ticks</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> TICKRATE_1S     8              <span class="comment">// 8 × 125ms = 1秒</span></span></span><br></pre></td></tr></table></figure>
+
+<p>每次mtime中断触发后，重新设置下一次比较值：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">__STATIC_INLINE <span class="type">void</span> <span class="title function_">MTimer_Config</span><span class="params">()</span></span><br><span class="line">&#123;</span><br><span class="line">    Set_mtimecmp_Value(Get_mtime_Value() + INTERVAL_125MS);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>进入Deep Sleep时，通过自定义CSR <code>mcounterstop</code>（地址0xBFF）停止所有计数器：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 停止mtime + mcycle + minstret，节省时钟树功耗</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">SysCounter_Stop</span><span class="params">()</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">asm</span> <span class="title function_">volatile</span><span class="params">(</span></span><br><span class="line"><span class="params">        <span class="string">&quot;.equ mcounterstop, 0xBFF  ;\</span></span></span><br><span class="line"><span class="string"><span class="params">         li a0, 0x07               ;\</span></span></span><br><span class="line"><span class="string"><span class="params">         csrw mcounterstop, a0&quot;</span></span></span><br><span class="line"><span class="params">    )</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>CSR 0xBFF是HBird E200内核的厂商扩展：bit0控制mcycle，bit1控制mtime，bit2控制minstret。写入0x07一次性停止三个计数器。</p>
+<h3 id="睡眠期间ADC自动采集"><a href="#睡眠期间ADC自动采集" class="headerlink" title="睡眠期间ADC自动采集"></a>睡眠期间ADC自动采集</h3><p>电量计即使在睡眠状态也需要持续监测电池状态（电压、电流、温度），否则无法检测过压&#x2F;过流等安全事件。硬件ADC子系统支持自主运行：</p>
+<p><strong>VADC自动扫描：</strong></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 根据电芯数量配置扫描通道</span></span><br><span class="line"><span class="keyword">if</span> (param_board_cfg[PARM_BCFG_CELLNUM] == PARAM_CELL02_VAL)</span><br><span class="line">    Chip_ADC_SetupAutoScan(AUTOSCAN_2CELLS_1THM,</span><br><span class="line">                           AUTOSCAN_RATE_01SEC, <span class="number">1</span>, <span class="number">1</span>);</span><br><span class="line"><span class="keyword">else</span></span><br><span class="line">    Chip_ADC_SetupAutoScan(AUTOSCAN_1CELL_1THM,</span><br><span class="line">                           AUTOSCAN_RATE_01SEC, <span class="number">1</span>, <span class="number">1</span>);</span><br></pre></td></tr></table></figure>
+
+<p>AUTOSCAN模式下，硬件按配置的周期（1~31秒可选）自动完成采样序列，结果写入寄存器。CPU唤醒后直接读取，零等待延迟。</p>
+<p><strong>CADC（库仑计ADC）硬件滤波链：</strong></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">Chip_ADC_SetupCADCCtrl(</span><br><span class="line">    CADC_SW_FS_144MV          <span class="comment">// 满量程±144mV（采样电阻压降）</span></span><br><span class="line">    | CADC_CLK_SEL_32K        <span class="comment">// 32kHz采样时钟</span></span><br><span class="line">    | CADC_SW_AVG_16          <span class="comment">// 16次硬件平均</span></span><br><span class="line">    | CADCSCAN_SWDITHER_ENABLE <span class="comment">// 抖动使能（提升有效位数）</span></span><br><span class="line">    | CADC_SW_OSR_2048        <span class="comment">// 过采样率2048</span></span><br><span class="line">    | CADC_LPF_FILTER_ENABLE  <span class="comment">// 低通滤波器</span></span><br><span class="line">    | CADC_MEAN_FILTER_ENABLE <span class="comment">// 均值滤波器</span></span><br><span class="line">    | CADCSCAN_SCAN_CC_ENABLE <span class="comment">// 库仑计数使能</span></span><br><span class="line">);</span><br></pre></td></tr></table></figure>
+
+<p>CADC的信号链：原始ADC → 16次平均 → LPF低通 → 均值滤波 → 输出。OSR 2048意味着每个输出样本由2048个原始采样累加，有效分辨率远超ADC本身位数。整个滤波链在硬件中完成，CPU完全不参与。</p>
+<h2 id="RISC-V中断与异常处理"><a href="#RISC-V中断与异常处理" class="headerlink" title="RISC-V中断与异常处理"></a>RISC-V中断与异常处理</h2><h3 id="Trap入口"><a href="#Trap入口" class="headerlink" title="Trap入口"></a>Trap入口</h3><p>RISC-V的所有中断和异常统一通过trap入口处理。<code>entry.S</code>放置在DTCM（紧耦合数据存储器）中以获得最低访问延迟：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">  .section .dtcm</span><br><span class="line">  .align 2</span><br><span class="line">  .global trap_entry</span><br><span class="line">trap_entry:</span><br><span class="line">    TRAP_ENTRY              // 宏：保存寄存器到栈</span><br><span class="line">    csrr a0, mcause         // 参数1：中断/异常原因</span><br><span class="line">    csrr a1, mepc           // 参数2：被中断的PC</span><br><span class="line">    csrr a2, mtval          // 参数3：异常附加信息</span><br><span class="line">    call handle_trap        // 调用C分发函数</span><br><span class="line">    csrw mepc, a0           // handle_trap可能修改返回地址</span><br><span class="line">    TRAP_EXIT               // 宏：恢复寄存器，mret返回</span><br></pre></td></tr></table></figure>
+
+<p><strong>TRAP_ENTRY宏只保存x1~x15（caller-saved寄存器）：</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">.macro TRAP_ENTRY</span><br><span class="line">    addi sp, sp, -16*REGBYTES</span><br><span class="line">    STORE x1,  1*REGBYTES(sp)</span><br><span class="line">    STORE x5,  5*REGBYTES(sp)</span><br><span class="line">    STORE x6,  6*REGBYTES(sp)</span><br><span class="line">    ...</span><br><span class="line">    STORE x15, 15*REGBYTES(sp)</span><br><span class="line">.endm</span><br></pre></td></tr></table></figure>
+
+<p>为什么不保存x16<del>x31？RISC-V ABI规定x16</del>x31是callee-saved寄存器，如果<code>handle_trap()</code>内部调用的C函数使用了这些寄存器，编译器会自动在函数序言&#x2F;尾声中保存和恢复。中断入口只需保存caller-saved部分，将栈帧从32个寄存器缩减到15个，<strong>中断响应延迟减少约一半</strong>。</p>
+<h3 id="Trap分发"><a href="#Trap分发" class="headerlink" title="Trap分发"></a>Trap分发</h3><p><code>handle_trap()</code>根据mcause的最高位区分中断和异常：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">uintptr_t</span> <span class="title function_">handle_trap</span><span class="params">(<span class="type">uintptr_t</span> mcause, <span class="type">uintptr_t</span> epc, <span class="type">uintptr_t</span> adaddr)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">if</span> ((mcause &amp; MCAUSE_INT) &amp;&amp; ((mcause &amp; MCAUSE_CAUSE) == IRQ_M_EXT))</span><br><span class="line">        handle_m_ext_interrupt();      <span class="comment">// 外部中断 → PLIC</span></span><br><span class="line">    <span class="keyword">else</span> <span class="keyword">if</span> ((mcause &amp; MCAUSE_INT) &amp;&amp; ((mcause &amp; MCAUSE_CAUSE) == IRQ_M_TIMER))</span><br><span class="line">        handle_m_time_interrupt();     <span class="comment">// 定时器中断</span></span><br><span class="line">    <span class="keyword">else</span> <span class="keyword">if</span> ((mcause &amp; MCAUSE_INT) &amp;&amp; ((mcause &amp; MCAUSE_CAUSE) == IRQ_M_SOFT))</span><br><span class="line">        handle_m_sotfware_interrupt(); <span class="comment">// 软件中断</span></span><br><span class="line">    <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">// 未处理的异常：打印调试信息并停机</span></span><br><span class="line">        dbg_print(debug_str, mcause, epc, adaddr);</span><br><span class="line">        <span class="keyword">while</span> (<span class="number">1</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> epc;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="PLIC中断控制器"><a href="#PLIC中断控制器" class="headerlink" title="PLIC中断控制器"></a>PLIC中断控制器</h3><p>PLIC（Platform-Level Interrupt Controller）是RISC-V标准的外部中断管理器。所有外设中断（I2C、ADC、Timer等）都通过PLIC路由到CPU：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">flowchart LR</span><br><span class="line">    A[&quot;I2C中断&quot;] --&gt; D[&quot;PLIC&quot;]</span><br><span class="line">    B[&quot;CADC中断&quot;] --&gt; D</span><br><span class="line">    C[&quot;Timer中断&quot;] --&gt; D</span><br><span class="line">    D --&gt; E[&quot;CPU trap_entry&quot;]</span><br><span class="line">    E --&gt; F[&quot;handle_m_ext_interrupt&quot;]</span><br><span class="line">    F --&gt; G[&quot;PLIC_claim&quot;]</span><br><span class="line">    G --&gt; H[&quot;查handler表分发&quot;]</span><br><span class="line">    H --&gt; I[&quot;PLIC_complete&quot;]</span><br></pre></td></tr></table></figure>
+
+<p>PLIC的Claim&#x2F;Complete协议：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> <span class="title function_">handle_m_ext_interrupt</span><span class="params">()</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">// Claim：获取最高优先级的pending中断号</span></span><br><span class="line">    plic_source int_num = PLIC_claim_interrupt(&amp;g_plic);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (int_num == INT_CADC)</span><br><span class="line">        interrupt_nest_mode_start();  <span class="comment">// CADC允许嵌套</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 分发：通过函数指针表调用对应handler</span></span><br><span class="line">    <span class="keyword">if</span> ((int_num &gt;= <span class="number">1</span>) &amp;&amp; (int_num &lt; PLIC_NUM_INTERRUPTS))</span><br><span class="line">        g_ext_interrupt_handlers[int_num]();</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (int_num == INT_CADC)</span><br><span class="line">        interrupt_nest_mode_end();</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Complete：通知PLIC该中断已处理完毕</span></span><br><span class="line">    PLIC_complete_interrupt(&amp;g_plic, int_num);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="嵌套中断实现"><a href="#嵌套中断实现" class="headerlink" title="嵌套中断实现"></a>嵌套中断实现</h3><p>RISC-V默认不支持中断嵌套——进入trap后mstatus.MIE自动清零，屏蔽所有中断。但电量计的安全中断（过压&#x2F;过流&#x2F;过温）必须能打断正在处理的低优先级中断。</p>
+<p>实现方式：在特定ISR内手动提升PLIC threshold并重新开启MIE：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">define</span> NEST_PLIC_THRE  6    <span class="comment">// 阈值：只允许优先级&gt;6的中断通过</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> DEF_PLIC_THRE   0    <span class="comment">// 默认：所有优先级都通过</span></span></span><br><span class="line"></span><br><span class="line"><span class="type">void</span> <span class="title function_">interrupt_nest_mode_start</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    PLIC_set_threshold(&amp;g_plic, NEST_PLIC_THRE);  <span class="comment">// 屏蔽优先级≤6</span></span><br><span class="line">    Chip_Int_INTGerenalSet(<span class="number">1</span>);                     <span class="comment">// 重新开启MIE</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> <span class="title function_">interrupt_nest_mode_end</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    Chip_Int_INTGerenalSet(<span class="number">0</span>);                     <span class="comment">// 关闭MIE</span></span><br><span class="line">    PLIC_set_threshold(&amp;g_plic, DEF_PLIC_THRE);   <span class="comment">// 恢复阈值</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>当CADC中断正在处理时（优先级6），如果发生优先级&gt;6的安全中断，CPU会再次进入trap_entry，形成一级嵌套。栈空间需要预留两层中断帧（2 × 16 × 4 &#x3D; 128字节）。</p>
+<h3 id="mtime中断处理"><a href="#mtime中断处理" class="headerlink" title="mtime中断处理"></a>mtime中断处理</h3><p>mtime是系统心跳，每125ms触发一次：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> <span class="title function_">handle_m_time_interrupt</span><span class="params">()</span></span><br><span class="line">&#123;</span><br><span class="line">    clear_csr(mie, MIP_MTIP);       <span class="comment">// 屏蔽timer中断（防止重入）</span></span><br><span class="line">    system_tick = (system_tick + <span class="number">1</span>) &amp; (TICKTIMERLEN - <span class="number">1</span>);</span><br><span class="line">    MTimer_Config();                 <span class="comment">// 重载mtimecmp += 4096</span></span><br><span class="line">    set_csr(mie, MIP_MTIP);        <span class="comment">// 重新使能timer中断</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="主循环架构与状态机"><a href="#主循环架构与状态机" class="headerlink" title="主循环架构与状态机"></a>主循环架构与状态机</h2><h3 id="超级循环模式"><a href="#超级循环模式" class="headerlink" title="超级循环模式"></a>超级循环模式</h3><p>固件不使用RTOS，采用经典的超级循环（super loop）+ 中断驱动模式。所有业务逻辑在主循环中按时间片执行：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">flowchart TD</span><br><span class="line">    A[&quot;main_loop()&quot;] --&gt; B[&quot;systime_update_EX()&quot;]</span><br><span class="line">    B --&gt; C&#123;&quot;systime_passed_sec()?&quot;&#125;</span><br><span class="line">    C --&gt;|&quot;否&quot;| H[&quot;__WFI()&quot;]</span><br><span class="line">    C --&gt;|&quot;是&quot;| D[&quot;dacq_update - ADC数据采集&quot;]</span><br><span class="line">    D --&gt; E[&quot;sbsif_update - SBS数据更新&quot;]</span><br><span class="line">    E --&gt; F[&quot;fg_update - 电量算法&quot;]</span><br><span class="line">    F --&gt; G[&quot;stm_update - 状态机/睡眠决策&quot;]</span><br><span class="line">    G --&gt; H</span><br><span class="line">    H --&gt; A</span><br></pre></td></tr></table></figure>
+
+<p>时间层次：</p>
+<ul>
+<li><strong>125ms</strong>：mtime中断唤醒CPU，更新system_tick</li>
+<li><strong>1秒</strong>：8次tick后触发业务逻辑（ADC采集、电量计算、状态机）</li>
+<li><strong>分钟&#x2F;小时</strong>：SOH计算、温度趋势分析等慢任务</li>
+</ul>
+<h3 id="功耗状态转换"><a href="#功耗状态转换" class="headerlink" title="功耗状态转换"></a>功耗状态转换</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">flowchart LR</span><br><span class="line">    A[&quot;Active&quot;] --&gt;|&quot;空闲超时&quot;| B[&quot;Sleep Prepare&quot;]</span><br><span class="line">    B --&gt;|&quot;延迟到期&quot;| C[&quot;Sleep&quot;]</span><br><span class="line">    C --&gt;|&quot;mtime/I2C唤醒&quot;| A</span><br><span class="line">    A --&gt;|&quot;主机命令&quot;| D[&quot;Deep Sleep Prepare&quot;]</span><br><span class="line">    D --&gt;|&quot;延迟到期&quot;| E[&quot;Deep Sleep&quot;]</span><br><span class="line">    E --&gt;|&quot;I2C唤醒&quot;| A</span><br><span class="line">    B --&gt;|&quot;I2C活动&quot;| A</span><br></pre></td></tr></table></figure>
+
+<p>关键设计：Sleep Prepare状态下如果检测到I2C活动，立即取消睡眠准备，回到Active。这避免了”正在进入睡眠时主机发来请求”的竞态条件。</p>
+<h2 id="性能与功耗的权衡总结"><a href="#性能与功耗的权衡总结" class="headerlink" title="性能与功耗的权衡总结"></a>性能与功耗的权衡总结</h2><table>
+<thead>
+<tr>
+<th>设计决策</th>
+<th>性能收益</th>
+<th>功耗代价</th>
+<th>权衡点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>中断驱动I2C</td>
+<td>零轮询开销，响应延迟&lt;10μs</td>
+<td>中断唤醒功耗</td>
+<td>I2C活动稀疏时净省电</td>
+</tr>
+<tr>
+<td>ADC自动扫描</td>
+<td>CPU完全释放</td>
+<td>模拟前端持续运行</td>
+<td>扫描率越低越省电（1s vs 31s）</td>
+</tr>
+<tr>
+<td>CADC硬件滤波</td>
+<td>无需软件DSP</td>
+<td>模拟电路常开</td>
+<td>OSR 2048换取高精度</td>
+</tr>
+<tr>
+<td>嵌套中断</td>
+<td>安全事件响应&lt;1μs</td>
+<td>额外128字节栈空间</td>
+<td>仅CADC ISR允许被嵌套</td>
+</tr>
+<tr>
+<td>只保存caller-saved</td>
+<td>中断帧60字节→减半</td>
+<td>无</td>
+<td>RISC-V ABI保证正确性</td>
+</tr>
+<tr>
+<td>mcounterstop</td>
+<td>无</td>
+<td>省去计数器时钟树功耗</td>
+<td>仅Deep Sleep时停止</td>
+</tr>
+<tr>
+<td>125ms tick周期</td>
+<td>1秒内最多8次唤醒</td>
+<td>每次唤醒消耗~10μs</td>
+<td>比1ms tick省电8倍</td>
+</tr>
+</tbody></table>
+<p>核心思想：<strong>让硬件做硬件擅长的事</strong>。ADC采样、电流积分、数据滤波全部交给专用硬件，CPU只在需要做决策（电量计算、状态判断）时才醒来。醒来后尽快完成计算，然后立即回到WFI等待下一个事件。</p>
+<h2 id="系列文章"><a href="#系列文章" class="headerlink" title="系列文章"></a>系列文章</h2><ul>
+<li><strong>本文</strong>：MCU固件架构 - I2C中断、低功耗与RISC-V底层实现</li>
+<li><strong>相关</strong>：ARM平台固件架构 - I2C中断、低功耗与Cortex-M0实现</li>
+<li><strong>相关</strong>：阻抗追踪的嵌入式实现 - 定点运算与牛顿迭代</li>
+<li><strong>相关</strong>：SOC电量算法架构 - 库仑积分、开路电压与电量追赶机制</li>
+</ul>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">首页</a></li>
+        
+          <li><a href="/about/">关于</a></li>
+        
+          <li><a href="/archives/">归档</a></li>
+        
+          <li><a href="/tags/">标签</a></li>
+        
+          <li><a href="/categories/">分类</a></li>
+        
+          <li><a href="/search/">搜索</a></li>
+        
+          <li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E4%BD%8E%E5%8A%9F%E8%80%97%E4%B8%8E%E5%93%8D%E5%BA%94%E6%80%A7%E8%83%BD%E8%AE%BE%E8%AE%A1%EF%BC%88%E4%B8%80%EF%BC%89%EF%BC%9AI2C%E4%B8%AD%E6%96%AD%E3%80%81%E4%BD%8E%E5%8A%9F%E8%80%97%E4%B8%8ERISC-V%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.</span> <span class="toc-text">低功耗与响应性能设计（一）：I2C中断、低功耗与RISC-V底层实现</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#I2C%E4%BB%8E%E6%9C%BA%E4%B8%AD%E6%96%AD%E9%A9%B1%E5%8A%A8%E6%9E%B6%E6%9E%84"><span class="toc-number">1.1.</span> <span class="toc-text">I2C从机中断驱动架构</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%8A%B6%E6%80%81%E6%9C%BA%E8%AE%BE%E8%AE%A1"><span class="toc-number">1.1.1.</span> <span class="toc-text">状态机设计</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%AD%E6%96%AD%E5%A4%84%E7%90%86%E6%A0%B8%E5%BF%83%E9%80%BB%E8%BE%91"><span class="toc-number">1.1.2.</span> <span class="toc-text">中断处理核心逻辑</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%91%BD%E4%BB%A4%E5%AE%9A%E4%B9%89%E8%A1%A8"><span class="toc-number">1.1.3.</span> <span class="toc-text">命令定义表</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#PEC%E6%A0%A1%E9%AA%8C"><span class="toc-number">1.1.4.</span> <span class="toc-text">PEC校验</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#I2C%E6%B4%BB%E5%8A%A8%E5%AF%B9%E7%9D%A1%E7%9C%A0%E7%9A%84%E5%BD%B1%E5%93%8D"><span class="toc-number">1.1.5.</span> <span class="toc-text">I2C活动对睡眠的影响</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BD%8E%E5%8A%9F%E8%80%97%E8%AE%BE%E8%AE%A1"><span class="toc-number">1.2.</span> <span class="toc-text">低功耗设计</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%9D%A1%E7%9C%A0%E6%A8%A1%E5%BC%8F%E7%AD%96%E7%95%A5"><span class="toc-number">1.2.1.</span> <span class="toc-text">睡眠模式策略</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%BB%E5%BE%AA%E7%8E%AF%E4%B8%8EWFI"><span class="toc-number">1.2.2.</span> <span class="toc-text">主循环与WFI</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%9A%E6%97%B6%E5%99%A8%E4%B8%8E%E5%94%A4%E9%86%92"><span class="toc-number">1.2.3.</span> <span class="toc-text">定时器与唤醒</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%9D%A1%E7%9C%A0%E6%9C%9F%E9%97%B4ADC%E8%87%AA%E5%8A%A8%E9%87%87%E9%9B%86"><span class="toc-number">1.2.4.</span> <span class="toc-text">睡眠期间ADC自动采集</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#RISC-V%E4%B8%AD%E6%96%AD%E4%B8%8E%E5%BC%82%E5%B8%B8%E5%A4%84%E7%90%86"><span class="toc-number">1.3.</span> <span class="toc-text">RISC-V中断与异常处理</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Trap%E5%85%A5%E5%8F%A3"><span class="toc-number">1.3.1.</span> <span class="toc-text">Trap入口</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Trap%E5%88%86%E5%8F%91"><span class="toc-number">1.3.2.</span> <span class="toc-text">Trap分发</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#PLIC%E4%B8%AD%E6%96%AD%E6%8E%A7%E5%88%B6%E5%99%A8"><span class="toc-number">1.3.3.</span> <span class="toc-text">PLIC中断控制器</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B5%8C%E5%A5%97%E4%B8%AD%E6%96%AD%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.3.4.</span> <span class="toc-text">嵌套中断实现</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#mtime%E4%B8%AD%E6%96%AD%E5%A4%84%E7%90%86"><span class="toc-number">1.3.5.</span> <span class="toc-text">mtime中断处理</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%BB%E5%BE%AA%E7%8E%AF%E6%9E%B6%E6%9E%84%E4%B8%8E%E7%8A%B6%E6%80%81%E6%9C%BA"><span class="toc-number">1.4.</span> <span class="toc-text">主循环架构与状态机</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%B6%85%E7%BA%A7%E5%BE%AA%E7%8E%AF%E6%A8%A1%E5%BC%8F"><span class="toc-number">1.4.1.</span> <span class="toc-text">超级循环模式</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8A%9F%E8%80%97%E7%8A%B6%E6%80%81%E8%BD%AC%E6%8D%A2"><span class="toc-number">1.4.2.</span> <span class="toc-text">功耗状态转换</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%80%A7%E8%83%BD%E4%B8%8E%E5%8A%9F%E8%80%97%E7%9A%84%E6%9D%83%E8%A1%A1%E6%80%BB%E7%BB%93"><span class="toc-number">1.5.</span> <span class="toc-text">性能与功耗的权衡总结</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%B3%BB%E5%88%97%E6%96%87%E7%AB%A0"><span class="toc-number">1.6.</span> <span class="toc-text">系列文章</span></a></li></ol></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2025/11/18/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E4%BD%8E%E5%8A%9F%E8%80%97%E5%9B%BA%E4%BB%B6%E6%9E%B6%E6%9E%84%EF%BC%88%E4%B8%80%EF%BC%89%EF%BC%9AI2C%E4%B8%AD%E6%96%AD%E3%80%81%E4%BD%8E%E5%8A%9F%E8%80%97%E4%B8%8ERISC-V%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2025/11/18/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E4%BD%8E%E5%8A%9F%E8%80%97%E5%9B%BA%E4%BB%B6%E6%9E%B6%E6%9E%84%EF%BC%88%E4%B8%80%EF%BC%89%EF%BC%9AI2C%E4%B8%AD%E6%96%AD%E3%80%81%E4%BD%8E%E5%8A%9F%E8%80%97%E4%B8%8ERISC-V%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0/&text=电量计 -- 低功耗与响应性能设计（一）：I2C中断、低功耗与RISC-V底层实现"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2025/11/18/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E4%BD%8E%E5%8A%9F%E8%80%97%E5%9B%BA%E4%BB%B6%E6%9E%B6%E6%9E%84%EF%BC%88%E4%B8%80%EF%BC%89%EF%BC%9AI2C%E4%B8%AD%E6%96%AD%E3%80%81%E4%BD%8E%E5%8A%9F%E8%80%97%E4%B8%8ERISC-V%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0/&title=电量计 -- 低功耗与响应性能设计（一）：I2C中断、低功耗与RISC-V底层实现"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2025/11/18/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E4%BD%8E%E5%8A%9F%E8%80%97%E5%9B%BA%E4%BB%B6%E6%9E%B6%E6%9E%84%EF%BC%88%E4%B8%80%EF%BC%89%EF%BC%9AI2C%E4%B8%AD%E6%96%AD%E3%80%81%E4%BD%8E%E5%8A%9F%E8%80%97%E4%B8%8ERISC-V%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0/&is_video=false&description=电量计 -- 低功耗与响应性能设计（一）：I2C中断、低功耗与RISC-V底层实现"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=电量计 -- 低功耗与响应性能设计（一）：I2C中断、低功耗与RISC-V底层实现&body=Check out this article: https://cursorhu.github.io/2025/11/18/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E4%BD%8E%E5%8A%9F%E8%80%97%E5%9B%BA%E4%BB%B6%E6%9E%B6%E6%9E%84%EF%BC%88%E4%B8%80%EF%BC%89%EF%BC%9AI2C%E4%B8%AD%E6%96%AD%E3%80%81%E4%BD%8E%E5%8A%9F%E8%80%97%E4%B8%8ERISC-V%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2025/11/18/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E4%BD%8E%E5%8A%9F%E8%80%97%E5%9B%BA%E4%BB%B6%E6%9E%B6%E6%9E%84%EF%BC%88%E4%B8%80%EF%BC%89%EF%BC%9AI2C%E4%B8%AD%E6%96%AD%E3%80%81%E4%BD%8E%E5%8A%9F%E8%80%97%E4%B8%8ERISC-V%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0/&title=电量计 -- 低功耗与响应性能设计（一）：I2C中断、低功耗与RISC-V底层实现"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2025/11/18/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E4%BD%8E%E5%8A%9F%E8%80%97%E5%9B%BA%E4%BB%B6%E6%9E%B6%E6%9E%84%EF%BC%88%E4%B8%80%EF%BC%89%EF%BC%9AI2C%E4%B8%AD%E6%96%AD%E3%80%81%E4%BD%8E%E5%8A%9F%E8%80%97%E4%B8%8ERISC-V%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0/&title=电量计 -- 低功耗与响应性能设计（一）：I2C中断、低功耗与RISC-V底层实现"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2025/11/18/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E4%BD%8E%E5%8A%9F%E8%80%97%E5%9B%BA%E4%BB%B6%E6%9E%B6%E6%9E%84%EF%BC%88%E4%B8%80%EF%BC%89%EF%BC%9AI2C%E4%B8%AD%E6%96%AD%E3%80%81%E4%BD%8E%E5%8A%9F%E8%80%97%E4%B8%8ERISC-V%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0/&title=电量计 -- 低功耗与响应性能设计（一）：I2C中断、低功耗与RISC-V底层实现"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2025/11/18/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E4%BD%8E%E5%8A%9F%E8%80%97%E5%9B%BA%E4%BB%B6%E6%9E%B6%E6%9E%84%EF%BC%88%E4%B8%80%EF%BC%89%EF%BC%9AI2C%E4%B8%AD%E6%96%AD%E3%80%81%E4%BD%8E%E5%8A%9F%E8%80%97%E4%B8%8ERISC-V%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0/&title=电量计 -- 低功耗与响应性能设计（一）：I2C中断、低功耗与RISC-V底层实现"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2025/11/18/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E4%BD%8E%E5%8A%9F%E8%80%97%E5%9B%BA%E4%BB%B6%E6%9E%B6%E6%9E%84%EF%BC%88%E4%B8%80%EF%BC%89%EF%BC%9AI2C%E4%B8%AD%E6%96%AD%E3%80%81%E4%BD%8E%E5%8A%9F%E8%80%97%E4%B8%8ERISC-V%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0/&name=电量计 -- 低功耗与响应性能设计（一）：I2C中断、低功耗与RISC-V底层实现&description=&lt;h1 id=&#34;低功耗与响应性能设计（一）：I2C中断、低功耗与RISC-V底层实现&#34;&gt;&lt;a href=&#34;#低功耗与响应性能设计（一）：I2C中断、低功耗与RISC-V底层实现&#34; class=&#34;headerlink&#34; title=&#34;低功耗与响应性能设计（一）：I2C中断、低功耗与RISC-V底层实现&#34;&gt;&lt;/a&gt;低功耗与响应性能设计（一）：I2C中断、低功耗与RISC-V底层实现&lt;/h1&gt;&lt;p&gt;电量计芯片的固件面临三重约束：&lt;strong&gt;低功耗&lt;/strong&gt;（电池供电，待机电流μA级）、&lt;strong&gt;实时响应&lt;/strong&gt;（I2C从机必须在协议时序内应答）、&lt;strong&gt;资源受限&lt;/strong&gt;（RISC-V小核，KB级RAM）。这三者相互矛盾——低功耗要求CPU尽量睡眠，实时响应要求CPU随时可用，资源受限要求代码路径尽可能短。&lt;/p&gt;
+&lt;p&gt;本文以purdy_g2电量计固件为例，展示如何在RISC-V平台上做这些工程权衡。该芯片基于HBird E200 RISC-V内核，32MHz主频，配备PLIC中断控制器、硬件I2C从机、VADC&amp;#x2F;CADC双ADC子系统。&lt;/p&gt;
+&lt;h2 id=&#34;I2C从机中断驱动架构&#34;&gt;&lt;a href=&#34;#I2C从机中断驱动架构&#34; class=&#34;headerlink&#34; title=&#34;I2C从机中断驱动架构&#34;&gt;&lt;/a&gt;I2C从机中断驱动架构&lt;/h2&gt;&lt;p&gt;电量计通过I2C&amp;#x2F;SMBus与主机通信，遵循SBS（Smart Battery Specification）协议。主机随时可能发起读写请求，固件必须在I2C时钟的SCL周期内完成应答，否则总线超时。&lt;/p&gt;
+&lt;h3 id=&#34;状态机设计&#34;&gt;&lt;a href=&#34;#状态机设计&#34; class=&#34;headerlink&#34; title=&#34;状态机设计&#34;&gt;&lt;/a&gt;状态机设计&lt;/h3&gt;&lt;p&gt;I2C从机采用三态状态机，完全由中断驱动：&lt;/p&gt;
+&lt;figure class=&#34;highlight plaintext&#34;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&#34;gutter&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;3&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;4&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;5&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;6&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&#34;code&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;stateDiagram-v2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    [*] --&amp;gt; IDLE&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    IDLE --&amp;gt; SLVRCV : &amp;quot;地址匹配 (写方向)&amp;quot;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    SLVRCV --&amp;gt; SLVSND : &amp;quot;重复START (读方向)&amp;quot;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    SLVRCV --&amp;gt; IDLE : &amp;quot;STOP / NACK&amp;quot;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    SLVSND --&amp;gt; IDLE : &amp;quot;STOP / NACK&amp;quot;&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;
+
+&lt;p&gt;典型的SMBus读事务流程：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;主机发START + 从机地址(W) → 进入SLVRCV&lt;/li&gt;
+&lt;li&gt;主机发命令字节 → 从机查表确定数据长度&lt;/li&gt;
+&lt;li&gt;主机发重复START + 从机地址(R) → 进入SLVSND&lt;/li&gt;
+&lt;li&gt;从机逐字节发送数据 + PEC校验字节&lt;/li&gt;
+&lt;li&gt;主机发NACK + STOP → 回到IDLE&lt;/li&gt;
+&lt;/ol&gt;"><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2025/11/18/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20%E4%BD%8E%E5%8A%9F%E8%80%97%E5%9B%BA%E4%BB%B6%E6%9E%B6%E6%9E%84%EF%BC%88%E4%B8%80%EF%BC%89%EF%BC%9AI2C%E4%B8%AD%E6%96%AD%E3%80%81%E4%BD%8E%E5%8A%9F%E8%80%97%E4%B8%8ERISC-V%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0/&t=电量计 -- 低功耗与响应性能设计（一）：I2C中断、低功耗与RISC-V底层实现"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> 菜单</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> 目录</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> 分享</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> 返回顶部</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2026
+    cursorhu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"复制到粘贴板！\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "复制成功！");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+</body>
+</html>
