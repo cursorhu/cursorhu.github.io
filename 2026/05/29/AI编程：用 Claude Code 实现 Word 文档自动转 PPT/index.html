@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="AI 编程：用 Claude Code 实现 Word 文档自动转 PPT 本文记录了使用 Claude Code Skills 将 .docx 文档自动转化为 .pptx 演示文稿的完整过程，涵盖原理解析、工具链选型、工作流设计、样式提取与最终规则沉淀。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="AI 编程：用 Claude Code 实现 Word 文档自动转 PPT">
+<meta property="og:url" content="https://cursorhu.github.io/2026/05/29/AI%E7%BC%96%E7%A8%8B%EF%BC%9A%E7%94%A8%20Claude%20Code%20%E5%AE%9E%E7%8E%B0%20Word%20%E6%96%87%E6%A1%A3%E8%87%AA%E5%8A%A8%E8%BD%AC%20PPT/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="AI 编程：用 Claude Code 实现 Word 文档自动转 PPT 本文记录了使用 Claude Code Skills 将 .docx 文档自动转化为 .pptx 演示文稿的完整过程，涵盖原理解析、工具链选型、工作流设计、样式提取与最终规则沉淀。">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-05-29T02:00:00.000Z">
+<meta property="article:modified_time" content="2026-05-29T02:54:28.172Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="pptxgenjs">
+<meta name="twitter:card" content="summary">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>AI 编程：用 Claude Code 实现 Word 文档自动转 PPT</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+		<script type="text/x-mathjax-config">
+		  MathJax.Hub.Config({
+			tex2jax: {
+			  skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+			  inlineMath: [['$','$']]
+			}
+		  });
+		</script>
+		<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-MML-AM_CHTML' async></script>
+	
+<meta name="generator" content="Hexo 8.0.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="顶部" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        
+        <li><a class="icon" aria-label="下一篇" href="/2026/05/12/%E5%A4%A7%E6%A8%A1%E5%9E%8B%E5%8E%9F%E7%90%86%20(%E4%B8%80)%20%E4%BB%8ERNN%E5%88%B0Transformer/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="返回顶部" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="分享文章" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">上一篇</span>
+      <span id="i-next" class="info" style="display:none;">下一篇</span>
+      <span id="i-top" class="info" style="display:none;">返回顶部</span>
+      <span id="i-share" class="info" style="display:none;">分享文章</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/05/29/AI%E7%BC%96%E7%A8%8B%EF%BC%9A%E7%94%A8%20Claude%20Code%20%E5%AE%9E%E7%8E%B0%20Word%20%E6%96%87%E6%A1%A3%E8%87%AA%E5%8A%A8%E8%BD%AC%20PPT/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/05/29/AI%E7%BC%96%E7%A8%8B%EF%BC%9A%E7%94%A8%20Claude%20Code%20%E5%AE%9E%E7%8E%B0%20Word%20%E6%96%87%E6%A1%A3%E8%87%AA%E5%8A%A8%E8%BD%AC%20PPT/&text=AI 编程：用 Claude Code 实现 Word 文档自动转 PPT"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/05/29/AI%E7%BC%96%E7%A8%8B%EF%BC%9A%E7%94%A8%20Claude%20Code%20%E5%AE%9E%E7%8E%B0%20Word%20%E6%96%87%E6%A1%A3%E8%87%AA%E5%8A%A8%E8%BD%AC%20PPT/&title=AI 编程：用 Claude Code 实现 Word 文档自动转 PPT"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/05/29/AI%E7%BC%96%E7%A8%8B%EF%BC%9A%E7%94%A8%20Claude%20Code%20%E5%AE%9E%E7%8E%B0%20Word%20%E6%96%87%E6%A1%A3%E8%87%AA%E5%8A%A8%E8%BD%AC%20PPT/&is_video=false&description=AI 编程：用 Claude Code 实现 Word 文档自动转 PPT"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=AI 编程：用 Claude Code 实现 Word 文档自动转 PPT&body=Check out this article: https://cursorhu.github.io/2026/05/29/AI%E7%BC%96%E7%A8%8B%EF%BC%9A%E7%94%A8%20Claude%20Code%20%E5%AE%9E%E7%8E%B0%20Word%20%E6%96%87%E6%A1%A3%E8%87%AA%E5%8A%A8%E8%BD%AC%20PPT/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/05/29/AI%E7%BC%96%E7%A8%8B%EF%BC%9A%E7%94%A8%20Claude%20Code%20%E5%AE%9E%E7%8E%B0%20Word%20%E6%96%87%E6%A1%A3%E8%87%AA%E5%8A%A8%E8%BD%AC%20PPT/&title=AI 编程：用 Claude Code 实现 Word 文档自动转 PPT"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/05/29/AI%E7%BC%96%E7%A8%8B%EF%BC%9A%E7%94%A8%20Claude%20Code%20%E5%AE%9E%E7%8E%B0%20Word%20%E6%96%87%E6%A1%A3%E8%87%AA%E5%8A%A8%E8%BD%AC%20PPT/&title=AI 编程：用 Claude Code 实现 Word 文档自动转 PPT"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/05/29/AI%E7%BC%96%E7%A8%8B%EF%BC%9A%E7%94%A8%20Claude%20Code%20%E5%AE%9E%E7%8E%B0%20Word%20%E6%96%87%E6%A1%A3%E8%87%AA%E5%8A%A8%E8%BD%AC%20PPT/&title=AI 编程：用 Claude Code 实现 Word 文档自动转 PPT"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/05/29/AI%E7%BC%96%E7%A8%8B%EF%BC%9A%E7%94%A8%20Claude%20Code%20%E5%AE%9E%E7%8E%B0%20Word%20%E6%96%87%E6%A1%A3%E8%87%AA%E5%8A%A8%E8%BD%AC%20PPT/&title=AI 编程：用 Claude Code 实现 Word 文档自动转 PPT"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/05/29/AI%E7%BC%96%E7%A8%8B%EF%BC%9A%E7%94%A8%20Claude%20Code%20%E5%AE%9E%E7%8E%B0%20Word%20%E6%96%87%E6%A1%A3%E8%87%AA%E5%8A%A8%E8%BD%AC%20PPT/&name=AI 编程：用 Claude Code 实现 Word 文档自动转 PPT&description=&lt;h1 id=&#34;AI-编程：用-Claude-Code-实现-Word-文档自动转-PPT&#34;&gt;&lt;a href=&#34;#AI-编程：用-Claude-Code-实现-Word-文档自动转-PPT&#34; class=&#34;headerlink&#34; title=&#34;AI 编程：用 Claude Code 实现 Word 文档自动转 PPT&#34;&gt;&lt;/a&gt;AI 编程：用 Claude Code 实现 Word 文档自动转 PPT&lt;/h1&gt;&lt;blockquote&gt;
+&lt;p&gt;本文记录了使用 Claude Code Skills 将 .docx 文档自动转化为 .pptx 演示文稿的完整过程，涵盖原理解析、工具链选型、工作流设计、样式提取与最终规则沉淀。&lt;/p&gt;
+&lt;/blockquote&gt;"><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/05/29/AI%E7%BC%96%E7%A8%8B%EF%BC%9A%E7%94%A8%20Claude%20Code%20%E5%AE%9E%E7%8E%B0%20Word%20%E6%96%87%E6%A1%A3%E8%87%AA%E5%8A%A8%E8%BD%AC%20PPT/&t=AI 编程：用 Claude Code 实现 Word 文档自动转 PPT"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#AI-%E7%BC%96%E7%A8%8B%EF%BC%9A%E7%94%A8-Claude-Code-%E5%AE%9E%E7%8E%B0-Word-%E6%96%87%E6%A1%A3%E8%87%AA%E5%8A%A8%E8%BD%AC-PPT"><span class="toc-number">1.</span> <span class="toc-text">AI 编程：用 Claude Code 实现 Word 文档自动转 PPT</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E4%B8%BA%E4%BB%80%E4%B9%88%E8%A6%81%E5%81%9A-DOCX-%E8%BD%AC-PPTX%EF%BC%9F"><span class="toc-number">1.1.</span> <span class="toc-text">一、为什么要做 DOCX 转 PPTX？</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E6%8A%80%E6%9C%AF%E9%80%89%E5%9E%8B%E4%B8%8E%E5%B7%A5%E5%85%B7%E9%93%BE"><span class="toc-number">1.2.</span> <span class="toc-text">二、技术选型与工具链</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E4%B8%BA%E4%BB%80%E4%B9%88%E4%B8%8D%E7%94%A8-python-pptx%EF%BC%9F"><span class="toc-number">1.2.1.</span> <span class="toc-text">2.1 为什么不用 python-pptx？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-Skills-%E4%BE%9D%E8%B5%96"><span class="toc-number">1.2.2.</span> <span class="toc-text">2.2 Skills 依赖</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%B7%A5%E4%BD%9C%E6%B5%81%E5%85%A8%E6%99%AF"><span class="toc-number">1.3.</span> <span class="toc-text">三、工作流全景</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E6%95%B4%E4%BD%93%E6%9E%B6%E6%9E%84"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 整体架构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E4%BA%94%E6%AD%A5%E5%B7%A5%E4%BD%9C%E6%B5%81"><span class="toc-number">1.3.2.</span> <span class="toc-text">3.2 五步工作流</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E5%8E%9F%E7%90%86%E8%AF%A6%E8%A7%A3"><span class="toc-number">1.4.</span> <span class="toc-text">四、原理详解</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-Word-%E6%96%87%E6%A1%A3%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84"><span class="toc-number">1.4.1.</span> <span class="toc-text">4.1 Word 文档的内部结构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-PPT-%E6%A8%A1%E6%9D%BF%E7%9A%84%E6%A0%B7%E5%BC%8F%E6%8F%90%E5%8F%96"><span class="toc-number">1.4.2.</span> <span class="toc-text">4.2 PPT 模板的样式提取</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-pptxgenjs-%E7%94%9F%E6%88%90%E5%8E%9F%E7%90%86"><span class="toc-number">1.4.3.</span> <span class="toc-text">4.3 pptxgenjs 生成原理</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E5%AE%9E%E6%88%98%E6%A1%88%E4%BE%8B%EF%BC%9ABxxxxb-%E6%80%A7%E8%83%BD%E6%8A%A5%E5%91%8A"><span class="toc-number">1.5.</span> <span class="toc-text">五、实战案例：Bxxxxb 性能报告</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E8%BE%93%E5%85%A5%E5%88%86%E6%9E%90"><span class="toc-number">1.5.1.</span> <span class="toc-text">5.1 输入分析</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E5%86%85%E5%AE%B9%E5%88%B0%E5%B9%BB%E7%81%AF%E7%89%87%E7%9A%84%E6%98%A0%E5%B0%84"><span class="toc-number">1.5.2.</span> <span class="toc-text">5.2 内容到幻灯片的映射</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-Slide-Master-%E8%AE%BE%E8%AE%A1"><span class="toc-number">1.5.3.</span> <span class="toc-text">5.3 Slide Master 设计</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-4-%E5%85%B3%E9%94%AE%E6%8A%80%E5%B7%A7"><span class="toc-number">1.5.4.</span> <span class="toc-text">5.4 关键技巧</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%AA%8C%E8%AF%81%E4%B8%8E%E8%BE%93%E5%87%BA"><span class="toc-number">1.6.</span> <span class="toc-text">六、验证与输出</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E5%86%85%E5%AE%B9%E9%AA%8C%E8%AF%81"><span class="toc-number">1.6.1.</span> <span class="toc-text">6.1 内容验证</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E6%B8%85%E7%90%86%E4%B8%B4%E6%97%B6%E6%96%87%E4%BB%B6"><span class="toc-number">1.6.2.</span> <span class="toc-text">6.2 清理临时文件</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%83%E3%80%81%E8%A7%84%E5%88%99%E6%B2%89%E6%B7%80%EF%BC%9ACLAUDE-md"><span class="toc-number">1.7.</span> <span class="toc-text">七、规则沉淀：CLAUDE.md</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AB%E3%80%81%E6%80%BB%E7%BB%93"><span class="toc-number">1.8.</span> <span class="toc-text">八、总结</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#8-1-%E6%8A%80%E6%9C%AF%E6%A0%88%E6%80%BB%E7%BB%93"><span class="toc-number">1.8.1.</span> <span class="toc-text">8.1 技术栈总结</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8-2-%E9%80%82%E7%94%A8%E5%9C%BA%E6%99%AF"><span class="toc-number">1.8.2.</span> <span class="toc-text">8.2 适用场景</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8-3-%E5%B1%80%E9%99%90%E4%B8%8E%E6%94%B9%E8%BF%9B%E6%96%B9%E5%90%91"><span class="toc-number">1.8.3.</span> <span class="toc-text">8.3 局限与改进方向</span></a></li></ol></li></ol></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        AI 编程：用 Claude Code 实现 Word 文档自动转 PPT
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">cursorhu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2026-05-29T02:00:00.000Z" class="dt-published" itemprop="datePublished">2026-05-29</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fa-solid fa-archive"></i>
+        <a class="category-link" href="/categories/AI%E7%BC%96%E7%A8%8B/">AI编程</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/pptxgenjs/" rel="tag">pptxgenjs</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <h1 id="AI-编程：用-Claude-Code-实现-Word-文档自动转-PPT"><a href="#AI-编程：用-Claude-Code-实现-Word-文档自动转-PPT" class="headerlink" title="AI 编程：用 Claude Code 实现 Word 文档自动转 PPT"></a>AI 编程：用 Claude Code 实现 Word 文档自动转 PPT</h1><blockquote>
+<p>本文记录了使用 Claude Code Skills 将 .docx 文档自动转化为 .pptx 演示文稿的完整过程，涵盖原理解析、工具链选型、工作流设计、样式提取与最终规则沉淀。</p>
+</blockquote>
+<span id="more"></span>
+
+<h2 id="一、为什么要做-DOCX-转-PPTX？"><a href="#一、为什么要做-DOCX-转-PPTX？" class="headerlink" title="一、为什么要做 DOCX 转 PPTX？"></a>一、为什么要做 DOCX 转 PPTX？</h2><p>工程师写技术报告习惯用 Word，但汇报时需要 PPT。手动搬运内容费时费力：调格式、贴截图、对齐样式，一份 10 页的报告往往要花 30 分钟以上做 PPT。</p>
+<p>核心诉求很简单：</p>
+<ul>
+<li><strong>内容从 Word 来</strong>：标题、正文、图片、表格</li>
+<li><strong>样式从模板来</strong>：已有的公司 PPT 模板（颜色、字体、布局）</li>
+<li><strong>输出一份新 PPT</strong>：内容 + 样式合并，开箱即用</li>
+</ul>
+<p>这个任务非常适合 AI 编程：结构化输入、明确的转换规则、可验证的输出。</p>
+<h2 id="二、技术选型与工具链"><a href="#二、技术选型与工具链" class="headerlink" title="二、技术选型与工具链"></a>二、技术选型与工具链</h2><h3 id="2-1-为什么不用-python-pptx？"><a href="#2-1-为什么不用-python-pptx？" class="headerlink" title="2.1 为什么不用 python-pptx？"></a>2.1 为什么不用 python-pptx？</h3><p>python-pptx 是 Python 生态中最常见的 PPT 生成库，但它有几个痛点：</p>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>python-pptx</th>
+<th>pptxgenjs</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>模板支持</td>
+<td>需要操作底层 XML</td>
+<td>Slide Master API 直观</td>
+</tr>
+<tr>
+<td>图表能力</td>
+<td>基础</td>
+<td>丰富（Bar&#x2F;Line&#x2F;Pie 等）</td>
+</tr>
+<tr>
+<td>样式控制</td>
+<td>繁琐的 Emu 单位</td>
+<td>英寸为单位，直觉友好</td>
+</tr>
+<tr>
+<td>AI 生成友好度</td>
+<td>一般</td>
+<td>高（JSON-like 配置）</td>
+</tr>
+</tbody></table>
+<p>最终选择 <strong>pptxgenjs</strong>（Node.js），配合 Claude Code 的 Skills 系统完成整个流程。</p>
+<h3 id="2-2-Skills-依赖"><a href="#2-2-Skills-依赖" class="headerlink" title="2.2 Skills 依赖"></a>2.2 Skills 依赖</h3><p>整个工作流依赖两个 Claude Code Skills：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">docx skill  →  读取 Word 内容（文本 + 图片）</span><br><span class="line">pptx skill  →  生成 PPT（pptxgenjs）</span><br></pre></td></tr></table></figure>
+
+<p>Skills 是 Claude Code 的能力扩展机制，每个 Skill 包含工具脚本和使用指南，让 AI 具备特定领域的专业能力。</p>
+<h2 id="三、工作流全景"><a href="#三、工作流全景" class="headerlink" title="三、工作流全景"></a>三、工作流全景</h2><h3 id="3-1-整体架构"><a href="#3-1-整体架构" class="headerlink" title="3.1 整体架构"></a>3.1 整体架构</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────┐</span><br><span class="line">│                    输入层                                 │</span><br><span class="line">├──────────────────────┬──────────────────────────────────┤</span><br><span class="line">│  .docx 文档          │  .pptx 模板                      │</span><br><span class="line">│  (内容源)            │  (样式源)                         │</span><br><span class="line">└──────────┬───────────┴──────────────┬───────────────────┘</span><br><span class="line">           │                          │</span><br><span class="line">           ▼                          ▼</span><br><span class="line">┌──────────────────────┐   ┌──────────────────────────────┐</span><br><span class="line">│  docx skill          │   │  pptx skill                  │</span><br><span class="line">│  ├─ pandoc 提取文本  │   │  ├─ markitdown 提取结构      │</span><br><span class="line">│  └─ unpack 提取图片  │   │  └─ unpack 提取 theme XML    │</span><br><span class="line">└──────────┬───────────┘   └──────────────┬───────────────┘</span><br><span class="line">           │                              │</span><br><span class="line">           ▼                              ▼</span><br><span class="line">┌─────────────────────────────────────────────────────────┐</span><br><span class="line">│                   转换层                                  │</span><br><span class="line">│  ┌─────────────────────────────────────────────────┐    │</span><br><span class="line">│  │  内容映射规则                                    │    │</span><br><span class="line">│  │  H1 → 新幻灯片标题                              │    │</span><br><span class="line">│  │  段落 → 文本框                                   │    │</span><br><span class="line">│  │  图片 → addImage                                 │    │</span><br><span class="line">│  │  表格/对比数据 → addTable                        │    │</span><br><span class="line">│  └─────────────────────────────────────────────────┘    │</span><br><span class="line">│  ┌─────────────────────────────────────────────────┐    │</span><br><span class="line">│  │  样式映射规则                                    │    │</span><br><span class="line">│  │  theme.xml → COLORS 常量                         │    │</span><br><span class="line">│  │  fontScheme → fontFace 参数                      │    │</span><br><span class="line">│  │  slideMaster → defineSlideMaster                 │    │</span><br><span class="line">│  └─────────────────────────────────────────────────┘    │</span><br><span class="line">└──────────────────────────┬──────────────────────────────┘</span><br><span class="line">                           │</span><br><span class="line">                           ▼</span><br><span class="line">┌─────────────────────────────────────────────────────────┐</span><br><span class="line">│                   输出层                                  │</span><br><span class="line">│  pptxgenjs 生成 .pptx → markitdown 验证内容完整性       │</span><br><span class="line">└─────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-2-五步工作流"><a href="#3-2-五步工作流" class="headerlink" title="3.2 五步工作流"></a>3.2 五步工作流</h3><table>
+<thead>
+<tr>
+<th>步骤</th>
+<th>工具</th>
+<th>命令</th>
+<th>产出</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1. 提取文本</td>
+<td>pandoc</td>
+<td><code>pandoc input.docx -o output.md</code></td>
+<td>Markdown 格式的文档结构</td>
+</tr>
+<tr>
+<td>2. 提取图片</td>
+<td>unpack.py</td>
+<td><code>python scripts/office/unpack.py input.docx unpacked/</code></td>
+<td><code>word/media/</code> 下的所有图片</td>
+</tr>
+<tr>
+<td>3. 分析模板</td>
+<td>unpack.py</td>
+<td><code>python scripts/office/unpack.py template.pptx unpacked/</code></td>
+<td>theme XML + slideMaster XML</td>
+</tr>
+<tr>
+<td>4. 生成 PPT</td>
+<td>pptxgenjs</td>
+<td><code>node create_pptx.js</code></td>
+<td>最终 .pptx 文件</td>
+</tr>
+<tr>
+<td>5. 验证输出</td>
+<td>markitdown</td>
+<td><code>python -m markitdown output.pptx</code></td>
+<td>文本内容校验</td>
+</tr>
+</tbody></table>
+<h2 id="四、原理详解"><a href="#四、原理详解" class="headerlink" title="四、原理详解"></a>四、原理详解</h2><h3 id="4-1-Word-文档的内部结构"><a href="#4-1-Word-文档的内部结构" class="headerlink" title="4.1 Word 文档的内部结构"></a>4.1 Word 文档的内部结构</h3><p>.docx 本质是一个 ZIP 压缩包，解压后的核心结构：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">document.docx (ZIP)</span><br><span class="line">├── word/</span><br><span class="line">│   ├── document.xml    ← 正文内容（段落、标题、表格）</span><br><span class="line">│   ├── media/          ← 嵌入的图片文件</span><br><span class="line">│   │   ├── image1.jpeg</span><br><span class="line">│   │   ├── image2.png</span><br><span class="line">│   │   └── ...</span><br><span class="line">│   └── _rels/          ← 资源引用关系</span><br><span class="line">├── [Content_Types].xml</span><br><span class="line">└── _rels/.rels</span><br></pre></td></tr></table></figure>
+
+<p>pandoc 将 <code>document.xml</code> 解析为 Markdown，保留标题层级、列表结构和图片引用。unpack.py 则直接解压获取 <code>word/media/</code> 下的原始图片文件。</p>
+<h3 id="4-2-PPT-模板的样式提取"><a href="#4-2-PPT-模板的样式提取" class="headerlink" title="4.2 PPT 模板的样式提取"></a>4.2 PPT 模板的样式提取</h3><p>.pptx 同样是 ZIP 压缩包，样式信息集中在三个位置：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">template.pptx (ZIP)</span><br><span class="line">├── ppt/</span><br><span class="line">│   ├── theme/</span><br><span class="line">│   │   └── theme1.xml       ← 颜色方案 + 字体方案</span><br><span class="line">│   ├── slideMasters/</span><br><span class="line">│   │   └── slideMaster1.xml ← 背景、页脚、占位符布局</span><br><span class="line">│   └── slideLayouts/        ← 各种布局模板</span><br><span class="line">└── ...</span><br></pre></td></tr></table></figure>
+
+<p><strong>颜色方案</strong>在 <code>theme1.xml</code> 的 <code>&lt;a:clrScheme&gt;</code> 节点中：</p>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">a:clrScheme</span> <span class="attr">name</span>=<span class="string">&quot;Lenovo&quot;</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">a:dk1</span>&gt;</span><span class="tag">&lt;<span class="name">a:srgbClr</span> <span class="attr">val</span>=<span class="string">&quot;000000&quot;</span>/&gt;</span><span class="tag">&lt;/<span class="name">a:dk1</span>&gt;</span>      <span class="comment">&lt;!-- 深色1：黑色 --&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">a:lt1</span>&gt;</span><span class="tag">&lt;<span class="name">a:sysClr</span> <span class="attr">val</span>=<span class="string">&quot;window&quot;</span>/&gt;</span><span class="tag">&lt;/<span class="name">a:lt1</span>&gt;</span>        <span class="comment">&lt;!-- 浅色1：白色 --&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">a:accent1</span>&gt;</span><span class="tag">&lt;<span class="name">a:srgbClr</span> <span class="attr">val</span>=<span class="string">&quot;E2231A&quot;</span>/&gt;</span><span class="tag">&lt;/<span class="name">a:accent1</span>&gt;</span> <span class="comment">&lt;!-- 强调色：红色 --&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">a:accent4</span>&gt;</span><span class="tag">&lt;<span class="name">a:srgbClr</span> <span class="attr">val</span>=<span class="string">&quot;3E8DDD&quot;</span>/&gt;</span><span class="tag">&lt;/<span class="name">a:accent4</span>&gt;</span> <span class="comment">&lt;!-- 强调色：蓝色 --&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">a:clrScheme</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>字体方案</strong>在 <code>&lt;a:fontScheme&gt;</code> 中：</p>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">a:fontScheme</span> <span class="attr">name</span>=<span class="string">&quot;Office Classic 2&quot;</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">a:majorFont</span>&gt;</span><span class="tag">&lt;<span class="name">a:latin</span> <span class="attr">typeface</span>=<span class="string">&quot;Arial&quot;</span>/&gt;</span><span class="tag">&lt;/<span class="name">a:majorFont</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">a:minorFont</span>&gt;</span><span class="tag">&lt;<span class="name">a:latin</span> <span class="attr">typeface</span>=<span class="string">&quot;Arial&quot;</span>/&gt;</span><span class="tag">&lt;/<span class="name">a:minorFont</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">a:fontScheme</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p>这些信息直接映射为 pptxgenjs 的配置参数。</p>
+<h3 id="4-3-pptxgenjs-生成原理"><a href="#4-3-pptxgenjs-生成原理" class="headerlink" title="4.3 pptxgenjs 生成原理"></a>4.3 pptxgenjs 生成原理</h3><p>pptxgenjs 的工作方式是：用 JavaScript 对象描述幻灯片内容，最终序列化为 OOXML 格式的 .pptx 文件。</p>
+<p>核心 API 链路：</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 1. 创建实例，设置全局属性</span></span><br><span class="line"><span class="keyword">const</span> pres = <span class="keyword">new</span> <span class="title function_">pptxgen</span>();</span><br><span class="line">pres.<span class="property">layout</span> = <span class="string">&quot;LAYOUT_16x9&quot;</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 2. 定义 Slide Master（对应模板样式）</span></span><br><span class="line">pres.<span class="title function_">defineSlideMaster</span>(&#123;</span><br><span class="line">  <span class="attr">title</span>: <span class="string">&quot;CONTENT&quot;</span>,</span><br><span class="line">  <span class="attr">background</span>: &#123; <span class="attr">color</span>: <span class="string">&quot;FFFFFF&quot;</span> &#125;,</span><br><span class="line">  <span class="attr">objects</span>: [</span><br><span class="line">    &#123; <span class="attr">rect</span>: &#123; <span class="attr">x</span>: <span class="number">0</span>, <span class="attr">y</span>: <span class="number">0</span>, <span class="attr">w</span>: <span class="number">10</span>, <span class="attr">h</span>: <span class="number">0.8</span>, <span class="attr">fill</span>: &#123; <span class="attr">color</span>: <span class="string">&quot;1A1A2E&quot;</span> &#125; &#125; &#125;,  <span class="comment">// 顶部深色条</span></span><br><span class="line">    &#123; <span class="attr">rect</span>: &#123; <span class="attr">x</span>: <span class="number">0</span>, <span class="attr">y</span>: <span class="number">0.8</span>, <span class="attr">w</span>: <span class="number">10</span>, <span class="attr">h</span>: <span class="number">0.06</span>, <span class="attr">fill</span>: &#123; <span class="attr">color</span>: <span class="string">&quot;E2231A&quot;</span> &#125; &#125; &#125;, <span class="comment">// 红色分隔线</span></span><br><span class="line">  ],</span><br><span class="line">&#125;);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 3. 添加幻灯片，引用 Master</span></span><br><span class="line"><span class="keyword">let</span> slide = pres.<span class="title function_">addSlide</span>(&#123; <span class="attr">masterName</span>: <span class="string">&quot;CONTENT&quot;</span> &#125;);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 4. 添加内容元素</span></span><br><span class="line">slide.<span class="title function_">addText</span>(<span class="string">&quot;标题&quot;</span>, &#123; <span class="attr">x</span>: <span class="number">0.3</span>, <span class="attr">y</span>: <span class="number">0.1</span>, <span class="attr">w</span>: <span class="number">9.4</span>, <span class="attr">h</span>: <span class="number">0.6</span>, <span class="attr">fontSize</span>: <span class="number">18</span> &#125;);</span><br><span class="line">slide.<span class="title function_">addImage</span>(&#123; <span class="attr">path</span>: <span class="string">&quot;image.png&quot;</span>, <span class="attr">x</span>: <span class="number">0.3</span>, <span class="attr">y</span>: <span class="number">1.5</span>, <span class="attr">w</span>: <span class="number">4.5</span>, <span class="attr">h</span>: <span class="number">2.5</span> &#125;);</span><br><span class="line">slide.<span class="title function_">addTable</span>(rows, &#123; <span class="attr">x</span>: <span class="number">0.5</span>, <span class="attr">y</span>: <span class="number">1.2</span>, <span class="attr">w</span>: <span class="number">9.0</span> &#125;);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 5. 写入文件</span></span><br><span class="line">pres.<span class="title function_">writeFile</span>(&#123; <span class="attr">fileName</span>: <span class="string">&quot;output.pptx&quot;</span> &#125;);</span><br></pre></td></tr></table></figure>
+
+<p>坐标系统使用<strong>英寸</strong>，16:9 布局的画布尺寸为 10” x 5.625”。</p>
+<h2 id="五、实战案例：Bxxxxb-性能报告"><a href="#五、实战案例：Bxxxxb-性能报告" class="headerlink" title="五、实战案例：Bxxxxb 性能报告"></a>五、实战案例：Bxxxxb 性能报告</h2><h3 id="5-1-输入分析"><a href="#5-1-输入分析" class="headerlink" title="5.1 输入分析"></a>5.1 输入分析</h3><p>Word 文档结构（pandoc 提取后）：</p>
+<figure class="highlight markdown"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="section"># Bxxxxb ADMAR driver Performance report</span></span><br><span class="line"></span><br><span class="line"><span class="section"># Performance TEST1: BIOS Kernel DMA protection On + DMAR SDMA driver</span></span><br><span class="line"><span class="bullet">  -</span> BIOS 截图 (image1.jpeg, image2.jpeg)</span><br><span class="line"><span class="bullet">  -</span> 性能数据：CPU 22-30%, Read 90MB/s, Write 70MB/s</span><br><span class="line"><span class="bullet">  -</span> 测试截图 (image3.png, image4.png, image5.png)</span><br><span class="line"></span><br><span class="line"><span class="section"># Performance TEST2: BIOS Kernel DMA protection Off + DMAR disabled ADMA driver</span></span><br><span class="line"><span class="bullet">  -</span> BIOS 截图 (image6.jpeg, image7.png)</span><br><span class="line"><span class="bullet">  -</span> 性能数据：CPU 22-28%, Read 95MB/s, Write 85+MB/s</span><br><span class="line"><span class="bullet">  -</span> 测试截图 (image8.png, image9.png, image10.png)</span><br><span class="line"></span><br><span class="line"><span class="section"># Final Conclusion</span></span><br><span class="line"><span class="bullet">  -</span> SDMA 比 ADMA 多 2-5% CPU</span><br><span class="line"><span class="bullet">  -</span> Write 性能低 15-20%</span><br><span class="line"><span class="bullet">  -</span> 同一 SD 卡、同一 PC (P16v Gen 2)</span><br></pre></td></tr></table></figure>
+
+<p>模板样式（从 Lenovo 模板提取）：</p>
+<table>
+<thead>
+<tr>
+<th>属性</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>颜色方案</td>
+<td>Lenovo（红色 #E2231A，深灰 #6F7170）</td>
+</tr>
+<tr>
+<td>字体</td>
+<td>Arial</td>
+</tr>
+<tr>
+<td>布局</td>
+<td>16:9 宽屏</td>
+</tr>
+<tr>
+<td>页脚</td>
+<td>白色文字，深色背景条</td>
+</tr>
+</tbody></table>
+<h3 id="5-2-内容到幻灯片的映射"><a href="#5-2-内容到幻灯片的映射" class="headerlink" title="5.2 内容到幻灯片的映射"></a>5.2 内容到幻灯片的映射</h3><p>根据文档结构，规划 8 张幻灯片：</p>
+<table>
+<thead>
+<tr>
+<th>幻灯片</th>
+<th>来源</th>
+<th>布局策略</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1. 标题页</td>
+<td>文档标题 + 作者信息</td>
+<td>深色背景 + 大标题</td>
+</tr>
+<tr>
+<td>2. TEST1 设置</td>
+<td>BIOS 截图 x2</td>
+<td>双图并排</td>
+</tr>
+<tr>
+<td>3. TEST1 摘要</td>
+<td>性能数据要点</td>
+<td>文本列表 + 高亮关键数据</td>
+</tr>
+<tr>
+<td>4. TEST1 图表</td>
+<td>测试截图 x3</td>
+<td>三图网格布局</td>
+</tr>
+<tr>
+<td>5. TEST2 设置</td>
+<td>BIOS 截图 x2</td>
+<td>双图并排</td>
+</tr>
+<tr>
+<td>6. TEST2 摘要</td>
+<td>性能数据要点</td>
+<td>文本列表 + 高亮关键数据</td>
+</tr>
+<tr>
+<td>7. TEST2 图表</td>
+<td>测试截图 x3</td>
+<td>三图网格布局</td>
+</tr>
+<tr>
+<td>8. 结论</td>
+<td>对比数据 + 结论</td>
+<td>表格 + 要点列表</td>
+</tr>
+</tbody></table>
+<h3 id="5-3-Slide-Master-设计"><a href="#5-3-Slide-Master-设计" class="headerlink" title="5.3 Slide Master 设计"></a>5.3 Slide Master 设计</h3><p>从模板提取的样式转化为 pptxgenjs 的 Slide Master：</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 内容页 Master：深色顶栏 + 红色分隔线 + 深色底栏</span></span><br><span class="line">pres.<span class="title function_">defineSlideMaster</span>(&#123;</span><br><span class="line">  <span class="attr">title</span>: <span class="string">&quot;CONTENT&quot;</span>,</span><br><span class="line">  <span class="attr">background</span>: &#123; <span class="attr">color</span>: <span class="string">&quot;FFFFFF&quot;</span> &#125;,</span><br><span class="line">  <span class="attr">objects</span>: [</span><br><span class="line">    &#123; <span class="attr">rect</span>: &#123; <span class="attr">x</span>: <span class="number">0</span>, <span class="attr">y</span>: <span class="number">0</span>, <span class="attr">w</span>: <span class="number">10</span>, <span class="attr">h</span>: <span class="number">0.8</span>, <span class="attr">fill</span>: &#123; <span class="attr">color</span>: <span class="string">&quot;1A1A2E&quot;</span> &#125; &#125; &#125;,</span><br><span class="line">    &#123; <span class="attr">rect</span>: &#123; <span class="attr">x</span>: <span class="number">0</span>, <span class="attr">y</span>: <span class="number">0.8</span>, <span class="attr">w</span>: <span class="number">10</span>, <span class="attr">h</span>: <span class="number">0.06</span>, <span class="attr">fill</span>: &#123; <span class="attr">color</span>: <span class="string">&quot;E2231A&quot;</span> &#125; &#125; &#125;,</span><br><span class="line">    &#123; <span class="attr">rect</span>: &#123; <span class="attr">x</span>: <span class="number">0</span>, <span class="attr">y</span>: <span class="number">5.2</span>, <span class="attr">w</span>: <span class="number">10</span>, <span class="attr">h</span>: <span class="number">0.425</span>, <span class="attr">fill</span>: &#123; <span class="attr">color</span>: <span class="string">&quot;1A1A2E&quot;</span> &#125; &#125; &#125;,</span><br><span class="line">    &#123; <span class="attr">text</span>: &#123;</span><br><span class="line">        <span class="attr">text</span>: <span class="string">&quot;2026 Bayhub Confidential. All rights reserved.&quot;</span>,</span><br><span class="line">        <span class="attr">options</span>: &#123; <span class="attr">x</span>: <span class="number">0.3</span>, <span class="attr">y</span>: <span class="number">5.25</span>, <span class="attr">w</span>: <span class="number">6</span>, <span class="attr">h</span>: <span class="number">0.3</span>, <span class="attr">fontSize</span>: <span class="number">8</span>, <span class="attr">color</span>: <span class="string">&quot;FFFFFF&quot;</span> &#125;,</span><br><span class="line">    &#125;&#125;,</span><br><span class="line">  ],</span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure>
+
+<p>这个 Master 复现了模板的视觉结构：顶部标题区（深色背景 + 白色文字）、中间内容区（白色背景）、底部页脚（深色背景 + 版权信息）。</p>
+<h3 id="5-4-关键技巧"><a href="#5-4-关键技巧" class="headerlink" title="5.4 关键技巧"></a>5.4 关键技巧</h3><p><strong>图片路径处理</strong>：从解包的 docx 中引用图片，使用绝对路径：</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">const</span> <span class="variable constant_">MEDIA</span> = path.<span class="title function_">join</span>(__dirname, <span class="string">&quot;docx_unpacked&quot;</span>, <span class="string">&quot;word&quot;</span>, <span class="string">&quot;media&quot;</span>);</span><br><span class="line">slide.<span class="title function_">addImage</span>(&#123; <span class="attr">path</span>: path.<span class="title function_">join</span>(<span class="variable constant_">MEDIA</span>, <span class="string">&quot;image1.jpeg&quot;</span>), <span class="attr">x</span>: <span class="number">0.3</span>, <span class="attr">y</span>: <span class="number">1.5</span>, <span class="attr">w</span>: <span class="number">4.5</span>, <span class="attr">h</span>: <span class="number">2.5</span> &#125;);</span><br></pre></td></tr></table></figure>
+
+<p><strong>数据高亮</strong>：关键数据用红色强调，与模板的 accent1 颜色一致：</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">&#123; <span class="attr">text</span>: <span class="string">&quot;SDMA costs about 20-25% CPU&quot;</span>, <span class="attr">options</span>: &#123; <span class="attr">bold</span>: <span class="literal">true</span>, <span class="attr">color</span>: <span class="string">&quot;E2231A&quot;</span> &#125; &#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>对比表格</strong>：结论页使用 addTable 展示两种模式的性能对比：</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">const</span> tableRows = [</span><br><span class="line">  [&#123; <span class="attr">text</span>: <span class="string">&quot;Metric&quot;</span>, <span class="attr">options</span>: &#123; <span class="attr">bold</span>: <span class="literal">true</span>, <span class="attr">color</span>: <span class="string">&quot;FFFFFF&quot;</span>, <span class="attr">fill</span>: &#123; <span class="attr">color</span>: <span class="string">&quot;1A1A2E&quot;</span> &#125; &#125; &#125;,</span><br><span class="line">   &#123; <span class="attr">text</span>: <span class="string">&quot;DMAR + SDMA&quot;</span>, <span class="attr">options</span>: &#123; ... &#125; &#125;,</span><br><span class="line">   &#123; <span class="attr">text</span>: <span class="string">&quot;DMAR Off + ADMA&quot;</span>, <span class="attr">options</span>: &#123; ... &#125; &#125;],</span><br><span class="line">  [&#123; <span class="attr">text</span>: <span class="string">&quot;Sequential Read&quot;</span> &#125;, &#123; <span class="attr">text</span>: <span class="string">&quot;~90 MB/s&quot;</span> &#125;, &#123; <span class="attr">text</span>: <span class="string">&quot;~95 MB/s&quot;</span> &#125;],</span><br><span class="line">  [&#123; <span class="attr">text</span>: <span class="string">&quot;Sequential Write&quot;</span> &#125;, &#123; <span class="attr">text</span>: <span class="string">&quot;~70 MB/s&quot;</span> &#125;, &#123; <span class="attr">text</span>: <span class="string">&quot;~85+ MB/s&quot;</span> &#125;],</span><br><span class="line">];</span><br><span class="line">slide.<span class="title function_">addTable</span>(tableRows, &#123; <span class="attr">x</span>: <span class="number">0.5</span>, <span class="attr">y</span>: <span class="number">1.2</span>, <span class="attr">w</span>: <span class="number">9.0</span>, <span class="attr">colW</span>: [<span class="number">3.0</span>, <span class="number">3.0</span>, <span class="number">3.0</span>] &#125;);</span><br></pre></td></tr></table></figure>
+
+<h2 id="六、验证与输出"><a href="#六、验证与输出" class="headerlink" title="六、验证与输出"></a>六、验证与输出</h2><h3 id="6-1-内容验证"><a href="#6-1-内容验证" class="headerlink" title="6.1 内容验证"></a>6.1 内容验证</h3><p>生成后使用 markitdown 提取文本，确认所有内容完整：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">python -m markitdown output.pptx</span><br></pre></td></tr></table></figure>
+
+<p>检查项：</p>
+<ul>
+<li>每张幻灯片的标题是否正确</li>
+<li>数据是否与原文一致</li>
+<li>图片是否全部嵌入</li>
+<li>表格结构是否完整</li>
+</ul>
+<h3 id="6-2-清理临时文件"><a href="#6-2-清理临时文件" class="headerlink" title="6.2 清理临时文件"></a>6.2 清理临时文件</h3><p>生成完成后，输出目录只保留最终 .pptx：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">rm</span> -rf docx_unpacked template_unpacked node_modules</span><br><span class="line"><span class="built_in">rm</span> -f extracted.md package.json package-lock.json create_pptx.js</span><br></pre></td></tr></table></figure>
+
+<h2 id="七、规则沉淀：CLAUDE-md"><a href="#七、规则沉淀：CLAUDE-md" class="headerlink" title="七、规则沉淀：CLAUDE.md"></a>七、规则沉淀：CLAUDE.md</h2><p>整个工作流验证通过后，将经验固化为项目级规则文件 <code>CLAUDE.md</code>，确保后续转换任务可复现：</p>
+<figure class="highlight markdown"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="section"># DOCX to PPTX Conversion Rules</span></span><br><span class="line"></span><br><span class="line"><span class="section">## Skills Dependencies</span></span><br><span class="line"><span class="bullet">-</span> docx: 读取 Word 内容</span><br><span class="line"><span class="bullet">-</span> pptx: 生成演示文稿（pptxgenjs）</span><br><span class="line"></span><br><span class="line"><span class="section">## Workflow</span></span><br><span class="line"><span class="bullet">1.</span> pandoc 提取文本 → 2. unpack 提取图片 → 3. 分析模板样式</span><br><span class="line">→ 4. pptxgenjs 生成 → 5. markitdown 验证</span><br><span class="line"></span><br><span class="line"><span class="section">## Content Mapping Rules</span></span><br><span class="line">| Word 元素 | PPT 处理方式 |</span><br><span class="line">|-----------|-------------|</span><br><span class="line">| H1 标题   | 新幻灯片标题 |</span><br><span class="line">| 段落      | 文本框       |</span><br><span class="line">| 图片      | addImage     |</span><br><span class="line">| 数据对比  | addTable     |</span><br><span class="line"></span><br><span class="line"><span class="section">## Key Constraints</span></span><br><span class="line"><span class="bullet">-</span> 统一使用 pptxgenjs，不写 Python 脚本</span><br><span class="line"><span class="bullet">-</span> 颜色值不加 # 前缀</span><br><span class="line"><span class="bullet">-</span> 不使用 unicode bullet，使用 bullet: true</span><br><span class="line"><span class="bullet">-</span> 生成后清理临时文件</span><br></pre></td></tr></table></figure>
+
+<p>CLAUDE.md 的价值在于：<strong>将一次性的探索过程转化为可重复执行的规则</strong>。下次在同一目录下启动 Claude Code，它会自动加载这些规则，无需重新解释工作流。</p>
+<h2 id="八、总结"><a href="#八、总结" class="headerlink" title="八、总结"></a>八、总结</h2><h3 id="8-1-技术栈总结"><a href="#8-1-技术栈总结" class="headerlink" title="8.1 技术栈总结"></a>8.1 技术栈总结</h3><table>
+<thead>
+<tr>
+<th>层级</th>
+<th>技术</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>内容提取</td>
+<td>pandoc + unpack.py</td>
+<td>从 .docx 获取文本和图片</td>
+</tr>
+<tr>
+<td>样式分析</td>
+<td>unpack.py + XML 解析</td>
+<td>从模板 .pptx 提取颜色&#x2F;字体&#x2F;布局</td>
+</tr>
+<tr>
+<td>PPT 生成</td>
+<td>pptxgenjs (Node.js)</td>
+<td>程序化创建幻灯片</td>
+</tr>
+<tr>
+<td>内容验证</td>
+<td>markitdown</td>
+<td>验证输出完整性</td>
+</tr>
+<tr>
+<td>流程编排</td>
+<td>Claude Code Skills</td>
+<td>AI 驱动的自动化工作流</td>
+</tr>
+</tbody></table>
+<h3 id="8-2-适用场景"><a href="#8-2-适用场景" class="headerlink" title="8.2 适用场景"></a>8.2 适用场景</h3><ul>
+<li><strong>技术报告转汇报 PPT</strong>：工程师写 Word，自动生成演示文稿</li>
+<li><strong>批量文档转换</strong>：多份报告使用同一模板批量生成</li>
+<li><strong>模板标准化</strong>：确保所有输出 PPT 符合公司视觉规范</li>
+</ul>
+<h3 id="8-3-局限与改进方向"><a href="#8-3-局限与改进方向" class="headerlink" title="8.3 局限与改进方向"></a>8.3 局限与改进方向</h3><ol>
+<li><strong>复杂排版</strong>：Word 中的复杂表格、嵌套列表目前需要人工调整映射规则</li>
+<li><strong>图片尺寸</strong>：当前使用固定尺寸，未来可根据图片原始比例自动计算</li>
+<li><strong>模板背景图</strong>：pptxgenjs 无法直接复用模板的背景图片，需要手动提取后作为 base64 嵌入</li>
+<li><strong>动画效果</strong>：pptxgenjs 不支持 PPT 动画，如需动画需后期手动添加</li>
+</ol>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">首页</a></li>
+        
+          <li><a href="/about/">关于</a></li>
+        
+          <li><a href="/archives/">归档</a></li>
+        
+          <li><a href="/tags/">标签</a></li>
+        
+          <li><a href="/categories/">分类</a></li>
+        
+          <li><a href="/search/">搜索</a></li>
+        
+          <li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#AI-%E7%BC%96%E7%A8%8B%EF%BC%9A%E7%94%A8-Claude-Code-%E5%AE%9E%E7%8E%B0-Word-%E6%96%87%E6%A1%A3%E8%87%AA%E5%8A%A8%E8%BD%AC-PPT"><span class="toc-number">1.</span> <span class="toc-text">AI 编程：用 Claude Code 实现 Word 文档自动转 PPT</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E4%B8%BA%E4%BB%80%E4%B9%88%E8%A6%81%E5%81%9A-DOCX-%E8%BD%AC-PPTX%EF%BC%9F"><span class="toc-number">1.1.</span> <span class="toc-text">一、为什么要做 DOCX 转 PPTX？</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E6%8A%80%E6%9C%AF%E9%80%89%E5%9E%8B%E4%B8%8E%E5%B7%A5%E5%85%B7%E9%93%BE"><span class="toc-number">1.2.</span> <span class="toc-text">二、技术选型与工具链</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E4%B8%BA%E4%BB%80%E4%B9%88%E4%B8%8D%E7%94%A8-python-pptx%EF%BC%9F"><span class="toc-number">1.2.1.</span> <span class="toc-text">2.1 为什么不用 python-pptx？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-Skills-%E4%BE%9D%E8%B5%96"><span class="toc-number">1.2.2.</span> <span class="toc-text">2.2 Skills 依赖</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%B7%A5%E4%BD%9C%E6%B5%81%E5%85%A8%E6%99%AF"><span class="toc-number">1.3.</span> <span class="toc-text">三、工作流全景</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E6%95%B4%E4%BD%93%E6%9E%B6%E6%9E%84"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 整体架构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E4%BA%94%E6%AD%A5%E5%B7%A5%E4%BD%9C%E6%B5%81"><span class="toc-number">1.3.2.</span> <span class="toc-text">3.2 五步工作流</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E5%8E%9F%E7%90%86%E8%AF%A6%E8%A7%A3"><span class="toc-number">1.4.</span> <span class="toc-text">四、原理详解</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-Word-%E6%96%87%E6%A1%A3%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84"><span class="toc-number">1.4.1.</span> <span class="toc-text">4.1 Word 文档的内部结构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-PPT-%E6%A8%A1%E6%9D%BF%E7%9A%84%E6%A0%B7%E5%BC%8F%E6%8F%90%E5%8F%96"><span class="toc-number">1.4.2.</span> <span class="toc-text">4.2 PPT 模板的样式提取</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-pptxgenjs-%E7%94%9F%E6%88%90%E5%8E%9F%E7%90%86"><span class="toc-number">1.4.3.</span> <span class="toc-text">4.3 pptxgenjs 生成原理</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E5%AE%9E%E6%88%98%E6%A1%88%E4%BE%8B%EF%BC%9ABxxxxb-%E6%80%A7%E8%83%BD%E6%8A%A5%E5%91%8A"><span class="toc-number">1.5.</span> <span class="toc-text">五、实战案例：Bxxxxb 性能报告</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E8%BE%93%E5%85%A5%E5%88%86%E6%9E%90"><span class="toc-number">1.5.1.</span> <span class="toc-text">5.1 输入分析</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E5%86%85%E5%AE%B9%E5%88%B0%E5%B9%BB%E7%81%AF%E7%89%87%E7%9A%84%E6%98%A0%E5%B0%84"><span class="toc-number">1.5.2.</span> <span class="toc-text">5.2 内容到幻灯片的映射</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-Slide-Master-%E8%AE%BE%E8%AE%A1"><span class="toc-number">1.5.3.</span> <span class="toc-text">5.3 Slide Master 设计</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-4-%E5%85%B3%E9%94%AE%E6%8A%80%E5%B7%A7"><span class="toc-number">1.5.4.</span> <span class="toc-text">5.4 关键技巧</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%AA%8C%E8%AF%81%E4%B8%8E%E8%BE%93%E5%87%BA"><span class="toc-number">1.6.</span> <span class="toc-text">六、验证与输出</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E5%86%85%E5%AE%B9%E9%AA%8C%E8%AF%81"><span class="toc-number">1.6.1.</span> <span class="toc-text">6.1 内容验证</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E6%B8%85%E7%90%86%E4%B8%B4%E6%97%B6%E6%96%87%E4%BB%B6"><span class="toc-number">1.6.2.</span> <span class="toc-text">6.2 清理临时文件</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%83%E3%80%81%E8%A7%84%E5%88%99%E6%B2%89%E6%B7%80%EF%BC%9ACLAUDE-md"><span class="toc-number">1.7.</span> <span class="toc-text">七、规则沉淀：CLAUDE.md</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AB%E3%80%81%E6%80%BB%E7%BB%93"><span class="toc-number">1.8.</span> <span class="toc-text">八、总结</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#8-1-%E6%8A%80%E6%9C%AF%E6%A0%88%E6%80%BB%E7%BB%93"><span class="toc-number">1.8.1.</span> <span class="toc-text">8.1 技术栈总结</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8-2-%E9%80%82%E7%94%A8%E5%9C%BA%E6%99%AF"><span class="toc-number">1.8.2.</span> <span class="toc-text">8.2 适用场景</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8-3-%E5%B1%80%E9%99%90%E4%B8%8E%E6%94%B9%E8%BF%9B%E6%96%B9%E5%90%91"><span class="toc-number">1.8.3.</span> <span class="toc-text">8.3 局限与改进方向</span></a></li></ol></li></ol></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/05/29/AI%E7%BC%96%E7%A8%8B%EF%BC%9A%E7%94%A8%20Claude%20Code%20%E5%AE%9E%E7%8E%B0%20Word%20%E6%96%87%E6%A1%A3%E8%87%AA%E5%8A%A8%E8%BD%AC%20PPT/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/05/29/AI%E7%BC%96%E7%A8%8B%EF%BC%9A%E7%94%A8%20Claude%20Code%20%E5%AE%9E%E7%8E%B0%20Word%20%E6%96%87%E6%A1%A3%E8%87%AA%E5%8A%A8%E8%BD%AC%20PPT/&text=AI 编程：用 Claude Code 实现 Word 文档自动转 PPT"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/05/29/AI%E7%BC%96%E7%A8%8B%EF%BC%9A%E7%94%A8%20Claude%20Code%20%E5%AE%9E%E7%8E%B0%20Word%20%E6%96%87%E6%A1%A3%E8%87%AA%E5%8A%A8%E8%BD%AC%20PPT/&title=AI 编程：用 Claude Code 实现 Word 文档自动转 PPT"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/05/29/AI%E7%BC%96%E7%A8%8B%EF%BC%9A%E7%94%A8%20Claude%20Code%20%E5%AE%9E%E7%8E%B0%20Word%20%E6%96%87%E6%A1%A3%E8%87%AA%E5%8A%A8%E8%BD%AC%20PPT/&is_video=false&description=AI 编程：用 Claude Code 实现 Word 文档自动转 PPT"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=AI 编程：用 Claude Code 实现 Word 文档自动转 PPT&body=Check out this article: https://cursorhu.github.io/2026/05/29/AI%E7%BC%96%E7%A8%8B%EF%BC%9A%E7%94%A8%20Claude%20Code%20%E5%AE%9E%E7%8E%B0%20Word%20%E6%96%87%E6%A1%A3%E8%87%AA%E5%8A%A8%E8%BD%AC%20PPT/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/05/29/AI%E7%BC%96%E7%A8%8B%EF%BC%9A%E7%94%A8%20Claude%20Code%20%E5%AE%9E%E7%8E%B0%20Word%20%E6%96%87%E6%A1%A3%E8%87%AA%E5%8A%A8%E8%BD%AC%20PPT/&title=AI 编程：用 Claude Code 实现 Word 文档自动转 PPT"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/05/29/AI%E7%BC%96%E7%A8%8B%EF%BC%9A%E7%94%A8%20Claude%20Code%20%E5%AE%9E%E7%8E%B0%20Word%20%E6%96%87%E6%A1%A3%E8%87%AA%E5%8A%A8%E8%BD%AC%20PPT/&title=AI 编程：用 Claude Code 实现 Word 文档自动转 PPT"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/05/29/AI%E7%BC%96%E7%A8%8B%EF%BC%9A%E7%94%A8%20Claude%20Code%20%E5%AE%9E%E7%8E%B0%20Word%20%E6%96%87%E6%A1%A3%E8%87%AA%E5%8A%A8%E8%BD%AC%20PPT/&title=AI 编程：用 Claude Code 实现 Word 文档自动转 PPT"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/05/29/AI%E7%BC%96%E7%A8%8B%EF%BC%9A%E7%94%A8%20Claude%20Code%20%E5%AE%9E%E7%8E%B0%20Word%20%E6%96%87%E6%A1%A3%E8%87%AA%E5%8A%A8%E8%BD%AC%20PPT/&title=AI 编程：用 Claude Code 实现 Word 文档自动转 PPT"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/05/29/AI%E7%BC%96%E7%A8%8B%EF%BC%9A%E7%94%A8%20Claude%20Code%20%E5%AE%9E%E7%8E%B0%20Word%20%E6%96%87%E6%A1%A3%E8%87%AA%E5%8A%A8%E8%BD%AC%20PPT/&name=AI 编程：用 Claude Code 实现 Word 文档自动转 PPT&description=&lt;h1 id=&#34;AI-编程：用-Claude-Code-实现-Word-文档自动转-PPT&#34;&gt;&lt;a href=&#34;#AI-编程：用-Claude-Code-实现-Word-文档自动转-PPT&#34; class=&#34;headerlink&#34; title=&#34;AI 编程：用 Claude Code 实现 Word 文档自动转 PPT&#34;&gt;&lt;/a&gt;AI 编程：用 Claude Code 实现 Word 文档自动转 PPT&lt;/h1&gt;&lt;blockquote&gt;
+&lt;p&gt;本文记录了使用 Claude Code Skills 将 .docx 文档自动转化为 .pptx 演示文稿的完整过程，涵盖原理解析、工具链选型、工作流设计、样式提取与最终规则沉淀。&lt;/p&gt;
+&lt;/blockquote&gt;"><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/05/29/AI%E7%BC%96%E7%A8%8B%EF%BC%9A%E7%94%A8%20Claude%20Code%20%E5%AE%9E%E7%8E%B0%20Word%20%E6%96%87%E6%A1%A3%E8%87%AA%E5%8A%A8%E8%BD%AC%20PPT/&t=AI 编程：用 Claude Code 实现 Word 文档自动转 PPT"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> 菜单</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> 目录</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> 分享</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> 返回顶部</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2026
+    cursorhu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"复制到粘贴板！\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "复制成功！");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+</body>
+</html>
