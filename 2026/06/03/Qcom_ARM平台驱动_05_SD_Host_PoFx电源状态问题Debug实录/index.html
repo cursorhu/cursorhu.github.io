@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="日期: 2026-06-03系列: Qcom ARM平台Windows驱动开发适用: Windows StorPort miniport 驱动开发者、PoFx 电源管理调试 1. 问题概述BH202 SD Host Controller 在高通 ARM Windows 平台上出现一系列电源管理问题，涉及 StorPort PoFx 框架的 Activate&#x2F;Idle 引用计数机制。问题在">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Qcom ARM平台Windows驱动（五）：SD Host PoFx电源状态问题Debug实录">
+<meta property="og:url" content="https://cursorhu.github.io/2026/06/03/Qcom_ARM%E5%B9%B3%E5%8F%B0%E9%A9%B1%E5%8A%A8_05_SD_Host_PoFx%E7%94%B5%E6%BA%90%E7%8A%B6%E6%80%81%E9%97%AE%E9%A2%98Debug%E5%AE%9E%E5%BD%95/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="日期: 2026-06-03系列: Qcom ARM平台Windows驱动开发适用: Windows StorPort miniport 驱动开发者、PoFx 电源管理调试 1. 问题概述BH202 SD Host Controller 在高通 ARM Windows 平台上出现一系列电源管理问题，涉及 StorPort PoFx 框架的 Activate&#x2F;Idle 引用计数机制。问题在">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-06-03T10:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-03T08:30:37.874Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="Qualcomm">
+<meta property="article:tag" content="SD&#x2F;MMC">
+<meta name="twitter:card" content="summary">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>Qcom ARM平台Windows驱动（五）：SD Host PoFx电源状态问题Debug实录</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+		<script type="text/x-mathjax-config">
+		  MathJax.Hub.Config({
+			tex2jax: {
+			  skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+			  inlineMath: [['$','$']]
+			}
+		  });
+		</script>
+		<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-MML-AM_CHTML' async></script>
+	
+<meta name="generator" content="Hexo 8.0.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="顶部" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        
+        <li><a class="icon" aria-label="下一篇" href="/2026/06/02/AI%E7%BC%96%E7%A8%8B(%E4%B8%89)%20-%20%E7%94%A8arch-review-reporter%20Agent%E5%81%9A%E5%B5%8C%E5%85%A5%E5%BC%8F%E4%BB%A3%E7%A0%81%E6%9E%B6%E6%9E%84%E5%AE%A1%E6%9F%A5/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="返回顶部" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="分享文章" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">上一篇</span>
+      <span id="i-next" class="info" style="display:none;">下一篇</span>
+      <span id="i-top" class="info" style="display:none;">返回顶部</span>
+      <span id="i-share" class="info" style="display:none;">分享文章</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/06/03/Qcom_ARM%E5%B9%B3%E5%8F%B0%E9%A9%B1%E5%8A%A8_05_SD_Host_PoFx%E7%94%B5%E6%BA%90%E7%8A%B6%E6%80%81%E9%97%AE%E9%A2%98Debug%E5%AE%9E%E5%BD%95/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/06/03/Qcom_ARM%E5%B9%B3%E5%8F%B0%E9%A9%B1%E5%8A%A8_05_SD_Host_PoFx%E7%94%B5%E6%BA%90%E7%8A%B6%E6%80%81%E9%97%AE%E9%A2%98Debug%E5%AE%9E%E5%BD%95/&text=Qcom ARM平台Windows驱动（五）：SD Host PoFx电源状态问题Debug实录"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/06/03/Qcom_ARM%E5%B9%B3%E5%8F%B0%E9%A9%B1%E5%8A%A8_05_SD_Host_PoFx%E7%94%B5%E6%BA%90%E7%8A%B6%E6%80%81%E9%97%AE%E9%A2%98Debug%E5%AE%9E%E5%BD%95/&title=Qcom ARM平台Windows驱动（五）：SD Host PoFx电源状态问题Debug实录"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/06/03/Qcom_ARM%E5%B9%B3%E5%8F%B0%E9%A9%B1%E5%8A%A8_05_SD_Host_PoFx%E7%94%B5%E6%BA%90%E7%8A%B6%E6%80%81%E9%97%AE%E9%A2%98Debug%E5%AE%9E%E5%BD%95/&is_video=false&description=Qcom ARM平台Windows驱动（五）：SD Host PoFx电源状态问题Debug实录"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=Qcom ARM平台Windows驱动（五）：SD Host PoFx电源状态问题Debug实录&body=Check out this article: https://cursorhu.github.io/2026/06/03/Qcom_ARM%E5%B9%B3%E5%8F%B0%E9%A9%B1%E5%8A%A8_05_SD_Host_PoFx%E7%94%B5%E6%BA%90%E7%8A%B6%E6%80%81%E9%97%AE%E9%A2%98Debug%E5%AE%9E%E5%BD%95/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/06/03/Qcom_ARM%E5%B9%B3%E5%8F%B0%E9%A9%B1%E5%8A%A8_05_SD_Host_PoFx%E7%94%B5%E6%BA%90%E7%8A%B6%E6%80%81%E9%97%AE%E9%A2%98Debug%E5%AE%9E%E5%BD%95/&title=Qcom ARM平台Windows驱动（五）：SD Host PoFx电源状态问题Debug实录"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/06/03/Qcom_ARM%E5%B9%B3%E5%8F%B0%E9%A9%B1%E5%8A%A8_05_SD_Host_PoFx%E7%94%B5%E6%BA%90%E7%8A%B6%E6%80%81%E9%97%AE%E9%A2%98Debug%E5%AE%9E%E5%BD%95/&title=Qcom ARM平台Windows驱动（五）：SD Host PoFx电源状态问题Debug实录"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/06/03/Qcom_ARM%E5%B9%B3%E5%8F%B0%E9%A9%B1%E5%8A%A8_05_SD_Host_PoFx%E7%94%B5%E6%BA%90%E7%8A%B6%E6%80%81%E9%97%AE%E9%A2%98Debug%E5%AE%9E%E5%BD%95/&title=Qcom ARM平台Windows驱动（五）：SD Host PoFx电源状态问题Debug实录"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/06/03/Qcom_ARM%E5%B9%B3%E5%8F%B0%E9%A9%B1%E5%8A%A8_05_SD_Host_PoFx%E7%94%B5%E6%BA%90%E7%8A%B6%E6%80%81%E9%97%AE%E9%A2%98Debug%E5%AE%9E%E5%BD%95/&title=Qcom ARM平台Windows驱动（五）：SD Host PoFx电源状态问题Debug实录"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/06/03/Qcom_ARM%E5%B9%B3%E5%8F%B0%E9%A9%B1%E5%8A%A8_05_SD_Host_PoFx%E7%94%B5%E6%BA%90%E7%8A%B6%E6%80%81%E9%97%AE%E9%A2%98Debug%E5%AE%9E%E5%BD%95/&name=Qcom ARM平台Windows驱动（五）：SD Host PoFx电源状态问题Debug实录&description=&lt;p&gt;&lt;strong&gt;日期&lt;/strong&gt;: 2026-06-03&lt;br&gt;&lt;strong&gt;系列&lt;/strong&gt;: Qcom ARM平台Windows驱动开发&lt;br&gt;&lt;strong&gt;适用&lt;/strong&gt;: Windows StorPort miniport 驱动开发者、PoFx 电源管理调试&lt;/p&gt;
+&lt;h2 id=&#34;1-问题概述&#34;&gt;&lt;a href=&#34;#1-问题概述&#34; class=&#34;headerlink&#34; title=&#34;1. 问题概述&#34;&gt;&lt;/a&gt;1. 问题概述&lt;/h2&gt;&lt;p&gt;BH202 SD Host Controller 在高通 ARM Windows 平台上出现一系列电源管理问题，涉及 StorPort PoFx 框架的 Activate&amp;#x2F;Idle 引用计数机制。问题在 cold boot（含 Windows Fast Startup 的 Hybrid S4）、显式 S4 hibernate、带卡&amp;#x2F;不带卡等多种组合下表现不同。&lt;/p&gt;
+&lt;h3 id=&#34;1-1-问题矩阵&#34;&gt;&lt;a href=&#34;#1-1-问题矩阵&#34; class=&#34;headerlink&#34; title=&#34;1.1 问题矩阵&#34;&gt;&lt;/a&gt;1.1 问题矩阵&lt;/h3&gt;&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;场景&lt;/th&gt;
+&lt;th&gt;现象&lt;/th&gt;
+&lt;th&gt;根因关键词&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;&lt;tr&gt;
+&lt;td&gt;Cold boot 后 SD host 持续 D0&lt;/td&gt;
+&lt;td&gt;idle timeout 不触发 D3&lt;/td&gt;
+&lt;td&gt;PoFx 初始状态 mismatch&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;带卡 cold boot 拔卡 → BSOD 0xA0&lt;/td&gt;
+&lt;td&gt;INTERNAL_POWER_ERROR&lt;/td&gt;
+&lt;td&gt;双重 IdleComponent&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;S4 hibernate 期间拔卡 → resume 后 BSOD&lt;/td&gt;
+&lt;td&gt;10秒后系统重启&lt;/td&gt;
+&lt;td&gt;S4 恢复 per-caller 状态&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;带卡 cold boot 后插卡不识别&lt;/td&gt;
+&lt;td&gt;SD host 一直 D3&lt;/td&gt;
+&lt;td&gt;host_check_lost + StorPort 未 prime&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;&lt;/table&gt;
+&lt;h3 id=&#34;1-2-环境信息&#34;&gt;&lt;a href=&#34;#1-2-环境信息&#34; class=&#34;headerlink&#34; title=&#34;1.2 环境信息&#34;&gt;&lt;/a&gt;1.2 环境信息&lt;/h3&gt;&lt;ul&gt;
+&lt;li&gt;平台：Qualcomm Snapdragon 8380 (ARM64)&lt;/li&gt;
+&lt;li&gt;OS：Windows 10&amp;#x2F;11 ARM64&lt;/li&gt;
+&lt;li&gt;驱动模型：StorPort miniport + PoFx (Runtime D3)&lt;/li&gt;
+&lt;li&gt;关键配置：&lt;code&gt;STOR_POFX_DEVICE_FLAG_IDLE_TIMEOUT = 10ms&lt;/code&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;2-背景知识：StorPort-PoFx-模型&#34;&gt;&lt;a href=&#34;#2-背景知识：StorPort-PoFx-模型&#34; class=&#34;headerlink&#34; title=&#34;2. 背景知识：StorPort PoFx 模型&#34;&gt;&lt;/a&gt;2. 背景知识：StorPort PoFx 模型&lt;/h2&gt;&lt;p&gt;StorPort miniport 通过 &lt;code&gt;StorPortInitializePoFxPower&lt;/code&gt; 注册 PoFx，之后 StorPort 框架管理 adapter 的 Active&amp;#x2F;Idle 状态转换。&lt;/p&gt;
+&lt;figure class=&#34;highlight plaintext&#34;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&#34;gutter&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;3&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;4&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;5&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;6&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;7&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;8&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;9&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;10&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;11&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;12&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&#34;code&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;┌─────────────────────────────────────────────────────────┐&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                    StorPort Framework                     │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                                                         │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  PoFx Registration → Adapter Active (count=1)           │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                                                         │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  Miniport calls:                                        │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│    ActivateComponent → count++                          │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│    IdleComponent     → count--                          │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                                                         │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  count == 0 → idle timer (10ms) → ScsiAdapterPower(D3) │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  ActivateComponent   → ScsiRestartAdapter (D0)          │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;└─────────────────────────────────────────────────────────┘&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;"><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/06/03/Qcom_ARM%E5%B9%B3%E5%8F%B0%E9%A9%B1%E5%8A%A8_05_SD_Host_PoFx%E7%94%B5%E6%BA%90%E7%8A%B6%E6%80%81%E9%97%AE%E9%A2%98Debug%E5%AE%9E%E5%BD%95/&t=Qcom ARM平台Windows驱动（五）：SD Host PoFx电源状态问题Debug实录"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E9%97%AE%E9%A2%98%E6%A6%82%E8%BF%B0"><span class="toc-number">1.</span> <span class="toc-text">1. 问题概述</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-%E9%97%AE%E9%A2%98%E7%9F%A9%E9%98%B5"><span class="toc-number">1.1.</span> <span class="toc-text">1.1 问题矩阵</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-2-%E7%8E%AF%E5%A2%83%E4%BF%A1%E6%81%AF"><span class="toc-number">1.2.</span> <span class="toc-text">1.2 环境信息</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-%E8%83%8C%E6%99%AF%E7%9F%A5%E8%AF%86%EF%BC%9AStorPort-PoFx-%E6%A8%A1%E5%9E%8B"><span class="toc-number">2.</span> <span class="toc-text">2. 背景知识：StorPort PoFx 模型</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E9%A9%B1%E5%8A%A8%E6%9E%B6%E6%9E%84%E4%B8%AD%E7%9A%84-PoFx-%E8%B0%83%E7%94%A8%E7%82%B9"><span class="toc-number">2.1.</span> <span class="toc-text">2.1 驱动架构中的 PoFx 调用点</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-Debug-%E8%BF%87%E7%A8%8B"><span class="toc-number">3.</span> <span class="toc-text">3. Debug 过程</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-WinDbg-%E5%88%86%E6%9E%90-BSOD-Dump"><span class="toc-number">3.1.</span> <span class="toc-text">3.1 WinDbg 分析 BSOD Dump</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-DebugLogger-%E5%88%86%E6%9E%90-D0-%E9%97%AE%E9%A2%98"><span class="toc-number">3.2.</span> <span class="toc-text">3.2 DebugLogger 分析 D0 问题</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-Windows-Fast-Startup-%E7%9A%84%E5%BD%B1%E5%93%8D"><span class="toc-number">3.3.</span> <span class="toc-text">3.3 Windows Fast Startup 的影响</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-%E6%A0%B9%E5%9B%A0%E5%88%86%E6%9E%90"><span class="toc-number">4.</span> <span class="toc-text">4. 根因分析</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-%E9%97%AE%E9%A2%98%E4%B8%80%EF%BC%9ACold-Boot-D0"><span class="toc-number">4.1.</span> <span class="toc-text">4.1 问题一：Cold Boot D0</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-%E9%97%AE%E9%A2%98%E4%BA%8C%EF%BC%9A%E5%B8%A6%E5%8D%A1-Cold-Boot-%E6%8B%94%E5%8D%A1-BSOD"><span class="toc-number">4.2.</span> <span class="toc-text">4.2 问题二：带卡 Cold Boot 拔卡 BSOD</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-%E9%97%AE%E9%A2%98%E4%B8%89%EF%BC%9AS4-Hibernate-%E6%9C%9F%E9%97%B4%E6%8B%94%E5%8D%A1-BSOD"><span class="toc-number">4.3.</span> <span class="toc-text">4.3 问题三：S4 Hibernate 期间拔卡 BSOD</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-%E4%BF%AE%E5%A4%8D%E6%96%B9%E6%A1%88%E6%80%BB%E7%BB%93"><span class="toc-number">5.</span> <span class="toc-text">5. 修复方案总结</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-force-idle-%E6%9D%A1%E4%BB%B6%EF%BC%88cardinterface-c-pofx-request-d3-%E5%86%85%EF%BC%89"><span class="toc-number">5.1.</span> <span class="toc-text">5.1 force-idle 条件（cardinterface.c pofx_request_d3 内）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-card-power-off-guard%EF%BC%88cardinterface-c%EF%BC%89"><span class="toc-number">5.2.</span> <span class="toc-text">5.2 card_power_off guard（cardinterface.c）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-arm-vdd1-power-cycle%EF%BC%88cardinterface-c%EF%BC%89"><span class="toc-number">5.3.</span> <span class="toc-text">5.3 arm_vdd1_power_cycle（cardinterface.c）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-4-thread-remove-card-%E7%9A%84-pofx-request-d3"><span class="toc-number">5.4.</span> <span class="toc-text">5.4 thread_remove_card 的 pofx_request_d3</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6-%E5%85%B3%E9%94%AE%E8%AE%BE%E8%AE%A1%E7%BA%A6%E6%9D%9F"><span class="toc-number">6.</span> <span class="toc-text">6. 关键设计约束</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#7-%E9%AA%8C%E8%AF%81%E7%9F%A9%E9%98%B5"><span class="toc-number">7.</span> <span class="toc-text">7. 验证矩阵</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#8-%E6%95%99%E8%AE%AD%E4%B8%8E%E6%80%BB%E7%BB%93"><span class="toc-number">8.</span> <span class="toc-text">8. 教训与总结</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#8-1-StorPort-PoFx-%E7%9A%84%E9%9A%90%E5%90%AB%E8%A1%8C%E4%B8%BA"><span class="toc-number">8.1.</span> <span class="toc-text">8.1 StorPort PoFx 的隐含行为</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8-2-Hybrid-S4-%E7%9A%84%E9%99%B7%E9%98%B1"><span class="toc-number">8.2.</span> <span class="toc-text">8.2 Hybrid S4 的陷阱</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8-3-Debug-%E6%96%B9%E6%B3%95%E8%AE%BA"><span class="toc-number">8.3.</span> <span class="toc-text">8.3 Debug 方法论</span></a></li></ol></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        Qcom ARM平台Windows驱动（五）：SD Host PoFx电源状态问题Debug实录
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">cursorhu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2026-06-03T10:00:00.000Z" class="dt-published" itemprop="datePublished">2026-06-03</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fa-solid fa-archive"></i>
+        <a class="category-link" href="/categories/%E9%AB%98%E9%80%9A%E5%B9%B3%E5%8F%B0/">高通平台</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/Qualcomm/" rel="tag">Qualcomm</a>, <a class="p-category" href="/tags/SD-MMC/" rel="tag">SD/MMC</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <p><strong>日期</strong>: 2026-06-03<br><strong>系列</strong>: Qcom ARM平台Windows驱动开发<br><strong>适用</strong>: Windows StorPort miniport 驱动开发者、PoFx 电源管理调试</p>
+<h2 id="1-问题概述"><a href="#1-问题概述" class="headerlink" title="1. 问题概述"></a>1. 问题概述</h2><p>BH202 SD Host Controller 在高通 ARM Windows 平台上出现一系列电源管理问题，涉及 StorPort PoFx 框架的 Activate&#x2F;Idle 引用计数机制。问题在 cold boot（含 Windows Fast Startup 的 Hybrid S4）、显式 S4 hibernate、带卡&#x2F;不带卡等多种组合下表现不同。</p>
+<h3 id="1-1-问题矩阵"><a href="#1-1-问题矩阵" class="headerlink" title="1.1 问题矩阵"></a>1.1 问题矩阵</h3><table>
+<thead>
+<tr>
+<th>场景</th>
+<th>现象</th>
+<th>根因关键词</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Cold boot 后 SD host 持续 D0</td>
+<td>idle timeout 不触发 D3</td>
+<td>PoFx 初始状态 mismatch</td>
+</tr>
+<tr>
+<td>带卡 cold boot 拔卡 → BSOD 0xA0</td>
+<td>INTERNAL_POWER_ERROR</td>
+<td>双重 IdleComponent</td>
+</tr>
+<tr>
+<td>S4 hibernate 期间拔卡 → resume 后 BSOD</td>
+<td>10秒后系统重启</td>
+<td>S4 恢复 per-caller 状态</td>
+</tr>
+<tr>
+<td>带卡 cold boot 后插卡不识别</td>
+<td>SD host 一直 D3</td>
+<td>host_check_lost + StorPort 未 prime</td>
+</tr>
+</tbody></table>
+<h3 id="1-2-环境信息"><a href="#1-2-环境信息" class="headerlink" title="1.2 环境信息"></a>1.2 环境信息</h3><ul>
+<li>平台：Qualcomm Snapdragon 8380 (ARM64)</li>
+<li>OS：Windows 10&#x2F;11 ARM64</li>
+<li>驱动模型：StorPort miniport + PoFx (Runtime D3)</li>
+<li>关键配置：<code>STOR_POFX_DEVICE_FLAG_IDLE_TIMEOUT = 10ms</code></li>
+</ul>
+<h2 id="2-背景知识：StorPort-PoFx-模型"><a href="#2-背景知识：StorPort-PoFx-模型" class="headerlink" title="2. 背景知识：StorPort PoFx 模型"></a>2. 背景知识：StorPort PoFx 模型</h2><p>StorPort miniport 通过 <code>StorPortInitializePoFxPower</code> 注册 PoFx，之后 StorPort 框架管理 adapter 的 Active&#x2F;Idle 状态转换。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────┐</span><br><span class="line">│                    StorPort Framework                     │</span><br><span class="line">│                                                         │</span><br><span class="line">│  PoFx Registration → Adapter Active (count=1)           │</span><br><span class="line">│                                                         │</span><br><span class="line">│  Miniport calls:                                        │</span><br><span class="line">│    ActivateComponent → count++                          │</span><br><span class="line">│    IdleComponent     → count--                          │</span><br><span class="line">│                                                         │</span><br><span class="line">│  count == 0 → idle timer (10ms) → ScsiAdapterPower(D3) │</span><br><span class="line">│  ActivateComponent   → ScsiRestartAdapter (D0)          │</span><br><span class="line">└─────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<p>关键约束：</p>
+<ul>
+<li><code>IdleComponent</code> 必须有前置的 <code>ActivateComponent</code>（否则 BSOD 0xA0 arg1&#x3D;0x608）</li>
+<li>PoFx 注册后初始状态为 Active（count&#x3D;1），但 miniport 的 <code>pofx_active</code> 计数器为 0</li>
+<li>D3 callback（<code>ScsiAdapterPower</code>）运行在 DISPATCH_LEVEL，不能 busy-wait</li>
+</ul>
+<h3 id="2-1-驱动架构中的-PoFx-调用点"><a href="#2-1-驱动架构中的-PoFx-调用点" class="headerlink" title="2.1 驱动架构中的 PoFx 调用点"></a>2.1 驱动架构中的 PoFx 调用点</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 插卡：arm_vdd1_power_cycle → pofx_request_d0 → ActivateComponent</span></span><br><span class="line"><span class="comment">// 拔卡：thread_remove_card → pofx_request_d3 → IdleComponent</span></span><br><span class="line"><span class="comment">// D3 callback：card_power_off → pofx_request_d3（需要 guard 保护）</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="3-Debug-过程"><a href="#3-Debug-过程" class="headerlink" title="3. Debug 过程"></a>3. Debug 过程</h2><h3 id="3-1-WinDbg-分析-BSOD-Dump"><a href="#3-1-WinDbg-分析-BSOD-Dump" class="headerlink" title="3.1 WinDbg 分析 BSOD Dump"></a>3.1 WinDbg 分析 BSOD Dump</h3><p>第一个 dump 揭示了 StorPort unit removal 路径的 BSOD：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">INTERNAL_POWER_ERROR (a0)</span><br><span class="line">Arg1: 0x608 — &quot;A driver has attempted to transition a component to idle</span><br><span class="line">               without a preceding active request&quot;</span><br><span class="line"></span><br><span class="line">STACK_TEXT:</span><br><span class="line">  nt!KeBugCheckEx</span><br><span class="line">  qcpep8380+0x21721c          ← Qualcomm PEP 检测到违规</span><br><span class="line">  storport!RaidAdapterPoFxIdleComponent</span><br><span class="line">  storport!RaidUnitFreeResources</span><br><span class="line">  storport!RaidDeleteUnit      ← unit removal 触发 IdleComponent</span><br><span class="line">  bhtsdhubdr!BHTDispatchPnp</span><br></pre></td></tr></table></figure>
+
+<p>关键信息：StorPort 在 unit removal 时<strong>自行调用</strong> <code>IdleComponent</code>。如果 miniport 在 <code>thread_remove_card</code> 中也调用了 <code>IdleComponent</code>，就形成双重 Idle → count 下溢 → BSOD。</p>
+<h3 id="3-2-DebugLogger-分析-D0-问题"><a href="#3-2-DebugLogger-分析-D0-问题" class="headerlink" title="3.2 DebugLogger 分析 D0 问题"></a>3.2 DebugLogger 分析 D0 问题</h3><p>带卡 cold boot 后 SD host 持续 D0 的 log：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">06-01 04:45:21.408 --&gt; arm_vdd1_power_cycle:</span><br><span class="line">06-01 04:45:21.408 --&gt; pofx_request_d3:</span><br><span class="line">06-01 04:45:21.408 pofx_request_d3: pofx already idle, exit   ← pofx_active=0</span><br><span class="line">06-01 04:45:21.408 --&gt; pofx_request_d0:                        ← ActivateComponent</span><br><span class="line">06-01 04:45:21.456 &lt;-- pofx_request_d0:</span><br><span class="line">06-01 04:45:21.456 &lt;-- arm_vdd1_power_cycle:</span><br><span class="line">...</span><br><span class="line">06-01 04:45:25.406 thread_remove_card: pofx_request_d3</span><br><span class="line">06-01 04:45:26.406 pofx_request_d3: timeout! card_request_d3 not response</span><br></pre></td></tr></table></figure>
+
+<p>关键发现：</p>
+<ol>
+<li><code>arm_vdd1_power_cycle</code> 的 <code>pofx_request_d3</code> 因 <code>pofx_active=0</code> 直接返回（不调 IdleComponent）</li>
+<li><code>pofx_request_d0</code> 成功调用 <code>ActivateComponent</code>（pofx_active → 1）</li>
+<li>拔卡时 <code>pofx_request_d3</code> 调了 <code>IdleComponent</code> 但 StorPort <strong>不响应 D3 callback</strong>（1秒 timeout）</li>
+</ol>
+<p>这说明 S4 resume 后 StorPort 的 PoFx 状态机与 miniport 不同步。</p>
+<h3 id="3-3-Windows-Fast-Startup-的影响"><a href="#3-3-Windows-Fast-Startup-的影响" class="headerlink" title="3.3 Windows Fast Startup 的影响"></a>3.3 Windows Fast Startup 的影响</h3><p>Windows 10&#x2F;11 默认”关机”实际是 <strong>Hybrid S4</strong>（内核会话 hibernate，用户会话关闭）。这意味着：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">用户操作 &quot;Shutdown&quot;  →  驱动收到 StorPowerActionHibernate (S4)</span><br><span class="line">用户操作 &quot;Boot&quot;      →  实际是 S4 resume（内核恢复）</span><br></pre></td></tr></table></figure>
+
+<p>驱动中的 <code>s4_happened_flag</code> 在 S4 D3 callback 中设为 TRUE，永不清除。因此”cold boot”后 <code>s4_happened_flag=TRUE</code>。</p>
+<h2 id="4-根因分析"><a href="#4-根因分析" class="headerlink" title="4. 根因分析"></a>4. 根因分析</h2><h3 id="4-1-问题一：Cold-Boot-D0"><a href="#4-1-问题一：Cold-Boot-D0" class="headerlink" title="4.1 问题一：Cold Boot D0"></a>4.1 问题一：Cold Boot D0</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">PoFx 注册后：StorPort 认为 adapter active (count=1)</span><br><span class="line">            miniport 的 pofx_active = 0</span><br><span class="line"></span><br><span class="line">→ 所有 IdleComponent 路径检查 pofx_active==0 → 跳过</span><br><span class="line">→ StorPort 永远不收到 IdleComponent → idle timer 不启动 → 永远 D0</span><br></pre></td></tr></table></figure>
+
+<p>修复：在 <code>pofx_request_d3</code> 中实现 force-idle（检测 mismatch 并强制设 <code>pofx_active=1</code> 后调 IdleComponent）。</p>
+<h3 id="4-2-问题二：带卡-Cold-Boot-拔卡-BSOD"><a href="#4-2-问题二：带卡-Cold-Boot-拔卡-BSOD" class="headerlink" title="4.2 问题二：带卡 Cold Boot 拔卡 BSOD"></a>4.2 问题二：带卡 Cold Boot 拔卡 BSOD</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">带卡启动 → card_init → pofx_request_d0 → pofx_active=1</span><br><span class="line">拔卡 → thread_remove_card:</span><br><span class="line">  1. os_bus_change → StorPort 开始 unit removal</span><br><span class="line">  2. pofx_request_d3 → 我们的 IdleComponent (count -1)</span><br><span class="line">  3. StorPort unit removal → StorPort 的 IdleComponent (count -1)</span><br><span class="line">  → 双重 Idle → count 下溢 → BSOD 0xA0 (0x608)</span><br></pre></td></tr></table></figure>
+
+<p>修复：S4 resume 后（<code>s4_happened_flag=TRUE</code>）跳过 <code>pofx_request_d3</code>，让 StorPort unit removal 独占 IdleComponent。</p>
+<h3 id="4-3-问题三：S4-Hibernate-期间拔卡-BSOD"><a href="#4-3-问题三：S4-Hibernate-期间拔卡-BSOD" class="headerlink" title="4.3 问题三：S4 Hibernate 期间拔卡 BSOD"></a>4.3 问题三：S4 Hibernate 期间拔卡 BSOD</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">S4 前：卡工作中，曾调过 IdleComponent（进入 D3 前）</span><br><span class="line">S4 hibernate → 状态保存</span><br><span class="line">休眠期间拔卡</span><br><span class="line">S4 resume → PoFx 恢复 per-caller 状态（已 idle）</span><br><span class="line">→ TASK_CARD_CHG 检测无卡 → force-idle 触发 → 再次调 IdleComponent</span><br><span class="line">→ &quot;idle without preceding active&quot; → BSOD 0xA0 (0x608)</span><br></pre></td></tr></table></figure>
+
+<p>修复：force-idle 增加 <code>!s4_happened_flag</code> 条件。S4 resume 后不触发 force-idle（PoFx 恢复状态可能已 idle）。</p>
+<h2 id="5-修复方案总结"><a href="#5-修复方案总结" class="headerlink" title="5. 修复方案总结"></a>5. 修复方案总结</h2><h3 id="5-1-force-idle-条件（cardinterface-c-pofx-request-d3-内）"><a href="#5-1-force-idle-条件（cardinterface-c-pofx-request-d3-内）" class="headerlink" title="5.1 force-idle 条件（cardinterface.c pofx_request_d3 内）"></a>5.1 force-idle 条件（cardinterface.c pofx_request_d3 内）</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (pdx-&gt;pm_state.rtd3_en &amp;&amp;</span><br><span class="line">    !pdx-&gt;card.card_present &amp;&amp;</span><br><span class="line">    !pdx-&gt;inited_card.card_present &amp;&amp;</span><br><span class="line">    (pdx-&gt;scsi.last_present == <span class="number">0</span>) &amp;&amp;</span><br><span class="line">    !pdx-&gt;pm_state.rtd3_entered &amp;&amp;</span><br><span class="line">    !pdx-&gt;pm_state.s3s4_entered &amp;&amp;</span><br><span class="line">    !pdx-&gt;pm_state.warm_boot_entered &amp;&amp;</span><br><span class="line">    !pdx-&gt;pm_state.s5_entered &amp;&amp;</span><br><span class="line">    (gHwResTbl.adapter_powerstate == StorPowerDeviceD0) &amp;&amp;</span><br><span class="line">    pdx-&gt;inited_card.s3s4_resume_for_card_init &amp;&amp;</span><br><span class="line">    !pdx-&gt;pm_state.s4_happened_flag) &#123;</span><br><span class="line">    <span class="comment">// Force idle: set pofx_active=1 then IdleComponent</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>每个条件的作用：</p>
+<table>
+<thead>
+<tr>
+<th>条件</th>
+<th>防止的问题</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>!card_present</code></td>
+<td>卡在位时不 idle</td>
+</tr>
+<tr>
+<td><code>!inited_card.card_present</code></td>
+<td>unit 存在时不 idle（避免双重 Idle）</td>
+</tr>
+<tr>
+<td><code>last_present == 0</code></td>
+<td>bus change 已完成</td>
+</tr>
+<tr>
+<td><code>!rtd3_entered</code></td>
+<td>不在 RTD3 D3 callback 内</td>
+</tr>
+<tr>
+<td><code>!s3s4_entered</code></td>
+<td>不在 S3&#x2F;S4 D3 callback 内</td>
+</tr>
+<tr>
+<td><code>adapter_powerstate == D0</code></td>
+<td>设备确实在 D0</td>
+</tr>
+<tr>
+<td><code>s3s4_resume_for_card_init</code></td>
+<td>只在 init&#x2F;resume 路径触发（非正常拔卡）</td>
+</tr>
+<tr>
+<td><code>!s4_happened_flag</code></td>
+<td>S4 resume 后不触发（PoFx 状态已恢复）</td>
+</tr>
+</tbody></table>
+<h3 id="5-2-card-power-off-guard（cardinterface-c）"><a href="#5-2-card-power-off-guard（cardinterface-c）" class="headerlink" title="5.2 card_power_off guard（cardinterface.c）"></a>5.2 card_power_off guard（cardinterface.c）</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (!pdx-&gt;pm_state.s3s4_entered</span><br><span class="line">    &amp;&amp; !pdx-&gt;pm_state.s5_entered</span><br><span class="line">    &amp;&amp; !pdx-&gt;pm_state.warm_boot_entered</span><br><span class="line">    &amp;&amp; !pdx-&gt;pm_state.rtd3_entered) &#123;</span><br><span class="line">    pofx_request_d3(pdx, timeout_ms);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>所有 D3 callback 内都不调用 <code>pofx_request_d3</code>，防止 busy-wait at DISPATCH_LEVEL。</p>
+<h3 id="5-3-arm-vdd1-power-cycle（cardinterface-c）"><a href="#5-3-arm-vdd1-power-cycle（cardinterface-c）" class="headerlink" title="5.3 arm_vdd1_power_cycle（cardinterface.c）"></a>5.3 arm_vdd1_power_cycle（cardinterface.c）</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> <span class="title function_">arm_vdd1_power_cycle</span><span class="params">(<span class="type">bht_dev_ext_t</span> *pdx)</span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (os_atomic_read(&amp;pdx-&gt;pofx_active)) &#123;</span><br><span class="line">        <span class="keyword">return</span>;  <span class="comment">// 已 active，跳过</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> (!pdx-&gt;pm_state.s4_happened_flag) &#123;</span><br><span class="line">        pofx_request_d3(pdx, <span class="number">1000</span>);  <span class="comment">// 非S4：先关电</span></span><br><span class="line">    &#125;</span><br><span class="line">    pofx_request_d0(pdx, <span class="number">1000</span>);      <span class="comment">// 始终上电 + pofx_active=1</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>S4 resume 后跳过 D3（设备已在 D0），但保留 D0（PMIC 上电 + 确保 pofx_active&#x3D;1）。</p>
+<h3 id="5-4-thread-remove-card-的-pofx-request-d3"><a href="#5-4-thread-remove-card-的-pofx-request-d3" class="headerlink" title="5.4 thread_remove_card 的 pofx_request_d3"></a>5.4 thread_remove_card 的 pofx_request_d3</h3><p>S4 resume 后由 StorPort unit removal 独占 IdleComponent，miniport 不调用。</p>
+<h2 id="6-关键设计约束"><a href="#6-关键设计约束" class="headerlink" title="6. 关键设计约束"></a>6. 关键设计约束</h2><ol>
+<li><strong>PoFx Activate&#x2F;Idle 必须配对</strong>：每次 <code>ActivateComponent</code> 必须有对应的 <code>IdleComponent</code>，反之亦然</li>
+<li><strong>D3 callback 不能 busy-wait</strong>：运行在 DISPATCH_LEVEL，busy-wait 超过几秒触发 DPC_WATCHDOG</li>
+<li><strong>StorPort unit removal 会调 IdleComponent</strong>：miniport 不能再调，否则双重 Idle</li>
+<li><strong>S4 resume 恢复 PoFx per-caller 状态</strong>：不能假设 S4 resume 后状态是 fresh</li>
+<li><strong>Windows Fast Startup &#x3D; Hybrid S4</strong>：<code>s4_happened_flag</code> 在”关机”后为 TRUE</li>
+<li><strong><code>s4_happened_flag</code> 永不清除</strong>：S4 后 GPIO 中断失效，依赖 BusRelations 作为卡检测替代</li>
+</ol>
+<h2 id="7-验证矩阵"><a href="#7-验证矩阵" class="headerlink" title="7. 验证矩阵"></a>7. 验证矩阵</h2><table>
+<thead>
+<tr>
+<th>测试场景</th>
+<th>预期结果</th>
+<th>验证点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>不带卡 cold boot</td>
+<td>D3</td>
+<td>force-idle 触发</td>
+</tr>
+<tr>
+<td>带卡 cold boot → 拔卡</td>
+<td>无 BSOD</td>
+<td>StorPort unit removal 独占 Idle</td>
+</tr>
+<tr>
+<td>S4 hibernate → 休眠拔卡 → resume</td>
+<td>无 BSOD</td>
+<td>force-idle 不触发</td>
+</tr>
+<tr>
+<td>不带卡 S4 resume</td>
+<td>D3</td>
+<td>StorPort idle timer</td>
+</tr>
+<tr>
+<td>Warm boot → 插卡拔卡</td>
+<td>D3</td>
+<td>正常 Activate&#x2F;Idle 流程</td>
+</tr>
+<tr>
+<td>带卡 cold boot → 拔卡 → 再插卡</td>
+<td>识别</td>
+<td>host_check_lost goto retry</td>
+</tr>
+</tbody></table>
+<h2 id="8-教训与总结"><a href="#8-教训与总结" class="headerlink" title="8. 教训与总结"></a>8. 教训与总结</h2><h3 id="8-1-StorPort-PoFx-的隐含行为"><a href="#8-1-StorPort-PoFx-的隐含行为" class="headerlink" title="8.1 StorPort PoFx 的隐含行为"></a>8.1 StorPort PoFx 的隐含行为</h3><p>StorPort 文档未明确说明 unit removal 时会调用 <code>IdleComponent</code>。这个行为通过 WinDbg dump 的 call stack 才发现。StorPort miniport 开发时需要假设：<strong>StorPort 会在 unit 生命周期管理中自行管理 PoFx 引用</strong>。</p>
+<h3 id="8-2-Hybrid-S4-的陷阱"><a href="#8-2-Hybrid-S4-的陷阱" class="headerlink" title="8.2 Hybrid S4 的陷阱"></a>8.2 Hybrid S4 的陷阱</h3><p>Windows Fast Startup 使得”关机→开机”在驱动层面等价于 S4 hibernate→resume。驱动开发时不能假设 cold boot 是 fresh start——必须处理 S4 恢复的 stale 状态。</p>
+<h3 id="8-3-Debug-方法论"><a href="#8-3-Debug-方法论" class="headerlink" title="8.3 Debug 方法论"></a>8.3 Debug 方法论</h3><ol>
+<li><strong>WinDbg dump 分析</strong>：确定 BSOD 的 call stack 和触发条件</li>
+<li><strong>DebugLogger 实时日志</strong>：追踪 PoFx 状态转换时序</li>
+<li><strong>对比分析</strong>：Good case（不带卡&#x2F;warm boot）vs Bad case（带卡&#x2F;S4），定位差异点</li>
+<li><strong>Git bisect</strong>：缩小引入问题的 commit 范围</li>
+<li><strong>逐条件分析</strong>：列出 force-idle 的每个条件，分析每个场景下哪个条件阻止&#x2F;允许触发</li>
+</ol>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">首页</a></li>
+        
+          <li><a href="/about/">关于</a></li>
+        
+          <li><a href="/archives/">归档</a></li>
+        
+          <li><a href="/tags/">标签</a></li>
+        
+          <li><a href="/categories/">分类</a></li>
+        
+          <li><a href="/search/">搜索</a></li>
+        
+          <li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E9%97%AE%E9%A2%98%E6%A6%82%E8%BF%B0"><span class="toc-number">1.</span> <span class="toc-text">1. 问题概述</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-%E9%97%AE%E9%A2%98%E7%9F%A9%E9%98%B5"><span class="toc-number">1.1.</span> <span class="toc-text">1.1 问题矩阵</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-2-%E7%8E%AF%E5%A2%83%E4%BF%A1%E6%81%AF"><span class="toc-number">1.2.</span> <span class="toc-text">1.2 环境信息</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-%E8%83%8C%E6%99%AF%E7%9F%A5%E8%AF%86%EF%BC%9AStorPort-PoFx-%E6%A8%A1%E5%9E%8B"><span class="toc-number">2.</span> <span class="toc-text">2. 背景知识：StorPort PoFx 模型</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E9%A9%B1%E5%8A%A8%E6%9E%B6%E6%9E%84%E4%B8%AD%E7%9A%84-PoFx-%E8%B0%83%E7%94%A8%E7%82%B9"><span class="toc-number">2.1.</span> <span class="toc-text">2.1 驱动架构中的 PoFx 调用点</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-Debug-%E8%BF%87%E7%A8%8B"><span class="toc-number">3.</span> <span class="toc-text">3. Debug 过程</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-WinDbg-%E5%88%86%E6%9E%90-BSOD-Dump"><span class="toc-number">3.1.</span> <span class="toc-text">3.1 WinDbg 分析 BSOD Dump</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-DebugLogger-%E5%88%86%E6%9E%90-D0-%E9%97%AE%E9%A2%98"><span class="toc-number">3.2.</span> <span class="toc-text">3.2 DebugLogger 分析 D0 问题</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-Windows-Fast-Startup-%E7%9A%84%E5%BD%B1%E5%93%8D"><span class="toc-number">3.3.</span> <span class="toc-text">3.3 Windows Fast Startup 的影响</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-%E6%A0%B9%E5%9B%A0%E5%88%86%E6%9E%90"><span class="toc-number">4.</span> <span class="toc-text">4. 根因分析</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-%E9%97%AE%E9%A2%98%E4%B8%80%EF%BC%9ACold-Boot-D0"><span class="toc-number">4.1.</span> <span class="toc-text">4.1 问题一：Cold Boot D0</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-%E9%97%AE%E9%A2%98%E4%BA%8C%EF%BC%9A%E5%B8%A6%E5%8D%A1-Cold-Boot-%E6%8B%94%E5%8D%A1-BSOD"><span class="toc-number">4.2.</span> <span class="toc-text">4.2 问题二：带卡 Cold Boot 拔卡 BSOD</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-%E9%97%AE%E9%A2%98%E4%B8%89%EF%BC%9AS4-Hibernate-%E6%9C%9F%E9%97%B4%E6%8B%94%E5%8D%A1-BSOD"><span class="toc-number">4.3.</span> <span class="toc-text">4.3 问题三：S4 Hibernate 期间拔卡 BSOD</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-%E4%BF%AE%E5%A4%8D%E6%96%B9%E6%A1%88%E6%80%BB%E7%BB%93"><span class="toc-number">5.</span> <span class="toc-text">5. 修复方案总结</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-force-idle-%E6%9D%A1%E4%BB%B6%EF%BC%88cardinterface-c-pofx-request-d3-%E5%86%85%EF%BC%89"><span class="toc-number">5.1.</span> <span class="toc-text">5.1 force-idle 条件（cardinterface.c pofx_request_d3 内）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-card-power-off-guard%EF%BC%88cardinterface-c%EF%BC%89"><span class="toc-number">5.2.</span> <span class="toc-text">5.2 card_power_off guard（cardinterface.c）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-arm-vdd1-power-cycle%EF%BC%88cardinterface-c%EF%BC%89"><span class="toc-number">5.3.</span> <span class="toc-text">5.3 arm_vdd1_power_cycle（cardinterface.c）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-4-thread-remove-card-%E7%9A%84-pofx-request-d3"><span class="toc-number">5.4.</span> <span class="toc-text">5.4 thread_remove_card 的 pofx_request_d3</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6-%E5%85%B3%E9%94%AE%E8%AE%BE%E8%AE%A1%E7%BA%A6%E6%9D%9F"><span class="toc-number">6.</span> <span class="toc-text">6. 关键设计约束</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#7-%E9%AA%8C%E8%AF%81%E7%9F%A9%E9%98%B5"><span class="toc-number">7.</span> <span class="toc-text">7. 验证矩阵</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#8-%E6%95%99%E8%AE%AD%E4%B8%8E%E6%80%BB%E7%BB%93"><span class="toc-number">8.</span> <span class="toc-text">8. 教训与总结</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#8-1-StorPort-PoFx-%E7%9A%84%E9%9A%90%E5%90%AB%E8%A1%8C%E4%B8%BA"><span class="toc-number">8.1.</span> <span class="toc-text">8.1 StorPort PoFx 的隐含行为</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8-2-Hybrid-S4-%E7%9A%84%E9%99%B7%E9%98%B1"><span class="toc-number">8.2.</span> <span class="toc-text">8.2 Hybrid S4 的陷阱</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8-3-Debug-%E6%96%B9%E6%B3%95%E8%AE%BA"><span class="toc-number">8.3.</span> <span class="toc-text">8.3 Debug 方法论</span></a></li></ol></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/06/03/Qcom_ARM%E5%B9%B3%E5%8F%B0%E9%A9%B1%E5%8A%A8_05_SD_Host_PoFx%E7%94%B5%E6%BA%90%E7%8A%B6%E6%80%81%E9%97%AE%E9%A2%98Debug%E5%AE%9E%E5%BD%95/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/06/03/Qcom_ARM%E5%B9%B3%E5%8F%B0%E9%A9%B1%E5%8A%A8_05_SD_Host_PoFx%E7%94%B5%E6%BA%90%E7%8A%B6%E6%80%81%E9%97%AE%E9%A2%98Debug%E5%AE%9E%E5%BD%95/&text=Qcom ARM平台Windows驱动（五）：SD Host PoFx电源状态问题Debug实录"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/06/03/Qcom_ARM%E5%B9%B3%E5%8F%B0%E9%A9%B1%E5%8A%A8_05_SD_Host_PoFx%E7%94%B5%E6%BA%90%E7%8A%B6%E6%80%81%E9%97%AE%E9%A2%98Debug%E5%AE%9E%E5%BD%95/&title=Qcom ARM平台Windows驱动（五）：SD Host PoFx电源状态问题Debug实录"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/06/03/Qcom_ARM%E5%B9%B3%E5%8F%B0%E9%A9%B1%E5%8A%A8_05_SD_Host_PoFx%E7%94%B5%E6%BA%90%E7%8A%B6%E6%80%81%E9%97%AE%E9%A2%98Debug%E5%AE%9E%E5%BD%95/&is_video=false&description=Qcom ARM平台Windows驱动（五）：SD Host PoFx电源状态问题Debug实录"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=Qcom ARM平台Windows驱动（五）：SD Host PoFx电源状态问题Debug实录&body=Check out this article: https://cursorhu.github.io/2026/06/03/Qcom_ARM%E5%B9%B3%E5%8F%B0%E9%A9%B1%E5%8A%A8_05_SD_Host_PoFx%E7%94%B5%E6%BA%90%E7%8A%B6%E6%80%81%E9%97%AE%E9%A2%98Debug%E5%AE%9E%E5%BD%95/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/06/03/Qcom_ARM%E5%B9%B3%E5%8F%B0%E9%A9%B1%E5%8A%A8_05_SD_Host_PoFx%E7%94%B5%E6%BA%90%E7%8A%B6%E6%80%81%E9%97%AE%E9%A2%98Debug%E5%AE%9E%E5%BD%95/&title=Qcom ARM平台Windows驱动（五）：SD Host PoFx电源状态问题Debug实录"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/06/03/Qcom_ARM%E5%B9%B3%E5%8F%B0%E9%A9%B1%E5%8A%A8_05_SD_Host_PoFx%E7%94%B5%E6%BA%90%E7%8A%B6%E6%80%81%E9%97%AE%E9%A2%98Debug%E5%AE%9E%E5%BD%95/&title=Qcom ARM平台Windows驱动（五）：SD Host PoFx电源状态问题Debug实录"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/06/03/Qcom_ARM%E5%B9%B3%E5%8F%B0%E9%A9%B1%E5%8A%A8_05_SD_Host_PoFx%E7%94%B5%E6%BA%90%E7%8A%B6%E6%80%81%E9%97%AE%E9%A2%98Debug%E5%AE%9E%E5%BD%95/&title=Qcom ARM平台Windows驱动（五）：SD Host PoFx电源状态问题Debug实录"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/06/03/Qcom_ARM%E5%B9%B3%E5%8F%B0%E9%A9%B1%E5%8A%A8_05_SD_Host_PoFx%E7%94%B5%E6%BA%90%E7%8A%B6%E6%80%81%E9%97%AE%E9%A2%98Debug%E5%AE%9E%E5%BD%95/&title=Qcom ARM平台Windows驱动（五）：SD Host PoFx电源状态问题Debug实录"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/06/03/Qcom_ARM%E5%B9%B3%E5%8F%B0%E9%A9%B1%E5%8A%A8_05_SD_Host_PoFx%E7%94%B5%E6%BA%90%E7%8A%B6%E6%80%81%E9%97%AE%E9%A2%98Debug%E5%AE%9E%E5%BD%95/&name=Qcom ARM平台Windows驱动（五）：SD Host PoFx电源状态问题Debug实录&description=&lt;p&gt;&lt;strong&gt;日期&lt;/strong&gt;: 2026-06-03&lt;br&gt;&lt;strong&gt;系列&lt;/strong&gt;: Qcom ARM平台Windows驱动开发&lt;br&gt;&lt;strong&gt;适用&lt;/strong&gt;: Windows StorPort miniport 驱动开发者、PoFx 电源管理调试&lt;/p&gt;
+&lt;h2 id=&#34;1-问题概述&#34;&gt;&lt;a href=&#34;#1-问题概述&#34; class=&#34;headerlink&#34; title=&#34;1. 问题概述&#34;&gt;&lt;/a&gt;1. 问题概述&lt;/h2&gt;&lt;p&gt;BH202 SD Host Controller 在高通 ARM Windows 平台上出现一系列电源管理问题，涉及 StorPort PoFx 框架的 Activate&amp;#x2F;Idle 引用计数机制。问题在 cold boot（含 Windows Fast Startup 的 Hybrid S4）、显式 S4 hibernate、带卡&amp;#x2F;不带卡等多种组合下表现不同。&lt;/p&gt;
+&lt;h3 id=&#34;1-1-问题矩阵&#34;&gt;&lt;a href=&#34;#1-1-问题矩阵&#34; class=&#34;headerlink&#34; title=&#34;1.1 问题矩阵&#34;&gt;&lt;/a&gt;1.1 问题矩阵&lt;/h3&gt;&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;场景&lt;/th&gt;
+&lt;th&gt;现象&lt;/th&gt;
+&lt;th&gt;根因关键词&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;&lt;tr&gt;
+&lt;td&gt;Cold boot 后 SD host 持续 D0&lt;/td&gt;
+&lt;td&gt;idle timeout 不触发 D3&lt;/td&gt;
+&lt;td&gt;PoFx 初始状态 mismatch&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;带卡 cold boot 拔卡 → BSOD 0xA0&lt;/td&gt;
+&lt;td&gt;INTERNAL_POWER_ERROR&lt;/td&gt;
+&lt;td&gt;双重 IdleComponent&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;S4 hibernate 期间拔卡 → resume 后 BSOD&lt;/td&gt;
+&lt;td&gt;10秒后系统重启&lt;/td&gt;
+&lt;td&gt;S4 恢复 per-caller 状态&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;带卡 cold boot 后插卡不识别&lt;/td&gt;
+&lt;td&gt;SD host 一直 D3&lt;/td&gt;
+&lt;td&gt;host_check_lost + StorPort 未 prime&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;&lt;/table&gt;
+&lt;h3 id=&#34;1-2-环境信息&#34;&gt;&lt;a href=&#34;#1-2-环境信息&#34; class=&#34;headerlink&#34; title=&#34;1.2 环境信息&#34;&gt;&lt;/a&gt;1.2 环境信息&lt;/h3&gt;&lt;ul&gt;
+&lt;li&gt;平台：Qualcomm Snapdragon 8380 (ARM64)&lt;/li&gt;
+&lt;li&gt;OS：Windows 10&amp;#x2F;11 ARM64&lt;/li&gt;
+&lt;li&gt;驱动模型：StorPort miniport + PoFx (Runtime D3)&lt;/li&gt;
+&lt;li&gt;关键配置：&lt;code&gt;STOR_POFX_DEVICE_FLAG_IDLE_TIMEOUT = 10ms&lt;/code&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;2-背景知识：StorPort-PoFx-模型&#34;&gt;&lt;a href=&#34;#2-背景知识：StorPort-PoFx-模型&#34; class=&#34;headerlink&#34; title=&#34;2. 背景知识：StorPort PoFx 模型&#34;&gt;&lt;/a&gt;2. 背景知识：StorPort PoFx 模型&lt;/h2&gt;&lt;p&gt;StorPort miniport 通过 &lt;code&gt;StorPortInitializePoFxPower&lt;/code&gt; 注册 PoFx，之后 StorPort 框架管理 adapter 的 Active&amp;#x2F;Idle 状态转换。&lt;/p&gt;
+&lt;figure class=&#34;highlight plaintext&#34;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&#34;gutter&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;3&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;4&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;5&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;6&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;7&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;8&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;9&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;10&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;11&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;12&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&#34;code&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;┌─────────────────────────────────────────────────────────┐&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                    StorPort Framework                     │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                                                         │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  PoFx Registration → Adapter Active (count=1)           │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                                                         │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  Miniport calls:                                        │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│    ActivateComponent → count++                          │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│    IdleComponent     → count--                          │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                                                         │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  count == 0 → idle timer (10ms) → ScsiAdapterPower(D3) │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  ActivateComponent   → ScsiRestartAdapter (D0)          │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;└─────────────────────────────────────────────────────────┘&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;"><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/06/03/Qcom_ARM%E5%B9%B3%E5%8F%B0%E9%A9%B1%E5%8A%A8_05_SD_Host_PoFx%E7%94%B5%E6%BA%90%E7%8A%B6%E6%80%81%E9%97%AE%E9%A2%98Debug%E5%AE%9E%E5%BD%95/&t=Qcom ARM平台Windows驱动（五）：SD Host PoFx电源状态问题Debug实录"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> 菜单</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> 目录</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> 分享</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> 返回顶部</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2026
+    cursorhu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"复制到粘贴板！\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "复制成功！");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+</body>
+</html>
