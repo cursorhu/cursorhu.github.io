@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="AI编程(三) - 用 Agent 做嵌入式代码架构审查背景在嵌入式固件开发中，代码审查（Code Review）往往依赖资深工程师的经验积累——他们需要在脑中同时追踪状态机流转、I2C 分片逻辑、寄存器写入顺序，以及 uint8_t 移位这类细节 bug。这类工作耗时且高度依赖个人经验。 本文记录了使用 Claude Code 的 自定义 Agent 对电量计驱动进行架构审查的完整过程，包括：A">
+<meta property="og:type" content="article">
+<meta property="og:title" content="AI编程(三) - 用 Agent 做嵌入式代码架构审查">
+<meta property="og:url" content="https://cursorhu.github.io/2026/06/02/AI%E7%BC%96%E7%A8%8B(%E4%B8%89)%20-%20%E7%94%A8arch-review-reporter%20Agent%E5%81%9A%E5%B5%8C%E5%85%A5%E5%BC%8F%E4%BB%A3%E7%A0%81%E6%9E%B6%E6%9E%84%E5%AE%A1%E6%9F%A5/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="AI编程(三) - 用 Agent 做嵌入式代码架构审查背景在嵌入式固件开发中，代码审查（Code Review）往往依赖资深工程师的经验积累——他们需要在脑中同时追踪状态机流转、I2C 分片逻辑、寄存器写入顺序，以及 uint8_t 移位这类细节 bug。这类工作耗时且高度依赖个人经验。 本文记录了使用 Claude Code 的 自定义 Agent 对电量计驱动进行架构审查的完整过程，包括：A">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202606021533491.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202606021533130.png">
+<meta property="article:published_time" content="2026-06-01T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-02T07:42:52.078Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="AI编程">
+<meta property="article:tag" content="Claude Code">
+<meta property="article:tag" content="嵌入式">
+<meta property="article:tag" content="电量计">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202606021533491.png">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>AI编程(三) - 用 Agent 做嵌入式代码架构审查</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+		<script type="text/x-mathjax-config">
+		  MathJax.Hub.Config({
+			tex2jax: {
+			  skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+			  inlineMath: [['$','$']]
+			}
+		  });
+		</script>
+		<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-MML-AM_CHTML' async></script>
+	
+<meta name="generator" content="Hexo 8.0.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="顶部" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        
+        <li><a class="icon" aria-label="下一篇" href="/2026/05/29/AI%E7%BC%96%E7%A8%8B%EF%BC%9A%E7%94%A8%20Claude%20Code%20%E5%AE%9E%E7%8E%B0%20Word%20%E6%96%87%E6%A1%A3%E8%87%AA%E5%8A%A8%E8%BD%AC%20PPT/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="返回顶部" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="分享文章" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">上一篇</span>
+      <span id="i-next" class="info" style="display:none;">下一篇</span>
+      <span id="i-top" class="info" style="display:none;">返回顶部</span>
+      <span id="i-share" class="info" style="display:none;">分享文章</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/06/02/AI%E7%BC%96%E7%A8%8B(%E4%B8%89)%20-%20%E7%94%A8arch-review-reporter%20Agent%E5%81%9A%E5%B5%8C%E5%85%A5%E5%BC%8F%E4%BB%A3%E7%A0%81%E6%9E%B6%E6%9E%84%E5%AE%A1%E6%9F%A5/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/06/02/AI%E7%BC%96%E7%A8%8B(%E4%B8%89)%20-%20%E7%94%A8arch-review-reporter%20Agent%E5%81%9A%E5%B5%8C%E5%85%A5%E5%BC%8F%E4%BB%A3%E7%A0%81%E6%9E%B6%E6%9E%84%E5%AE%A1%E6%9F%A5/&text=AI编程(三) - 用 Agent 做嵌入式代码架构审查"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/06/02/AI%E7%BC%96%E7%A8%8B(%E4%B8%89)%20-%20%E7%94%A8arch-review-reporter%20Agent%E5%81%9A%E5%B5%8C%E5%85%A5%E5%BC%8F%E4%BB%A3%E7%A0%81%E6%9E%B6%E6%9E%84%E5%AE%A1%E6%9F%A5/&title=AI编程(三) - 用 Agent 做嵌入式代码架构审查"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/06/02/AI%E7%BC%96%E7%A8%8B(%E4%B8%89)%20-%20%E7%94%A8arch-review-reporter%20Agent%E5%81%9A%E5%B5%8C%E5%85%A5%E5%BC%8F%E4%BB%A3%E7%A0%81%E6%9E%B6%E6%9E%84%E5%AE%A1%E6%9F%A5/&is_video=false&description=AI编程(三) - 用 Agent 做嵌入式代码架构审查"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=AI编程(三) - 用 Agent 做嵌入式代码架构审查&body=Check out this article: https://cursorhu.github.io/2026/06/02/AI%E7%BC%96%E7%A8%8B(%E4%B8%89)%20-%20%E7%94%A8arch-review-reporter%20Agent%E5%81%9A%E5%B5%8C%E5%85%A5%E5%BC%8F%E4%BB%A3%E7%A0%81%E6%9E%B6%E6%9E%84%E5%AE%A1%E6%9F%A5/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/06/02/AI%E7%BC%96%E7%A8%8B(%E4%B8%89)%20-%20%E7%94%A8arch-review-reporter%20Agent%E5%81%9A%E5%B5%8C%E5%85%A5%E5%BC%8F%E4%BB%A3%E7%A0%81%E6%9E%B6%E6%9E%84%E5%AE%A1%E6%9F%A5/&title=AI编程(三) - 用 Agent 做嵌入式代码架构审查"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/06/02/AI%E7%BC%96%E7%A8%8B(%E4%B8%89)%20-%20%E7%94%A8arch-review-reporter%20Agent%E5%81%9A%E5%B5%8C%E5%85%A5%E5%BC%8F%E4%BB%A3%E7%A0%81%E6%9E%B6%E6%9E%84%E5%AE%A1%E6%9F%A5/&title=AI编程(三) - 用 Agent 做嵌入式代码架构审查"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/06/02/AI%E7%BC%96%E7%A8%8B(%E4%B8%89)%20-%20%E7%94%A8arch-review-reporter%20Agent%E5%81%9A%E5%B5%8C%E5%85%A5%E5%BC%8F%E4%BB%A3%E7%A0%81%E6%9E%B6%E6%9E%84%E5%AE%A1%E6%9F%A5/&title=AI编程(三) - 用 Agent 做嵌入式代码架构审查"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/06/02/AI%E7%BC%96%E7%A8%8B(%E4%B8%89)%20-%20%E7%94%A8arch-review-reporter%20Agent%E5%81%9A%E5%B5%8C%E5%85%A5%E5%BC%8F%E4%BB%A3%E7%A0%81%E6%9E%B6%E6%9E%84%E5%AE%A1%E6%9F%A5/&title=AI编程(三) - 用 Agent 做嵌入式代码架构审查"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/06/02/AI%E7%BC%96%E7%A8%8B(%E4%B8%89)%20-%20%E7%94%A8arch-review-reporter%20Agent%E5%81%9A%E5%B5%8C%E5%85%A5%E5%BC%8F%E4%BB%A3%E7%A0%81%E6%9E%B6%E6%9E%84%E5%AE%A1%E6%9F%A5/&name=AI编程(三) - 用 Agent 做嵌入式代码架构审查&description=&lt;h1 id=&#34;AI编程-三-用-Agent-做嵌入式代码架构审查&#34;&gt;&lt;a href=&#34;#AI编程-三-用-Agent-做嵌入式代码架构审查&#34; class=&#34;headerlink&#34; title=&#34;AI编程(三) - 用 Agent 做嵌入式代码架构审查&#34;&gt;&lt;/a&gt;AI编程(三) - 用 Agent 做嵌入式代码架构审查&lt;/h1&gt;&lt;h2 id=&#34;背景&#34;&gt;&lt;a href=&#34;#背景&#34; class=&#34;headerlink&#34; title=&#34;背景&#34;&gt;&lt;/a&gt;背景&lt;/h2&gt;&lt;p&gt;在嵌入式固件开发中，代码审查（Code Review）往往依赖资深工程师的经验积累——他们需要在脑中同时追踪状态机流转、I2C 分片逻辑、寄存器写入顺序，以及 &lt;code&gt;uint8_t&lt;/code&gt; 移位这类细节 bug。这类工作耗时且高度依赖个人经验。&lt;/p&gt;
+&lt;p&gt;本文记录了使用 Claude Code 的 自定义 Agent 对电量计驱动进行架构审查的完整过程，包括：Agent 的调用方式、输出报告的关键发现，以及如何在一个主任务中调用多个 Agent 并行工作。&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;一、arch-review-reporter-Agent-是什么&#34;&gt;&lt;a href=&#34;#一、arch-review-reporter-Agent-是什么&#34; class=&#34;headerlink&#34; title=&#34;一、arch-review-reporter Agent 是什么&#34;&gt;&lt;/a&gt;一、arch-review-reporter Agent 是什么&lt;/h2&gt;&lt;p&gt;&lt;code&gt;arch-review-reporter&lt;/code&gt; 是我自定义的 Agent，通过 Claude Code 的 Agent 框架创建，存放在 &lt;code&gt;~/.claude/agents/arch-review-reporter.md&lt;/code&gt;。它不是 IDE 内置功能，而是由工程师根据自己的审查需求定制的专用角色。&lt;/p&gt;
+&lt;p&gt;与直接问 Claude “帮我看看这段代码有没有问题”的区别：&lt;/p&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;方式&lt;/th&gt;
+&lt;th&gt;上下文&lt;/th&gt;
+&lt;th&gt;输出格式&lt;/th&gt;
+&lt;th&gt;记忆&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;&lt;tr&gt;
+&lt;td&gt;直接问 Claude&lt;/td&gt;
+&lt;td&gt;共用主对话 context&lt;/td&gt;
+&lt;td&gt;随意，依赖提问质量&lt;/td&gt;
+&lt;td&gt;无&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;自定义 Agent&lt;/td&gt;
+&lt;td&gt;独立 context window&lt;/td&gt;
+&lt;td&gt;按 Agent 定义的结构输出&lt;/td&gt;
+&lt;td&gt;有持久记忆（见第二节）&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;&lt;/table&gt;
+&lt;hr&gt;"><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/06/02/AI%E7%BC%96%E7%A8%8B(%E4%B8%89)%20-%20%E7%94%A8arch-review-reporter%20Agent%E5%81%9A%E5%B5%8C%E5%85%A5%E5%BC%8F%E4%BB%A3%E7%A0%81%E6%9E%B6%E6%9E%84%E5%AE%A1%E6%9F%A5/&t=AI编程(三) - 用 Agent 做嵌入式代码架构审查"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#AI%E7%BC%96%E7%A8%8B-%E4%B8%89-%E7%94%A8-Agent-%E5%81%9A%E5%B5%8C%E5%85%A5%E5%BC%8F%E4%BB%A3%E7%A0%81%E6%9E%B6%E6%9E%84%E5%AE%A1%E6%9F%A5"><span class="toc-number">1.</span> <span class="toc-text">AI编程(三) - 用 Agent 做嵌入式代码架构审查</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%83%8C%E6%99%AF"><span class="toc-number">1.1.</span> <span class="toc-text">背景</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81arch-review-reporter-Agent-%E6%98%AF%E4%BB%80%E4%B9%88"><span class="toc-number">1.2.</span> <span class="toc-text">一、arch-review-reporter Agent 是什么</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E5%A6%82%E4%BD%95%E5%88%9B%E5%BB%BA%E8%87%AA%E5%AE%9A%E4%B9%89-Agent"><span class="toc-number">1.3.</span> <span class="toc-text">二、如何创建自定义 Agent</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E6%96%87%E4%BB%B6%E4%BD%8D%E7%BD%AE"><span class="toc-number">1.3.1.</span> <span class="toc-text">2.1 文件位置</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-%E6%96%87%E4%BB%B6%E7%BB%93%E6%9E%84"><span class="toc-number">1.3.2.</span> <span class="toc-text">2.2 文件结构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-arch-review-reporter-%E7%9A%84%E7%B3%BB%E7%BB%9F%E6%8F%90%E7%A4%BA%E8%AE%BE%E8%AE%A1"><span class="toc-number">1.3.3.</span> <span class="toc-text">2.3 arch-review-reporter 的系统提示设计</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-4-%E8%A7%A6%E5%8F%91-Agent-%E7%9A%84%E4%B8%A4%E7%A7%8D%E6%96%B9%E5%BC%8F"><span class="toc-number">1.3.4.</span> <span class="toc-text">2.4 触发 Agent 的两种方式</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81Agent-%E7%9A%84%E6%8C%81%E4%B9%85%E8%AE%B0%E5%BF%86%E6%9C%BA%E5%88%B6%EF%BC%88Memory%EF%BC%89"><span class="toc-number">1.4.</span> <span class="toc-text">三、Agent 的持久记忆机制（Memory）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E4%B8%BA%E4%BB%80%E4%B9%88%E9%9C%80%E8%A6%81%E8%AE%B0%E5%BF%86"><span class="toc-number">1.4.1.</span> <span class="toc-text">3.1 为什么需要记忆</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E8%AE%B0%E5%BF%86%E7%9A%84%E5%AD%98%E5%82%A8%E4%BD%8D%E7%BD%AE"><span class="toc-number">1.4.2.</span> <span class="toc-text">3.2 记忆的存储位置</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-%E8%AE%B0%E5%BF%86%E7%9A%84%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F"><span class="toc-number">1.4.3.</span> <span class="toc-text">3.3 记忆的生命周期</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E8%B0%83%E7%94%A8%E6%96%B9%E5%BC%8F%E6%80%BB%E7%BB%93"><span class="toc-number">1.5.</span> <span class="toc-text">四、调用方式总结</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E5%AE%A1%E6%9F%A5%E5%AF%B9%E8%B1%A1%EF%BC%9ASD77428-%E7%94%B5%E9%87%8F%E8%AE%A1%E9%A9%B1%E5%8A%A8"><span class="toc-number">1.6.</span> <span class="toc-text">五、审查对象：SD77428 电量计驱动</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E6%A8%A1%E5%9D%97%E5%AE%9A%E4%BD%8D"><span class="toc-number">1.6.1.</span> <span class="toc-text">5.1 模块定位</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E6%9E%B6%E6%9E%84%E6%A0%B8%E5%BF%83%EF%BC%9A%E5%88%86%E6%AE%B5%E5%BC%8F%E5%BC%82%E6%AD%A5%E7%8A%B6%E6%80%81%E6%9C%BA"><span class="toc-number">1.6.2.</span> <span class="toc-text">5.2 架构核心：分段式异步状态机</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E6%9E%B6%E6%9E%84%E5%AE%A1%E6%9F%A5%E6%8A%A5%E5%91%8A%E5%85%B3%E9%94%AE%E5%8F%91%E7%8E%B0"><span class="toc-number">1.7.</span> <span class="toc-text">六、架构审查报告关键发现</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%F0%9F%94%B4-%E9%AB%98%E9%A3%8E%E9%99%A9%EF%BC%9A%E5%90%91-const-%E6%95%B0%E7%BB%84%E6%89%A7%E8%A1%8C-memcpy-%E5%86%99%E5%85%A5"><span class="toc-number">1.7.1.</span> <span class="toc-text">6.1 🔴 高风险：向 const 数组执行 memcpy 写入</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%F0%9F%94%B4-%E9%AB%98%E9%A3%8E%E9%99%A9%EF%BC%9A%E7%8A%B6%E6%80%81%E6%9C%BA%E6%AD%BB%E5%8C%BA%EF%BC%8Clut-step-%E6%B0%B8%E8%BF%9C%E6%97%A0%E6%B3%95%E6%8E%A8%E8%BF%9B"><span class="toc-number">1.7.2.</span> <span class="toc-text">6.2 🔴 高风险：状态机死区，lut_step 永远无法推进</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%F0%9F%94%B4-%E9%AB%98%E9%A3%8E%E9%99%A9%EF%BC%9Auint8-t-%E7%A7%BB%E4%BD%8D%E5%88%B0%E7%AC%A6%E5%8F%B7%E4%BD%8D%EF%BC%8C%E6%9C%AA%E5%AE%9A%E4%B9%89%E8%A1%8C%E4%B8%BA"><span class="toc-number">1.7.3.</span> <span class="toc-text">6.3 🔴 高风险：uint8_t 移位到符号位，未定义行为</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-4-%F0%9F%94%B4-%E9%AB%98%E9%A3%8E%E9%99%A9%EF%BC%9A%E8%8A%AF%E7%89%87%E7%89%88%E6%9C%AC%E6%A3%80%E6%B5%8B%E7%B2%BE%E7%A1%AE%E5%8C%B9%E9%85%8D%EF%BC%8C%E5%9B%BA%E4%BB%B6%E5%8D%87%E7%BA%A7%E5%90%8E%E9%A9%B1%E5%8A%A8%E5%A4%B1%E6%95%88"><span class="toc-number">1.7.4.</span> <span class="toc-text">6.4 🔴 高风险：芯片版本检测精确匹配，固件升级后驱动失效</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-5-%F0%9F%9F%A1-%E4%B8%AD%E9%A3%8E%E9%99%A9%EF%BC%9Adesign-fcc-600-%E6%97%A0%E7%AC%A6%E5%8F%B7%E4%B8%8B%E6%BA%A2"><span class="toc-number">1.7.5.</span> <span class="toc-text">6.5 🟡 中风险：design_fcc - 600 无符号下溢</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-6-%F0%9F%9F%A1-%E4%B8%AD%E9%A3%8E%E9%99%A9%EF%BC%9AFlash-%E9%A2%91%E7%B9%81%E5%86%99%E5%85%A5%EF%BC%88%E5%8D%95%E4%BD%8D%E4%B8%8D%E4%B8%80%E8%87%B4%E5%AF%BC%E8%87%B4%E6%AF%8F%E6%AC%A1%E9%83%BD%E8%A7%A6%E5%8F%91%EF%BC%89"><span class="toc-number">1.7.6.</span> <span class="toc-text">6.6 🟡 中风险：Flash 频繁写入（单位不一致导致每次都触发）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-7-%E8%AE%BE%E8%AE%A1%E5%B1%82%E9%9D%A2%EF%BC%9A%E5%85%A8%E5%B1%80%E7%8A%B6%E6%80%81%E7%BB%93%E6%9E%84%E4%BD%93%E8%81%8C%E8%B4%A3%E8%BF%87%E9%87%8D"><span class="toc-number">1.7.7.</span> <span class="toc-text">6.7 设计层面：全局状态结构体职责过重</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%83%E3%80%81%E5%A6%82%E4%BD%95%E5%9C%A8%E5%AF%B9%E8%AF%9D%E4%B8%AD%E8%A7%A6%E5%8F%91%E5%A4%9A%E4%B8%AA-Agent-%E5%B9%B6%E8%A1%8C%E5%B7%A5%E4%BD%9C"><span class="toc-number">1.8.</span> <span class="toc-text">七、如何在对话中触发多个 Agent 并行工作</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#7-1-%E7%94%A8%E6%88%B7%E4%BE%A7%EF%BC%9A%E4%B8%80%E5%8F%A5%E8%AF%9D%E8%A7%A6%E5%8F%91%E5%B9%B6%E8%A1%8C"><span class="toc-number">1.8.1.</span> <span class="toc-text">7.1 用户侧：一句话触发并行</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-2-%E5%B9%95%E5%90%8E%E6%9C%BA%E5%88%B6%EF%BC%9AClaude-%E6%98%AF%E7%BC%96%E6%8E%92%E8%80%85"><span class="toc-number">1.8.2.</span> <span class="toc-text">7.2 幕后机制：Claude 是编排者</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-3-%E5%B9%B6%E8%A1%8C-Agent-%E7%9A%84%E5%85%B8%E5%9E%8B%E5%9C%BA%E6%99%AF"><span class="toc-number">1.8.3.</span> <span class="toc-text">7.3 并行 Agent 的典型场景</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-4-%E4%B8%B2%E8%A1%8C-vs-%E5%B9%B6%E8%A1%8C%E7%9A%84%E9%80%89%E6%8B%A9"><span class="toc-number">1.8.4.</span> <span class="toc-text">7.4 串行 vs 并行的选择</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-5-%E5%90%8E%E5%8F%B0%E8%BF%90%E8%A1%8C"><span class="toc-number">1.8.5.</span> <span class="toc-text">7.5 后台运行</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AB%E3%80%81%E5%B7%A5%E7%A8%8B%E5%AE%9E%E8%B7%B5%E5%BB%BA%E8%AE%AE"><span class="toc-number">1.9.</span> <span class="toc-text">八、工程实践建议</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BD%95%E6%97%B6%E5%90%AF%E5%8A%A8%E6%9E%B6%E6%9E%84%E5%AE%A1%E6%9F%A5-Agent"><span class="toc-number">1.9.1.</span> <span class="toc-text">何时启动架构审查 Agent</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Agent-%E8%BE%93%E5%87%BA%E7%9A%84%E5%B1%80%E9%99%90%E6%80%A7"><span class="toc-number">1.9.2.</span> <span class="toc-text">Agent 输出的局限性</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%80%BB%E7%BB%93"><span class="toc-number">1.10.</span> <span class="toc-text">总结</span></a></li></ol></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        AI编程(三) - 用 Agent 做嵌入式代码架构审查
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">cursorhu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2026-06-01T16:00:00.000Z" class="dt-published" itemprop="datePublished">2026-06-02</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fa-solid fa-archive"></i>
+        <a class="category-link" href="/categories/AI%E7%BC%96%E7%A8%8B/">AI编程</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/AI%E7%BC%96%E7%A8%8B/" rel="tag">AI编程</a>, <a class="p-category" href="/tags/Claude-Code/" rel="tag">Claude Code</a>, <a class="p-category" href="/tags/%E5%B5%8C%E5%85%A5%E5%BC%8F/" rel="tag">嵌入式</a>, <a class="p-category" href="/tags/%E7%94%B5%E9%87%8F%E8%AE%A1/" rel="tag">电量计</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <h1 id="AI编程-三-用-Agent-做嵌入式代码架构审查"><a href="#AI编程-三-用-Agent-做嵌入式代码架构审查" class="headerlink" title="AI编程(三) - 用 Agent 做嵌入式代码架构审查"></a>AI编程(三) - 用 Agent 做嵌入式代码架构审查</h1><h2 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h2><p>在嵌入式固件开发中，代码审查（Code Review）往往依赖资深工程师的经验积累——他们需要在脑中同时追踪状态机流转、I2C 分片逻辑、寄存器写入顺序，以及 <code>uint8_t</code> 移位这类细节 bug。这类工作耗时且高度依赖个人经验。</p>
+<p>本文记录了使用 Claude Code 的 自定义 Agent 对电量计驱动进行架构审查的完整过程，包括：Agent 的调用方式、输出报告的关键发现，以及如何在一个主任务中调用多个 Agent 并行工作。</p>
+<hr>
+<h2 id="一、arch-review-reporter-Agent-是什么"><a href="#一、arch-review-reporter-Agent-是什么" class="headerlink" title="一、arch-review-reporter Agent 是什么"></a>一、arch-review-reporter Agent 是什么</h2><p><code>arch-review-reporter</code> 是我自定义的 Agent，通过 Claude Code 的 Agent 框架创建，存放在 <code>~/.claude/agents/arch-review-reporter.md</code>。它不是 IDE 内置功能，而是由工程师根据自己的审查需求定制的专用角色。</p>
+<p>与直接问 Claude “帮我看看这段代码有没有问题”的区别：</p>
+<table>
+<thead>
+<tr>
+<th>方式</th>
+<th>上下文</th>
+<th>输出格式</th>
+<th>记忆</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>直接问 Claude</td>
+<td>共用主对话 context</td>
+<td>随意，依赖提问质量</td>
+<td>无</td>
+</tr>
+<tr>
+<td>自定义 Agent</td>
+<td>独立 context window</td>
+<td>按 Agent 定义的结构输出</td>
+<td>有持久记忆（见第二节）</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="二、如何创建自定义-Agent"><a href="#二、如何创建自定义-Agent" class="headerlink" title="二、如何创建自定义 Agent"></a>二、如何创建自定义 Agent</h2><p>使用claude的 &#x2F;agent命令创建自定义agent</p>
+<p>如图引导页面会要求输入提示词说明自定义agent要做什么 ( 我的提示词是做代码架构分析，审查风险，考虑可优化方向 )</p>
+<p>然后选择模型和访问权限等能力，最终输出agent的markdown配置<br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202606021533491.png" alt="image-20260602153247275"><br><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/202606021533130.png" alt="image-20260602153329991"></p>
+<h3 id="2-1-文件位置"><a href="#2-1-文件位置" class="headerlink" title="2.1 文件位置"></a>2.1 文件位置</h3><p>自定义 Agent 是一个 Markdown 文件，放在：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">~/.claude/agents/&lt;agent-name&gt;.md        # 全局 Agent，所有项目可用</span><br><span class="line">.claude/agents/&lt;agent-name&gt;.md          # 项目级 Agent，仅当前项目可用</span><br></pre></td></tr></table></figure>
+
+<p><code>arch-review-reporter</code> 创建为全局 Agent，路径是：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">C:\Users\cursorhu\.claude\agents\arch-review-reporter.md</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-2-文件结构"><a href="#2-2-文件结构" class="headerlink" title="2.2 文件结构"></a>2.2 文件结构</h3><p>Agent 定义文件由两部分组成：YAML frontmatter（元数据）和正文（系统提示）。</p>
+<p><strong>YAML frontmatter</strong>：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">---</span></span><br><span class="line"><span class="attr">name:</span> <span class="string">&quot;arch-review-reporter&quot;</span></span><br><span class="line"><span class="attr">description:</span> <span class="string">&quot;Use this agent when the user wants a comprehensive code architecture review...&quot;</span></span><br><span class="line"><span class="attr">model:</span> <span class="string">sonnet</span></span><br><span class="line"><span class="attr">memory:</span> <span class="string">user</span></span><br><span class="line"><span class="meta">---</span></span><br></pre></td></tr></table></figure>
+
+<p>关键字段说明：</p>
+<ul>
+<li><code>name</code>：Agent 标识符，用于 <code>@agent-&lt;name&gt;</code> 触发</li>
+<li><code>description</code>：触发条件描述，Claude 根据这段文字判断何时自动调用此 Agent。<strong>写好 description 是关键</strong>——它决定 Agent 是否被正确路由</li>
+<li><code>model</code>：指定运行此 Agent 的模型（<code>sonnet</code>&#x2F;<code>opus</code>&#x2F;<code>haiku</code>），不填则继承主对话模型</li>
+<li><code>memory</code>：设为 <code>user</code> 表示开启用户级持久记忆（跨项目、跨对话有效）</li>
+</ul>
+<p><strong>正文</strong>：即这个 Agent 的系统提示（system prompt），定义它的角色、工作流程和输出格式。</p>
+<h3 id="2-3-arch-review-reporter-的系统提示设计"><a href="#2-3-arch-review-reporter-的系统提示设计" class="headerlink" title="2.3 arch-review-reporter 的系统提示设计"></a>2.3 arch-review-reporter 的系统提示设计</h3><p>正文定义了一个四阶段工作流程：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">第一阶段：代码理解</span><br><span class="line">  → 阅读代码，识别架构层次，梳理模块依赖和数据流</span><br><span class="line"></span><br><span class="line">第二阶段：架构分析</span><br><span class="line">  → 职责划分 / 依赖关系 / 扩展性 / 分层合理性 / 接口设计 / 数据流</span><br><span class="line"></span><br><span class="line">第三阶段：风险识别</span><br><span class="line">  → 并发安全 / 资源管理 / 异常处理 / 安全风险 / 性能瓶颈 / 可观测性</span><br><span class="line"></span><br><span class="line">第四阶段：生成报告</span><br><span class="line">  → 按固定 Markdown 结构输出：架构概览 / 优化方向 / 风险分析 / 行动建议</span><br></pre></td></tr></table></figure>
+
+<p>输出规范要求每个问题必须定位到具体代码行号，不允许泛泛而谈，代码示例只能从实际源码中提取，不编造示例。</p>
+<h3 id="2-4-触发-Agent-的两种方式"><a href="#2-4-触发-Agent-的两种方式" class="headerlink" title="2.4 触发 Agent 的两种方式"></a>2.4 触发 Agent 的两种方式</h3><p><strong>方式一：显式调用（@前缀）</strong></p>
+<p>在对话框输入：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">@agent-arch-review-reporter 分析当前项目</span><br></pre></td></tr></table></figure>
+
+<p>Claude 直接路由到该 Agent，无需判断。</p>
+<p><strong>方式二：隐式触发（自然语言）</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">帮我做代码架构审查</span><br><span class="line">上线前帮我看看这个模块有没有问题</span><br></pre></td></tr></table></figure>
+
+<p>Claude 根据 <code>description</code> 字段判断匹配度，自动调用 <code>arch-review-reporter</code>。<code>description</code> 中包含了三个具体示例（<code>&lt;example&gt;</code> 标签），帮助 Claude 精准识别触发场景。</p>
+<hr>
+<h2 id="三、Agent-的持久记忆机制（Memory）"><a href="#三、Agent-的持久记忆机制（Memory）" class="headerlink" title="三、Agent 的持久记忆机制（Memory）"></a>三、Agent 的持久记忆机制（Memory）</h2><h3 id="3-1-为什么需要记忆"><a href="#3-1-为什么需要记忆" class="headerlink" title="3.1 为什么需要记忆"></a>3.1 为什么需要记忆</h3><p>没有记忆的 Agent 每次都从零开始，无法积累对项目的认知。开启记忆后，Agent 可以记住：</p>
+<ul>
+<li>项目采用的架构模式和设计约定</li>
+<li>重复出现的代码风险类型（如这个项目里 <code>const</code> 数组被写入的问题）</li>
+<li>已确认的技术债务和待改进项</li>
+<li>用户的审查偏好和反馈</li>
+</ul>
+<h3 id="3-2-记忆的存储位置"><a href="#3-2-记忆的存储位置" class="headerlink" title="3.2 记忆的存储位置"></a>3.2 记忆的存储位置</h3><p><code>memory: user</code> 表示用户级记忆，存储路径：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">~/.claude/agent-memory/arch-review-reporter/</span><br><span class="line">  MEMORY.md          # 记忆索引（每条一行，自动加载到 context）</span><br><span class="line">  user_role.md       # 用户角色和偏好</span><br><span class="line">  feedback_xxx.md    # 用户对审查方式的反馈</span><br><span class="line">  project_xxx.md     # 项目级发现（跨项目通用的模式）</span><br></pre></td></tr></table></figure>
+
+<p>每个记忆文件使用标准 frontmatter 格式：</p>
+<figure class="highlight markdown"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">---</span><br><span class="line">name: embedded-const-write-risk</span><br><span class="line">description: 嵌入式项目中 const 数组被 memcpy 写入的常见风险</span><br><span class="line">metadata:</span><br><span class="line"><span class="section">  type: project</span></span><br><span class="line"><span class="section">---</span></span><br><span class="line"></span><br><span class="line">MCU 项目中，static const 数组通常链接到 Flash 段，运行时写入会触发 HardFault</span><br><span class="line">或静默失败。审查嵌入式 C 代码时，优先检查所有 memcpy/memset 的目标地址是否为 const。</span><br><span class="line"></span><br><span class="line"><span class="strong">**Why:**</span> SD77428 项目中发现 g<span class="emphasis">_rc_</span>tab 声明为 const 但被 fn<span class="emphasis">_memcpy 写入，在部分平台上导致参数更新失效。</span></span><br><span class="line"><span class="emphasis"><span class="strong">**How to apply:**</span> 嵌入式 C 项目审查时，第三阶段风险识别增加 &quot;const 写入&quot; 专项检查。</span></span><br></pre></td></tr></table></figure>
+
+<p><code>MEMORY.md</code> 是索引文件，始终加载到 Agent 的 context 中（超过 200 行会截断），因此只存指针，不存内容：</p>
+<figure class="highlight markdown"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="bullet">-</span> [<span class="string">嵌入式 const 写入风险</span>](<span class="link">embedded-const-write-risk.md</span>) — MCU 项目中 static const 被 memcpy 写入的 HardFault 风险</span><br><span class="line"><span class="bullet">-</span> [<span class="string">状态机死区模式</span>](<span class="link">statemachine-deadlock.md</span>) — 分段式状态机中 step 条件互斥导致死锁</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-3-记忆的生命周期"><a href="#3-3-记忆的生命周期" class="headerlink" title="3.3 记忆的生命周期"></a>3.3 记忆的生命周期</h3><p>首次审查时记忆目录为空，Agent 完成审查后会将本次发现的模式和约定写入记忆文件。下次审查同一类项目时，Agent 会先读取 <code>MEMORY.md</code>，带着历史认知开始审查，输出的建议会更精准。</p>
+<p>用户级记忆（<code>memory: user</code>）跨项目有效。如果切换到另一个嵌入式项目，Agent 仍然记得”嵌入式 C 项目要重点检查 const 写入”这条经验。</p>
+<hr>
+<h2 id="四、调用方式总结"><a href="#四、调用方式总结" class="headerlink" title="四、调用方式总结"></a>四、调用方式总结</h2><table>
+<thead>
+<tr>
+<th>场景</th>
+<th>操作</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>快速触发（知道 Agent 名）</td>
+<td><code>@agent-arch-review-reporter 分析当前项目</code></td>
+</tr>
+<tr>
+<td>自然语言触发</td>
+<td>“帮我做代码架构审查” &#x2F; “上线前审查一下”</td>
+</tr>
+<tr>
+<td>需要与审查结果继续对话</td>
+<td>Agent 完成后回到主对话追问</td>
+</tr>
+<tr>
+<td>单函数级 bug</td>
+<td>直接问 Claude，无需 Agent</td>
+</tr>
+<tr>
+<td>多模块跨文件分析</td>
+<td>必须用 Agent（保护主 context）</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="五、审查对象：SD77428-电量计驱动"><a href="#五、审查对象：SD77428-电量计驱动" class="headerlink" title="五、审查对象：SD77428 电量计驱动"></a>五、审查对象：SD77428 电量计驱动</h2><h3 id="5-1-模块定位"><a href="#5-1-模块定位" class="headerlink" title="5.1 模块定位"></a>5.1 模块定位</h3><p><code>fuel_gauge_sd77428.c</code> 是 SD77428 电量计芯片的 MCU 侧驱动，核心职责：</p>
+<ul>
+<li>通过 I2C 向芯片下发电池模型参数（level0～level8 分级参数体系）</li>
+<li>读取 SOC、电压、电流、温度等实时信息</li>
+<li>管理充电状态和省电模式（suspend&#x2F;resume）</li>
+<li>通过统一接口 <code>sFuelGaugeInterface</code> 对上层 BMS 暴露功能</li>
+</ul>
+<h3 id="5-2-架构核心：分段式异步状态机"><a href="#5-2-架构核心：分段式异步状态机" class="headerlink" title="5.2 架构核心：分段式异步状态机"></a>5.2 架构核心：分段式异步状态机</h3><p>这是驱动最重要的设计特征。由于 MCU 主循环不能阻塞等待 I2C，所有 I2C 操作被拆分为多个 step：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 典型分段式函数骨架</span></span><br><span class="line"><span class="type">int8_t</span> <span class="title function_">sd77428_read_bytes</span><span class="params">(<span class="type">uint8_t</span> reg, <span class="type">void</span> *data, <span class="type">uint16_t</span> len, <span class="type">uint8_t</span> pec_en)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">switch</span> (g_sd77428.read_step) &#123;</span><br><span class="line">    <span class="keyword">case</span> <span class="number">0</span>:</span><br><span class="line">        <span class="comment">// 发起 I2C 读请求</span></span><br><span class="line">        g_sd77428.read_step = <span class="number">1</span>;</span><br><span class="line">        <span class="keyword">return</span> STAY_PUT;   <span class="comment">// 本次调用未完成，下次继续</span></span><br><span class="line">    <span class="keyword">case</span> <span class="number">1</span>:</span><br><span class="line">        <span class="comment">// 检查结果，打包数据</span></span><br><span class="line">        g_sd77428.read_step = <span class="number">0</span>;</span><br><span class="line">        <span class="keyword">return</span> SUCCESS;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>sd77428_loop()</code> 以 10ms 为节拍驱动 <code>g_loop_list[]</code>，初始化流程由 <code>g_init_list[]</code> 中 8 个步骤按序完成。参数下发通过 <code>g_download_list[]</code> 描述符表批量执行，具有良好的可扩展性。</p>
+<hr>
+<h2 id="六、架构审查报告关键发现"><a href="#六、架构审查报告关键发现" class="headerlink" title="六、架构审查报告关键发现"></a>六、架构审查报告关键发现</h2><p>Agent 将问题分为三级，共识别 <strong>4 个高风险（🔴）、6 个中风险（🟡）、4 个低风险（🟢）</strong>。</p>
+<h3 id="6-1-🔴-高风险：向-const-数组执行-memcpy-写入"><a href="#6-1-🔴-高风险：向-const-数组执行-memcpy-写入" class="headerlink" title="6.1 🔴 高风险：向 const 数组执行 memcpy 写入"></a>6.1 🔴 高风险：向 <code>const</code> 数组执行 <code>memcpy</code> 写入</h3><p><strong>位置</strong>：<code>fuel_gauge_sd77428.c:1101</code>，函数 <code>sd77428_get_model_params</code></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// g_rc_tab 声明为 static const，但此处写入</span></span><br><span class="line"><span class="type">static</span> <span class="type">const</span> <span class="type">uint8_t</span> g_rc_tab[][XAxis] = &#123; ... &#125;;     <span class="comment">// line 549</span></span><br><span class="line"><span class="type">static</span> <span class="type">const</span> <span class="type">uint8_t</span> g_rc_tab_a3[][XAxis_A3] = &#123; ... &#125;; <span class="comment">// line 572</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// line 1101: 向 const 数组写入 —— 未定义行为</span></span><br><span class="line">fn_memcpy(g_rc_tab_a3, g_model_sample.rc_tab, <span class="keyword">sizeof</span>(g_rc_tab_a3));</span><br><span class="line">fn_memcpy(g_rc_tab,    g_model_sample.rc_tab, <span class="keyword">sizeof</span>(g_rc_tab));</span><br></pre></td></tr></table></figure>
+
+<p><strong>风险</strong>：<code>const</code> 数据在 MCU 上通常链接到 Flash（ROM）段。运行时写入会触发 HardFault，或在某些平台上静默失败——模型参数实际未更新，但代码认为已更新，电量计算使用错误的 RC 表，SOC 显示严重偏差。</p>
+<p><strong>修复</strong>：去掉 <code>const</code> 修饰。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">uint8_t</span> g_rc_tab[][XAxis] = &#123; ... &#125;;</span><br><span class="line"><span class="type">static</span> <span class="type">uint8_t</span> g_rc_tab_a3[][XAxis_A3] = &#123; ... &#125;;</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h3 id="6-2-🔴-高风险：状态机死区，lut-step-永远无法推进"><a href="#6-2-🔴-高风险：状态机死区，lut-step-永远无法推进" class="headerlink" title="6.2 🔴 高风险：状态机死区，lut_step 永远无法推进"></a>6.2 🔴 高风险：状态机死区，<code>lut_step</code> 永远无法推进</h3><p><strong>位置</strong>：<code>fuel_gauge_sd77428.c:1436-1448</code>，函数 <code>sd77428_check_lut_ocvsoc</code></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">&#125; <span class="keyword">else</span> <span class="keyword">if</span> (<span class="number">1</span> == g_sd77428.lut_step) &#123;</span><br><span class="line">    <span class="keyword">if</span> (batt_ocv_volt &lt; (BATT_DESIGN_EOD - <span class="number">150</span>) &amp;&amp; batt_rsoc &gt; <span class="number">800</span>) &#123;</span><br><span class="line">        g_sd77428.lut_step = <span class="number">2</span>;</span><br><span class="line">        <span class="keyword">if</span> (<span class="number">0</span> == batt_rsoc) &#123;   <span class="comment">// ← 与外层 batt_rsoc &gt; 800 互斥，永远不执行</span></span><br><span class="line">            ...</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// ← 条件不满足时没有 else，lut_step 保持 1，函数返回 SUCCESS</span></span><br><span class="line">    <span class="comment">//   但状态机实际未推进，下次调用继续卡在 step 1</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>风险</strong>：初始化流程卡在 <code>E_STEP_CHECK_LUT_SOC</code> 阶段，电量计永远无法进入正常 loop。</p>
+<p><strong>修复</strong>：补充 <code>else</code> 分支，正常情况下直接推进到终态：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">&#125; <span class="keyword">else</span> <span class="keyword">if</span> (<span class="number">1</span> == g_sd77428.lut_step) &#123;</span><br><span class="line">    <span class="keyword">if</span> (batt_ocv_volt &lt; (BATT_DESIGN_EOD - <span class="number">150</span>) &amp;&amp; batt_rsoc &gt; <span class="number">800</span>) &#123;</span><br><span class="line">        g_sd77428.lut_step = <span class="number">2</span>;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        g_sd77428.lut_step = <span class="number">4</span>;  <span class="comment">// OCV 正常，直接推进到出口</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h3 id="6-3-🔴-高风险：uint8-t-移位到符号位，未定义行为"><a href="#6-3-🔴-高风险：uint8-t-移位到符号位，未定义行为" class="headerlink" title="6.3 🔴 高风险：uint8_t 移位到符号位，未定义行为"></a>6.3 🔴 高风险：<code>uint8_t</code> 移位到符号位，未定义行为</h3><p><strong>位置</strong>：<code>fuel_gauge_sd77428.c:835-841</code>，函数 <code>sd77428_pack_rd_data</code></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// per_memb_size == sizeof(uint32_t) 时，slave_idx 最大为 3</span></span><br><span class="line"><span class="comment">// uint8_t 经整型提升为 int，左移 24 位侵入符号位 —— UB</span></span><br><span class="line">p_rd_u32[rd_idx] |=</span><br><span class="line">    (p_rx_u8[rd_idx + slave_idx] &lt;&lt; (slave_idx * PER_BYTE_BITS));</span><br></pre></td></tr></table></figure>
+
+<p>C 标准规定：对有符号整数执行左移到符号位是<strong>未定义行为（UB）</strong>。在高优化级别下编译器可能产生不可预测的结果，导致 32 位寄存器读回值的最高字节解码错误，电压&#x2F;电流等参数静默偏差。</p>
+<p><strong>修复</strong>：显式转型为 <code>uint32_t</code>：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">p_rd_u32[rd_idx] |=</span><br><span class="line">    ((<span class="type">uint32_t</span>)p_rx_u8[rd_idx + slave_idx] &lt;&lt; (slave_idx * PER_BYTE_BITS));</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h3 id="6-4-🔴-高风险：芯片版本检测精确匹配，固件升级后驱动失效"><a href="#6-4-🔴-高风险：芯片版本检测精确匹配，固件升级后驱动失效" class="headerlink" title="6.4 🔴 高风险：芯片版本检测精确匹配，固件升级后驱动失效"></a>6.4 🔴 高风险：芯片版本检测精确匹配，固件升级后驱动失效</h3><p><strong>位置</strong>：<code>fuel_gauge_sd77428.c:1152</code>，函数 <code>sd77428_detect_chip_id</code></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// FW_VER_A3_MIN 命名暗示&quot;最低版本&quot;，但逻辑是精确匹配</span></span><br><span class="line"><span class="keyword">if</span> (fw_ver == FW_VER_A3_MIN) &#123; ... &#125;  <span class="comment">// 应为 &gt;=</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>修复</strong>：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (chip_id == chip_list[idx].chip_id) &#123;</span><br><span class="line">    matched = (idx == E_A3_IDX) ? (fw_ver &gt;= FW_VER_A3_MIN)</span><br><span class="line">                                 : (fw_ver == chip_list[idx].fw_ver);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h3 id="6-5-🟡-中风险：design-fcc-600-无符号下溢"><a href="#6-5-🟡-中风险：design-fcc-600-无符号下溢" class="headerlink" title="6.5 🟡 中风险：design_fcc - 600 无符号下溢"></a>6.5 🟡 中风险：<code>design_fcc - 600</code> 无符号下溢</h3><p><strong>位置</strong>：<code>fuel_gauge_sd77428.c:1110-1112</code></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">uint32_t</span> reg_val2 = g_model_sample.design_fcc - <span class="number">600</span>;  <span class="comment">// 小容量电池时下溢</span></span><br><span class="line">g_level1_tab[<span class="number">9</span>] = g_level1_tab[<span class="number">11</span>] = ((reg_val1 &lt;&lt; <span class="number">16</span>) | reg_val2);</span><br></pre></td></tr></table></figure>
+
+<p>小容量电池（<code>design_fcc &lt; 600</code>）时，<code>reg_val2</code> 下溢为 <code>0xFDxx</code>，写入芯片的 <code>mindfcc</code> 为异常大值，DFCC 算法行为失控。</p>
+<p><strong>修复</strong>：加下界保护：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">uint32_t</span> reg_val2 = (design_fcc &gt; <span class="number">600</span>) ? (<span class="type">uint32_t</span>)(design_fcc - <span class="number">600</span>) : <span class="number">0u</span>;</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h3 id="6-6-🟡-中风险：Flash-频繁写入（单位不一致导致每次都触发）"><a href="#6-6-🟡-中风险：Flash-频繁写入（单位不一致导致每次都触发）" class="headerlink" title="6.6 🟡 中风险：Flash 频繁写入（单位不一致导致每次都触发）"></a>6.6 🟡 中风险：Flash 频繁写入（单位不一致导致每次都触发）</h3><p><strong>位置</strong>：<code>fuel_gauge_sd77428.c:1598</code></p>
+<p><code>batt_rsoc</code> 经过 <code>sd77428_batt_convert</code> 映射后是显示值（0<del>100 的百分比），但 Flash 中存储的历史值是原始寄存器值（0</del>1000 的千分比）。两者单位不一致，每次比较都不相等，每次都触发 Flash 写入，加速 Flash 磨损。</p>
+<hr>
+<h3 id="6-7-设计层面：全局状态结构体职责过重"><a href="#6-7-设计层面：全局状态结构体职责过重" class="headerlink" title="6.7 设计层面：全局状态结构体职责过重"></a>6.7 设计层面：全局状态结构体职责过重</h3><p><code>sSd77428Run</code>（<code>g_sd77428</code>）同时承载 20+ 个字段，其中 <code>read_idx</code>&#x2F;<code>write_idx</code>&#x2F;<code>verify_idx</code> 等实质是各子函数私有的局部状态。这导致：</p>
+<ul>
+<li>任意函数都能意外修改其他函数的状态字段</li>
+<li>无法在同一帧内连续调用两次 <code>sd77428_read_bytes</code></li>
+<li>无法支持多实例（多颗电量计芯片）场景</li>
+</ul>
+<p>建议将子状态提取为函数内 <code>static</code> 局部结构体，仅在 <code>g_sd77428</code> 中保留跨函数共享的字段（<code>chip_type</code>、<code>addr</code>、<code>reinit_meter</code> 等）。</p>
+<hr>
+<h2 id="七、如何在对话中触发多个-Agent-并行工作"><a href="#七、如何在对话中触发多个-Agent-并行工作" class="headerlink" title="七、如何在对话中触发多个 Agent 并行工作"></a>七、如何在对话中触发多个 Agent 并行工作</h2><p>单个 Agent 一次只能专注一件事。当任务需要同时分析多个维度时，可以用一句话让 Claude 并行启动多个 Agent。</p>
+<h3 id="7-1-用户侧：一句话触发并行"><a href="#7-1-用户侧：一句话触发并行" class="headerlink" title="7.1 用户侧：一句话触发并行"></a>7.1 用户侧：一句话触发并行</h3><p><strong>不需要编辑 CLAUDE.md，不需要写任何配置</strong>。直接在对话框描述多个独立任务，Claude 会自行决定并行执行：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">请同时做两件事：</span><br><span class="line">1. 用 arch-review-reporter 审查 fuel_gauge_sd77428.c 的架构风险</span><br><span class="line">2. 搜索项目中所有调用 i2c_read_bytes 的位置和行号</span><br></pre></td></tr></table></figure>
+
+<p>或者明确要求并行：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">请并行启动多个 agent 分别完成：</span><br><span class="line">- 架构审查（arch-review-reporter）</span><br><span class="line">- 搜索所有 sd77428_read_bytes 调用点</span><br><span class="line">- 对比 A2/A3 两个芯片版本的参数差异</span><br></pre></td></tr></table></figure>
+
+<p>Claude 收到后，会在同一次响应中并发调用多个 Agent，你能看到多个任务同时推进，总耗时约等于最慢的单个 Agent。</p>
+<h3 id="7-2-幕后机制：Claude-是编排者"><a href="#7-2-幕后机制：Claude-是编排者" class="headerlink" title="7.2 幕后机制：Claude 是编排者"></a>7.2 幕后机制：Claude 是编排者</h3><p>多 Agent 并行的本质是：Claude 作为”主任务编排者”，在一次响应中同时发出多个子 Agent 请求。下面是 Claude 内部执行的逻辑（不是用户需要写的代码，仅作原理说明）：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"># Claude 内部编排逻辑（原理示意，非用户操作）</span><br><span class="line">同一响应中并发调用：</span><br><span class="line">  Agent(subagent_type=&quot;arch-review-reporter&quot;, prompt=&quot;审查架构风险...&quot;)</span><br><span class="line">  Agent(subagent_type=&quot;Explore&quot;,              prompt=&quot;搜索 i2c_read_bytes 调用点...&quot;)</span><br><span class="line">  Agent(subagent_type=&quot;general-purpose&quot;,      prompt=&quot;对比 A2/A3 参数差异...&quot;)</span><br><span class="line">→ 三个子 Agent 并行运行，Claude 等待全部完成后汇总</span><br></pre></td></tr></table></figure>
+
+<p>用户只需用自然语言描述任务，Claude 自动完成调度。</p>
+<h3 id="7-3-并行-Agent-的典型场景"><a href="#7-3-并行-Agent-的典型场景" class="headerlink" title="7.3 并行 Agent 的典型场景"></a>7.3 并行 Agent 的典型场景</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">用户一句话：对电量计固件做全面评估</span><br><span class="line">                    │</span><br><span class="line">          Claude 自动拆解并并行启动</span><br><span class="line">                    │</span><br><span class="line">  ┌─────────────────┼─────────────────┐</span><br><span class="line">  ▼                 ▼                 ▼</span><br><span class="line">Agent A           Agent B           Agent C</span><br><span class="line">arch-reviewer     Explore           general</span><br><span class="line">架构审查          搜索调用点         参数版本对比</span><br><span class="line">  │                 │                 │</span><br><span class="line">  └─────────────────┴─────────────────┘</span><br><span class="line">                    │</span><br><span class="line">             Claude 汇总结果</span><br></pre></td></tr></table></figure>
+
+<h3 id="7-4-串行-vs-并行的选择"><a href="#7-4-串行-vs-并行的选择" class="headerlink" title="7.4 串行 vs 并行的选择"></a>7.4 串行 vs 并行的选择</h3><p>Claude 会根据任务依赖关系自动判断，也可以在提示词中明确指定：</p>
+<table>
+<thead>
+<tr>
+<th>模式</th>
+<th>适用场景</th>
+<th>提示词示例</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>并行</strong></td>
+<td>任务之间无依赖</td>
+<td>“同时&#x2F;并行做以下几件事”</td>
+</tr>
+<tr>
+<td><strong>串行</strong></td>
+<td>B 依赖 A 的结果</td>
+<td>“先…，完成后再…”</td>
+</tr>
+<tr>
+<td><strong>混合</strong></td>
+<td>第一阶段并行收集，第二阶段综合</td>
+<td>“先并行读取各模块，然后汇总生成报告”</td>
+</tr>
+</tbody></table>
+<h3 id="7-5-后台运行"><a href="#7-5-后台运行" class="headerlink" title="7.5 后台运行"></a>7.5 后台运行</h3><p>对于耗时长、不需要立即结果的任务，可以要求后台执行：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">请在后台搜索整个项目中所有使用 STAY_PUT 返回值的函数，完成后通知我</span><br></pre></td></tr></table></figure>
+
+<p>Claude 会启动后台 Agent，主对话继续响应，任务完成后收到通知。</p>
+<hr>
+<h2 id="八、工程实践建议"><a href="#八、工程实践建议" class="headerlink" title="八、工程实践建议"></a>八、工程实践建议</h2><h3 id="何时启动架构审查-Agent"><a href="#何时启动架构审查-Agent" class="headerlink" title="何时启动架构审查 Agent"></a>何时启动架构审查 Agent</h3><ul>
+<li>合并大型特性分支前（代替 PR review 的第一道过滤）</li>
+<li>重要版本发布前（替代 checklist 式人工走查）</li>
+<li>新人接手陌生模块时（快速建立风险地图）</li>
+<li>移植到新平台前（识别平台相关的潜在问题，如 Flash 写 const）</li>
+</ul>
+<h3 id="Agent-输出的局限性"><a href="#Agent-输出的局限性" class="headerlink" title="Agent 输出的局限性"></a>Agent 输出的局限性</h3><p>Agent 基于静态代码分析，无法替代以下工作：</p>
+<ul>
+<li>运行时行为验证（实际挂载电池的 SOC 曲线测试）</li>
+<li>边界条件的硬件级验证（真实 Flash 写保护触发）</li>
+<li>需要跨 repo 上下文的分析（依赖外部 HAL 层的具体实现）</li>
+</ul>
+<p>最佳实践是：<strong>Agent 负责提速和覆盖面，工程师负责判断优先级和验证修复效果</strong>。</p>
+<hr>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>本文展示了用 <code>arch-review-reporter</code> Agent 审查约 1800 行嵌入式 C 代码的完整流程。Agent 在单次运行中识别出：</p>
+<ul>
+<li><strong>1 个运行时崩溃风险</strong>（向 Flash 段写入 const 数据）</li>
+<li><strong>1 个状态机死锁</strong>（初始化永远卡住）</li>
+<li><strong>2 个 C 语言 UB</strong>（符号位左移、无符号下溢）</li>
+<li><strong>多个设计层面的技术债</strong>（全局状态集中、Flash 频繁写入等）</li>
+</ul>
+<p>这些问题中，<code>const</code> 写入和状态机死区两项在量产环境下会直接导致设备不可用，而单靠人工 review 在 1800 行代码中发现它们需要相当的经验积累。</p>
+<p>多 Agent 并行模式进一步将这类分析从”串行耗时”变为”并行提速”，是复杂嵌入式项目代码质量管理的实用工具。用户侧无需任何配置，用自然语言描述多个独立任务，Claude 自动完成并行调度和结果汇总。</p>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">首页</a></li>
+        
+          <li><a href="/about/">关于</a></li>
+        
+          <li><a href="/archives/">归档</a></li>
+        
+          <li><a href="/tags/">标签</a></li>
+        
+          <li><a href="/categories/">分类</a></li>
+        
+          <li><a href="/search/">搜索</a></li>
+        
+          <li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#AI%E7%BC%96%E7%A8%8B-%E4%B8%89-%E7%94%A8-Agent-%E5%81%9A%E5%B5%8C%E5%85%A5%E5%BC%8F%E4%BB%A3%E7%A0%81%E6%9E%B6%E6%9E%84%E5%AE%A1%E6%9F%A5"><span class="toc-number">1.</span> <span class="toc-text">AI编程(三) - 用 Agent 做嵌入式代码架构审查</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%83%8C%E6%99%AF"><span class="toc-number">1.1.</span> <span class="toc-text">背景</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81arch-review-reporter-Agent-%E6%98%AF%E4%BB%80%E4%B9%88"><span class="toc-number">1.2.</span> <span class="toc-text">一、arch-review-reporter Agent 是什么</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E5%A6%82%E4%BD%95%E5%88%9B%E5%BB%BA%E8%87%AA%E5%AE%9A%E4%B9%89-Agent"><span class="toc-number">1.3.</span> <span class="toc-text">二、如何创建自定义 Agent</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E6%96%87%E4%BB%B6%E4%BD%8D%E7%BD%AE"><span class="toc-number">1.3.1.</span> <span class="toc-text">2.1 文件位置</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-%E6%96%87%E4%BB%B6%E7%BB%93%E6%9E%84"><span class="toc-number">1.3.2.</span> <span class="toc-text">2.2 文件结构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-arch-review-reporter-%E7%9A%84%E7%B3%BB%E7%BB%9F%E6%8F%90%E7%A4%BA%E8%AE%BE%E8%AE%A1"><span class="toc-number">1.3.3.</span> <span class="toc-text">2.3 arch-review-reporter 的系统提示设计</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-4-%E8%A7%A6%E5%8F%91-Agent-%E7%9A%84%E4%B8%A4%E7%A7%8D%E6%96%B9%E5%BC%8F"><span class="toc-number">1.3.4.</span> <span class="toc-text">2.4 触发 Agent 的两种方式</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81Agent-%E7%9A%84%E6%8C%81%E4%B9%85%E8%AE%B0%E5%BF%86%E6%9C%BA%E5%88%B6%EF%BC%88Memory%EF%BC%89"><span class="toc-number">1.4.</span> <span class="toc-text">三、Agent 的持久记忆机制（Memory）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E4%B8%BA%E4%BB%80%E4%B9%88%E9%9C%80%E8%A6%81%E8%AE%B0%E5%BF%86"><span class="toc-number">1.4.1.</span> <span class="toc-text">3.1 为什么需要记忆</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E8%AE%B0%E5%BF%86%E7%9A%84%E5%AD%98%E5%82%A8%E4%BD%8D%E7%BD%AE"><span class="toc-number">1.4.2.</span> <span class="toc-text">3.2 记忆的存储位置</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-%E8%AE%B0%E5%BF%86%E7%9A%84%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F"><span class="toc-number">1.4.3.</span> <span class="toc-text">3.3 记忆的生命周期</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E8%B0%83%E7%94%A8%E6%96%B9%E5%BC%8F%E6%80%BB%E7%BB%93"><span class="toc-number">1.5.</span> <span class="toc-text">四、调用方式总结</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E5%AE%A1%E6%9F%A5%E5%AF%B9%E8%B1%A1%EF%BC%9ASD77428-%E7%94%B5%E9%87%8F%E8%AE%A1%E9%A9%B1%E5%8A%A8"><span class="toc-number">1.6.</span> <span class="toc-text">五、审查对象：SD77428 电量计驱动</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E6%A8%A1%E5%9D%97%E5%AE%9A%E4%BD%8D"><span class="toc-number">1.6.1.</span> <span class="toc-text">5.1 模块定位</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E6%9E%B6%E6%9E%84%E6%A0%B8%E5%BF%83%EF%BC%9A%E5%88%86%E6%AE%B5%E5%BC%8F%E5%BC%82%E6%AD%A5%E7%8A%B6%E6%80%81%E6%9C%BA"><span class="toc-number">1.6.2.</span> <span class="toc-text">5.2 架构核心：分段式异步状态机</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E6%9E%B6%E6%9E%84%E5%AE%A1%E6%9F%A5%E6%8A%A5%E5%91%8A%E5%85%B3%E9%94%AE%E5%8F%91%E7%8E%B0"><span class="toc-number">1.7.</span> <span class="toc-text">六、架构审查报告关键发现</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%F0%9F%94%B4-%E9%AB%98%E9%A3%8E%E9%99%A9%EF%BC%9A%E5%90%91-const-%E6%95%B0%E7%BB%84%E6%89%A7%E8%A1%8C-memcpy-%E5%86%99%E5%85%A5"><span class="toc-number">1.7.1.</span> <span class="toc-text">6.1 🔴 高风险：向 const 数组执行 memcpy 写入</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%F0%9F%94%B4-%E9%AB%98%E9%A3%8E%E9%99%A9%EF%BC%9A%E7%8A%B6%E6%80%81%E6%9C%BA%E6%AD%BB%E5%8C%BA%EF%BC%8Clut-step-%E6%B0%B8%E8%BF%9C%E6%97%A0%E6%B3%95%E6%8E%A8%E8%BF%9B"><span class="toc-number">1.7.2.</span> <span class="toc-text">6.2 🔴 高风险：状态机死区，lut_step 永远无法推进</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%F0%9F%94%B4-%E9%AB%98%E9%A3%8E%E9%99%A9%EF%BC%9Auint8-t-%E7%A7%BB%E4%BD%8D%E5%88%B0%E7%AC%A6%E5%8F%B7%E4%BD%8D%EF%BC%8C%E6%9C%AA%E5%AE%9A%E4%B9%89%E8%A1%8C%E4%B8%BA"><span class="toc-number">1.7.3.</span> <span class="toc-text">6.3 🔴 高风险：uint8_t 移位到符号位，未定义行为</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-4-%F0%9F%94%B4-%E9%AB%98%E9%A3%8E%E9%99%A9%EF%BC%9A%E8%8A%AF%E7%89%87%E7%89%88%E6%9C%AC%E6%A3%80%E6%B5%8B%E7%B2%BE%E7%A1%AE%E5%8C%B9%E9%85%8D%EF%BC%8C%E5%9B%BA%E4%BB%B6%E5%8D%87%E7%BA%A7%E5%90%8E%E9%A9%B1%E5%8A%A8%E5%A4%B1%E6%95%88"><span class="toc-number">1.7.4.</span> <span class="toc-text">6.4 🔴 高风险：芯片版本检测精确匹配，固件升级后驱动失效</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-5-%F0%9F%9F%A1-%E4%B8%AD%E9%A3%8E%E9%99%A9%EF%BC%9Adesign-fcc-600-%E6%97%A0%E7%AC%A6%E5%8F%B7%E4%B8%8B%E6%BA%A2"><span class="toc-number">1.7.5.</span> <span class="toc-text">6.5 🟡 中风险：design_fcc - 600 无符号下溢</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-6-%F0%9F%9F%A1-%E4%B8%AD%E9%A3%8E%E9%99%A9%EF%BC%9AFlash-%E9%A2%91%E7%B9%81%E5%86%99%E5%85%A5%EF%BC%88%E5%8D%95%E4%BD%8D%E4%B8%8D%E4%B8%80%E8%87%B4%E5%AF%BC%E8%87%B4%E6%AF%8F%E6%AC%A1%E9%83%BD%E8%A7%A6%E5%8F%91%EF%BC%89"><span class="toc-number">1.7.6.</span> <span class="toc-text">6.6 🟡 中风险：Flash 频繁写入（单位不一致导致每次都触发）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-7-%E8%AE%BE%E8%AE%A1%E5%B1%82%E9%9D%A2%EF%BC%9A%E5%85%A8%E5%B1%80%E7%8A%B6%E6%80%81%E7%BB%93%E6%9E%84%E4%BD%93%E8%81%8C%E8%B4%A3%E8%BF%87%E9%87%8D"><span class="toc-number">1.7.7.</span> <span class="toc-text">6.7 设计层面：全局状态结构体职责过重</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%83%E3%80%81%E5%A6%82%E4%BD%95%E5%9C%A8%E5%AF%B9%E8%AF%9D%E4%B8%AD%E8%A7%A6%E5%8F%91%E5%A4%9A%E4%B8%AA-Agent-%E5%B9%B6%E8%A1%8C%E5%B7%A5%E4%BD%9C"><span class="toc-number">1.8.</span> <span class="toc-text">七、如何在对话中触发多个 Agent 并行工作</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#7-1-%E7%94%A8%E6%88%B7%E4%BE%A7%EF%BC%9A%E4%B8%80%E5%8F%A5%E8%AF%9D%E8%A7%A6%E5%8F%91%E5%B9%B6%E8%A1%8C"><span class="toc-number">1.8.1.</span> <span class="toc-text">7.1 用户侧：一句话触发并行</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-2-%E5%B9%95%E5%90%8E%E6%9C%BA%E5%88%B6%EF%BC%9AClaude-%E6%98%AF%E7%BC%96%E6%8E%92%E8%80%85"><span class="toc-number">1.8.2.</span> <span class="toc-text">7.2 幕后机制：Claude 是编排者</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-3-%E5%B9%B6%E8%A1%8C-Agent-%E7%9A%84%E5%85%B8%E5%9E%8B%E5%9C%BA%E6%99%AF"><span class="toc-number">1.8.3.</span> <span class="toc-text">7.3 并行 Agent 的典型场景</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-4-%E4%B8%B2%E8%A1%8C-vs-%E5%B9%B6%E8%A1%8C%E7%9A%84%E9%80%89%E6%8B%A9"><span class="toc-number">1.8.4.</span> <span class="toc-text">7.4 串行 vs 并行的选择</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-5-%E5%90%8E%E5%8F%B0%E8%BF%90%E8%A1%8C"><span class="toc-number">1.8.5.</span> <span class="toc-text">7.5 后台运行</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AB%E3%80%81%E5%B7%A5%E7%A8%8B%E5%AE%9E%E8%B7%B5%E5%BB%BA%E8%AE%AE"><span class="toc-number">1.9.</span> <span class="toc-text">八、工程实践建议</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BD%95%E6%97%B6%E5%90%AF%E5%8A%A8%E6%9E%B6%E6%9E%84%E5%AE%A1%E6%9F%A5-Agent"><span class="toc-number">1.9.1.</span> <span class="toc-text">何时启动架构审查 Agent</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Agent-%E8%BE%93%E5%87%BA%E7%9A%84%E5%B1%80%E9%99%90%E6%80%A7"><span class="toc-number">1.9.2.</span> <span class="toc-text">Agent 输出的局限性</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%80%BB%E7%BB%93"><span class="toc-number">1.10.</span> <span class="toc-text">总结</span></a></li></ol></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/06/02/AI%E7%BC%96%E7%A8%8B(%E4%B8%89)%20-%20%E7%94%A8arch-review-reporter%20Agent%E5%81%9A%E5%B5%8C%E5%85%A5%E5%BC%8F%E4%BB%A3%E7%A0%81%E6%9E%B6%E6%9E%84%E5%AE%A1%E6%9F%A5/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/06/02/AI%E7%BC%96%E7%A8%8B(%E4%B8%89)%20-%20%E7%94%A8arch-review-reporter%20Agent%E5%81%9A%E5%B5%8C%E5%85%A5%E5%BC%8F%E4%BB%A3%E7%A0%81%E6%9E%B6%E6%9E%84%E5%AE%A1%E6%9F%A5/&text=AI编程(三) - 用 Agent 做嵌入式代码架构审查"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/06/02/AI%E7%BC%96%E7%A8%8B(%E4%B8%89)%20-%20%E7%94%A8arch-review-reporter%20Agent%E5%81%9A%E5%B5%8C%E5%85%A5%E5%BC%8F%E4%BB%A3%E7%A0%81%E6%9E%B6%E6%9E%84%E5%AE%A1%E6%9F%A5/&title=AI编程(三) - 用 Agent 做嵌入式代码架构审查"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/06/02/AI%E7%BC%96%E7%A8%8B(%E4%B8%89)%20-%20%E7%94%A8arch-review-reporter%20Agent%E5%81%9A%E5%B5%8C%E5%85%A5%E5%BC%8F%E4%BB%A3%E7%A0%81%E6%9E%B6%E6%9E%84%E5%AE%A1%E6%9F%A5/&is_video=false&description=AI编程(三) - 用 Agent 做嵌入式代码架构审查"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=AI编程(三) - 用 Agent 做嵌入式代码架构审查&body=Check out this article: https://cursorhu.github.io/2026/06/02/AI%E7%BC%96%E7%A8%8B(%E4%B8%89)%20-%20%E7%94%A8arch-review-reporter%20Agent%E5%81%9A%E5%B5%8C%E5%85%A5%E5%BC%8F%E4%BB%A3%E7%A0%81%E6%9E%B6%E6%9E%84%E5%AE%A1%E6%9F%A5/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/06/02/AI%E7%BC%96%E7%A8%8B(%E4%B8%89)%20-%20%E7%94%A8arch-review-reporter%20Agent%E5%81%9A%E5%B5%8C%E5%85%A5%E5%BC%8F%E4%BB%A3%E7%A0%81%E6%9E%B6%E6%9E%84%E5%AE%A1%E6%9F%A5/&title=AI编程(三) - 用 Agent 做嵌入式代码架构审查"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/06/02/AI%E7%BC%96%E7%A8%8B(%E4%B8%89)%20-%20%E7%94%A8arch-review-reporter%20Agent%E5%81%9A%E5%B5%8C%E5%85%A5%E5%BC%8F%E4%BB%A3%E7%A0%81%E6%9E%B6%E6%9E%84%E5%AE%A1%E6%9F%A5/&title=AI编程(三) - 用 Agent 做嵌入式代码架构审查"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/06/02/AI%E7%BC%96%E7%A8%8B(%E4%B8%89)%20-%20%E7%94%A8arch-review-reporter%20Agent%E5%81%9A%E5%B5%8C%E5%85%A5%E5%BC%8F%E4%BB%A3%E7%A0%81%E6%9E%B6%E6%9E%84%E5%AE%A1%E6%9F%A5/&title=AI编程(三) - 用 Agent 做嵌入式代码架构审查"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/06/02/AI%E7%BC%96%E7%A8%8B(%E4%B8%89)%20-%20%E7%94%A8arch-review-reporter%20Agent%E5%81%9A%E5%B5%8C%E5%85%A5%E5%BC%8F%E4%BB%A3%E7%A0%81%E6%9E%B6%E6%9E%84%E5%AE%A1%E6%9F%A5/&title=AI编程(三) - 用 Agent 做嵌入式代码架构审查"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/06/02/AI%E7%BC%96%E7%A8%8B(%E4%B8%89)%20-%20%E7%94%A8arch-review-reporter%20Agent%E5%81%9A%E5%B5%8C%E5%85%A5%E5%BC%8F%E4%BB%A3%E7%A0%81%E6%9E%B6%E6%9E%84%E5%AE%A1%E6%9F%A5/&name=AI编程(三) - 用 Agent 做嵌入式代码架构审查&description=&lt;h1 id=&#34;AI编程-三-用-Agent-做嵌入式代码架构审查&#34;&gt;&lt;a href=&#34;#AI编程-三-用-Agent-做嵌入式代码架构审查&#34; class=&#34;headerlink&#34; title=&#34;AI编程(三) - 用 Agent 做嵌入式代码架构审查&#34;&gt;&lt;/a&gt;AI编程(三) - 用 Agent 做嵌入式代码架构审查&lt;/h1&gt;&lt;h2 id=&#34;背景&#34;&gt;&lt;a href=&#34;#背景&#34; class=&#34;headerlink&#34; title=&#34;背景&#34;&gt;&lt;/a&gt;背景&lt;/h2&gt;&lt;p&gt;在嵌入式固件开发中，代码审查（Code Review）往往依赖资深工程师的经验积累——他们需要在脑中同时追踪状态机流转、I2C 分片逻辑、寄存器写入顺序，以及 &lt;code&gt;uint8_t&lt;/code&gt; 移位这类细节 bug。这类工作耗时且高度依赖个人经验。&lt;/p&gt;
+&lt;p&gt;本文记录了使用 Claude Code 的 自定义 Agent 对电量计驱动进行架构审查的完整过程，包括：Agent 的调用方式、输出报告的关键发现，以及如何在一个主任务中调用多个 Agent 并行工作。&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;一、arch-review-reporter-Agent-是什么&#34;&gt;&lt;a href=&#34;#一、arch-review-reporter-Agent-是什么&#34; class=&#34;headerlink&#34; title=&#34;一、arch-review-reporter Agent 是什么&#34;&gt;&lt;/a&gt;一、arch-review-reporter Agent 是什么&lt;/h2&gt;&lt;p&gt;&lt;code&gt;arch-review-reporter&lt;/code&gt; 是我自定义的 Agent，通过 Claude Code 的 Agent 框架创建，存放在 &lt;code&gt;~/.claude/agents/arch-review-reporter.md&lt;/code&gt;。它不是 IDE 内置功能，而是由工程师根据自己的审查需求定制的专用角色。&lt;/p&gt;
+&lt;p&gt;与直接问 Claude “帮我看看这段代码有没有问题”的区别：&lt;/p&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;方式&lt;/th&gt;
+&lt;th&gt;上下文&lt;/th&gt;
+&lt;th&gt;输出格式&lt;/th&gt;
+&lt;th&gt;记忆&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;&lt;tr&gt;
+&lt;td&gt;直接问 Claude&lt;/td&gt;
+&lt;td&gt;共用主对话 context&lt;/td&gt;
+&lt;td&gt;随意，依赖提问质量&lt;/td&gt;
+&lt;td&gt;无&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;自定义 Agent&lt;/td&gt;
+&lt;td&gt;独立 context window&lt;/td&gt;
+&lt;td&gt;按 Agent 定义的结构输出&lt;/td&gt;
+&lt;td&gt;有持久记忆（见第二节）&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;&lt;/table&gt;
+&lt;hr&gt;"><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/06/02/AI%E7%BC%96%E7%A8%8B(%E4%B8%89)%20-%20%E7%94%A8arch-review-reporter%20Agent%E5%81%9A%E5%B5%8C%E5%85%A5%E5%BC%8F%E4%BB%A3%E7%A0%81%E6%9E%B6%E6%9E%84%E5%AE%A1%E6%9F%A5/&t=AI编程(三) - 用 Agent 做嵌入式代码架构审查"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> 菜单</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> 目录</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> 分享</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> 返回顶部</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2026
+    cursorhu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"复制到粘贴板！\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "复制成功！");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+</body>
+</html>
