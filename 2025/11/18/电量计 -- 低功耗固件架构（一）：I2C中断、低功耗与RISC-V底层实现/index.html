@@ -130,11 +130,11 @@
 &lt;h3 id=&#34;状态机设计&#34;&gt;&lt;a href=&#34;#状态机设计&#34; class=&#34;headerlink&#34; title=&#34;状态机设计&#34;&gt;&lt;/a&gt;状态机设计&lt;/h3&gt;&lt;p&gt;I2C从机采用三态状态机，完全由中断驱动：&lt;/p&gt;
 &lt;pre class=&#34;mermaid&#34;&gt;
 stateDiagram-v2
-    [*] --&gt; IDLE
-    IDLE --&gt; SLVRCV : &#34;地址匹配 (写方向)&#34;
-    SLVRCV --&gt; SLVSND : &#34;重复START (读方向)&#34;
-    SLVRCV --&gt; IDLE : &#34;STOP / NACK&#34;
-    SLVSND --&gt; IDLE : &#34;STOP / NACK&#34;
+    [*] --&amp;gt; IDLE
+    IDLE --&amp;gt; SLVRCV : &#34;地址匹配 (写方向)&#34;
+    SLVRCV --&amp;gt; SLVSND : &#34;重复START (读方向)&#34;
+    SLVRCV --&amp;gt; IDLE : &#34;STOP / NACK&#34;
+    SLVSND --&amp;gt; IDLE : &#34;STOP / NACK&#34;
 &lt;/pre&gt;
 
 &lt;p&gt;典型的SMBus读事务流程：&lt;/p&gt;
@@ -208,11 +208,11 @@ stateDiagram-v2
 <h3 id="状态机设计"><a href="#状态机设计" class="headerlink" title="状态机设计"></a>状态机设计</h3><p>I2C从机采用三态状态机，完全由中断驱动：</p>
 <pre class="mermaid">
 stateDiagram-v2
-    [*] --> IDLE
-    IDLE --> SLVRCV : "地址匹配 (写方向)"
-    SLVRCV --> SLVSND : "重复START (读方向)"
-    SLVRCV --> IDLE : "STOP / NACK"
-    SLVSND --> IDLE : "STOP / NACK"
+    [*] --&gt; IDLE
+    IDLE --&gt; SLVRCV : "地址匹配 (写方向)"
+    SLVRCV --&gt; SLVSND : "重复START (读方向)"
+    SLVRCV --&gt; IDLE : "STOP / NACK"
+    SLVSND --&gt; IDLE : "STOP / NACK"
 </pre>
 
 <p>典型的SMBus读事务流程：</p>
@@ -325,14 +325,14 @@ stateDiagram-v2
 <h3 id="PLIC中断控制器"><a href="#PLIC中断控制器" class="headerlink" title="PLIC中断控制器"></a>PLIC中断控制器</h3><p>PLIC（Platform-Level Interrupt Controller）是RISC-V标准的外部中断管理器。所有外设中断（I2C、ADC、Timer等）都通过PLIC路由到CPU：</p>
 <pre class="mermaid">
 flowchart LR
-    A["I2C中断"] --> D["PLIC"]
-    B["CADC中断"] --> D
-    C["Timer中断"] --> D
-    D --> E["CPU trap_entry"]
-    E --> F["handle_m_ext_interrupt"]
-    F --> G["PLIC_claim"]
-    G --> H["查handler表分发"]
-    H --> I["PLIC_complete"]
+    A["I2C中断"] --&gt; D["PLIC"]
+    B["CADC中断"] --&gt; D
+    C["Timer中断"] --&gt; D
+    D --&gt; E["CPU trap_entry"]
+    E --&gt; F["handle_m_ext_interrupt"]
+    F --&gt; G["PLIC_claim"]
+    G --&gt; H["查handler表分发"]
+    H --&gt; I["PLIC_complete"]
 </pre>
 
 <p>PLIC的Claim&#x2F;Complete协议：</p>
@@ -349,15 +349,15 @@ flowchart LR
 <h2 id="主循环架构与状态机"><a href="#主循环架构与状态机" class="headerlink" title="主循环架构与状态机"></a>主循环架构与状态机</h2><h3 id="超级循环模式"><a href="#超级循环模式" class="headerlink" title="超级循环模式"></a>超级循环模式</h3><p>固件不使用RTOS，采用经典的超级循环（super loop）+ 中断驱动模式。所有业务逻辑在主循环中按时间片执行：</p>
 <pre class="mermaid">
 flowchart TD
-    A["main_loop()"] --> B["systime_update_EX()"]
-    B --> C{"systime_passed_sec()?"}
-    C -->|"否"| H["__WFI()"]
-    C -->|"是"| D["dacq_update - ADC数据采集"]
-    D --> E["sbsif_update - SBS数据更新"]
-    E --> F["fg_update - 电量算法"]
-    F --> G["stm_update - 状态机/睡眠决策"]
-    G --> H
-    H --> A
+    A["main_loop()"] --&gt; B["systime_update_EX()"]
+    B --&gt; C{"systime_passed_sec()?"}
+    C --&gt;|"否"| H["__WFI()"]
+    C --&gt;|"是"| D["dacq_update - ADC数据采集"]
+    D --&gt; E["sbsif_update - SBS数据更新"]
+    E --&gt; F["fg_update - 电量算法"]
+    F --&gt; G["stm_update - 状态机/睡眠决策"]
+    G --&gt; H
+    H --&gt; A
 </pre>
 
 <p>时间层次：</p>
@@ -368,13 +368,13 @@ flowchart TD
 </ul>
 <h3 id="功耗状态转换"><a href="#功耗状态转换" class="headerlink" title="功耗状态转换"></a>功耗状态转换</h3><pre class="mermaid">
 flowchart LR
-    A["Active"] -->|"空闲超时"| B["Sleep Prepare"]
-    B -->|"延迟到期"| C["Sleep"]
-    C -->|"mtime/I2C唤醒"| A
-    A -->|"主机命令"| D["Deep Sleep Prepare"]
-    D -->|"延迟到期"| E["Deep Sleep"]
-    E -->|"I2C唤醒"| A
-    B -->|"I2C活动"| A
+    A["Active"] --&gt;|"空闲超时"| B["Sleep Prepare"]
+    B --&gt;|"延迟到期"| C["Sleep"]
+    C --&gt;|"mtime/I2C唤醒"| A
+    A --&gt;|"主机命令"| D["Deep Sleep Prepare"]
+    D --&gt;|"延迟到期"| E["Deep Sleep"]
+    E --&gt;|"I2C唤醒"| A
+    B --&gt;|"I2C活动"| A
 </pre>
 
 <p>关键设计：Sleep Prepare状态下如果检测到I2C活动，立即取消睡眠准备，回到Active。这避免了”正在进入睡眠时主机发来请求”的竞态条件。</p>
@@ -491,11 +491,11 @@ flowchart LR
 &lt;h3 id=&#34;状态机设计&#34;&gt;&lt;a href=&#34;#状态机设计&#34; class=&#34;headerlink&#34; title=&#34;状态机设计&#34;&gt;&lt;/a&gt;状态机设计&lt;/h3&gt;&lt;p&gt;I2C从机采用三态状态机，完全由中断驱动：&lt;/p&gt;
 &lt;pre class=&#34;mermaid&#34;&gt;
 stateDiagram-v2
-    [*] --&gt; IDLE
-    IDLE --&gt; SLVRCV : &#34;地址匹配 (写方向)&#34;
-    SLVRCV --&gt; SLVSND : &#34;重复START (读方向)&#34;
-    SLVRCV --&gt; IDLE : &#34;STOP / NACK&#34;
-    SLVSND --&gt; IDLE : &#34;STOP / NACK&#34;
+    [*] --&amp;gt; IDLE
+    IDLE --&amp;gt; SLVRCV : &#34;地址匹配 (写方向)&#34;
+    SLVRCV --&amp;gt; SLVSND : &#34;重复START (读方向)&#34;
+    SLVRCV --&amp;gt; IDLE : &#34;STOP / NACK&#34;
+    SLVSND --&amp;gt; IDLE : &#34;STOP / NACK&#34;
 &lt;/pre&gt;
 
 &lt;p&gt;典型的SMBus读事务流程：&lt;/p&gt;

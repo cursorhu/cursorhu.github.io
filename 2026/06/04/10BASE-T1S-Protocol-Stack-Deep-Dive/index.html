@@ -102,10 +102,10 @@
     <span id="actions">
       <ul>
         
-        <li><a class="icon" aria-label="上一篇" href="/2026/06/04/10BASE-T1S-Porting-Guide/"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="上一篇" href="/2026/06/04/10BASE-T1S-Arduino-Architecture-Overview/"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
         
         
-        <li><a class="icon" aria-label="下一篇" href="/2026/06/03/Qcom_ARM%E5%B9%B3%E5%8F%B0%E9%A9%B1%E5%8A%A8_05_SD_Host_PoFx%E7%94%B5%E6%BA%90%E7%8A%B6%E6%80%81%E9%97%AE%E9%A2%98Debug%E5%AE%9E%E5%BD%95/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="下一篇" href="/2026/06/04/10BASE-T1S-Porting-Guide/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
         
         <li><a class="icon" aria-label="返回顶部" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
         <li><a class="icon" aria-label="分享文章" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
@@ -388,18 +388,18 @@ sequenceDiagram
     participant IO as "TC6_Io"
     participant HW as "LAN8651"
 
-    App->>UDP: beginPacket() + write() + endPacket()
-    UDP->>lwIP: udp_sendto(pbuf)
-    lwIP->>lwIP: ARP resolve + IP header
-    lwIP->>TC6: lwIpOut(netif, pbuf)
-    TC6->>TC6: enqueue to eth_q
+    App-&gt;&gt;UDP: beginPacket() + write() + endPacket()
+    UDP-&gt;&gt;lwIP: udp_sendto(pbuf)
+    lwIP-&gt;&gt;lwIP: ARP resolve + IP header
+    lwIP-&gt;&gt;TC6: lwIpOut(netif, pbuf)
+    TC6-&gt;&gt;TC6: enqueue to eth_q
     Note over TC6: service() 被调用时
-    TC6->>TC6: process_tx(): 从 eth_q 取帧
-    TC6->>TC6: mk_data_tx(): 拆分为 64B chunks
-    TC6->>TC6: 生成 TX Header (DNC=1, DV=1, SV/EV)
-    TC6->>IO: TC6_CB_OnSpiTransaction(pTx, pRx, len)
-    IO->>HW: SPI 全双工传输 (68 bytes)
-    HW->>HW: MAC 处理 + PHY 发送
+    TC6-&gt;&gt;TC6: process_tx(): 从 eth_q 取帧
+    TC6-&gt;&gt;TC6: mk_data_tx(): 拆分为 64B chunks
+    TC6-&gt;&gt;TC6: 生成 TX Header (DNC=1, DV=1, SV/EV)
+    TC6-&gt;&gt;IO: TC6_CB_OnSpiTransaction(pTx, pRx, len)
+    IO-&gt;&gt;HW: SPI 全双工传输 (68 bytes)
+    HW-&gt;&gt;HW: MAC 处理 + PHY 发送
 </pre>
 
 <h3 id="RX-路径"><a href="#RX-路径" class="headerlink" title="RX 路径"></a>RX 路径</h3><pre class="mermaid">
@@ -411,20 +411,20 @@ sequenceDiagram
     participant UDP as "Arduino_10BASE_T1S_UDP"
     participant App as "Arduino App"
 
-    HW->>HW: PHY 接收 + MAC 校验
-    HW-->>IO: IRQ 拉低
-    IO->>IO: onInterrupt() (ISR, 计数器++)
+    HW-&gt;&gt;HW: PHY 接收 + MAC 校验
+    HW--&gt;&gt;IO: IRQ 拉低
+    IO-&gt;&gt;IO: onInterrupt() (ISR, 计数器++)
     Note over IO: service() 检测到中断
-    IO->>TC6: TC6_Service()
-    TC6->>IO: TC6_CB_OnSpiTransaction(empty_tx, pRx)
-    IO->>HW: SPI 传输（发空 chunk 换接收数据）
-    TC6->>TC6: process_rx(): 解析 Footer
-    TC6->>TC6: 根据 SV/EV/SWO/EBO 重组帧
-    TC6->>lwIP: TC6_CB_OnRxEthernetPacket()
-    lwIP->>lwIP: ethernet_input() -> ARP/IP
-    lwIP->>UDP: udp_recv callback
-    UDP->>UDP: 存入 _rx_pkt_list 队列
-    App->>UDP: parsePacket() + read()
+    IO-&gt;&gt;TC6: TC6_Service()
+    TC6-&gt;&gt;IO: TC6_CB_OnSpiTransaction(empty_tx, pRx)
+    IO-&gt;&gt;HW: SPI 传输（发空 chunk 换接收数据）
+    TC6-&gt;&gt;TC6: process_rx(): 解析 Footer
+    TC6-&gt;&gt;TC6: 根据 SV/EV/SWO/EBO 重组帧
+    TC6-&gt;&gt;lwIP: TC6_CB_OnRxEthernetPacket()
+    lwIP-&gt;&gt;lwIP: ethernet_input() -&gt; ARP/IP
+    lwIP-&gt;&gt;UDP: udp_recv callback
+    UDP-&gt;&gt;UDP: 存入 _rx_pkt_list 队列
+    App-&gt;&gt;UDP: parsePacket() + read()
 </pre>
 
 <h3 id="Service-Loop-核心逻辑"><a href="#Service-Loop-核心逻辑" class="headerlink" title="Service Loop 核心逻辑"></a>Service Loop 核心逻辑</h3><p><code>service()</code> 是整个协议栈的驱动心跳，必须高频调用：</p>
@@ -442,15 +442,15 @@ sequenceDiagram
 
 <pre class="mermaid">
 graph TD
-    A["MCU 发送有效 chunk"] -->|"txc--"| B{"txc > 0?"}
-    B -->|"Yes"| C["继续发送"]
-    B -->|"No"| D["等待，发空 chunk"]
-    D --> E["读取 Footer 中 TXC 字段"]
-    E -->|"更新 txc"| A
+    A["MCU 发送有效 chunk"] --&gt;|"txc--"| B{"txc &gt; 0?"}
+    B --&gt;|"Yes"| C["继续发送"]
+    B --&gt;|"No"| D["等待，发空 chunk"]
+    D --&gt; E["读取 Footer 中 TXC 字段"]
+    E --&gt;|"更新 txc"| A
 
-    F["Footer.RCA > 0"] --> G["MCU 发空 chunk (DV=0)"]
-    G --> H["接收 RX payload"]
-    H --> I["RCA-- 直到 0"]
+    F["Footer.RCA &gt; 0"] --&gt; G["MCU 发空 chunk (DV=0)"]
+    G --&gt; H["接收 RX payload"]
+    H --&gt; I["RCA-- 直到 0"]
 </pre>
 
 <p><strong>空 chunk 的作用</strong>：当 MCU 没有数据要发但有数据要收时，发送 DV&#x3D;0 的空 chunk，SPI 全双工特性保证同时能收到 MAC-PHY 的数据 chunk。这是 OA TC6 协议的关键设计——用”发送换接收”。</p>
@@ -529,20 +529,20 @@ graph TD
 <h2 id="LAN865x-初始化序列"><a href="#LAN865x-初始化序列" class="headerlink" title="LAN865x 初始化序列"></a>LAN865x 初始化序列</h2><p>初始化是一个严格有序的多阶段过程：</p>
 <pre class="mermaid">
 graph TD
-    A["硬件复位 (RESET pin LOW 100ms)"] --> B["软复位 (REG 0x03 = 0x01, unprotected)"]
-    B --> C["软复位 (REG 0x03 = 0x01, protected)"]
-    C --> D["读取 Chip ID (REG 0x01)"]
-    D --> E{"OUI=0x1F0, Model=0x1B?"}
-    E -->|"No"| F["初始化失败"]
-    E -->|"Yes"| G["读取 Chip Revision (REG 0x000A0094)"]
-    G --> H["写入 32 条初始化寄存器 (TC6_MEMMAP)"]
-    H --> I["修订相关配置 (Rev1: 0x5F21, Rev2: 0x3F31)"]
-    I --> J["写入 MAC 地址 (SPEC_ADD1/2)"]
-    J --> K["设置混杂模式 (NETWORK_CONFIG)"]
-    K --> L["PHY 校准 (InitChip - 读间接寄存器)"]
-    L --> M["PLCA 配置 (HandlePlca)"]
-    M --> N["Cut-Through/Store-Forward 模式 (CONFIG0)"]
-    N --> O["使能 MAC (NETWORK_CONTROL = 0x0C)"]
+    A["硬件复位 (RESET pin LOW 100ms)"] --&gt; B["软复位 (REG 0x03 = 0x01, unprotected)"]
+    B --&gt; C["软复位 (REG 0x03 = 0x01, protected)"]
+    C --&gt; D["读取 Chip ID (REG 0x01)"]
+    D --&gt; E{"OUI=0x1F0, Model=0x1B?"}
+    E --&gt;|"No"| F["初始化失败"]
+    E --&gt;|"Yes"| G["读取 Chip Revision (REG 0x000A0094)"]
+    G --&gt; H["写入 32 条初始化寄存器 (TC6_MEMMAP)"]
+    H --&gt; I["修订相关配置 (Rev1: 0x5F21, Rev2: 0x3F31)"]
+    I --&gt; J["写入 MAC 地址 (SPEC_ADD1/2)"]
+    J --&gt; K["设置混杂模式 (NETWORK_CONFIG)"]
+    K --&gt; L["PHY 校准 (InitChip - 读间接寄存器)"]
+    L --&gt; M["PLCA 配置 (HandlePlca)"]
+    M --&gt; N["Cut-Through/Store-Forward 模式 (CONFIG0)"]
+    N --&gt; O["使能 MAC (NETWORK_CONTROL = 0x0C)"]
 </pre>
 
 <h3 id="初始化寄存器表（部分关键项）"><a href="#初始化寄存器表（部分关键项）" class="headerlink" title="初始化寄存器表（部分关键项）"></a>初始化寄存器表（部分关键项）</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// src/microchip/lib/libtc6/src/tc6-regs.cpp:297-331</span></span><br><span class="line"><span class="type">static</span> <span class="type">const</span> MemoryMap_t TC6_MEMMAP[] = &#123;</span><br><span class="line">    &#123; .address=<span class="number">0x00000004</span>, .value=<span class="number">0x00000026</span>, .op=MemOp_Write, .secure=<span class="literal">false</span> &#125;,  <span class="comment">// CONFIG0: SPI 配置</span></span><br><span class="line">    &#123; .address=<span class="number">0x00010000</span>, .value=<span class="number">0x00000000</span>, .op=MemOp_Write, .secure=<span class="literal">true</span>  &#125;,  <span class="comment">// NETWORK_CONTROL: MAC 禁用</span></span><br><span class="line">    &#123; .address=<span class="number">0x00040091</span>, .value=<span class="number">0x00009660</span>, .op=MemOp_Write, .secure=<span class="literal">true</span>  &#125;,  <span class="comment">// PHY 配置</span></span><br><span class="line">    <span class="comment">// ... 28 条 PHY 校准/配置寄存器 ...</span></span><br><span class="line">    &#123; .address=<span class="number">0x0000000C</span>, .value=<span class="number">0x00000100</span>, .op=MemOp_Write, .secure=<span class="literal">true</span>  &#125;,  <span class="comment">// IMASK0: 中断掩码</span></span><br><span class="line">    &#123; .address=<span class="number">0x00040081</span>, .value=<span class="number">0x000000E0</span>, .op=MemOp_Write, .secure=<span class="literal">true</span>  &#125;,  <span class="comment">// DEEP_SLEEP_CTRL_1</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>

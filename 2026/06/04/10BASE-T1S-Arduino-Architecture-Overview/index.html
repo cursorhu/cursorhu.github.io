@@ -14,7 +14,7 @@
 <meta property="og:description" content="系列导读本系列三篇文章对 Arduino 官方 10BASE-T1S 库进行完整的软件架构分析，目标是为后续移植到竞品 T1S 芯片提供技术基线：  架构概览与开源评估（本篇）— 分层设计、编译平台、许可证分析 协议栈深度分析 — OA TC6 SPI 协议帧结构、数据流、PLCA 移植实战指南 — 抽象边界、可复用模块、移植 checklist  10BASE-T1S 技术背景10BASE-T1">
 <meta property="og:locale" content="zh_CN">
 <meta property="article:published_time" content="2026-06-03T16:00:00.000Z">
-<meta property="article:modified_time" content="2026-06-04T09:09:34.933Z">
+<meta property="article:modified_time" content="2026-06-11T09:05:16.506Z">
 <meta property="article:author" content="cursorhu">
 <meta property="article:tag" content="10BASE-T1S">
 <meta property="article:tag" content="Arduino">
@@ -379,16 +379,16 @@ graph TB
         E2["10BASE-T1S PHY Twisted Pair"]
     end
 
-    A1 --> A2
-    A2 --> B1
-    B1 --> B2
-    B2 --> C1
-    C1 --> C2
-    C2 --> C3
-    C3 --> D1
-    D1 --> D2
-    D2 --> E1
-    E1 --> E2
+    A1 --&gt; A2
+    A2 --&gt; B1
+    B1 --&gt; B2
+    B2 --&gt; C1
+    C1 --&gt; C2
+    C2 --&gt; C3
+    C3 --&gt; D1
+    D1 --&gt; D2
+    D2 --&gt; E1
+    E1 --&gt; E2
 </pre>
 
 <h3 id="各层职责"><a href="#各层职责" class="headerlink" title="各层职责"></a>各层职责</h3><p><strong>Application Layer</strong> — 用户代码接口，继承 Arduino 标准 <code>UDP</code> 基类，提供 <code>beginPacket()</code> &#x2F; <code>write()</code> &#x2F; <code>endPacket()</code> &#x2F; <code>parsePacket()</code> 标准 API。</p>
@@ -398,7 +398,7 @@ graph TB
 <h3 id="类关系"><a href="#类关系" class="headerlink" title="类关系"></a>类关系</h3><pre class="mermaid">
 classDiagram
     class Arduino_10BASE_T1S_PHY_Interface {
-        <<abstract>>
+        &lt;&lt;abstract&gt;&gt;
         +begin()
         +service()
         +getPlcaStatus()
@@ -406,7 +406,7 @@ classDiagram
     }
 
     class TC6_Arduino_10BASE_T1S {
-        -TC6_Io& io
+        -TC6_Io&amp; io
         -netif lwip_netif
         +begin(ip, mask, gw, mac, plca, mac_settings)
         +service()
@@ -414,7 +414,7 @@ classDiagram
     }
 
     class TC6_Io {
-        -HardwareSPI& spi
+        -HardwareSPI&amp; spi
         -int cs_pin, reset_pin, irq_pin
         +begin()
         +spiTransaction(pTx, pRx, len)
@@ -432,9 +432,9 @@ classDiagram
         +read(buf, len)
     }
 
-    Arduino_10BASE_T1S_PHY_Interface <|-- TC6_Arduino_10BASE_T1S
-    TC6_Arduino_10BASE_T1S --> TC6_Io
-    Arduino_10BASE_T1S_UDP --> TC6_Arduino_10BASE_T1S
+    Arduino_10BASE_T1S_PHY_Interface &lt;|-- TC6_Arduino_10BASE_T1S
+    TC6_Arduino_10BASE_T1S --&gt; TC6_Io
+    Arduino_10BASE_T1S_UDP --&gt; TC6_Arduino_10BASE_T1S
 </pre>
 
 <h3 id="典型使用代码"><a href="#典型使用代码" class="headerlink" title="典型使用代码"></a>典型使用代码</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 实例化 PHY（宏展开为 TC6_Io + TC6_Arduino_10BASE_T1S 对象）</span></span><br><span class="line"><span class="built_in">Arduino_10BASE_T1S_PHY_TC6</span>(SPI, CS_PIN, RESET_PIN, IRQ_PIN);</span><br><span class="line">Arduino_10BASE_T1S_UDP udp_client;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">setup</span><span class="params">()</span> </span>&#123;</span><br><span class="line">  <span class="built_in">pinMode</span>(IRQ_PIN, INPUT_PULLUP);</span><br><span class="line">  <span class="built_in">attachInterrupt</span>(<span class="built_in">digitalPinToInterrupt</span>(IRQ_PIN),</span><br><span class="line">                  []() &#123; t1s_io.<span class="built_in">onInterrupt</span>(); &#125;, FALLING);</span><br><span class="line"></span><br><span class="line">  t1s_io.<span class="built_in">begin</span>();</span><br><span class="line">  t1s_phy.<span class="built_in">begin</span>(ip_addr, network_mask, gateway,</span><br><span class="line">                mac_addr, t1s_plca_settings, t1s_default_mac_settings);</span><br><span class="line">  udp_client.<span class="built_in">begin</span>(UDP_CLIENT_PORT);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">loop</span><span class="params">()</span> </span>&#123;</span><br><span class="line">  t1s_phy.<span class="built_in">service</span>();  <span class="comment">// 必须高频调用，驱动 SPI 收发和 lwIP 定时器</span></span><br><span class="line">  <span class="comment">// ... UDP 收发逻辑</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
@@ -570,9 +570,9 @@ classDiagram
 <h3 id="实际验证方案"><a href="#实际验证方案" class="headerlink" title="实际验证方案"></a>实际验证方案</h3><p>项目依赖手动硬件测试，典型测试拓扑：</p>
 <pre class="mermaid">
 graph LR
-    A["Arduino UNO R4 WiFi\n(UDP Client, Node 1)"] -->|"单对双绞线\n10BASE-T1S"| B["Multi-drop Bus"]
-    C["Arduino UNO R4 WiFi\n(UDP Server, Node 0)"] -->|"单对双绞线"| B
-    D["EVB-LAN8670-USB\n(Linux Host, Node 0)"] -->|"单对双绞线"| B
+    A["Arduino UNO R4 WiFi\n(UDP Client, Node 1)"] --&gt;|"单对双绞线\n10BASE-T1S"| B["Multi-drop Bus"]
+    C["Arduino UNO R4 WiFi\n(UDP Server, Node 0)"] --&gt;|"单对双绞线"| B
+    D["EVB-LAN8670-USB\n(Linux Host, Node 0)"] --&gt;|"单对双绞线"| B
 </pre>
 
 <ul>
