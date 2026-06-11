@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="背景我的 Hexo 博客使用 Cactus 主题，写技术文章时经常需要用 Mermaid 画架构图和流程图。但 Cactus 主题不支持 Mermaid 渲染，而另一个主题 NexT 有现成实现。本文记录如何参考 NexT 的方案为 Cactus 开发 Mermaid 支持，以及如何通过 Fork + PR 的方式贡献给开源社区。 Hexo 渲染原理：从 Markdown 到博客页面整体流程 gr">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Hexo博客Mermaid支持开发实录：从主题定制到开源PR">
+<meta property="og:url" content="https://cursorhu.github.io/2026/06/11/Hexo%E5%8D%9A%E5%AE%A2Mermaid%E6%94%AF%E6%8C%81%E5%BC%80%E5%8F%91%E5%AE%9E%E5%BD%95%EF%BC%9A%E4%BB%8E%E4%B8%BB%E9%A2%98%E5%AE%9A%E5%88%B6%E5%88%B0%E5%BC%80%E6%BA%90PR/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="背景我的 Hexo 博客使用 Cactus 主题，写技术文章时经常需要用 Mermaid 画架构图和流程图。但 Cactus 主题不支持 Mermaid 渲染，而另一个主题 NexT 有现成实现。本文记录如何参考 NexT 的方案为 Cactus 开发 Mermaid 支持，以及如何通过 Fork + PR 的方式贡献给开源社区。 Hexo 渲染原理：从 Markdown 到博客页面整体流程 gr">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-06-10T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-11T10:31:40.396Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="Hexo">
+<meta property="article:tag" content="Mermaid">
+<meta property="article:tag" content="开源">
+<meta name="twitter:card" content="summary">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>Hexo博客Mermaid支持开发实录：从主题定制到开源PR</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+		<script type="text/x-mathjax-config">
+		  MathJax.Hub.Config({
+			tex2jax: {
+			  skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+			  inlineMath: [['$','$']]
+			}
+		  });
+		</script>
+		<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-MML-AM_CHTML' async></script>
+	
+<meta name="generator" content="Hexo 8.0.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="顶部" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        
+        <li><a class="icon" aria-label="下一篇" href="/2026/06/04/10BASE-T1S-Porting-Guide/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="返回顶部" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="分享文章" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">上一篇</span>
+      <span id="i-next" class="info" style="display:none;">下一篇</span>
+      <span id="i-top" class="info" style="display:none;">返回顶部</span>
+      <span id="i-share" class="info" style="display:none;">分享文章</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/06/11/Hexo%E5%8D%9A%E5%AE%A2Mermaid%E6%94%AF%E6%8C%81%E5%BC%80%E5%8F%91%E5%AE%9E%E5%BD%95%EF%BC%9A%E4%BB%8E%E4%B8%BB%E9%A2%98%E5%AE%9A%E5%88%B6%E5%88%B0%E5%BC%80%E6%BA%90PR/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/06/11/Hexo%E5%8D%9A%E5%AE%A2Mermaid%E6%94%AF%E6%8C%81%E5%BC%80%E5%8F%91%E5%AE%9E%E5%BD%95%EF%BC%9A%E4%BB%8E%E4%B8%BB%E9%A2%98%E5%AE%9A%E5%88%B6%E5%88%B0%E5%BC%80%E6%BA%90PR/&text=Hexo博客Mermaid支持开发实录：从主题定制到开源PR"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/06/11/Hexo%E5%8D%9A%E5%AE%A2Mermaid%E6%94%AF%E6%8C%81%E5%BC%80%E5%8F%91%E5%AE%9E%E5%BD%95%EF%BC%9A%E4%BB%8E%E4%B8%BB%E9%A2%98%E5%AE%9A%E5%88%B6%E5%88%B0%E5%BC%80%E6%BA%90PR/&title=Hexo博客Mermaid支持开发实录：从主题定制到开源PR"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/06/11/Hexo%E5%8D%9A%E5%AE%A2Mermaid%E6%94%AF%E6%8C%81%E5%BC%80%E5%8F%91%E5%AE%9E%E5%BD%95%EF%BC%9A%E4%BB%8E%E4%B8%BB%E9%A2%98%E5%AE%9A%E5%88%B6%E5%88%B0%E5%BC%80%E6%BA%90PR/&is_video=false&description=Hexo博客Mermaid支持开发实录：从主题定制到开源PR"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=Hexo博客Mermaid支持开发实录：从主题定制到开源PR&body=Check out this article: https://cursorhu.github.io/2026/06/11/Hexo%E5%8D%9A%E5%AE%A2Mermaid%E6%94%AF%E6%8C%81%E5%BC%80%E5%8F%91%E5%AE%9E%E5%BD%95%EF%BC%9A%E4%BB%8E%E4%B8%BB%E9%A2%98%E5%AE%9A%E5%88%B6%E5%88%B0%E5%BC%80%E6%BA%90PR/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/06/11/Hexo%E5%8D%9A%E5%AE%A2Mermaid%E6%94%AF%E6%8C%81%E5%BC%80%E5%8F%91%E5%AE%9E%E5%BD%95%EF%BC%9A%E4%BB%8E%E4%B8%BB%E9%A2%98%E5%AE%9A%E5%88%B6%E5%88%B0%E5%BC%80%E6%BA%90PR/&title=Hexo博客Mermaid支持开发实录：从主题定制到开源PR"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/06/11/Hexo%E5%8D%9A%E5%AE%A2Mermaid%E6%94%AF%E6%8C%81%E5%BC%80%E5%8F%91%E5%AE%9E%E5%BD%95%EF%BC%9A%E4%BB%8E%E4%B8%BB%E9%A2%98%E5%AE%9A%E5%88%B6%E5%88%B0%E5%BC%80%E6%BA%90PR/&title=Hexo博客Mermaid支持开发实录：从主题定制到开源PR"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/06/11/Hexo%E5%8D%9A%E5%AE%A2Mermaid%E6%94%AF%E6%8C%81%E5%BC%80%E5%8F%91%E5%AE%9E%E5%BD%95%EF%BC%9A%E4%BB%8E%E4%B8%BB%E9%A2%98%E5%AE%9A%E5%88%B6%E5%88%B0%E5%BC%80%E6%BA%90PR/&title=Hexo博客Mermaid支持开发实录：从主题定制到开源PR"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/06/11/Hexo%E5%8D%9A%E5%AE%A2Mermaid%E6%94%AF%E6%8C%81%E5%BC%80%E5%8F%91%E5%AE%9E%E5%BD%95%EF%BC%9A%E4%BB%8E%E4%B8%BB%E9%A2%98%E5%AE%9A%E5%88%B6%E5%88%B0%E5%BC%80%E6%BA%90PR/&title=Hexo博客Mermaid支持开发实录：从主题定制到开源PR"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/06/11/Hexo%E5%8D%9A%E5%AE%A2Mermaid%E6%94%AF%E6%8C%81%E5%BC%80%E5%8F%91%E5%AE%9E%E5%BD%95%EF%BC%9A%E4%BB%8E%E4%B8%BB%E9%A2%98%E5%AE%9A%E5%88%B6%E5%88%B0%E5%BC%80%E6%BA%90PR/&name=Hexo博客Mermaid支持开发实录：从主题定制到开源PR&description=&lt;h2 id=&#34;背景&#34;&gt;&lt;a href=&#34;#背景&#34; class=&#34;headerlink&#34; title=&#34;背景&#34;&gt;&lt;/a&gt;背景&lt;/h2&gt;&lt;p&gt;我的 Hexo 博客使用 Cactus 主题，写技术文章时经常需要用 Mermaid 画架构图和流程图。但 Cactus 主题不支持 Mermaid 渲染，而另一个主题 NexT 有现成实现。本文记录如何参考 NexT 的方案为 Cactus 开发 Mermaid 支持，以及如何通过 Fork + PR 的方式贡献给开源社区。&lt;/p&gt;
+&lt;h2 id=&#34;Hexo-渲染原理：从-Markdown-到博客页面&#34;&gt;&lt;a href=&#34;#Hexo-渲染原理：从-Markdown-到博客页面&#34; class=&#34;headerlink&#34; title=&#34;Hexo 渲染原理：从 Markdown 到博客页面&#34;&gt;&lt;/a&gt;Hexo 渲染原理：从 Markdown 到博客页面&lt;/h2&gt;&lt;h3 id=&#34;整体流程&#34;&gt;&lt;a href=&#34;#整体流程&#34; class=&#34;headerlink&#34; title=&#34;整体流程&#34;&gt;&lt;/a&gt;整体流程&lt;/h3&gt;&lt;pre class=&#34;mermaid&#34;&gt;
+graph LR
+    A[&#34;Markdown 源文件&#34;] --&amp;gt; B[&#34;Hexo 渲染管线&#34;]
+    B --&amp;gt; C[&#34;HTML 静态文件&#34;]
+    C --&amp;gt; D[&#34;部署到 Web 服务器&#34;]
+    D --&amp;gt; E[&#34;浏览器访问&#34;]
+&lt;/pre&gt;
+
+&lt;h3 id=&#34;Hexo-渲染管线详解&#34;&gt;&lt;a href=&#34;#Hexo-渲染管线详解&#34; class=&#34;headerlink&#34; title=&#34;Hexo 渲染管线详解&#34;&gt;&lt;/a&gt;Hexo 渲染管线详解&lt;/h3&gt;&lt;p&gt;Hexo 将 Markdown 转换为 HTML 页面的过程经过多个阶段，每个阶段都有对应的 Hook 可以插入自定义逻辑：&lt;/p&gt;
+&lt;pre class=&#34;mermaid&#34;&gt;
+graph TB
+    subgraph &#34;Hexo Generate 流程&#34;
+        A[&#34;source/_posts/*.md&#34;] --&amp;gt; B[&#34;before_post_render Filter&#34;]
+        B --&amp;gt; C[&#34;hexo-renderer-marked&#34;]
+        C --&amp;gt; D[&#34;highlight.js 代码高亮&#34;]
+        D --&amp;gt; E[&#34;after_post_render Filter&#34;]
+        E --&amp;gt; F[&#34;EJS 模板引擎&#34;]
+        F --&amp;gt; G[&#34;public/*.html&#34;]
+    end
+&lt;/pre&gt;
+
+&lt;p&gt;关键点：&lt;/p&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;阶段&lt;/th&gt;
+&lt;th&gt;作用&lt;/th&gt;
+&lt;th&gt;Hook 类型&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;&lt;tr&gt;
+&lt;td&gt;before_post_render&lt;/td&gt;
+&lt;td&gt;在 Markdown 渲染前拦截内容&lt;/td&gt;
+&lt;td&gt;Filter (priority)&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;hexo-renderer-marked&lt;/td&gt;
+&lt;td&gt;Markdown → HTML&lt;/td&gt;
+&lt;td&gt;Renderer&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;highlight.js&lt;/td&gt;
+&lt;td&gt;代码块语法高亮&lt;/td&gt;
+&lt;td&gt;内置于 renderer&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;after_post_render&lt;/td&gt;
+&lt;td&gt;HTML 渲染后处理&lt;/td&gt;
+&lt;td&gt;Filter&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;EJS 模板&lt;/td&gt;
+&lt;td&gt;注入 head&amp;#x2F;scripts&amp;#x2F;layout&lt;/td&gt;
+&lt;td&gt;Template Engine&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;&lt;/table&gt;"><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/06/11/Hexo%E5%8D%9A%E5%AE%A2Mermaid%E6%94%AF%E6%8C%81%E5%BC%80%E5%8F%91%E5%AE%9E%E5%BD%95%EF%BC%9A%E4%BB%8E%E4%B8%BB%E9%A2%98%E5%AE%9A%E5%88%B6%E5%88%B0%E5%BC%80%E6%BA%90PR/&t=Hexo博客Mermaid支持开发实录：从主题定制到开源PR"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%83%8C%E6%99%AF"><span class="toc-number">1.</span> <span class="toc-text">背景</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Hexo-%E6%B8%B2%E6%9F%93%E5%8E%9F%E7%90%86%EF%BC%9A%E4%BB%8E-Markdown-%E5%88%B0%E5%8D%9A%E5%AE%A2%E9%A1%B5%E9%9D%A2"><span class="toc-number">2.</span> <span class="toc-text">Hexo 渲染原理：从 Markdown 到博客页面</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%95%B4%E4%BD%93%E6%B5%81%E7%A8%8B"><span class="toc-number">2.1.</span> <span class="toc-text">整体流程</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Hexo-%E6%B8%B2%E6%9F%93%E7%AE%A1%E7%BA%BF%E8%AF%A6%E8%A7%A3"><span class="toc-number">2.2.</span> <span class="toc-text">Hexo 渲染管线详解</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Mermaid-%E6%96%87%E6%9C%AC%E5%A6%82%E4%BD%95%E5%8F%98%E6%88%90%E6%B5%81%E7%A8%8B%E5%9B%BE"><span class="toc-number">2.3.</span> <span class="toc-text">Mermaid 文本如何变成流程图</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AE%9E%E7%8E%B0%E6%96%B9%E6%A1%88%EF%BC%9A%E5%8F%82%E8%80%83-NexT-%E4%B8%BB%E9%A2%98%E5%BC%80%E5%8F%91-Cactus-Mermaid-%E6%94%AF%E6%8C%81"><span class="toc-number">3.</span> <span class="toc-text">实现方案：参考 NexT 主题开发 Cactus Mermaid 支持</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#NexT-%E4%B8%BB%E9%A2%98%E7%9A%84-Mermaid-%E5%AE%9E%E7%8E%B0"><span class="toc-number">3.1.</span> <span class="toc-text">NexT 主题的 Mermaid 实现</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Cactus-%E4%B8%BB%E9%A2%98%E7%9A%84%E6%9E%B6%E6%9E%84%E5%B7%AE%E5%BC%82"><span class="toc-number">3.2.</span> <span class="toc-text">Cactus 主题的架构差异</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%95%B4%E4%BD%93%E6%9E%B6%E6%9E%84%E8%AE%BE%E8%AE%A1"><span class="toc-number">3.3.</span> <span class="toc-text">整体架构设计</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%A0%B8%E5%BF%83%E5%AE%9E%E7%8E%B0%E8%AF%A6%E8%A7%A3"><span class="toc-number">3.4.</span> <span class="toc-text">核心实现详解</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#1-%E6%9C%8D%E5%8A%A1%E7%AB%AF-Filter%EF%BC%9A%E6%8B%A6%E6%88%AA-Mermaid-%E5%9B%B4%E6%A0%8F"><span class="toc-number">3.4.1.</span> <span class="toc-text">1. 服务端 Filter：拦截 Mermaid 围栏</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-%E5%AE%A2%E6%88%B7%E7%AB%AF%E6%87%92%E5%8A%A0%E8%BD%BD"><span class="toc-number">3.4.2.</span> <span class="toc-text">2. 客户端懒加载</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-%E9%85%8D%E7%BD%AE%E9%A1%B9"><span class="toc-number">3.4.3.</span> <span class="toc-text">3. 配置项</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%BC%80%E5%8F%91%E8%BF%87%E7%A8%8B%E4%B8%AD%E8%B8%A9%E7%9A%84%E5%9D%91"><span class="toc-number">3.5.</span> <span class="toc-text">开发过程中踩的坑</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%BC%80%E6%BA%90%E8%B4%A1%E7%8C%AE%EF%BC%9AFork-%E4%B8%8E-Pull-Request-%E6%B5%81%E7%A8%8B"><span class="toc-number">4.</span> <span class="toc-text">开源贡献：Fork 与 Pull Request 流程</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%B5%81%E7%A8%8B%E6%A6%82%E8%A7%88"><span class="toc-number">4.1.</span> <span class="toc-text">流程概览</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%B7%E4%BD%93%E6%AD%A5%E9%AA%A4"><span class="toc-number">4.2.</span> <span class="toc-text">具体步骤</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#Step-1-Fork-%E5%8E%9F%E4%BB%93%E5%BA%93"><span class="toc-number">4.2.1.</span> <span class="toc-text">Step 1: Fork 原仓库</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Step-2-%E8%AE%BE%E7%BD%AE-Remote"><span class="toc-number">4.2.2.</span> <span class="toc-text">Step 2: 设置 Remote</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Step-3-%E6%8E%A8%E9%80%81%E4%B8%AA%E4%BA%BA%E5%B7%A5%E4%BD%9C%E5%88%86%E6%94%AF"><span class="toc-number">4.2.3.</span> <span class="toc-text">Step 3: 推送个人工作分支</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Step-4-%E5%88%9B%E5%BB%BA%E5%B9%B2%E5%87%80%E7%9A%84-Feature-Branch"><span class="toc-number">4.2.4.</span> <span class="toc-text">Step 4: 创建干净的 Feature Branch</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Step-5-%E5%88%9B%E5%BB%BA-Pull-Request"><span class="toc-number">4.2.5.</span> <span class="toc-text">Step 5: 创建 Pull Request</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%88%86%E6%94%AF%E7%AE%A1%E7%90%86%E7%AD%96%E7%95%A5"><span class="toc-number">4.3.</span> <span class="toc-text">分支管理策略</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%80%BB%E7%BB%93"><span class="toc-number">5.</span> <span class="toc-text">总结</span></a></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        Hexo博客Mermaid支持开发实录：从主题定制到开源PR
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">cursorhu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2026-06-10T16:00:00.000Z" class="dt-published" itemprop="datePublished">2026-06-11</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fa-solid fa-archive"></i>
+        <a class="category-link" href="/categories/%E5%89%8D%E7%AB%AF%E5%B7%A5%E5%85%B7%E9%93%BE/">前端工具链</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/Hexo/" rel="tag">Hexo</a>, <a class="p-category" href="/tags/Mermaid/" rel="tag">Mermaid</a>, <a class="p-category" href="/tags/%E5%BC%80%E6%BA%90/" rel="tag">开源</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <h2 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h2><p>我的 Hexo 博客使用 Cactus 主题，写技术文章时经常需要用 Mermaid 画架构图和流程图。但 Cactus 主题不支持 Mermaid 渲染，而另一个主题 NexT 有现成实现。本文记录如何参考 NexT 的方案为 Cactus 开发 Mermaid 支持，以及如何通过 Fork + PR 的方式贡献给开源社区。</p>
+<h2 id="Hexo-渲染原理：从-Markdown-到博客页面"><a href="#Hexo-渲染原理：从-Markdown-到博客页面" class="headerlink" title="Hexo 渲染原理：从 Markdown 到博客页面"></a>Hexo 渲染原理：从 Markdown 到博客页面</h2><h3 id="整体流程"><a href="#整体流程" class="headerlink" title="整体流程"></a>整体流程</h3><pre class="mermaid">
+graph LR
+    A["Markdown 源文件"] --&gt; B["Hexo 渲染管线"]
+    B --&gt; C["HTML 静态文件"]
+    C --&gt; D["部署到 Web 服务器"]
+    D --&gt; E["浏览器访问"]
+</pre>
+
+<h3 id="Hexo-渲染管线详解"><a href="#Hexo-渲染管线详解" class="headerlink" title="Hexo 渲染管线详解"></a>Hexo 渲染管线详解</h3><p>Hexo 将 Markdown 转换为 HTML 页面的过程经过多个阶段，每个阶段都有对应的 Hook 可以插入自定义逻辑：</p>
+<pre class="mermaid">
+graph TB
+    subgraph "Hexo Generate 流程"
+        A["source/_posts/*.md"] --&gt; B["before_post_render Filter"]
+        B --&gt; C["hexo-renderer-marked"]
+        C --&gt; D["highlight.js 代码高亮"]
+        D --&gt; E["after_post_render Filter"]
+        E --&gt; F["EJS 模板引擎"]
+        F --&gt; G["public/*.html"]
+    end
+</pre>
+
+<p>关键点：</p>
+<table>
+<thead>
+<tr>
+<th>阶段</th>
+<th>作用</th>
+<th>Hook 类型</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>before_post_render</td>
+<td>在 Markdown 渲染前拦截内容</td>
+<td>Filter (priority)</td>
+</tr>
+<tr>
+<td>hexo-renderer-marked</td>
+<td>Markdown → HTML</td>
+<td>Renderer</td>
+</tr>
+<tr>
+<td>highlight.js</td>
+<td>代码块语法高亮</td>
+<td>内置于 renderer</td>
+</tr>
+<tr>
+<td>after_post_render</td>
+<td>HTML 渲染后处理</td>
+<td>Filter</td>
+</tr>
+<tr>
+<td>EJS 模板</td>
+<td>注入 head&#x2F;scripts&#x2F;layout</td>
+<td>Template Engine</td>
+</tr>
+</tbody></table>
+<h3 id="Mermaid-文本如何变成流程图"><a href="#Mermaid-文本如何变成流程图" class="headerlink" title="Mermaid 文本如何变成流程图"></a>Mermaid 文本如何变成流程图</h3><pre class="mermaid">
+sequenceDiagram
+    participant MD as Markdown 源文件
+    participant Filter as before_post_render
+    participant Marked as hexo-renderer-marked
+    participant Browser as 浏览器
+    participant MermaidJS as mermaid.js
+
+    MD-&gt;&gt;Filter: ```mermaid\ngraph LR\n  A--&gt;B\n```
+    Filter-&gt;&gt;Marked: &lt;pre class="mermaid"&gt;\n&amp;lt;转义后内容&amp;gt;\n&lt;/pre&gt;
+    Marked-&gt;&gt;Browser: 原样透传 HTML block
+    Browser-&gt;&gt;MermaidJS: 检测到 .mermaid 元素，懒加载 CDN
+    MermaidJS-&gt;&gt;Browser: 解析文本，渲染为 SVG 图形
+</pre>
+
+<p>整个过程分为服务端和客户端两个阶段：</p>
+<ul>
+<li><strong>服务端</strong>（hexo generate 时）：filter 将 mermaid 代码围栏替换为 HTML 容器，绕过 highlight.js</li>
+<li><strong>客户端</strong>（浏览器加载时）：JavaScript 检测页面中的 <code>.mermaid</code> 元素，动态加载 mermaid.js 库并渲染为 SVG</li>
+</ul>
+<h2 id="实现方案：参考-NexT-主题开发-Cactus-Mermaid-支持"><a href="#实现方案：参考-NexT-主题开发-Cactus-Mermaid-支持" class="headerlink" title="实现方案：参考 NexT 主题开发 Cactus Mermaid 支持"></a>实现方案：参考 NexT 主题开发 Cactus Mermaid 支持</h2><h3 id="NexT-主题的-Mermaid-实现"><a href="#NexT-主题的-Mermaid-实现" class="headerlink" title="NexT 主题的 Mermaid 实现"></a>NexT 主题的 Mermaid 实现</h3><p>NexT 使用 Swig 模板引擎，其 Mermaid 方案由三部分组成：</p>
+<ul>
+<li><code>scripts/tags/mermaid.js</code>：注册 <code>{% mermaid %}</code> 标签插件</li>
+<li><code>layout/_third-party/tags/mermaid.swig</code>：客户端加载 mermaid@8 并初始化</li>
+<li><code>_config.yml</code>：<code>mermaid.enable</code> 和 <code>mermaid.theme</code> 配置项</li>
+</ul>
+<h3 id="Cactus-主题的架构差异"><a href="#Cactus-主题的架构差异" class="headerlink" title="Cactus 主题的架构差异"></a>Cactus 主题的架构差异</h3><table>
+<thead>
+<tr>
+<th>维度</th>
+<th>NexT</th>
+<th>Cactus</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>模板引擎</td>
+<td>Swig</td>
+<td>EJS</td>
+</tr>
+<tr>
+<td>代码围栏支持</td>
+<td>仅 <code>{% mermaid %}</code> 标签</td>
+<td>标准 &#96;&#96;&#96;mermaid + 标签</td>
+</tr>
+<tr>
+<td>CDN 管理</td>
+<td>vendors 配置</td>
+<td>cdn helper 函数</td>
+</tr>
+<tr>
+<td>主题适配</td>
+<td>手动指定</td>
+<td>自动检测 colorscheme</td>
+</tr>
+</tbody></table>
+<h3 id="整体架构设计"><a href="#整体架构设计" class="headerlink" title="整体架构设计"></a>整体架构设计</h3><pre class="mermaid">
+graph TB
+    subgraph "Cactus Theme Mermaid 架构"
+        subgraph "服务端 - hexo generate"
+            A["scripts/mermaid.js"] --&gt; B["before_post_render filter\n(priority 5)"]
+            A --&gt; C["tag plugin\n{% mermaid %}"]
+            B --&gt; D["正则匹配 ```mermaid 围栏"]
+            D --&gt; E["HTML 转义 + 包裹\n&lt;pre class=mermaid&gt;"]
+            C --&gt; E
+        end
+
+        subgraph "配置层"
+            F["_config.yml"] --&gt; G["mermaid.enable"]
+            F --&gt; H["mermaid.theme: auto"]
+            F --&gt; I["cdn.mermaid: jsdelivr URL"]
+        end
+
+        subgraph "客户端 - 浏览器"
+            J["scripts.ejs"] --&gt; K["检测 .mermaid 元素"]
+            K --&gt; L["动态创建 script 标签"]
+            L --&gt; M["CDN 加载 mermaid.js"]
+            M --&gt; N["mermaid.initialize + run"]
+            N --&gt; O["SVG 渲染"]
+        end
+
+        subgraph "样式层"
+            P["style.styl"] --&gt; Q["pre.mermaid 覆盖默认 pre 样式"]
+        end
+    end
+</pre>
+
+<h3 id="核心实现详解"><a href="#核心实现详解" class="headerlink" title="核心实现详解"></a>核心实现详解</h3><h4 id="1-服务端-Filter：拦截-Mermaid-围栏"><a href="#1-服务端-Filter：拦截-Mermaid-围栏" class="headerlink" title="1. 服务端 Filter：拦截 Mermaid 围栏"></a>1. 服务端 Filter：拦截 Mermaid 围栏</h4><p>核心挑战：Hexo 的 highlight.js 会将 &#96;&#96;&#96;mermaid 代码块渲染为 <code>&lt;figure class=&quot;highlight plaintext&quot;&gt;</code> 结构，破坏 mermaid 语法。必须在 highlight.js 处理之前拦截。</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// scripts/mermaid.js</span></span><br><span class="line"><span class="keyword">function</span> <span class="title function_">escapeHtml</span>(<span class="params">str</span>) &#123;</span><br><span class="line">  <span class="keyword">return</span> str.<span class="title function_">replace</span>(<span class="regexp">/&amp;/g</span>, <span class="string">&#x27;&amp;amp;&#x27;</span>).<span class="title function_">replace</span>(<span class="regexp">/&lt;/g</span>, <span class="string">&#x27;&amp;lt;&#x27;</span>).<span class="title function_">replace</span>(<span class="regexp">/&gt;/g</span>, <span class="string">&#x27;&amp;gt;&#x27;</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">hexo.<span class="property">extend</span>.<span class="property">filter</span>.<span class="title function_">register</span>(<span class="string">&#x27;before_post_render&#x27;</span>, <span class="keyword">function</span>(<span class="params">data</span>) &#123;</span><br><span class="line">  <span class="keyword">if</span> (!<span class="title function_">mermaidEnabled</span>()) <span class="keyword">return</span> data;</span><br><span class="line">  <span class="keyword">const</span> mermaidRegex = <span class="regexp">/^```mermaid\s*\n([\s\S]*?)^```\s*$/gm</span>;</span><br><span class="line">  data.<span class="property">content</span> = data.<span class="property">content</span>.<span class="title function_">replace</span>(mermaidRegex, <span class="function">(<span class="params">match, content</span>) =&gt;</span> &#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="string">`\n&lt;pre class=&quot;mermaid&quot;&gt;\n<span class="subst">$&#123;escapeHtml(content.trim())&#125;</span>\n&lt;/pre&gt;\n`</span>;</span><br><span class="line">  &#125;);</span><br><span class="line">  <span class="keyword">return</span> data;</span><br><span class="line">&#125;, <span class="number">5</span>); <span class="comment">// priority 5: 在 markdown renderer (priority 10) 之前执行</span></span><br></pre></td></tr></table></figure>
+
+<p>这里有两个关键设计决策：</p>
+<p><strong>为什么用 <code>&lt;pre&gt;</code> 而不是 <code>&lt;div&gt;</code>？</strong></p>
+<p>CommonMark 规范中，<code>&lt;div&gt;</code> 类型的 HTML block 遇到空行会被截断，后续内容被当作 Markdown 处理。而 <code>&lt;pre&gt;</code> 是 Type 1 HTML block，直到遇到 <code>&lt;/pre&gt;</code> 才结束，不受空行影响。Mermaid 的 subgraph 之间通常有空行分隔，<code>&lt;div&gt;</code> 会导致内容被截断。</p>
+<p><strong>为什么需要 HTML 转义？</strong></p>
+<p>即使在 <code>&lt;pre&gt;</code> 标签内，浏览器 HTML 解析器仍然会解析 <code>&lt;</code> 和 <code>&gt;</code> 字符。例如 classDiagram 中的 <code>&lt;&lt;abstract&gt;&gt;</code> 注解，浏览器会将 <code>&lt;abstract&gt;</code> 解释为 HTML 标签并吞掉它。转义后 mermaid.js 通过 <code>element.textContent</code> 读取内容时，浏览器会自动反转义回原始字符。</p>
+<h4 id="2-客户端懒加载"><a href="#2-客户端懒加载" class="headerlink" title="2. 客户端懒加载"></a>2. 客户端懒加载</h4><figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// layout/_partial/scripts.ejs</span></span><br><span class="line">(<span class="keyword">function</span>(<span class="params"></span>) &#123;</span><br><span class="line">  <span class="keyword">var</span> mermaidElements = <span class="variable language_">document</span>.<span class="title function_">querySelectorAll</span>(<span class="string">&#x27;.mermaid&#x27;</span>);</span><br><span class="line">  <span class="keyword">if</span> (!mermaidElements.<span class="property">length</span>) <span class="keyword">return</span>; <span class="comment">// 无 mermaid 元素则不加载</span></span><br><span class="line"></span><br><span class="line">  <span class="keyword">var</span> mermaidTheme = <span class="string">&#x27;&lt;%= theme.mermaid.theme || &quot;auto&quot; %&gt;&#x27;</span>;</span><br><span class="line">  <span class="keyword">if</span> (mermaidTheme === <span class="string">&#x27;auto&#x27;</span>) &#123;</span><br><span class="line">    <span class="keyword">var</span> colorscheme = <span class="string">&#x27;&lt;%= theme.colorscheme || &quot;dark&quot; %&gt;&#x27;</span>;</span><br><span class="line">    mermaidTheme = (colorscheme === <span class="string">&#x27;dark&#x27;</span> || colorscheme === <span class="string">&#x27;classic&#x27;</span>) ? <span class="string">&#x27;dark&#x27;</span> : <span class="string">&#x27;default&#x27;</span>;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">function</span> <span class="title function_">initMermaid</span>(<span class="params"></span>) &#123;</span><br><span class="line">    mermaid.<span class="title function_">initialize</span>(&#123; <span class="attr">startOnLoad</span>: <span class="literal">false</span>, <span class="attr">theme</span>: mermaidTheme &#125;);</span><br><span class="line">    mermaid.<span class="title function_">run</span>(&#123; <span class="attr">nodes</span>: mermaidElements &#125;);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">var</span> script = <span class="variable language_">document</span>.<span class="title function_">createElement</span>(<span class="string">&#x27;script&#x27;</span>);</span><br><span class="line">  script.<span class="property">src</span> = <span class="string">&#x27;&lt;%= theme.cdn.mermaid %&gt;&#x27;</span>;</span><br><span class="line">  script.<span class="property">onload</span> = initMermaid;</span><br><span class="line">  <span class="variable language_">document</span>.<span class="property">head</span>.<span class="title function_">appendChild</span>(script);</span><br><span class="line">&#125;)();</span><br></pre></td></tr></table></figure>
+
+<p>设计要点：</p>
+<ul>
+<li><strong>按需加载</strong>：先检测页面是否存在 <code>.mermaid</code> 元素，不存在则跳过，避免无谓的网络请求</li>
+<li><strong>主题自动适配</strong>：根据 Cactus 的 <code>colorscheme</code> 配置自动选择 mermaid 的 dark&#x2F;default 主题</li>
+<li><strong>动态 script 注入</strong>：通过 <code>createElement</code> 而非静态 <code>&lt;script&gt;</code> 标签，实现真正的懒加载</li>
+</ul>
+<h4 id="3-配置项"><a href="#3-配置项" class="headerlink" title="3. 配置项"></a>3. 配置项</h4><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># _config.yml</span></span><br><span class="line"><span class="attr">mermaid:</span></span><br><span class="line">  <span class="attr">enable:</span> <span class="literal">true</span></span><br><span class="line">  <span class="attr">theme:</span> <span class="string">auto</span>    <span class="comment"># auto | dark | default | forest | neutral</span></span><br><span class="line"></span><br><span class="line"><span class="attr">cdn:</span></span><br><span class="line">  <span class="attr">mermaid:</span> <span class="string">https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="开发过程中踩的坑"><a href="#开发过程中踩的坑" class="headerlink" title="开发过程中踩的坑"></a>开发过程中踩的坑</h3><table>
+<thead>
+<tr>
+<th>问题</th>
+<th>现象</th>
+<th>根因</th>
+<th>解决方案</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>CDN 404</td>
+<td>页面显示纯文本，不渲染</td>
+<td>cdnjs 上 mermaid 11.4.1 版本不存在</td>
+<td>切换到 jsdelivr 的 mermaid@10</td>
+</tr>
+<tr>
+<td>HTML block 截断</td>
+<td>第一个 subgraph 正常，后续变为 Markdown</td>
+<td><code>&lt;div&gt;</code> 遇空行终止 HTML block</td>
+<td>改用 <code>&lt;pre&gt;</code> 标签</td>
+</tr>
+<tr>
+<td>特殊字符被吞</td>
+<td>classDiagram 的 <code>&lt;&lt;abstract&gt;&gt;</code> 报语法错误</td>
+<td>浏览器将 <code>&lt;abstract&gt;</code> 解析为 HTML 标签</td>
+<td>服务端 HTML 转义内容</td>
+</tr>
+</tbody></table>
+<h2 id="开源贡献：Fork-与-Pull-Request-流程"><a href="#开源贡献：Fork-与-Pull-Request-流程" class="headerlink" title="开源贡献：Fork 与 Pull Request 流程"></a>开源贡献：Fork 与 Pull Request 流程</h2><h3 id="流程概览"><a href="#流程概览" class="headerlink" title="流程概览"></a>流程概览</h3><pre class="mermaid">
+graph LR
+    A["upstream\nprobberechts/hexo-theme-cactus"] --&gt;|Fork| B["origin\ncursorhu/hexo-theme-cactus"]
+    B --&gt;|clone / push| C["本地仓库"]
+    C --&gt;|feature branch| D["feature/mermaid-support"]
+    D --&gt;|push| B
+    B --&gt;|Pull Request| A
+</pre>
+
+<h3 id="具体步骤"><a href="#具体步骤" class="headerlink" title="具体步骤"></a>具体步骤</h3><h4 id="Step-1-Fork-原仓库"><a href="#Step-1-Fork-原仓库" class="headerlink" title="Step 1: Fork 原仓库"></a>Step 1: Fork 原仓库</h4><p>在 GitHub 上 fork <code>probberechts/hexo-theme-cactus</code> 到自己的账号 <code>cursorhu</code>。</p>
+<h4 id="Step-2-设置-Remote"><a href="#Step-2-设置-Remote" class="headerlink" title="Step 2: 设置 Remote"></a>Step 2: 设置 Remote</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 将 origin 指向自己的 fork</span></span><br><span class="line">git remote set-url origin https://github.com/cursorhu/hexo-theme-cactus.git</span><br><span class="line"></span><br><span class="line"><span class="comment"># 添加 upstream 指向原作者</span></span><br><span class="line">git remote add upstream https://github.com/probberechts/hexo-theme-cactus.git</span><br><span class="line">git fetch upstream</span><br></pre></td></tr></table></figure>
+
+<p>此时的 remote 结构：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">origin    → cursorhu/hexo-theme-cactus (自己的 fork，可读写)</span><br><span class="line">upstream  → probberechts/hexo-theme-cactus (原仓库，只读)</span><br></pre></td></tr></table></figure>
+
+<h4 id="Step-3-推送个人工作分支"><a href="#Step-3-推送个人工作分支" class="headerlink" title="Step 3: 推送个人工作分支"></a>Step 3: 推送个人工作分支</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 推送包含个人配置 + mermaid 功能的分支</span></span><br><span class="line">git push -u origin cursorhu</span><br></pre></td></tr></table></figure>
+
+<h4 id="Step-4-创建干净的-Feature-Branch"><a href="#Step-4-创建干净的-Feature-Branch" class="headerlink" title="Step 4: 创建干净的 Feature Branch"></a>Step 4: 创建干净的 Feature Branch</h4><p>PR 给原作者不能包含个人配置改动，需要从 upstream&#x2F;master 创建干净分支：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 从原作者的最新 master 创建 feature branch</span></span><br><span class="line">git checkout -b feature/mermaid-support upstream/master</span><br><span class="line"></span><br><span class="line"><span class="comment"># 只添加 mermaid 相关的 4 个文件改动</span></span><br><span class="line">git add scripts/mermaid.js _config.yml layout/_partial/scripts.ejs <span class="built_in">source</span>/css/style.styl</span><br><span class="line">git commit -m <span class="string">&quot;feat: add Mermaid diagram support&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 推送到自己的 fork</span></span><br><span class="line">git push origin feature/mermaid-support</span><br></pre></td></tr></table></figure>
+
+<h4 id="Step-5-创建-Pull-Request"><a href="#Step-5-创建-Pull-Request" class="headerlink" title="Step 5: 创建 Pull Request"></a>Step 5: 创建 Pull Request</h4><p>访问：<code>https://github.com/probberechts/hexo-theme-cactus/compare/master...cursorhu:hexo-theme-cactus:feature/mermaid-support</code></p>
+<p>PR 的关键要素：</p>
+<ul>
+<li><strong>Title</strong>：简洁描述功能，如 <code>feat: add Mermaid diagram support</code></li>
+<li><strong>Body</strong>：说明实现方式、使用方法、修改的文件列表</li>
+<li><strong>Scope</strong>：只包含功能相关改动，不混入个人配置</li>
+</ul>
+<h3 id="分支管理策略"><a href="#分支管理策略" class="headerlink" title="分支管理策略"></a>分支管理策略</h3><pre class="mermaid">
+gitGraph
+    commit id: "upstream/master"
+    branch cursorhu
+    commit id: "personal config"
+    commit id: "mermaid (mixed)"
+    checkout main
+    branch feature/mermaid-support
+    commit id: "feat: mermaid (clean)"
+</pre>
+
+<p>两条分支各有用途：</p>
+<ul>
+<li><code>cursorhu</code>：自己日常使用，包含个人配置 + 所有功能</li>
+<li><code>feature/mermaid-support</code>：提交给社区的干净功能分支，基于 upstream&#x2F;master</li>
+</ul>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>整个开发过程的核心经验：</p>
+<ol>
+<li><strong>理解渲染管线</strong>：Hexo 的 filter 机制提供了 <code>before_post_render</code> 这个关键 Hook，让我们能在 highlight.js 之前拦截 mermaid 内容</li>
+<li><strong>尊重浏览器规则</strong>：HTML 解析器无处不在，即使 <code>&lt;pre&gt;</code> 标签内的内容也需要正确转义</li>
+<li><strong>分离关注点</strong>：服务端负责内容保护（防止被其他处理器破坏），客户端负责渲染（懒加载 + 按需初始化）</li>
+<li><strong>开源贡献要干净</strong>：个人使用的分支和提交给社区的分支必须分开，PR 只包含功能本身</li>
+</ol>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">首页</a></li>
+        
+          <li><a href="/about/">关于</a></li>
+        
+          <li><a href="/archives/">归档</a></li>
+        
+          <li><a href="/tags/">标签</a></li>
+        
+          <li><a href="/categories/">分类</a></li>
+        
+          <li><a href="/search/">搜索</a></li>
+        
+          <li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%83%8C%E6%99%AF"><span class="toc-number">1.</span> <span class="toc-text">背景</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Hexo-%E6%B8%B2%E6%9F%93%E5%8E%9F%E7%90%86%EF%BC%9A%E4%BB%8E-Markdown-%E5%88%B0%E5%8D%9A%E5%AE%A2%E9%A1%B5%E9%9D%A2"><span class="toc-number">2.</span> <span class="toc-text">Hexo 渲染原理：从 Markdown 到博客页面</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%95%B4%E4%BD%93%E6%B5%81%E7%A8%8B"><span class="toc-number">2.1.</span> <span class="toc-text">整体流程</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Hexo-%E6%B8%B2%E6%9F%93%E7%AE%A1%E7%BA%BF%E8%AF%A6%E8%A7%A3"><span class="toc-number">2.2.</span> <span class="toc-text">Hexo 渲染管线详解</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Mermaid-%E6%96%87%E6%9C%AC%E5%A6%82%E4%BD%95%E5%8F%98%E6%88%90%E6%B5%81%E7%A8%8B%E5%9B%BE"><span class="toc-number">2.3.</span> <span class="toc-text">Mermaid 文本如何变成流程图</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AE%9E%E7%8E%B0%E6%96%B9%E6%A1%88%EF%BC%9A%E5%8F%82%E8%80%83-NexT-%E4%B8%BB%E9%A2%98%E5%BC%80%E5%8F%91-Cactus-Mermaid-%E6%94%AF%E6%8C%81"><span class="toc-number">3.</span> <span class="toc-text">实现方案：参考 NexT 主题开发 Cactus Mermaid 支持</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#NexT-%E4%B8%BB%E9%A2%98%E7%9A%84-Mermaid-%E5%AE%9E%E7%8E%B0"><span class="toc-number">3.1.</span> <span class="toc-text">NexT 主题的 Mermaid 实现</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Cactus-%E4%B8%BB%E9%A2%98%E7%9A%84%E6%9E%B6%E6%9E%84%E5%B7%AE%E5%BC%82"><span class="toc-number">3.2.</span> <span class="toc-text">Cactus 主题的架构差异</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%95%B4%E4%BD%93%E6%9E%B6%E6%9E%84%E8%AE%BE%E8%AE%A1"><span class="toc-number">3.3.</span> <span class="toc-text">整体架构设计</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%A0%B8%E5%BF%83%E5%AE%9E%E7%8E%B0%E8%AF%A6%E8%A7%A3"><span class="toc-number">3.4.</span> <span class="toc-text">核心实现详解</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#1-%E6%9C%8D%E5%8A%A1%E7%AB%AF-Filter%EF%BC%9A%E6%8B%A6%E6%88%AA-Mermaid-%E5%9B%B4%E6%A0%8F"><span class="toc-number">3.4.1.</span> <span class="toc-text">1. 服务端 Filter：拦截 Mermaid 围栏</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-%E5%AE%A2%E6%88%B7%E7%AB%AF%E6%87%92%E5%8A%A0%E8%BD%BD"><span class="toc-number">3.4.2.</span> <span class="toc-text">2. 客户端懒加载</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-%E9%85%8D%E7%BD%AE%E9%A1%B9"><span class="toc-number">3.4.3.</span> <span class="toc-text">3. 配置项</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%BC%80%E5%8F%91%E8%BF%87%E7%A8%8B%E4%B8%AD%E8%B8%A9%E7%9A%84%E5%9D%91"><span class="toc-number">3.5.</span> <span class="toc-text">开发过程中踩的坑</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%BC%80%E6%BA%90%E8%B4%A1%E7%8C%AE%EF%BC%9AFork-%E4%B8%8E-Pull-Request-%E6%B5%81%E7%A8%8B"><span class="toc-number">4.</span> <span class="toc-text">开源贡献：Fork 与 Pull Request 流程</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%B5%81%E7%A8%8B%E6%A6%82%E8%A7%88"><span class="toc-number">4.1.</span> <span class="toc-text">流程概览</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%B7%E4%BD%93%E6%AD%A5%E9%AA%A4"><span class="toc-number">4.2.</span> <span class="toc-text">具体步骤</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#Step-1-Fork-%E5%8E%9F%E4%BB%93%E5%BA%93"><span class="toc-number">4.2.1.</span> <span class="toc-text">Step 1: Fork 原仓库</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Step-2-%E8%AE%BE%E7%BD%AE-Remote"><span class="toc-number">4.2.2.</span> <span class="toc-text">Step 2: 设置 Remote</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Step-3-%E6%8E%A8%E9%80%81%E4%B8%AA%E4%BA%BA%E5%B7%A5%E4%BD%9C%E5%88%86%E6%94%AF"><span class="toc-number">4.2.3.</span> <span class="toc-text">Step 3: 推送个人工作分支</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Step-4-%E5%88%9B%E5%BB%BA%E5%B9%B2%E5%87%80%E7%9A%84-Feature-Branch"><span class="toc-number">4.2.4.</span> <span class="toc-text">Step 4: 创建干净的 Feature Branch</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Step-5-%E5%88%9B%E5%BB%BA-Pull-Request"><span class="toc-number">4.2.5.</span> <span class="toc-text">Step 5: 创建 Pull Request</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%88%86%E6%94%AF%E7%AE%A1%E7%90%86%E7%AD%96%E7%95%A5"><span class="toc-number">4.3.</span> <span class="toc-text">分支管理策略</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%80%BB%E7%BB%93"><span class="toc-number">5.</span> <span class="toc-text">总结</span></a></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/06/11/Hexo%E5%8D%9A%E5%AE%A2Mermaid%E6%94%AF%E6%8C%81%E5%BC%80%E5%8F%91%E5%AE%9E%E5%BD%95%EF%BC%9A%E4%BB%8E%E4%B8%BB%E9%A2%98%E5%AE%9A%E5%88%B6%E5%88%B0%E5%BC%80%E6%BA%90PR/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/06/11/Hexo%E5%8D%9A%E5%AE%A2Mermaid%E6%94%AF%E6%8C%81%E5%BC%80%E5%8F%91%E5%AE%9E%E5%BD%95%EF%BC%9A%E4%BB%8E%E4%B8%BB%E9%A2%98%E5%AE%9A%E5%88%B6%E5%88%B0%E5%BC%80%E6%BA%90PR/&text=Hexo博客Mermaid支持开发实录：从主题定制到开源PR"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/06/11/Hexo%E5%8D%9A%E5%AE%A2Mermaid%E6%94%AF%E6%8C%81%E5%BC%80%E5%8F%91%E5%AE%9E%E5%BD%95%EF%BC%9A%E4%BB%8E%E4%B8%BB%E9%A2%98%E5%AE%9A%E5%88%B6%E5%88%B0%E5%BC%80%E6%BA%90PR/&title=Hexo博客Mermaid支持开发实录：从主题定制到开源PR"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/06/11/Hexo%E5%8D%9A%E5%AE%A2Mermaid%E6%94%AF%E6%8C%81%E5%BC%80%E5%8F%91%E5%AE%9E%E5%BD%95%EF%BC%9A%E4%BB%8E%E4%B8%BB%E9%A2%98%E5%AE%9A%E5%88%B6%E5%88%B0%E5%BC%80%E6%BA%90PR/&is_video=false&description=Hexo博客Mermaid支持开发实录：从主题定制到开源PR"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=Hexo博客Mermaid支持开发实录：从主题定制到开源PR&body=Check out this article: https://cursorhu.github.io/2026/06/11/Hexo%E5%8D%9A%E5%AE%A2Mermaid%E6%94%AF%E6%8C%81%E5%BC%80%E5%8F%91%E5%AE%9E%E5%BD%95%EF%BC%9A%E4%BB%8E%E4%B8%BB%E9%A2%98%E5%AE%9A%E5%88%B6%E5%88%B0%E5%BC%80%E6%BA%90PR/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/06/11/Hexo%E5%8D%9A%E5%AE%A2Mermaid%E6%94%AF%E6%8C%81%E5%BC%80%E5%8F%91%E5%AE%9E%E5%BD%95%EF%BC%9A%E4%BB%8E%E4%B8%BB%E9%A2%98%E5%AE%9A%E5%88%B6%E5%88%B0%E5%BC%80%E6%BA%90PR/&title=Hexo博客Mermaid支持开发实录：从主题定制到开源PR"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/06/11/Hexo%E5%8D%9A%E5%AE%A2Mermaid%E6%94%AF%E6%8C%81%E5%BC%80%E5%8F%91%E5%AE%9E%E5%BD%95%EF%BC%9A%E4%BB%8E%E4%B8%BB%E9%A2%98%E5%AE%9A%E5%88%B6%E5%88%B0%E5%BC%80%E6%BA%90PR/&title=Hexo博客Mermaid支持开发实录：从主题定制到开源PR"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/06/11/Hexo%E5%8D%9A%E5%AE%A2Mermaid%E6%94%AF%E6%8C%81%E5%BC%80%E5%8F%91%E5%AE%9E%E5%BD%95%EF%BC%9A%E4%BB%8E%E4%B8%BB%E9%A2%98%E5%AE%9A%E5%88%B6%E5%88%B0%E5%BC%80%E6%BA%90PR/&title=Hexo博客Mermaid支持开发实录：从主题定制到开源PR"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/06/11/Hexo%E5%8D%9A%E5%AE%A2Mermaid%E6%94%AF%E6%8C%81%E5%BC%80%E5%8F%91%E5%AE%9E%E5%BD%95%EF%BC%9A%E4%BB%8E%E4%B8%BB%E9%A2%98%E5%AE%9A%E5%88%B6%E5%88%B0%E5%BC%80%E6%BA%90PR/&title=Hexo博客Mermaid支持开发实录：从主题定制到开源PR"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/06/11/Hexo%E5%8D%9A%E5%AE%A2Mermaid%E6%94%AF%E6%8C%81%E5%BC%80%E5%8F%91%E5%AE%9E%E5%BD%95%EF%BC%9A%E4%BB%8E%E4%B8%BB%E9%A2%98%E5%AE%9A%E5%88%B6%E5%88%B0%E5%BC%80%E6%BA%90PR/&name=Hexo博客Mermaid支持开发实录：从主题定制到开源PR&description=&lt;h2 id=&#34;背景&#34;&gt;&lt;a href=&#34;#背景&#34; class=&#34;headerlink&#34; title=&#34;背景&#34;&gt;&lt;/a&gt;背景&lt;/h2&gt;&lt;p&gt;我的 Hexo 博客使用 Cactus 主题，写技术文章时经常需要用 Mermaid 画架构图和流程图。但 Cactus 主题不支持 Mermaid 渲染，而另一个主题 NexT 有现成实现。本文记录如何参考 NexT 的方案为 Cactus 开发 Mermaid 支持，以及如何通过 Fork + PR 的方式贡献给开源社区。&lt;/p&gt;
+&lt;h2 id=&#34;Hexo-渲染原理：从-Markdown-到博客页面&#34;&gt;&lt;a href=&#34;#Hexo-渲染原理：从-Markdown-到博客页面&#34; class=&#34;headerlink&#34; title=&#34;Hexo 渲染原理：从 Markdown 到博客页面&#34;&gt;&lt;/a&gt;Hexo 渲染原理：从 Markdown 到博客页面&lt;/h2&gt;&lt;h3 id=&#34;整体流程&#34;&gt;&lt;a href=&#34;#整体流程&#34; class=&#34;headerlink&#34; title=&#34;整体流程&#34;&gt;&lt;/a&gt;整体流程&lt;/h3&gt;&lt;pre class=&#34;mermaid&#34;&gt;
+graph LR
+    A[&#34;Markdown 源文件&#34;] --&amp;gt; B[&#34;Hexo 渲染管线&#34;]
+    B --&amp;gt; C[&#34;HTML 静态文件&#34;]
+    C --&amp;gt; D[&#34;部署到 Web 服务器&#34;]
+    D --&amp;gt; E[&#34;浏览器访问&#34;]
+&lt;/pre&gt;
+
+&lt;h3 id=&#34;Hexo-渲染管线详解&#34;&gt;&lt;a href=&#34;#Hexo-渲染管线详解&#34; class=&#34;headerlink&#34; title=&#34;Hexo 渲染管线详解&#34;&gt;&lt;/a&gt;Hexo 渲染管线详解&lt;/h3&gt;&lt;p&gt;Hexo 将 Markdown 转换为 HTML 页面的过程经过多个阶段，每个阶段都有对应的 Hook 可以插入自定义逻辑：&lt;/p&gt;
+&lt;pre class=&#34;mermaid&#34;&gt;
+graph TB
+    subgraph &#34;Hexo Generate 流程&#34;
+        A[&#34;source/_posts/*.md&#34;] --&amp;gt; B[&#34;before_post_render Filter&#34;]
+        B --&amp;gt; C[&#34;hexo-renderer-marked&#34;]
+        C --&amp;gt; D[&#34;highlight.js 代码高亮&#34;]
+        D --&amp;gt; E[&#34;after_post_render Filter&#34;]
+        E --&amp;gt; F[&#34;EJS 模板引擎&#34;]
+        F --&amp;gt; G[&#34;public/*.html&#34;]
+    end
+&lt;/pre&gt;
+
+&lt;p&gt;关键点：&lt;/p&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;阶段&lt;/th&gt;
+&lt;th&gt;作用&lt;/th&gt;
+&lt;th&gt;Hook 类型&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;&lt;tr&gt;
+&lt;td&gt;before_post_render&lt;/td&gt;
+&lt;td&gt;在 Markdown 渲染前拦截内容&lt;/td&gt;
+&lt;td&gt;Filter (priority)&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;hexo-renderer-marked&lt;/td&gt;
+&lt;td&gt;Markdown → HTML&lt;/td&gt;
+&lt;td&gt;Renderer&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;highlight.js&lt;/td&gt;
+&lt;td&gt;代码块语法高亮&lt;/td&gt;
+&lt;td&gt;内置于 renderer&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;after_post_render&lt;/td&gt;
+&lt;td&gt;HTML 渲染后处理&lt;/td&gt;
+&lt;td&gt;Filter&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;EJS 模板&lt;/td&gt;
+&lt;td&gt;注入 head&amp;#x2F;scripts&amp;#x2F;layout&lt;/td&gt;
+&lt;td&gt;Template Engine&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;&lt;/table&gt;"><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/06/11/Hexo%E5%8D%9A%E5%AE%A2Mermaid%E6%94%AF%E6%8C%81%E5%BC%80%E5%8F%91%E5%AE%9E%E5%BD%95%EF%BC%9A%E4%BB%8E%E4%B8%BB%E9%A2%98%E5%AE%9A%E5%88%B6%E5%88%B0%E5%BC%80%E6%BA%90PR/&t=Hexo博客Mermaid支持开发实录：从主题定制到开源PR"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> 菜单</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> 目录</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> 分享</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> 返回顶部</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2026
+    cursorhu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"复制到粘贴板！\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "复制成功！");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+<!-- Mermaid diagrams -->
+
+  <script type="text/javascript">
+  (function() {
+    var mermaidElements = document.querySelectorAll('.mermaid');
+    if (!mermaidElements.length) return;
+
+    var mermaidTheme = 'auto';
+    if (mermaidTheme === 'auto') {
+      var colorscheme = 'dark';
+      mermaidTheme = (colorscheme === 'dark' || colorscheme === 'classic') ? 'dark' : 'default';
+    }
+
+    function initMermaid() {
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: mermaidTheme,
+        logLevel: 'error',
+        securityLevel: 'loose',
+        flowchart: { curve: 'basis' },
+        gantt: { axisFormat: '%m/%d/%Y' },
+        sequence: { actorMargin: 50 }
+      });
+      mermaid.run({ nodes: mermaidElements });
+    }
+
+    var script = document.createElement('script');
+    
+    script.src = 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js';
+    
+    script.onload = initMermaid;
+    document.head.appendChild(script);
+  })();
+  </script>
+
+</body>
+</html>
