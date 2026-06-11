@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="系列导读 架构概览与开源评估 — 分层设计、编译平台、许可证分析 协议栈深度分析 — OA TC6 SPI 协议帧结构、数据流、PLCA 移植实战指南（本篇）— 抽象边界、可复用模块、移植 checklist  移植目标将 Arduino 10BASE-T1S 库的测试验证能力移植到竞品 T1S 芯片环境，实现：  在 Arduino 平台上驱动竞品 MAC-PHY 芯片 复用 lwIP 协议栈和">
+<meta property="og:type" content="article">
+<meta property="og:title" content="10BASE-T1S Arduino 开源库架构分析（三）：移植实战指南">
+<meta property="og:url" content="https://cursorhu.github.io/2026/06/04/10BASE-T1S-Porting-Guide/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="系列导读 架构概览与开源评估 — 分层设计、编译平台、许可证分析 协议栈深度分析 — OA TC6 SPI 协议帧结构、数据流、PLCA 移植实战指南（本篇）— 抽象边界、可复用模块、移植 checklist  移植目标将 Arduino 10BASE-T1S 库的测试验证能力移植到竞品 T1S 芯片环境，实现：  在 Arduino 平台上驱动竞品 MAC-PHY 芯片 复用 lwIP 协议栈和">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-06-03T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-04T09:15:19.852Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="10BASE-T1S">
+<meta property="article:tag" content="HAL">
+<meta property="article:tag" content="LAN8651">
+<meta property="article:tag" content="Lumissil">
+<meta property="article:tag" content="代码移植">
+<meta name="twitter:card" content="summary">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>10BASE-T1S Arduino 开源库架构分析（三）：移植实战指南</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+		<script type="text/x-mathjax-config">
+		  MathJax.Hub.Config({
+			tex2jax: {
+			  skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+			  inlineMath: [['$','$']]
+			}
+		  });
+		</script>
+		<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-MML-AM_CHTML' async></script>
+	
+<meta name="generator" content="Hexo 8.0.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="顶部" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="上一篇" href="/2026/06/04/10BASE-T1S-Arduino-Architecture-Overview/"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="下一篇" href="/2026/06/04/10BASE-T1S-Protocol-Stack-Deep-Dive/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="返回顶部" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="分享文章" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">上一篇</span>
+      <span id="i-next" class="info" style="display:none;">下一篇</span>
+      <span id="i-top" class="info" style="display:none;">返回顶部</span>
+      <span id="i-share" class="info" style="display:none;">分享文章</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/06/04/10BASE-T1S-Porting-Guide/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/06/04/10BASE-T1S-Porting-Guide/&text=10BASE-T1S Arduino 开源库架构分析（三）：移植实战指南"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/06/04/10BASE-T1S-Porting-Guide/&title=10BASE-T1S Arduino 开源库架构分析（三）：移植实战指南"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/06/04/10BASE-T1S-Porting-Guide/&is_video=false&description=10BASE-T1S Arduino 开源库架构分析（三）：移植实战指南"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=10BASE-T1S Arduino 开源库架构分析（三）：移植实战指南&body=Check out this article: https://cursorhu.github.io/2026/06/04/10BASE-T1S-Porting-Guide/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/06/04/10BASE-T1S-Porting-Guide/&title=10BASE-T1S Arduino 开源库架构分析（三）：移植实战指南"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/06/04/10BASE-T1S-Porting-Guide/&title=10BASE-T1S Arduino 开源库架构分析（三）：移植实战指南"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/06/04/10BASE-T1S-Porting-Guide/&title=10BASE-T1S Arduino 开源库架构分析（三）：移植实战指南"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/06/04/10BASE-T1S-Porting-Guide/&title=10BASE-T1S Arduino 开源库架构分析（三）：移植实战指南"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/06/04/10BASE-T1S-Porting-Guide/&name=10BASE-T1S Arduino 开源库架构分析（三）：移植实战指南&description=&lt;h2 id=&#34;系列导读&#34;&gt;&lt;a href=&#34;#系列导读&#34; class=&#34;headerlink&#34; title=&#34;系列导读&#34;&gt;&lt;/a&gt;系列导读&lt;/h2&gt;&lt;ol&gt;
+&lt;li&gt;&lt;a href=&#34;/2026/06/04/10BASE-T1S-Arduino-Architecture-Overview/&#34;&gt;架构概览与开源评估&lt;/a&gt; — 分层设计、编译平台、许可证分析&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;/2026/06/04/10BASE-T1S-Protocol-Stack-Deep-Dive/&#34;&gt;协议栈深度分析&lt;/a&gt; — OA TC6 SPI 协议帧结构、数据流、PLCA&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;移植实战指南&lt;/strong&gt;（本篇）— 抽象边界、可复用模块、移植 checklist&lt;/li&gt;
+&lt;/ol&gt;
+&lt;h2 id=&#34;移植目标&#34;&gt;&lt;a href=&#34;#移植目标&#34; class=&#34;headerlink&#34; title=&#34;移植目标&#34;&gt;&lt;/a&gt;移植目标&lt;/h2&gt;&lt;p&gt;将 Arduino 10BASE-T1S 库的测试验证能力移植到竞品 T1S 芯片环境，实现：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;在 Arduino 平台上驱动竞品 MAC-PHY 芯片&lt;/li&gt;
+&lt;li&gt;复用 lwIP 协议栈和 UDP 测试框架&lt;/li&gt;
+&lt;li&gt;用相同的 UDP echo 测试方法验证竞品芯片功能&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;架构抽象边界&#34;&gt;&lt;a href=&#34;#架构抽象边界&#34; class=&#34;headerlink&#34; title=&#34;架构抽象边界&#34;&gt;&lt;/a&gt;架构抽象边界&lt;/h2&gt;&lt;p&gt;移植的核心问题是：&lt;strong&gt;哪些模块与 Microchip LAN8651 芯片绑定，哪些是通用的？&lt;/strong&gt;&lt;/p&gt;
+&lt;figure class=&#34;highlight plaintext&#34;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&#34;gutter&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;3&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;4&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;5&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;6&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;7&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;8&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;9&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;10&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;11&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;12&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;13&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;14&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;15&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;16&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;17&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;18&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;19&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;20&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;21&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;22&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;23&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;24&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;25&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;26&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;27&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&#34;code&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;graph TB&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    subgraph &amp;quot;可直接复用 (Chip-Independent)&amp;quot;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        A1[&amp;quot;Arduino_10BASE_T1S_UDP&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        A2[&amp;quot;lwIP TCP/IP Stack&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        A3[&amp;quot;T1SPlcaSettings&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        A4[&amp;quot;T1SMacSettings&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        A5[&amp;quot;MacAddress&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    end&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    subgraph &amp;quot;条件复用 (取决于竞品是否兼容 OA TC6)&amp;quot;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        B1[&amp;quot;libtc6 协议核心 (tc6.cpp)&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        B2[&amp;quot;Credit 管理 / Chunk 分帧&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        B3[&amp;quot;Header/Footer 解析&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    end&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    subgraph &amp;quot;必须替换 (Chip-Specific)&amp;quot;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        C1[&amp;quot;TC6_Io (SPI 配置)&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        C2[&amp;quot;tc6-regs.cpp (寄存器初始化)&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        C3[&amp;quot;芯片 ID 校验逻辑&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        C4[&amp;quot;PHY 校准参数&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        C5[&amp;quot;PLCA 寄存器地址&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    end&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    A1 --&amp;gt; A2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    A2 --&amp;gt; B1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    B1 --&amp;gt; C1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    B1 --&amp;gt; C2&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;
+
+&lt;h2 id=&#34;场景一：竞品兼容-OA-TC6-SPI-协议&#34;&gt;&lt;a href=&#34;#场景一：竞品兼容-OA-TC6-SPI-协议&#34; class=&#34;headerlink&#34; title=&#34;场景一：竞品兼容 OA TC6 SPI 协议&#34;&gt;&lt;/a&gt;场景一：竞品兼容 OA TC6 SPI 协议&lt;/h2&gt;&lt;p&gt;如果竞品芯片也实现了 Open Alliance TC6 SPI 接口（DNC&amp;#x2F;SEQ&amp;#x2F;DV&amp;#x2F;SV&amp;#x2F;EV 帧结构一致），移植工作量最小：&lt;/p&gt;"><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/06/04/10BASE-T1S-Porting-Guide/&t=10BASE-T1S Arduino 开源库架构分析（三）：移植实战指南"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%B3%BB%E5%88%97%E5%AF%BC%E8%AF%BB"><span class="toc-number">1.</span> <span class="toc-text">系列导读</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%A7%BB%E6%A4%8D%E7%9B%AE%E6%A0%87"><span class="toc-number">2.</span> <span class="toc-text">移植目标</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%9E%B6%E6%9E%84%E6%8A%BD%E8%B1%A1%E8%BE%B9%E7%95%8C"><span class="toc-number">3.</span> <span class="toc-text">架构抽象边界</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9C%BA%E6%99%AF%E4%B8%80%EF%BC%9A%E7%AB%9E%E5%93%81%E5%85%BC%E5%AE%B9-OA-TC6-SPI-%E5%8D%8F%E8%AE%AE"><span class="toc-number">4.</span> <span class="toc-text">场景一：竞品兼容 OA TC6 SPI 协议</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%9C%80%E8%A6%81%E4%BF%AE%E6%94%B9%E7%9A%84%E6%96%87%E4%BB%B6"><span class="toc-number">4.1.</span> <span class="toc-text">需要修改的文件</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#TC6-Io-%E9%80%82%E9%85%8D"><span class="toc-number">4.2.</span> <span class="toc-text">TC6_Io 适配</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AF%84%E5%AD%98%E5%99%A8%E5%88%9D%E5%A7%8B%E5%8C%96%E8%A1%A8%E6%9B%BF%E6%8D%A2"><span class="toc-number">4.3.</span> <span class="toc-text">寄存器初始化表替换</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%8A%AF%E7%89%87-ID-%E6%A0%A1%E9%AA%8C%E4%BF%AE%E6%94%B9"><span class="toc-number">4.4.</span> <span class="toc-text">芯片 ID 校验修改</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#PLCA-%E5%AF%84%E5%AD%98%E5%99%A8%E5%9C%B0%E5%9D%80%E6%98%A0%E5%B0%84"><span class="toc-number">4.5.</span> <span class="toc-text">PLCA 寄存器地址映射</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9C%BA%E6%99%AF%E4%BA%8C%EF%BC%9A%E7%AB%9E%E5%93%81%E4%BD%BF%E7%94%A8%E7%A7%81%E6%9C%89-SPI-%E5%8D%8F%E8%AE%AE"><span class="toc-number">5.</span> <span class="toc-text">场景二：竞品使用私有 SPI 协议</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%9C%80%E8%A6%81%E6%9B%BF%E6%8D%A2%E7%9A%84%E6%A8%A1%E5%9D%97"><span class="toc-number">5.1.</span> <span class="toc-text">需要替换的模块</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%9C%80%E8%A6%81%E5%AE%9E%E7%8E%B0%E7%9A%84%E6%8E%A5%E5%8F%A3"><span class="toc-number">5.2.</span> <span class="toc-text">需要实现的接口</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#lwIP-%E9%9B%86%E6%88%90%E7%9A%84%E5%85%B3%E9%94%AE%E5%9B%9E%E8%B0%83"><span class="toc-number">5.3.</span> <span class="toc-text">lwIP 集成的关键回调</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9E%E8%B0%83%E6%8E%A5%E5%8F%A3%E6%B8%85%E5%8D%95"><span class="toc-number">6.</span> <span class="toc-text">回调接口清单</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%A7%BB%E6%A4%8D%E6%AD%A5%E9%AA%A4-Checklist"><span class="toc-number">7.</span> <span class="toc-text">移植步骤 Checklist</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Phase-1-%E7%8E%AF%E5%A2%83%E5%87%86%E5%A4%87"><span class="toc-number">7.1.</span> <span class="toc-text">Phase 1: 环境准备</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Phase-2-SPI-%E9%80%9A%E4%BF%A1%E9%AA%8C%E8%AF%81"><span class="toc-number">7.2.</span> <span class="toc-text">Phase 2: SPI 通信验证</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Phase-3-%E5%AF%84%E5%AD%98%E5%99%A8%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="toc-number">7.3.</span> <span class="toc-text">Phase 3: 寄存器初始化</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Phase-4-PLCA-%E9%85%8D%E7%BD%AE"><span class="toc-number">7.4.</span> <span class="toc-text">Phase 4: PLCA 配置</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Phase-5-%E6%95%B0%E6%8D%AE%E9%80%9A%E8%B7%AF"><span class="toc-number">7.5.</span> <span class="toc-text">Phase 5: 数据通路</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Phase-6-UDP-%E5%8A%9F%E8%83%BD%E9%AA%8C%E8%AF%81"><span class="toc-number">7.6.</span> <span class="toc-text">Phase 6: UDP 功能验证</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Phase-7-%E6%80%A7%E8%83%BD%E4%B8%8E%E7%A8%B3%E5%AE%9A%E6%80%A7"><span class="toc-number">7.7.</span> <span class="toc-text">Phase 7: 性能与稳定性</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%AA%8C%E8%AF%81%E6%96%B9%E6%A1%88"><span class="toc-number">8.</span> <span class="toc-text">验证方案</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%B5%8B%E8%AF%95%E6%8B%93%E6%89%91"><span class="toc-number">8.1.</span> <span class="toc-text">测试拓扑</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%AA%8C%E8%AF%81%E9%A1%B9"><span class="toc-number">8.2.</span> <span class="toc-text">验证项</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#tcpdump-%E6%8A%93%E5%8C%85%E9%AA%8C%E8%AF%81"><span class="toc-number">8.3.</span> <span class="toc-text">tcpdump 抓包验证</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%B8%B8%E8%A7%81%E7%A7%BB%E6%A4%8D%E9%99%B7%E9%98%B1"><span class="toc-number">9.</span> <span class="toc-text">常见移植陷阱</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BB%A3%E7%A0%81%E7%BB%93%E6%9E%84%E5%BB%BA%E8%AE%AE"><span class="toc-number">10.</span> <span class="toc-text">代码结构建议</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%B0%8F%E7%BB%93"><span class="toc-number">11.</span> <span class="toc-text">小结</span></a></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        10BASE-T1S Arduino 开源库架构分析（三）：移植实战指南
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">cursorhu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2026-06-03T16:00:00.000Z" class="dt-published" itemprop="datePublished">2026-06-04</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fa-solid fa-archive"></i>
+        <a class="category-link" href="/categories/Ethernet/">Ethernet</a> › <a class="category-link" href="/categories/Ethernet/%E5%B5%8C%E5%85%A5%E5%BC%8F%E7%BD%91%E7%BB%9C/">嵌入式网络</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/10BASE-T1S/" rel="tag">10BASE-T1S</a>, <a class="p-category" href="/tags/HAL/" rel="tag">HAL</a>, <a class="p-category" href="/tags/LAN8651/" rel="tag">LAN8651</a>, <a class="p-category" href="/tags/Lumissil/" rel="tag">Lumissil</a>, <a class="p-category" href="/tags/%E4%BB%A3%E7%A0%81%E7%A7%BB%E6%A4%8D/" rel="tag">代码移植</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <h2 id="系列导读"><a href="#系列导读" class="headerlink" title="系列导读"></a>系列导读</h2><ol>
+<li><a href="/2026/06/04/10BASE-T1S-Arduino-Architecture-Overview/">架构概览与开源评估</a> — 分层设计、编译平台、许可证分析</li>
+<li><a href="/2026/06/04/10BASE-T1S-Protocol-Stack-Deep-Dive/">协议栈深度分析</a> — OA TC6 SPI 协议帧结构、数据流、PLCA</li>
+<li><strong>移植实战指南</strong>（本篇）— 抽象边界、可复用模块、移植 checklist</li>
+</ol>
+<h2 id="移植目标"><a href="#移植目标" class="headerlink" title="移植目标"></a>移植目标</h2><p>将 Arduino 10BASE-T1S 库的测试验证能力移植到竞品 T1S 芯片环境，实现：</p>
+<ul>
+<li>在 Arduino 平台上驱动竞品 MAC-PHY 芯片</li>
+<li>复用 lwIP 协议栈和 UDP 测试框架</li>
+<li>用相同的 UDP echo 测试方法验证竞品芯片功能</li>
+</ul>
+<h2 id="架构抽象边界"><a href="#架构抽象边界" class="headerlink" title="架构抽象边界"></a>架构抽象边界</h2><p>移植的核心问题是：<strong>哪些模块与 Microchip LAN8651 芯片绑定，哪些是通用的？</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line">graph TB</span><br><span class="line">    subgraph &quot;可直接复用 (Chip-Independent)&quot;</span><br><span class="line">        A1[&quot;Arduino_10BASE_T1S_UDP&quot;]</span><br><span class="line">        A2[&quot;lwIP TCP/IP Stack&quot;]</span><br><span class="line">        A3[&quot;T1SPlcaSettings&quot;]</span><br><span class="line">        A4[&quot;T1SMacSettings&quot;]</span><br><span class="line">        A5[&quot;MacAddress&quot;]</span><br><span class="line">    end</span><br><span class="line"></span><br><span class="line">    subgraph &quot;条件复用 (取决于竞品是否兼容 OA TC6)&quot;</span><br><span class="line">        B1[&quot;libtc6 协议核心 (tc6.cpp)&quot;]</span><br><span class="line">        B2[&quot;Credit 管理 / Chunk 分帧&quot;]</span><br><span class="line">        B3[&quot;Header/Footer 解析&quot;]</span><br><span class="line">    end</span><br><span class="line"></span><br><span class="line">    subgraph &quot;必须替换 (Chip-Specific)&quot;</span><br><span class="line">        C1[&quot;TC6_Io (SPI 配置)&quot;]</span><br><span class="line">        C2[&quot;tc6-regs.cpp (寄存器初始化)&quot;]</span><br><span class="line">        C3[&quot;芯片 ID 校验逻辑&quot;]</span><br><span class="line">        C4[&quot;PHY 校准参数&quot;]</span><br><span class="line">        C5[&quot;PLCA 寄存器地址&quot;]</span><br><span class="line">    end</span><br><span class="line"></span><br><span class="line">    A1 --&gt; A2</span><br><span class="line">    A2 --&gt; B1</span><br><span class="line">    B1 --&gt; C1</span><br><span class="line">    B1 --&gt; C2</span><br></pre></td></tr></table></figure>
+
+<h2 id="场景一：竞品兼容-OA-TC6-SPI-协议"><a href="#场景一：竞品兼容-OA-TC6-SPI-协议" class="headerlink" title="场景一：竞品兼容 OA TC6 SPI 协议"></a>场景一：竞品兼容 OA TC6 SPI 协议</h2><p>如果竞品芯片也实现了 Open Alliance TC6 SPI 接口（DNC&#x2F;SEQ&#x2F;DV&#x2F;SV&#x2F;EV 帧结构一致），移植工作量最小：</p>
+<h3 id="需要修改的文件"><a href="#需要修改的文件" class="headerlink" title="需要修改的文件"></a>需要修改的文件</h3><table>
+<thead>
+<tr>
+<th>文件</th>
+<th>修改内容</th>
+<th>工作量</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>src/microchip/TC6_Io.cpp</code></td>
+<td>SPI 时钟&#x2F;模式（如果不同）、引脚定义</td>
+<td>小</td>
+</tr>
+<tr>
+<td><code>src/microchip/lib/libtc6/src/tc6-regs.cpp</code></td>
+<td>整个寄存器初始化表、芯片 ID 校验、PLCA 寄存器地址</td>
+<td>大</td>
+</tr>
+<tr>
+<td><code>src/Arduino_10BASE_T1S.h</code></td>
+<td>板卡引脚宏定义</td>
+<td>小</td>
+</tr>
+</tbody></table>
+<h3 id="TC6-Io-适配"><a href="#TC6-Io-适配" class="headerlink" title="TC6_Io 适配"></a>TC6_Io 适配</h3><p>SPI HAL 层极其简洁，只有 4 个需要确认的参数：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 需要根据竞品 datasheet 确认这些值</span></span><br><span class="line"><span class="type">static</span> SPISettings <span class="type">const</span> COMPETITOR_SPI_SETTING&#123;</span><br><span class="line">    ?? * <span class="number">1000</span> * <span class="number">1000UL</span>,  <span class="comment">// 时钟频率（查竞品 SPI 最大时钟）</span></span><br><span class="line">    MSBFIRST,            <span class="comment">// 大概率相同</span></span><br><span class="line">    SPI_MODE0            <span class="comment">// 确认 CPOL/CPHA</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>复位时序也需要确认：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">bool</span> <span class="title">TC6_Io::begin</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="built_in">digitalWrite</span>(_cs_pin, HIGH);</span><br><span class="line">  <span class="built_in">pinMode</span>(_cs_pin, OUTPUT);</span><br><span class="line">  <span class="built_in">pinMode</span>(_reset_pin, OUTPUT);</span><br><span class="line">  <span class="built_in">digitalWrite</span>(_reset_pin, LOW);</span><br><span class="line">  <span class="built_in">delay</span>(??);   <span class="comment">// 竞品复位保持时间</span></span><br><span class="line">  <span class="built_in">digitalWrite</span>(_reset_pin, HIGH);</span><br><span class="line">  <span class="built_in">delay</span>(??);   <span class="comment">// 竞品复位恢复时间</span></span><br><span class="line">  _spi.<span class="built_in">begin</span>();</span><br><span class="line">  <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="寄存器初始化表替换"><a href="#寄存器初始化表替换" class="headerlink" title="寄存器初始化表替换"></a>寄存器初始化表替换</h3><p>这是工作量最大的部分。需要根据竞品 datasheet 重写 <code>TC6_MEMMAP[]</code> 数组：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 原始 LAN8651 初始化表（32 条）</span></span><br><span class="line"><span class="type">static</span> <span class="type">const</span> MemoryMap_t TC6_MEMMAP[] = &#123;</span><br><span class="line">    &#123; .address=<span class="number">0x00000004</span>, .value=<span class="number">0x00000026</span>, .op=MemOp_Write, .secure=<span class="literal">false</span> &#125;,</span><br><span class="line">    <span class="comment">// ... Microchip 特定的寄存器配置</span></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 替换为竞品芯片的初始化表</span></span><br><span class="line"><span class="type">static</span> <span class="type">const</span> MemoryMap_t TC6_MEMMAP[] = &#123;</span><br><span class="line">    &#123; .address=??, .value=??, .op=MemOp_Write, .secure=?? &#125;,</span><br><span class="line">    <span class="comment">// ... 根据竞品 datasheet 填写</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>需要从竞品 datasheet 中提取的信息：</p>
+<ol>
+<li><strong>CONFIG0 等 SPI 配置寄存器</strong> — chunk size、保护模式设置</li>
+<li><strong>MAC 寄存器</strong> — MAC 地址写入地址、网络控制寄存器</li>
+<li><strong>PHY 寄存器</strong> — 校准参数、电气特性配置</li>
+<li><strong>PLCA 寄存器</strong> — Node ID、Node Count、Burst 参数的地址和位域</li>
+<li><strong>中断掩码</strong> — 状态上报配置</li>
+</ol>
+<h3 id="芯片-ID-校验修改"><a href="#芯片-ID-校验修改" class="headerlink" title="芯片 ID 校验修改"></a>芯片 ID 校验修改</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 原始校验逻辑（tc6-regs.cpp:346-356）</span></span><br><span class="line"><span class="comment">// 读 REG 0x00000001, 检查 OUI=0x1F0, Model=0x1B</span></span><br><span class="line"><span class="comment">// 读 REG 0x000A0094, 获取 chip revision</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 需要替换为竞品的 ID 寄存器地址和期望值</span></span><br><span class="line"><span class="keyword">while</span> (!<span class="built_in">TC6_ReadRegister</span>(pReg-&gt;pTC6, COMPETITOR_ID_REG, <span class="literal">false</span>, OnReadId1, <span class="literal">NULL</span>)) &#123;</span><br><span class="line">    <span class="built_in">TC6_Service</span>(pReg-&gt;pTC6, <span class="literal">true</span>);</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// 校验逻辑中比较竞品的 OUI 和 Model 值</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="PLCA-寄存器地址映射"><a href="#PLCA-寄存器地址映射" class="headerlink" title="PLCA 寄存器地址映射"></a>PLCA 寄存器地址映射</h3><p>如果竞品芯片支持 PLCA 但寄存器地址不同，需要修改 <code>HandlePlca()</code>：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// LAN8651 PLCA 寄存器地址</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PLCA_CONTROL_0   0x0004CA01  <span class="comment">// PLCA 使能</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PLCA_CONTROL_1   0x0004CA02  <span class="comment">// Node ID + Count</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PLCA_BURST_MODE  0x0004CA05  <span class="comment">// Burst 配置</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> COL_DET_CTRL0    0x00040087  <span class="comment">// 碰撞检测模式</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 替换为竞品地址</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PLCA_CONTROL_0   0x????????</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PLCA_CONTROL_1   0x????????</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PLCA_BURST_MODE  0x????????</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> COL_DET_CTRL0    0x????????</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="场景二：竞品使用私有-SPI-协议"><a href="#场景二：竞品使用私有-SPI-协议" class="headerlink" title="场景二：竞品使用私有 SPI 协议"></a>场景二：竞品使用私有 SPI 协议</h2><p>如果竞品芯片不兼容 OA TC6（使用自定义寄存器协议或不同的帧封装），需要替换整个协议层：</p>
+<h3 id="需要替换的模块"><a href="#需要替换的模块" class="headerlink" title="需要替换的模块"></a>需要替换的模块</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">graph TB</span><br><span class="line">    subgraph &quot;保留&quot;</span><br><span class="line">        A[&quot;Arduino_10BASE_T1S_UDP + lwIP&quot;]</span><br><span class="line">    end</span><br><span class="line"></span><br><span class="line">    subgraph &quot;重新实现的接口层&quot;</span><br><span class="line">        B[&quot;新的 PHY Driver Class&quot;]</span><br><span class="line">    end</span><br><span class="line"></span><br><span class="line">    subgraph &quot;全部替换&quot;</span><br><span class="line">        C[&quot;竞品 SPI 协议实现&quot;]</span><br><span class="line">        D[&quot;竞品寄存器驱动&quot;]</span><br><span class="line">        E[&quot;竞品 chunk/frame 处理&quot;]</span><br><span class="line">    end</span><br><span class="line"></span><br><span class="line">    A --&gt; B</span><br><span class="line">    B --&gt; C</span><br><span class="line">    B --&gt; D</span><br><span class="line">    C --&gt; E</span><br></pre></td></tr></table></figure>
+
+<h3 id="需要实现的接口"><a href="#需要实现的接口" class="headerlink" title="需要实现的接口"></a>需要实现的接口</h3><p><code>Arduino_10BASE_T1S_PHY_Interface</code> 定义了上层需要的抽象接口：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// src/Arduino_10BASE_T1S_PHY_Interface.h</span></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">Arduino_10BASE_T1S_PHY_Interface</span> &#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="keyword">virtual</span> <span class="type">bool</span> <span class="title">begin</span><span class="params">(IPAddress ip, IPAddress mask, IPAddress gw,</span></span></span><br><span class="line"><span class="params"><span class="function">                       MacAddress mac,</span></span></span><br><span class="line"><span class="params"><span class="function">                       T1SPlcaSettings plca,</span></span></span><br><span class="line"><span class="params"><span class="function">                       T1SMacSettings mac_settings)</span> </span>= <span class="number">0</span>;</span><br><span class="line">    <span class="function"><span class="keyword">virtual</span> <span class="type">void</span> <span class="title">service</span><span class="params">()</span> </span>= <span class="number">0</span>;</span><br><span class="line">    <span class="function"><span class="keyword">virtual</span> <span class="type">bool</span> <span class="title">getPlcaStatus</span><span class="params">(PlcaStatusCallback callback)</span> </span>= <span class="number">0</span>;</span><br><span class="line">    <span class="function"><span class="keyword">virtual</span> <span class="type">void</span> <span class="title">enablePlca</span><span class="params">()</span> </span>= <span class="number">0</span>;</span><br><span class="line">    <span class="function"><span class="keyword">virtual</span> <span class="type">bool</span> <span class="title">sendWouldBlock</span><span class="params">()</span> </span>= <span class="number">0</span>;</span><br><span class="line">    <span class="function"><span class="keyword">virtual</span> <span class="type">void</span> <span class="title">digitalWrite</span><span class="params">(DIO dio, <span class="type">bool</span> value)</span> </span>= <span class="number">0</span>;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>新的驱动类需要实现这些接口，并完成以下内部工作：</p>
+<ol>
+<li><strong>初始化 SPI 和竞品芯片</strong></li>
+<li><strong>集成 lwIP</strong> — 注册 <code>netif</code>，提供 <code>lwIpOut()</code> 回调</li>
+<li><strong>实现 service()</strong> — 驱动 SPI 收发，将接收帧送入 lwIP</li>
+<li><strong>PLCA 管理</strong> — 如果竞品支持 PLCA</li>
+</ol>
+<h3 id="lwIP-集成的关键回调"><a href="#lwIP-集成的关键回调" class="headerlink" title="lwIP 集成的关键回调"></a>lwIP 集成的关键回调</h3><p>无论竞品用什么 SPI 协议，与 lwIP 的集成模式不变：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 发送回调：lwIP 要发帧时调用</span></span><br><span class="line"><span class="function"><span class="type">static</span> <span class="type">err_t</span> <span class="title">lwIpOut</span><span class="params">(<span class="keyword">struct</span> netif *netif, <span class="keyword">struct</span> pbuf *p)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="comment">// 将 pbuf 数据交给竞品驱动发送</span></span><br><span class="line">    <span class="comment">// pbuf 可能是链表，需要遍历所有 segment</span></span><br><span class="line">    <span class="type">uint8_t</span> *frame_buf = ...;</span><br><span class="line">    <span class="type">uint16_t</span> frame_len = p-&gt;tot_len;</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">struct</span> pbuf *q = p; q != <span class="literal">NULL</span>; q = q-&gt;next) &#123;</span><br><span class="line">        <span class="built_in">memcpy</span>(frame_buf + offset, q-&gt;payload, q-&gt;len);</span><br><span class="line">        offset += q-&gt;len;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="built_in">competitor_send_frame</span>(frame_buf, frame_len);</span><br><span class="line">    <span class="keyword">return</span> ERR_OK;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 接收路径：竞品驱动收到完整帧后调用</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">on_frame_received</span><span class="params">(<span class="type">uint8_t</span> *frame, <span class="type">uint16_t</span> len)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">struct</span> <span class="title class_">pbuf</span> *p = <span class="built_in">pbuf_alloc</span>(PBUF_RAW, len, PBUF_POOL);</span><br><span class="line">    <span class="keyword">if</span> (p != <span class="literal">NULL</span>) &#123;</span><br><span class="line">        <span class="built_in">memcpy</span>(p-&gt;payload, frame, len);</span><br><span class="line">        netif-&gt;<span class="built_in">input</span>(p, netif);  <span class="comment">// 送入 lwIP（即 ethernet_input）</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="回调接口清单"><a href="#回调接口清单" class="headerlink" title="回调接口清单"></a>回调接口清单</h2><p>libtc6 通过回调函数与外部交互。如果复用 libtc6，需要实现这些回调：</p>
+<table>
+<thead>
+<tr>
+<th>回调函数</th>
+<th>用途</th>
+<th>实现要点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>TC6_CB_OnSpiTransaction()</code></td>
+<td>执行 SPI 全双工传输</td>
+<td>调用 <code>TC6_Io::spiTransaction()</code></td>
+</tr>
+<tr>
+<td><code>TC6_CB_OnRxEthernetSlice()</code></td>
+<td>收到帧片段</td>
+<td>拼接到 lwIP pbuf</td>
+</tr>
+<tr>
+<td><code>TC6_CB_OnRxEthernetPacket()</code></td>
+<td>收到完整帧</td>
+<td>调用 <code>netif-&gt;input()</code></td>
+</tr>
+<tr>
+<td><code>TC6_CB_OnNeedService()</code></td>
+<td>TC6 内部需要服务</td>
+<td>设置 <code>tc6NeedService</code> 标志</td>
+</tr>
+<tr>
+<td><code>TC6_CB_OnError()</code></td>
+<td>错误上报</td>
+<td>日志输出或重新初始化</td>
+</tr>
+<tr>
+<td><code>TC6_CB_OnExtendedStatus()</code></td>
+<td>扩展状态（中断事件）</td>
+<td>处理 TX&#x2F;RX timestamp、错误标志</td>
+</tr>
+</tbody></table>
+<p>如果不复用 libtc6（场景二），这些回调不需要实现，但等效功能需要在新驱动中完成。</p>
+<h2 id="移植步骤-Checklist"><a href="#移植步骤-Checklist" class="headerlink" title="移植步骤 Checklist"></a>移植步骤 Checklist</h2><h3 id="Phase-1-环境准备"><a href="#Phase-1-环境准备" class="headerlink" title="Phase 1: 环境准备"></a>Phase 1: 环境准备</h3><ul>
+<li><input disabled="" type="checkbox"> 获取竞品 T1S 芯片 datasheet</li>
+<li><input disabled="" type="checkbox"> 确认竞品是否兼容 OA TC6 SPI 协议</li>
+<li><input disabled="" type="checkbox"> 准备硬件：竞品评估板 + Arduino 开发板 + SPI 连接</li>
+<li><input disabled="" type="checkbox"> Fork Arduino_10BASE_T1S 仓库，创建移植分支</li>
+</ul>
+<h3 id="Phase-2-SPI-通信验证"><a href="#Phase-2-SPI-通信验证" class="headerlink" title="Phase 2: SPI 通信验证"></a>Phase 2: SPI 通信验证</h3><ul>
+<li><input disabled="" type="checkbox"> 确认 SPI 物理连接（MOSI&#x2F;MISO&#x2F;CLK&#x2F;CS&#x2F;IRQ&#x2F;RESET 引脚）</li>
+<li><input disabled="" type="checkbox"> 修改 <code>TC6_Io.cpp</code> 中的 SPI 时钟&#x2F;模式&#x2F;时序参数</li>
+<li><input disabled="" type="checkbox"> 修改 <code>Arduino_10BASE_T1S.h</code> 中的引脚定义</li>
+<li><input disabled="" type="checkbox"> 验证基本 SPI 通信：读取芯片 ID 寄存器</li>
+</ul>
+<h3 id="Phase-3-寄存器初始化"><a href="#Phase-3-寄存器初始化" class="headerlink" title="Phase 3: 寄存器初始化"></a>Phase 3: 寄存器初始化</h3><ul>
+<li><input disabled="" type="checkbox"> 根据 datasheet 编写新的 <code>TC6_MEMMAP[]</code> 初始化表</li>
+<li><input disabled="" type="checkbox"> 实现芯片 ID 校验逻辑</li>
+<li><input disabled="" type="checkbox"> 配置 MAC 地址寄存器</li>
+<li><input disabled="" type="checkbox"> 配置 PHY 基础参数</li>
+<li><input disabled="" type="checkbox"> 验证：寄存器回读确认写入正确</li>
+</ul>
+<h3 id="Phase-4-PLCA-配置"><a href="#Phase-4-PLCA-配置" class="headerlink" title="Phase 4: PLCA 配置"></a>Phase 4: PLCA 配置</h3><ul>
+<li><input disabled="" type="checkbox"> 确认竞品 PLCA 寄存器地址和位域</li>
+<li><input disabled="" type="checkbox"> 修改 <code>HandlePlca()</code> 函数</li>
+<li><input disabled="" type="checkbox"> 测试 Node 0（协调器）模式</li>
+<li><input disabled="" type="checkbox"> 测试 Node 1+ 模式</li>
+<li><input disabled="" type="checkbox"> 验证：PLCA status 寄存器读取正确</li>
+</ul>
+<h3 id="Phase-5-数据通路"><a href="#Phase-5-数据通路" class="headerlink" title="Phase 5: 数据通路"></a>Phase 5: 数据通路</h3><ul>
+<li><input disabled="" type="checkbox"> 如果兼容 OA TC6：验证 chunk 发送&#x2F;接收</li>
+<li><input disabled="" type="checkbox"> 如果私有协议：实现新的帧收发驱动</li>
+<li><input disabled="" type="checkbox"> 集成 lwIP netif</li>
+<li><input disabled="" type="checkbox"> 验证：ping 测试（ICMP echo）</li>
+</ul>
+<h3 id="Phase-6-UDP-功能验证"><a href="#Phase-6-UDP-功能验证" class="headerlink" title="Phase 6: UDP 功能验证"></a>Phase 6: UDP 功能验证</h3><ul>
+<li><input disabled="" type="checkbox"> 运行 UDP_Server example（竞品芯片侧）</li>
+<li><input disabled="" type="checkbox"> 从 EVB-LAN8670-USB 或另一个节点发 UDP 包</li>
+<li><input disabled="" type="checkbox"> 验证双向通信</li>
+<li><input disabled="" type="checkbox"> 验证 PLCA 多节点场景（2+ 节点）</li>
+</ul>
+<h3 id="Phase-7-性能与稳定性"><a href="#Phase-7-性能与稳定性" class="headerlink" title="Phase 7: 性能与稳定性"></a>Phase 7: 性能与稳定性</h3><ul>
+<li><input disabled="" type="checkbox"> 长时间运行测试（24h+）</li>
+<li><input disabled="" type="checkbox"> 吞吐量测量</li>
+<li><input disabled="" type="checkbox"> 异常恢复：拔线重插、节点加入&#x2F;退出</li>
+<li><input disabled="" type="checkbox"> 温度&#x2F;电压边界条件（如果需要）</li>
+</ul>
+<h2 id="验证方案"><a href="#验证方案" class="headerlink" title="验证方案"></a>验证方案</h2><h3 id="测试拓扑"><a href="#测试拓扑" class="headerlink" title="测试拓扑"></a>测试拓扑</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">graph LR</span><br><span class="line">    A[&quot;Arduino + 竞品 T1S\n(Node 1, UDP Client)&quot;] --&gt;|&quot;单对双绞线&quot;| B[&quot;Multi-drop Bus&quot;]</span><br><span class="line">    C[&quot;Arduino + LAN8651\n(Node 0, UDP Server)&quot;] --&gt;|&quot;单对双绞线&quot;| B</span><br><span class="line">    D[&quot;EVB-LAN8670-USB\n(Linux, tcpdump)&quot;] --&gt;|&quot;单对双绞线&quot;| B</span><br></pre></td></tr></table></figure>
+
+<h3 id="验证项"><a href="#验证项" class="headerlink" title="验证项"></a>验证项</h3><table>
+<thead>
+<tr>
+<th>测试</th>
+<th>方法</th>
+<th>通过标准</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>SPI 通信</td>
+<td>读芯片 ID 寄存器</td>
+<td>返回正确的 OUI&#x2F;Model</td>
+</tr>
+<tr>
+<td>链路建立</td>
+<td>PLCA status 读取</td>
+<td>bit[15] &#x3D; 1 (PLCA active)</td>
+</tr>
+<tr>
+<td>IP 连通性</td>
+<td>ping from Linux host</td>
+<td>ICMP reply 正常</td>
+</tr>
+<tr>
+<td>UDP 收发</td>
+<td>UDP echo test</td>
+<td>双向数据正确、无丢包</td>
+</tr>
+<tr>
+<td>多节点</td>
+<td>3 节点同时通信</td>
+<td>所有节点均能收发</td>
+</tr>
+<tr>
+<td>稳定性</td>
+<td>持续发包 1000+ 次</td>
+<td>无累积错误、无 PLCA 回退</td>
+</tr>
+</tbody></table>
+<h3 id="tcpdump-抓包验证"><a href="#tcpdump-抓包验证" class="headerlink" title="tcpdump 抓包验证"></a>tcpdump 抓包验证</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Linux EVB 侧</span></span><br><span class="line"><span class="built_in">sudo</span> ip addr add dev eth1 192.168.42.100/24</span><br><span class="line"><span class="built_in">sudo</span> ifconfig eth1 up</span><br><span class="line">tcpdump -i eth1 -v udp port 8888</span><br></pre></td></tr></table></figure>
+
+<p>期望输出：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">192.168.42.101.8889 &gt; 192.168.42.100.8888: UDP, length 48</span><br><span class="line">  &quot;Single-Pair Ethernet / 10BASE-T1S: packet cnt = 0&quot;</span><br><span class="line">192.168.42.100.8888 &gt; 192.168.42.101.8889: UDP, length 48</span><br><span class="line">  (echo reply)</span><br></pre></td></tr></table></figure>
+
+<h2 id="常见移植陷阱"><a href="#常见移植陷阱" class="headerlink" title="常见移植陷阱"></a>常见移植陷阱</h2><ol>
+<li><strong>SPI 时序差异</strong> — 竞品可能要求 CS 到第一个 CLK 有最小间隔，Arduino SPI 库不保证这一点。可能需要插入 <code>delayMicroseconds()</code></li>
+<li><strong>中断极性</strong> — LAN8651 IRQ 是 active-low falling-edge，竞品可能是 level-triggered 或 active-high</li>
+<li><strong>Chunk size 不同</strong> — OA TC6 标准 chunk 是 64 字节，但有些芯片支持 32 字节 chunk，需要修改 <code>TC6_CHUNK_SIZE</code></li>
+<li><strong>MAC 地址字节序</strong> — LAN8651 按特定顺序写入 SPEC_ADD1&#x2F;ADD2，竞品可能不同</li>
+<li><strong>初始化时序</strong> — 有些芯片需要等待 PLL lock 或者 PHY ready 信号，不能立即开始寄存器写入</li>
+<li><strong>lwIP 重入</strong> — <code>service()</code> 调用频率影响网络定时器精度，太慢会导致 ARP timeout</li>
+</ol>
+<h2 id="代码结构建议"><a href="#代码结构建议" class="headerlink" title="代码结构建议"></a>代码结构建议</h2><p>建议的移植后目录结构：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">src/</span><br><span class="line">├── Arduino_10BASE_T1S.h              # 修改引脚定义</span><br><span class="line">├── Arduino_10BASE_T1S_PHY_Interface.h # 不变</span><br><span class="line">├── Arduino_10BASE_T1S_UDP.h/cpp      # 不变</span><br><span class="line">├── MacAddress.h/cpp                   # 不变</span><br><span class="line">├── T1SPlcaSettings.h/cpp             # 不变</span><br><span class="line">├── T1SMacSettings.h/cpp              # 不变</span><br><span class="line">├── competitor/                        # 新建：竞品驱动</span><br><span class="line">│   ├── Competitor_10BASE_T1S.h/cpp   # 实现 PHY_Interface</span><br><span class="line">│   ├── Competitor_Io.h/cpp           # SPI HAL</span><br><span class="line">│   └── lib/                          # 竞品 SDK 或协议库</span><br><span class="line">├── lib/liblwip/                      # 不变</span><br><span class="line">└── microchip/                        # 保留作为参考（或删除）</span><br></pre></td></tr></table></figure>
+
+<h2 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h2><p>移植策略取决于一个关键判断：<strong>竞品是否兼容 OA TC6 SPI 协议</strong>。</p>
+<ul>
+<li><strong>兼容</strong>：改寄存器表和引脚配置，工作量约 1-2 周</li>
+<li><strong>不兼容</strong>：需要实现新的帧收发驱动并对接 lwIP，工作量约 3-4 周</li>
+</ul>
+<p>无论哪种场景，lwIP 协议栈、UDP 封装层、测试框架（UDP echo + tcpdump）都可以完整复用，这是这个开源库最大的移植价值。</p>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">首页</a></li>
+        
+          <li><a href="/about/">关于</a></li>
+        
+          <li><a href="/archives/">归档</a></li>
+        
+          <li><a href="/tags/">标签</a></li>
+        
+          <li><a href="/categories/">分类</a></li>
+        
+          <li><a href="/search/">搜索</a></li>
+        
+          <li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%B3%BB%E5%88%97%E5%AF%BC%E8%AF%BB"><span class="toc-number">1.</span> <span class="toc-text">系列导读</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%A7%BB%E6%A4%8D%E7%9B%AE%E6%A0%87"><span class="toc-number">2.</span> <span class="toc-text">移植目标</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%9E%B6%E6%9E%84%E6%8A%BD%E8%B1%A1%E8%BE%B9%E7%95%8C"><span class="toc-number">3.</span> <span class="toc-text">架构抽象边界</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9C%BA%E6%99%AF%E4%B8%80%EF%BC%9A%E7%AB%9E%E5%93%81%E5%85%BC%E5%AE%B9-OA-TC6-SPI-%E5%8D%8F%E8%AE%AE"><span class="toc-number">4.</span> <span class="toc-text">场景一：竞品兼容 OA TC6 SPI 协议</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%9C%80%E8%A6%81%E4%BF%AE%E6%94%B9%E7%9A%84%E6%96%87%E4%BB%B6"><span class="toc-number">4.1.</span> <span class="toc-text">需要修改的文件</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#TC6-Io-%E9%80%82%E9%85%8D"><span class="toc-number">4.2.</span> <span class="toc-text">TC6_Io 适配</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AF%84%E5%AD%98%E5%99%A8%E5%88%9D%E5%A7%8B%E5%8C%96%E8%A1%A8%E6%9B%BF%E6%8D%A2"><span class="toc-number">4.3.</span> <span class="toc-text">寄存器初始化表替换</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%8A%AF%E7%89%87-ID-%E6%A0%A1%E9%AA%8C%E4%BF%AE%E6%94%B9"><span class="toc-number">4.4.</span> <span class="toc-text">芯片 ID 校验修改</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#PLCA-%E5%AF%84%E5%AD%98%E5%99%A8%E5%9C%B0%E5%9D%80%E6%98%A0%E5%B0%84"><span class="toc-number">4.5.</span> <span class="toc-text">PLCA 寄存器地址映射</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9C%BA%E6%99%AF%E4%BA%8C%EF%BC%9A%E7%AB%9E%E5%93%81%E4%BD%BF%E7%94%A8%E7%A7%81%E6%9C%89-SPI-%E5%8D%8F%E8%AE%AE"><span class="toc-number">5.</span> <span class="toc-text">场景二：竞品使用私有 SPI 协议</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%9C%80%E8%A6%81%E6%9B%BF%E6%8D%A2%E7%9A%84%E6%A8%A1%E5%9D%97"><span class="toc-number">5.1.</span> <span class="toc-text">需要替换的模块</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%9C%80%E8%A6%81%E5%AE%9E%E7%8E%B0%E7%9A%84%E6%8E%A5%E5%8F%A3"><span class="toc-number">5.2.</span> <span class="toc-text">需要实现的接口</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#lwIP-%E9%9B%86%E6%88%90%E7%9A%84%E5%85%B3%E9%94%AE%E5%9B%9E%E8%B0%83"><span class="toc-number">5.3.</span> <span class="toc-text">lwIP 集成的关键回调</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9E%E8%B0%83%E6%8E%A5%E5%8F%A3%E6%B8%85%E5%8D%95"><span class="toc-number">6.</span> <span class="toc-text">回调接口清单</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%A7%BB%E6%A4%8D%E6%AD%A5%E9%AA%A4-Checklist"><span class="toc-number">7.</span> <span class="toc-text">移植步骤 Checklist</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Phase-1-%E7%8E%AF%E5%A2%83%E5%87%86%E5%A4%87"><span class="toc-number">7.1.</span> <span class="toc-text">Phase 1: 环境准备</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Phase-2-SPI-%E9%80%9A%E4%BF%A1%E9%AA%8C%E8%AF%81"><span class="toc-number">7.2.</span> <span class="toc-text">Phase 2: SPI 通信验证</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Phase-3-%E5%AF%84%E5%AD%98%E5%99%A8%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="toc-number">7.3.</span> <span class="toc-text">Phase 3: 寄存器初始化</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Phase-4-PLCA-%E9%85%8D%E7%BD%AE"><span class="toc-number">7.4.</span> <span class="toc-text">Phase 4: PLCA 配置</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Phase-5-%E6%95%B0%E6%8D%AE%E9%80%9A%E8%B7%AF"><span class="toc-number">7.5.</span> <span class="toc-text">Phase 5: 数据通路</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Phase-6-UDP-%E5%8A%9F%E8%83%BD%E9%AA%8C%E8%AF%81"><span class="toc-number">7.6.</span> <span class="toc-text">Phase 6: UDP 功能验证</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Phase-7-%E6%80%A7%E8%83%BD%E4%B8%8E%E7%A8%B3%E5%AE%9A%E6%80%A7"><span class="toc-number">7.7.</span> <span class="toc-text">Phase 7: 性能与稳定性</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%AA%8C%E8%AF%81%E6%96%B9%E6%A1%88"><span class="toc-number">8.</span> <span class="toc-text">验证方案</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%B5%8B%E8%AF%95%E6%8B%93%E6%89%91"><span class="toc-number">8.1.</span> <span class="toc-text">测试拓扑</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%AA%8C%E8%AF%81%E9%A1%B9"><span class="toc-number">8.2.</span> <span class="toc-text">验证项</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#tcpdump-%E6%8A%93%E5%8C%85%E9%AA%8C%E8%AF%81"><span class="toc-number">8.3.</span> <span class="toc-text">tcpdump 抓包验证</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%B8%B8%E8%A7%81%E7%A7%BB%E6%A4%8D%E9%99%B7%E9%98%B1"><span class="toc-number">9.</span> <span class="toc-text">常见移植陷阱</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BB%A3%E7%A0%81%E7%BB%93%E6%9E%84%E5%BB%BA%E8%AE%AE"><span class="toc-number">10.</span> <span class="toc-text">代码结构建议</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%B0%8F%E7%BB%93"><span class="toc-number">11.</span> <span class="toc-text">小结</span></a></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/06/04/10BASE-T1S-Porting-Guide/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/06/04/10BASE-T1S-Porting-Guide/&text=10BASE-T1S Arduino 开源库架构分析（三）：移植实战指南"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/06/04/10BASE-T1S-Porting-Guide/&title=10BASE-T1S Arduino 开源库架构分析（三）：移植实战指南"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/06/04/10BASE-T1S-Porting-Guide/&is_video=false&description=10BASE-T1S Arduino 开源库架构分析（三）：移植实战指南"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=10BASE-T1S Arduino 开源库架构分析（三）：移植实战指南&body=Check out this article: https://cursorhu.github.io/2026/06/04/10BASE-T1S-Porting-Guide/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/06/04/10BASE-T1S-Porting-Guide/&title=10BASE-T1S Arduino 开源库架构分析（三）：移植实战指南"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/06/04/10BASE-T1S-Porting-Guide/&title=10BASE-T1S Arduino 开源库架构分析（三）：移植实战指南"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/06/04/10BASE-T1S-Porting-Guide/&title=10BASE-T1S Arduino 开源库架构分析（三）：移植实战指南"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/06/04/10BASE-T1S-Porting-Guide/&title=10BASE-T1S Arduino 开源库架构分析（三）：移植实战指南"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/06/04/10BASE-T1S-Porting-Guide/&name=10BASE-T1S Arduino 开源库架构分析（三）：移植实战指南&description=&lt;h2 id=&#34;系列导读&#34;&gt;&lt;a href=&#34;#系列导读&#34; class=&#34;headerlink&#34; title=&#34;系列导读&#34;&gt;&lt;/a&gt;系列导读&lt;/h2&gt;&lt;ol&gt;
+&lt;li&gt;&lt;a href=&#34;/2026/06/04/10BASE-T1S-Arduino-Architecture-Overview/&#34;&gt;架构概览与开源评估&lt;/a&gt; — 分层设计、编译平台、许可证分析&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;/2026/06/04/10BASE-T1S-Protocol-Stack-Deep-Dive/&#34;&gt;协议栈深度分析&lt;/a&gt; — OA TC6 SPI 协议帧结构、数据流、PLCA&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;移植实战指南&lt;/strong&gt;（本篇）— 抽象边界、可复用模块、移植 checklist&lt;/li&gt;
+&lt;/ol&gt;
+&lt;h2 id=&#34;移植目标&#34;&gt;&lt;a href=&#34;#移植目标&#34; class=&#34;headerlink&#34; title=&#34;移植目标&#34;&gt;&lt;/a&gt;移植目标&lt;/h2&gt;&lt;p&gt;将 Arduino 10BASE-T1S 库的测试验证能力移植到竞品 T1S 芯片环境，实现：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;在 Arduino 平台上驱动竞品 MAC-PHY 芯片&lt;/li&gt;
+&lt;li&gt;复用 lwIP 协议栈和 UDP 测试框架&lt;/li&gt;
+&lt;li&gt;用相同的 UDP echo 测试方法验证竞品芯片功能&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;架构抽象边界&#34;&gt;&lt;a href=&#34;#架构抽象边界&#34; class=&#34;headerlink&#34; title=&#34;架构抽象边界&#34;&gt;&lt;/a&gt;架构抽象边界&lt;/h2&gt;&lt;p&gt;移植的核心问题是：&lt;strong&gt;哪些模块与 Microchip LAN8651 芯片绑定，哪些是通用的？&lt;/strong&gt;&lt;/p&gt;
+&lt;figure class=&#34;highlight plaintext&#34;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&#34;gutter&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;3&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;4&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;5&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;6&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;7&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;8&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;9&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;10&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;11&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;12&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;13&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;14&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;15&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;16&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;17&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;18&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;19&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;20&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;21&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;22&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;23&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;24&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;25&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;26&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;27&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&#34;code&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;graph TB&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    subgraph &amp;quot;可直接复用 (Chip-Independent)&amp;quot;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        A1[&amp;quot;Arduino_10BASE_T1S_UDP&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        A2[&amp;quot;lwIP TCP/IP Stack&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        A3[&amp;quot;T1SPlcaSettings&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        A4[&amp;quot;T1SMacSettings&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        A5[&amp;quot;MacAddress&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    end&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    subgraph &amp;quot;条件复用 (取决于竞品是否兼容 OA TC6)&amp;quot;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        B1[&amp;quot;libtc6 协议核心 (tc6.cpp)&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        B2[&amp;quot;Credit 管理 / Chunk 分帧&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        B3[&amp;quot;Header/Footer 解析&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    end&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    subgraph &amp;quot;必须替换 (Chip-Specific)&amp;quot;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        C1[&amp;quot;TC6_Io (SPI 配置)&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        C2[&amp;quot;tc6-regs.cpp (寄存器初始化)&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        C3[&amp;quot;芯片 ID 校验逻辑&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        C4[&amp;quot;PHY 校准参数&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        C5[&amp;quot;PLCA 寄存器地址&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    end&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    A1 --&amp;gt; A2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    A2 --&amp;gt; B1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    B1 --&amp;gt; C1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    B1 --&amp;gt; C2&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;
+
+&lt;h2 id=&#34;场景一：竞品兼容-OA-TC6-SPI-协议&#34;&gt;&lt;a href=&#34;#场景一：竞品兼容-OA-TC6-SPI-协议&#34; class=&#34;headerlink&#34; title=&#34;场景一：竞品兼容 OA TC6 SPI 协议&#34;&gt;&lt;/a&gt;场景一：竞品兼容 OA TC6 SPI 协议&lt;/h2&gt;&lt;p&gt;如果竞品芯片也实现了 Open Alliance TC6 SPI 接口（DNC&amp;#x2F;SEQ&amp;#x2F;DV&amp;#x2F;SV&amp;#x2F;EV 帧结构一致），移植工作量最小：&lt;/p&gt;"><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/06/04/10BASE-T1S-Porting-Guide/&t=10BASE-T1S Arduino 开源库架构分析（三）：移植实战指南"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> 菜单</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> 目录</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> 分享</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> 返回顶部</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2026
+    cursorhu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"复制到粘贴板！\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "复制成功！");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+</body>
+</html>

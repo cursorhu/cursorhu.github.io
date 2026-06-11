@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="系列导读本系列三篇文章对 Arduino 官方 10BASE-T1S 库进行完整的软件架构分析，目标是为后续移植到竞品 T1S 芯片提供技术基线：  架构概览与开源评估（本篇）— 分层设计、编译平台、许可证分析 协议栈深度分析 — OA TC6 SPI 协议帧结构、数据流、PLCA 移植实战指南 — 抽象边界、可复用模块、移植 checklist  10BASE-T1S 技术背景10BASE-T1">
+<meta property="og:type" content="article">
+<meta property="og:title" content="10BASE-T1S Arduino 开源库架构分析（一）：架构概览与开源评估">
+<meta property="og:url" content="https://cursorhu.github.io/2026/06/04/10BASE-T1S-Arduino-Architecture-Overview/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="系列导读本系列三篇文章对 Arduino 官方 10BASE-T1S 库进行完整的软件架构分析，目标是为后续移植到竞品 T1S 芯片提供技术基线：  架构概览与开源评估（本篇）— 分层设计、编译平台、许可证分析 协议栈深度分析 — OA TC6 SPI 协议帧结构、数据流、PLCA 移植实战指南 — 抽象边界、可复用模块、移植 checklist  10BASE-T1S 技术背景10BASE-T1">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-06-03T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-04T09:09:34.933Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="10BASE-T1S">
+<meta property="article:tag" content="Arduino">
+<meta property="article:tag" content="Microchip LAN8651">
+<meta property="article:tag" content="Single Pair Ethernet">
+<meta property="article:tag" content="软件架构">
+<meta name="twitter:card" content="summary">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>10BASE-T1S Arduino 开源库架构分析（一）：架构概览与开源评估</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+		<script type="text/x-mathjax-config">
+		  MathJax.Hub.Config({
+			tex2jax: {
+			  skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+			  inlineMath: [['$','$']]
+			}
+		  });
+		</script>
+		<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-MML-AM_CHTML' async></script>
+	
+<meta name="generator" content="Hexo 8.0.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="顶部" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        
+        <li><a class="icon" aria-label="下一篇" href="/2026/06/04/10BASE-T1S-Porting-Guide/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="返回顶部" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="分享文章" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">上一篇</span>
+      <span id="i-next" class="info" style="display:none;">下一篇</span>
+      <span id="i-top" class="info" style="display:none;">返回顶部</span>
+      <span id="i-share" class="info" style="display:none;">分享文章</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/06/04/10BASE-T1S-Arduino-Architecture-Overview/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/06/04/10BASE-T1S-Arduino-Architecture-Overview/&text=10BASE-T1S Arduino 开源库架构分析（一）：架构概览与开源评估"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/06/04/10BASE-T1S-Arduino-Architecture-Overview/&title=10BASE-T1S Arduino 开源库架构分析（一）：架构概览与开源评估"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/06/04/10BASE-T1S-Arduino-Architecture-Overview/&is_video=false&description=10BASE-T1S Arduino 开源库架构分析（一）：架构概览与开源评估"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=10BASE-T1S Arduino 开源库架构分析（一）：架构概览与开源评估&body=Check out this article: https://cursorhu.github.io/2026/06/04/10BASE-T1S-Arduino-Architecture-Overview/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/06/04/10BASE-T1S-Arduino-Architecture-Overview/&title=10BASE-T1S Arduino 开源库架构分析（一）：架构概览与开源评估"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/06/04/10BASE-T1S-Arduino-Architecture-Overview/&title=10BASE-T1S Arduino 开源库架构分析（一）：架构概览与开源评估"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/06/04/10BASE-T1S-Arduino-Architecture-Overview/&title=10BASE-T1S Arduino 开源库架构分析（一）：架构概览与开源评估"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/06/04/10BASE-T1S-Arduino-Architecture-Overview/&title=10BASE-T1S Arduino 开源库架构分析（一）：架构概览与开源评估"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/06/04/10BASE-T1S-Arduino-Architecture-Overview/&name=10BASE-T1S Arduino 开源库架构分析（一）：架构概览与开源评估&description=&lt;h2 id=&#34;系列导读&#34;&gt;&lt;a href=&#34;#系列导读&#34; class=&#34;headerlink&#34; title=&#34;系列导读&#34;&gt;&lt;/a&gt;系列导读&lt;/h2&gt;&lt;p&gt;本系列三篇文章对 Arduino 官方 10BASE-T1S 库进行完整的软件架构分析，目标是为后续移植到竞品 T1S 芯片提供技术基线：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;&lt;strong&gt;架构概览与开源评估&lt;/strong&gt;（本篇）— 分层设计、编译平台、许可证分析&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;/2026/06/04/10BASE-T1S-Protocol-Stack-Deep-Dive/&#34;&gt;协议栈深度分析&lt;/a&gt; — OA TC6 SPI 协议帧结构、数据流、PLCA&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;/2026/06/04/10BASE-T1S-Porting-Guide/&#34;&gt;移植实战指南&lt;/a&gt; — 抽象边界、可复用模块、移植 checklist&lt;/li&gt;
+&lt;/ol&gt;
+&lt;h2 id=&#34;10BASE-T1S-技术背景&#34;&gt;&lt;a href=&#34;#10BASE-T1S-技术背景&#34; class=&#34;headerlink&#34; title=&#34;10BASE-T1S 技术背景&#34;&gt;&lt;/a&gt;10BASE-T1S 技术背景&lt;/h2&gt;&lt;p&gt;10BASE-T1S 是 IEEE 802.3cg-2019 定义的单对线以太网标准，核心特性：&lt;/p&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;特性&lt;/th&gt;
+&lt;th&gt;10BASE-T1S&lt;/th&gt;
+&lt;th&gt;传统 100BASE-TX&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;&lt;tr&gt;
+&lt;td&gt;线对数&lt;/td&gt;
+&lt;td&gt;1 对&lt;/td&gt;
+&lt;td&gt;2 对&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;速率&lt;/td&gt;
+&lt;td&gt;10 Mbps&lt;/td&gt;
+&lt;td&gt;100 Mbps&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;拓扑&lt;/td&gt;
+&lt;td&gt;多点总线（multi-drop）&lt;/td&gt;
+&lt;td&gt;点对点&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;最大节点数&lt;/td&gt;
+&lt;td&gt;8（PLCA 模式）&lt;/td&gt;
+&lt;td&gt;2&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;线缆长度&lt;/td&gt;
+&lt;td&gt;25m（mixing segment）&lt;/td&gt;
+&lt;td&gt;100m&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;碰撞处理&lt;/td&gt;
+&lt;td&gt;PLCA 确定性轮询&lt;/td&gt;
+&lt;td&gt;N&amp;#x2F;A（全双工）&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;&lt;/table&gt;
+&lt;p&gt;关键 trade-off：牺牲速率换取布线简化和多点接入能力，适合汽车&amp;#x2F;工业传感器网络场景，一根双绞线串联多个节点。&lt;/p&gt;
+&lt;p&gt;PLCA（Physical Layer Collision Avoidance）是 10BASE-T1S 的核心机制：Node ID 0 作为协调器，按固定顺序给每个节点分配发送时隙，避免 CSMA&amp;#x2F;CD 的随机退避延迟。&lt;/p&gt;
+&lt;h2 id=&#34;项目概览&#34;&gt;&lt;a href=&#34;#项目概览&#34; class=&#34;headerlink&#34; title=&#34;项目概览&#34;&gt;&lt;/a&gt;项目概览&lt;/h2&gt;&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;属性&lt;/th&gt;
+&lt;th&gt;值&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;&lt;tr&gt;
+&lt;td&gt;名称&lt;/td&gt;
+&lt;td&gt;Arduino_10BASE_T1S&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;版本&lt;/td&gt;
+&lt;td&gt;0.1.1&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;维护者&lt;/td&gt;
+&lt;td&gt;Arduino (Alexander Entinger)&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;许可证&lt;/td&gt;
+&lt;td&gt;MPL-2.0（顶层）&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;仓库&lt;/td&gt;
+&lt;td&gt;&lt;a href=&#34;https://github.com/arduino-libraries/Arduino_10BASE_T1S&#34;&gt;https://github.com/arduino-libraries/Arduino_10BASE_T1S&lt;/a&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;目标芯片&lt;/td&gt;
+&lt;td&gt;Microchip LAN8650 &amp;#x2F; LAN8651 MAC-PHY&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;分类&lt;/td&gt;
+&lt;td&gt;Communication&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;&lt;/table&gt;"><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/06/04/10BASE-T1S-Arduino-Architecture-Overview/&t=10BASE-T1S Arduino 开源库架构分析（一）：架构概览与开源评估"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%B3%BB%E5%88%97%E5%AF%BC%E8%AF%BB"><span class="toc-number">1.</span> <span class="toc-text">系列导读</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#10BASE-T1S-%E6%8A%80%E6%9C%AF%E8%83%8C%E6%99%AF"><span class="toc-number">2.</span> <span class="toc-text">10BASE-T1S 技术背景</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%A1%B9%E7%9B%AE%E6%A6%82%E8%A7%88"><span class="toc-number">3.</span> <span class="toc-text">项目概览</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%BD%AF%E4%BB%B6%E6%9E%B6%E6%9E%84%E5%88%86%E5%B1%82"><span class="toc-number">4.</span> <span class="toc-text">软件架构分层</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%90%84%E5%B1%82%E8%81%8C%E8%B4%A3"><span class="toc-number">4.1.</span> <span class="toc-text">各层职责</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%B1%BB%E5%85%B3%E7%B3%BB"><span class="toc-number">4.2.</span> <span class="toc-text">类关系</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%B8%E5%9E%8B%E4%BD%BF%E7%94%A8%E4%BB%A3%E7%A0%81"><span class="toc-number">4.3.</span> <span class="toc-text">典型使用代码</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%BC%96%E8%AF%91%E5%B9%B3%E5%8F%B0%E4%B8%8E-CI-%E7%9F%A9%E9%98%B5"><span class="toc-number">5.</span> <span class="toc-text">编译平台与 CI 矩阵</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%94%AF%E6%8C%81%E7%9A%84%E6%9E%B6%E6%9E%84"><span class="toc-number">5.1.</span> <span class="toc-text">支持的架构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#CI-%E6%9E%84%E5%BB%BA%E7%9F%A9%E9%98%B5%EF%BC%887-%E5%9D%97%E6%9D%BF%E5%8D%A1%EF%BC%89"><span class="toc-number">5.2.</span> <span class="toc-text">CI 构建矩阵（7 块板卡）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9D%BF%E5%8D%A1%E5%BC%95%E8%84%9A%E6%98%A0%E5%B0%84"><span class="toc-number">5.3.</span> <span class="toc-text">板卡引脚映射</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BC%96%E8%AF%91%E5%91%BD%E4%BB%A4"><span class="toc-number">5.4.</span> <span class="toc-text">编译命令</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%BC%80%E6%BA%90%E7%8A%B6%E6%80%81%E5%88%86%E6%9E%90"><span class="toc-number">6.</span> <span class="toc-text">开源状态分析</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%B5%8B%E8%AF%95%E6%96%B9%E6%B3%95%E5%88%86%E6%9E%90"><span class="toc-number">7.</span> <span class="toc-text">测试方法分析</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%8E%B0%E6%9C%89%E6%B5%8B%E8%AF%95%E6%89%8B%E6%AE%B5"><span class="toc-number">7.1.</span> <span class="toc-text">现有测试手段</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%9E%E9%99%85%E9%AA%8C%E8%AF%81%E6%96%B9%E6%A1%88"><span class="toc-number">7.2.</span> <span class="toc-text">实际验证方案</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%B5%8B%E8%AF%95%E8%A6%86%E7%9B%96%E7%9A%84%E5%B1%80%E9%99%90%E6%80%A7"><span class="toc-number">7.3.</span> <span class="toc-text">测试覆盖的局限性</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%B0%8F%E7%BB%93"><span class="toc-number">8.</span> <span class="toc-text">小结</span></a></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        10BASE-T1S Arduino 开源库架构分析（一）：架构概览与开源评估
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">cursorhu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2026-06-03T16:00:00.000Z" class="dt-published" itemprop="datePublished">2026-06-04</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fa-solid fa-archive"></i>
+        <a class="category-link" href="/categories/Ethernet/">Ethernet</a> › <a class="category-link" href="/categories/Ethernet/%E5%B5%8C%E5%85%A5%E5%BC%8F%E7%BD%91%E7%BB%9C/">嵌入式网络</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/10BASE-T1S/" rel="tag">10BASE-T1S</a>, <a class="p-category" href="/tags/Arduino/" rel="tag">Arduino</a>, <a class="p-category" href="/tags/Microchip-LAN8651/" rel="tag">Microchip LAN8651</a>, <a class="p-category" href="/tags/Single-Pair-Ethernet/" rel="tag">Single Pair Ethernet</a>, <a class="p-category" href="/tags/%E8%BD%AF%E4%BB%B6%E6%9E%B6%E6%9E%84/" rel="tag">软件架构</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <h2 id="系列导读"><a href="#系列导读" class="headerlink" title="系列导读"></a>系列导读</h2><p>本系列三篇文章对 Arduino 官方 10BASE-T1S 库进行完整的软件架构分析，目标是为后续移植到竞品 T1S 芯片提供技术基线：</p>
+<ol>
+<li><strong>架构概览与开源评估</strong>（本篇）— 分层设计、编译平台、许可证分析</li>
+<li><a href="/2026/06/04/10BASE-T1S-Protocol-Stack-Deep-Dive/">协议栈深度分析</a> — OA TC6 SPI 协议帧结构、数据流、PLCA</li>
+<li><a href="/2026/06/04/10BASE-T1S-Porting-Guide/">移植实战指南</a> — 抽象边界、可复用模块、移植 checklist</li>
+</ol>
+<h2 id="10BASE-T1S-技术背景"><a href="#10BASE-T1S-技术背景" class="headerlink" title="10BASE-T1S 技术背景"></a>10BASE-T1S 技术背景</h2><p>10BASE-T1S 是 IEEE 802.3cg-2019 定义的单对线以太网标准，核心特性：</p>
+<table>
+<thead>
+<tr>
+<th>特性</th>
+<th>10BASE-T1S</th>
+<th>传统 100BASE-TX</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>线对数</td>
+<td>1 对</td>
+<td>2 对</td>
+</tr>
+<tr>
+<td>速率</td>
+<td>10 Mbps</td>
+<td>100 Mbps</td>
+</tr>
+<tr>
+<td>拓扑</td>
+<td>多点总线（multi-drop）</td>
+<td>点对点</td>
+</tr>
+<tr>
+<td>最大节点数</td>
+<td>8（PLCA 模式）</td>
+<td>2</td>
+</tr>
+<tr>
+<td>线缆长度</td>
+<td>25m（mixing segment）</td>
+<td>100m</td>
+</tr>
+<tr>
+<td>碰撞处理</td>
+<td>PLCA 确定性轮询</td>
+<td>N&#x2F;A（全双工）</td>
+</tr>
+</tbody></table>
+<p>关键 trade-off：牺牲速率换取布线简化和多点接入能力，适合汽车&#x2F;工业传感器网络场景，一根双绞线串联多个节点。</p>
+<p>PLCA（Physical Layer Collision Avoidance）是 10BASE-T1S 的核心机制：Node ID 0 作为协调器，按固定顺序给每个节点分配发送时隙，避免 CSMA&#x2F;CD 的随机退避延迟。</p>
+<h2 id="项目概览"><a href="#项目概览" class="headerlink" title="项目概览"></a>项目概览</h2><table>
+<thead>
+<tr>
+<th>属性</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>名称</td>
+<td>Arduino_10BASE_T1S</td>
+</tr>
+<tr>
+<td>版本</td>
+<td>0.1.1</td>
+</tr>
+<tr>
+<td>维护者</td>
+<td>Arduino (Alexander Entinger)</td>
+</tr>
+<tr>
+<td>许可证</td>
+<td>MPL-2.0（顶层）</td>
+</tr>
+<tr>
+<td>仓库</td>
+<td><a target="_blank" rel="noopener" href="https://github.com/arduino-libraries/Arduino_10BASE_T1S">https://github.com/arduino-libraries/Arduino_10BASE_T1S</a></td>
+</tr>
+<tr>
+<td>目标芯片</td>
+<td>Microchip LAN8650 &#x2F; LAN8651 MAC-PHY</td>
+</tr>
+<tr>
+<td>分类</td>
+<td>Communication</td>
+</tr>
+</tbody></table>
+<p>这是 Arduino 官方维护的库，通过 Arduino Library Manager 分发，提供从 SPI 驱动到 UDP socket 的完整协议栈。</p>
+<h2 id="软件架构分层"><a href="#软件架构分层" class="headerlink" title="软件架构分层"></a>软件架构分层</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line">graph TB</span><br><span class="line">    subgraph &quot;Application Layer&quot;</span><br><span class="line">        A1[&quot;Arduino Sketch (UDP_Client / UDP_Server)&quot;]</span><br><span class="line">        A2[&quot;Arduino_10BASE_T1S_UDP&quot;]</span><br><span class="line">    end</span><br><span class="line"></span><br><span class="line">    subgraph &quot;Network Layer&quot;</span><br><span class="line">        B1[&quot;lwIP TCP/IP Stack&quot;]</span><br><span class="line">        B2[&quot;UDP PCB / ARP / ICMP / IPv4&quot;]</span><br><span class="line">    end</span><br><span class="line"></span><br><span class="line">    subgraph &quot;Protocol Layer&quot;</span><br><span class="line">        C1[&quot;libtc6 v3.1.3&quot;]</span><br><span class="line">        C2[&quot;OA TC6 SPI Protocol&quot;]</span><br><span class="line">        C3[&quot;Credit Mgmt / Chunk Framing&quot;]</span><br><span class="line">    end</span><br><span class="line"></span><br><span class="line">    subgraph &quot;HAL Layer&quot;</span><br><span class="line">        D1[&quot;TC6_Io&quot;]</span><br><span class="line">        D2[&quot;SPI + GPIO (CS/RESET/IRQ)&quot;]</span><br><span class="line">    end</span><br><span class="line"></span><br><span class="line">    subgraph &quot;Hardware&quot;</span><br><span class="line">        E1[&quot;LAN8650/8651 MAC-PHY&quot;]</span><br><span class="line">        E2[&quot;10BASE-T1S PHY Twisted Pair&quot;]</span><br><span class="line">    end</span><br><span class="line"></span><br><span class="line">    A1 --&gt; A2</span><br><span class="line">    A2 --&gt; B1</span><br><span class="line">    B1 --&gt; B2</span><br><span class="line">    B2 --&gt; C1</span><br><span class="line">    C1 --&gt; C2</span><br><span class="line">    C2 --&gt; C3</span><br><span class="line">    C3 --&gt; D1</span><br><span class="line">    D1 --&gt; D2</span><br><span class="line">    D2 --&gt; E1</span><br><span class="line">    E1 --&gt; E2</span><br></pre></td></tr></table></figure>
+
+<h3 id="各层职责"><a href="#各层职责" class="headerlink" title="各层职责"></a>各层职责</h3><p><strong>Application Layer</strong> — 用户代码接口，继承 Arduino 标准 <code>UDP</code> 基类，提供 <code>beginPacket()</code> &#x2F; <code>write()</code> &#x2F; <code>endPacket()</code> &#x2F; <code>parsePacket()</code> 标准 API。</p>
+<p><strong>Network Layer</strong> — 完整的 lwIP 嵌入式 TCP&#x2F;IP 协议栈，处理 ARP、ICMP、IPv4 路由、UDP 多路复用。MTU 设为 1536 字节。</p>
+<p><strong>Protocol Layer</strong> — Microchip 提供的 libtc6 库，实现 Open Alliance TC6 SPI 协议：将以太网帧拆分为 64 字节 chunk，附加 4 字节 header&#x2F;footer，通过 SPI 全双工传输，管理 TX&#x2F;RX credit 流控。</p>
+<p><strong>HAL Layer</strong> — <code>TC6_Io</code> 类封装 Arduino SPI 接口，配置 24MHz 时钟、Mode 0、MSB-first，控制 CS&#x2F;RESET&#x2F;IRQ 三根 GPIO。</p>
+<h3 id="类关系"><a href="#类关系" class="headerlink" title="类关系"></a>类关系</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line">classDiagram</span><br><span class="line">    class Arduino_10BASE_T1S_PHY_Interface &#123;</span><br><span class="line">        &lt;&lt;abstract&gt;&gt;</span><br><span class="line">        +begin()</span><br><span class="line">        +service()</span><br><span class="line">        +getPlcaStatus()</span><br><span class="line">        +enablePlca()</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    class TC6_Arduino_10BASE_T1S &#123;</span><br><span class="line">        -TC6_Io&amp; io</span><br><span class="line">        -netif lwip_netif</span><br><span class="line">        +begin(ip, mask, gw, mac, plca, mac_settings)</span><br><span class="line">        +service()</span><br><span class="line">        +digitalWrite(dio, val)</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    class TC6_Io &#123;</span><br><span class="line">        -HardwareSPI&amp; spi</span><br><span class="line">        -int cs_pin, reset_pin, irq_pin</span><br><span class="line">        +begin()</span><br><span class="line">        +spiTransaction(pTx, pRx, len)</span><br><span class="line">        +onInterrupt()</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    class Arduino_10BASE_T1S_UDP &#123;</span><br><span class="line">        -udp_pcb* pcb</span><br><span class="line">        -list~UdpRxPacket~ rx_pkt_list</span><br><span class="line">        +begin(port)</span><br><span class="line">        +beginPacket(ip, port)</span><br><span class="line">        +write(buf, len)</span><br><span class="line">        +endPacket()</span><br><span class="line">        +parsePacket()</span><br><span class="line">        +read(buf, len)</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    Arduino_10BASE_T1S_PHY_Interface &lt;|-- TC6_Arduino_10BASE_T1S</span><br><span class="line">    TC6_Arduino_10BASE_T1S --&gt; TC6_Io</span><br><span class="line">    Arduino_10BASE_T1S_UDP --&gt; TC6_Arduino_10BASE_T1S</span><br></pre></td></tr></table></figure>
+
+<h3 id="典型使用代码"><a href="#典型使用代码" class="headerlink" title="典型使用代码"></a>典型使用代码</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 实例化 PHY（宏展开为 TC6_Io + TC6_Arduino_10BASE_T1S 对象）</span></span><br><span class="line"><span class="built_in">Arduino_10BASE_T1S_PHY_TC6</span>(SPI, CS_PIN, RESET_PIN, IRQ_PIN);</span><br><span class="line">Arduino_10BASE_T1S_UDP udp_client;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">setup</span><span class="params">()</span> </span>&#123;</span><br><span class="line">  <span class="built_in">pinMode</span>(IRQ_PIN, INPUT_PULLUP);</span><br><span class="line">  <span class="built_in">attachInterrupt</span>(<span class="built_in">digitalPinToInterrupt</span>(IRQ_PIN),</span><br><span class="line">                  []() &#123; t1s_io.<span class="built_in">onInterrupt</span>(); &#125;, FALLING);</span><br><span class="line"></span><br><span class="line">  t1s_io.<span class="built_in">begin</span>();</span><br><span class="line">  t1s_phy.<span class="built_in">begin</span>(ip_addr, network_mask, gateway,</span><br><span class="line">                mac_addr, t1s_plca_settings, t1s_default_mac_settings);</span><br><span class="line">  udp_client.<span class="built_in">begin</span>(UDP_CLIENT_PORT);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">loop</span><span class="params">()</span> </span>&#123;</span><br><span class="line">  t1s_phy.<span class="built_in">service</span>();  <span class="comment">// 必须高频调用，驱动 SPI 收发和 lwIP 定时器</span></span><br><span class="line">  <span class="comment">// ... UDP 收发逻辑</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="编译平台与-CI-矩阵"><a href="#编译平台与-CI-矩阵" class="headerlink" title="编译平台与 CI 矩阵"></a>编译平台与 CI 矩阵</h2><h3 id="支持的架构"><a href="#支持的架构" class="headerlink" title="支持的架构"></a>支持的架构</h3><p>库声明支持 5 种 Arduino 架构：<code>samd</code>, <code>renesas_uno</code>, <code>renesas_portenta</code>, <code>mbed_giga</code>, <code>mbed_portenta</code></p>
+<h3 id="CI-构建矩阵（7-块板卡）"><a href="#CI-构建矩阵（7-块板卡）" class="headerlink" title="CI 构建矩阵（7 块板卡）"></a>CI 构建矩阵（7 块板卡）</h3><table>
+<thead>
+<tr>
+<th>FQBN</th>
+<th>架构</th>
+<th>MCU</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>arduino:samd:arduino_zero_native</code></td>
+<td>SAMD</td>
+<td>ATSAMD21G18 (Cortex-M0+)</td>
+</tr>
+<tr>
+<td><code>arduino:samd:arduino_zero_edbg</code></td>
+<td>SAMD</td>
+<td>ATSAMD21G18 (Cortex-M0+)</td>
+</tr>
+<tr>
+<td><code>arduino:renesas_uno:minima</code></td>
+<td>Renesas UNO</td>
+<td>RA4M1 (Cortex-M4)</td>
+</tr>
+<tr>
+<td><code>arduino:renesas_uno:unor4wifi</code></td>
+<td>Renesas UNO</td>
+<td>RA4M1 (Cortex-M4)</td>
+</tr>
+<tr>
+<td><code>arduino:renesas_portenta:portenta_c33</code></td>
+<td>Renesas Portenta</td>
+<td>RA6M5 (Cortex-M33)</td>
+</tr>
+<tr>
+<td><code>arduino:mbed_giga:giga</code></td>
+<td>Mbed GIGA</td>
+<td>STM32H747 (Cortex-M7)</td>
+</tr>
+<tr>
+<td><code>arduino:mbed_portenta:envie_m7</code></td>
+<td>Mbed Portenta</td>
+<td>STM32H747 (Cortex-M7)</td>
+</tr>
+</tbody></table>
+<h3 id="板卡引脚映射"><a href="#板卡引脚映射" class="headerlink" title="板卡引脚映射"></a>板卡引脚映射</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Arduino Zero / UNO R4 系列（Uno form factor）</span></span><br><span class="line"><span class="type">static</span> <span class="type">int</span> <span class="type">const</span> CS_PIN    =  <span class="number">9</span>;</span><br><span class="line"><span class="type">static</span> <span class="type">int</span> <span class="type">const</span> RESET_PIN =  <span class="number">6</span>;</span><br><span class="line"><span class="type">static</span> <span class="type">int</span> <span class="type">const</span> IRQ_PIN   =  <span class="number">2</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">// Portenta C33（Pro Demo kit on MID carrier）</span></span><br><span class="line"><span class="type">static</span> <span class="type">int</span> <span class="type">const</span> CS_PIN    =  <span class="number">25</span>;</span><br><span class="line"><span class="type">static</span> <span class="type">int</span> <span class="type">const</span> RESET_PIN =  <span class="number">6</span>;</span><br><span class="line"><span class="type">static</span> <span class="type">int</span> <span class="type">const</span> IRQ_PIN   =  <span class="number">2</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">// GIGA / Portenta C33 使用 SPI1 而非默认 SPI</span></span><br><span class="line"><span class="built_in">Arduino_10BASE_T1S_PHY_TC6</span>(SPI1, CS_PIN, RESET_PIN, IRQ_PIN);</span><br></pre></td></tr></table></figure>
+
+<h3 id="编译命令"><a href="#编译命令" class="headerlink" title="编译命令"></a>编译命令</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">arduino-cli compile -b arduino:renesas_uno:unor4wifi -v examples/UDP_Client -u -p /dev/ttyACM0</span><br></pre></td></tr></table></figure>
+
+<h2 id="开源状态分析"><a href="#开源状态分析" class="headerlink" title="开源状态分析"></a>开源状态分析</h2><p>这个库<strong>并非完全开源</strong>，由三个不同许可证的组件构成：</p>
+<table>
+<thead>
+<tr>
+<th>组件</th>
+<th>许可证</th>
+<th>是否开源</th>
+<th>移植影响</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Arduino 封装层</td>
+<td>MPL-2.0</td>
+<td>✅ 完全开源，可修改分发</td>
+<td>可自由修改复用</td>
+</tr>
+<tr>
+<td>Microchip libtc6</td>
+<td>Microchip 专有许可</td>
+<td>⚠️ 源码可见，专利受限</td>
+<td>需评估专利风险</td>
+</tr>
+<tr>
+<td>lwIP 协议栈</td>
+<td>BSD (3-clause)</td>
+<td>✅ 完全开源</td>
+<td>可自由复用</td>
+</tr>
+<tr>
+<td>Linux 内核驱动</td>
+<td>GPL-2.0+</td>
+<td>✅ 完全开源</td>
+<td>仅限 Linux 环境</td>
+</tr>
+</tbody></table>
+<p><strong>Microchip libtc6 的许可证关键条款：</strong></p>
+<blockquote>
+<p>“No license or other rights, whether express or implied, are granted under any patent or other intellectual property rights of Microchip or any third party.”</p>
+</blockquote>
+<p>这意味着：源码可以阅读和学习，但如果竞品芯片也需要实现 OA TC6 协议，直接复用 Microchip 的 libtc6 二进制可能存在专利风险。如果竞品芯片自身提供 TC6 协议实现，或者根据 Open Alliance 规范独立实现，则不受此限制。</p>
+<h2 id="测试方法分析"><a href="#测试方法分析" class="headerlink" title="测试方法分析"></a>测试方法分析</h2><h3 id="现有测试手段"><a href="#现有测试手段" class="headerlink" title="现有测试手段"></a>现有测试手段</h3><table>
+<thead>
+<tr>
+<th>测试类型</th>
+<th>是否具备</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>单元测试</td>
+<td>❌</td>
+<td>无任何 test 目录或测试框架</td>
+</tr>
+<tr>
+<td>集成测试</td>
+<td>❌</td>
+<td>无自动化集成测试</td>
+</tr>
+<tr>
+<td>HIL（硬件在环）</td>
+<td>❌</td>
+<td>无自动化硬件测试</td>
+</tr>
+<tr>
+<td>CI 编译验证</td>
+<td>✅</td>
+<td>7 块板卡 × 全部 example 编译通过</td>
+</tr>
+<tr>
+<td>Arduino Lint</td>
+<td>✅</td>
+<td>库结构和代码规范检查</td>
+</tr>
+<tr>
+<td>Spell Check</td>
+<td>✅</td>
+<td>codespell 拼写检查</td>
+</tr>
+</tbody></table>
+<h3 id="实际验证方案"><a href="#实际验证方案" class="headerlink" title="实际验证方案"></a>实际验证方案</h3><p>项目依赖手动硬件测试，典型测试拓扑：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">graph LR</span><br><span class="line">    A[&quot;Arduino UNO R4 WiFi\n(UDP Client, Node 1)&quot;] --&gt;|&quot;单对双绞线\n10BASE-T1S&quot;| B[&quot;Multi-drop Bus&quot;]</span><br><span class="line">    C[&quot;Arduino UNO R4 WiFi\n(UDP Server, Node 0)&quot;] --&gt;|&quot;单对双绞线&quot;| B</span><br><span class="line">    D[&quot;EVB-LAN8670-USB\n(Linux Host, Node 0)&quot;] --&gt;|&quot;单对双绞线&quot;| B</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>Arduino 侧</strong>：运行 UDP_Client &#x2F; UDP_Server example，通过 Serial 观察收发日志</li>
+<li><strong>Linux 侧</strong>：EVB-LAN8670-USB 加载内核模块，配置 IP，用 <code>tcpdump</code> 抓包验证</li>
+<li><strong>PLCA 状态监控</strong>：代码中每秒读取 PLCA status 寄存器，检测是否回退到 CSMA&#x2F;CD</li>
+</ul>
+<h3 id="测试覆盖的局限性"><a href="#测试覆盖的局限性" class="headerlink" title="测试覆盖的局限性"></a>测试覆盖的局限性</h3><ol>
+<li><strong>无回归测试保障</strong> — 修改代码后只能确认编译通过，无法确认功能正确</li>
+<li><strong>无性能基线</strong> — 无吞吐量&#x2F;延迟的自动化测量</li>
+<li><strong>PLCA 多节点场景</strong> — CI 无法验证实际多节点竞争行为</li>
+<li><strong>错误恢复路径</strong> — 未自动验证 SPI 错误、线缆断开等异常场景</li>
+</ol>
+<p>这对移植工作意味着：移植后的验证完全依赖手动硬件测试，需要自建 UDP echo 测试环境。</p>
+<h2 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h2><p>Arduino 10BASE-T1S 库是一个架构清晰的四层设计，核心依赖 Microchip libtc6 实现 OA TC6 SPI 协议。对于移植到竞品芯片：</p>
+<ul>
+<li>lwIP 和 Arduino UDP 封装层可直接复用</li>
+<li>HAL 层（TC6_Io）需要适配新的 SPI 接口</li>
+<li>协议层是否可复用取决于竞品是否兼容 OA TC6</li>
+<li>测试需要自建，因为原项目无自动化测试基础设施</li>
+</ul>
+<p>下一篇将深入 OA TC6 SPI 协议的帧结构和数据流实现细节。</p>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">首页</a></li>
+        
+          <li><a href="/about/">关于</a></li>
+        
+          <li><a href="/archives/">归档</a></li>
+        
+          <li><a href="/tags/">标签</a></li>
+        
+          <li><a href="/categories/">分类</a></li>
+        
+          <li><a href="/search/">搜索</a></li>
+        
+          <li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%B3%BB%E5%88%97%E5%AF%BC%E8%AF%BB"><span class="toc-number">1.</span> <span class="toc-text">系列导读</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#10BASE-T1S-%E6%8A%80%E6%9C%AF%E8%83%8C%E6%99%AF"><span class="toc-number">2.</span> <span class="toc-text">10BASE-T1S 技术背景</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%A1%B9%E7%9B%AE%E6%A6%82%E8%A7%88"><span class="toc-number">3.</span> <span class="toc-text">项目概览</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%BD%AF%E4%BB%B6%E6%9E%B6%E6%9E%84%E5%88%86%E5%B1%82"><span class="toc-number">4.</span> <span class="toc-text">软件架构分层</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%90%84%E5%B1%82%E8%81%8C%E8%B4%A3"><span class="toc-number">4.1.</span> <span class="toc-text">各层职责</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%B1%BB%E5%85%B3%E7%B3%BB"><span class="toc-number">4.2.</span> <span class="toc-text">类关系</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%B8%E5%9E%8B%E4%BD%BF%E7%94%A8%E4%BB%A3%E7%A0%81"><span class="toc-number">4.3.</span> <span class="toc-text">典型使用代码</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%BC%96%E8%AF%91%E5%B9%B3%E5%8F%B0%E4%B8%8E-CI-%E7%9F%A9%E9%98%B5"><span class="toc-number">5.</span> <span class="toc-text">编译平台与 CI 矩阵</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%94%AF%E6%8C%81%E7%9A%84%E6%9E%B6%E6%9E%84"><span class="toc-number">5.1.</span> <span class="toc-text">支持的架构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#CI-%E6%9E%84%E5%BB%BA%E7%9F%A9%E9%98%B5%EF%BC%887-%E5%9D%97%E6%9D%BF%E5%8D%A1%EF%BC%89"><span class="toc-number">5.2.</span> <span class="toc-text">CI 构建矩阵（7 块板卡）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9D%BF%E5%8D%A1%E5%BC%95%E8%84%9A%E6%98%A0%E5%B0%84"><span class="toc-number">5.3.</span> <span class="toc-text">板卡引脚映射</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BC%96%E8%AF%91%E5%91%BD%E4%BB%A4"><span class="toc-number">5.4.</span> <span class="toc-text">编译命令</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%BC%80%E6%BA%90%E7%8A%B6%E6%80%81%E5%88%86%E6%9E%90"><span class="toc-number">6.</span> <span class="toc-text">开源状态分析</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%B5%8B%E8%AF%95%E6%96%B9%E6%B3%95%E5%88%86%E6%9E%90"><span class="toc-number">7.</span> <span class="toc-text">测试方法分析</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%8E%B0%E6%9C%89%E6%B5%8B%E8%AF%95%E6%89%8B%E6%AE%B5"><span class="toc-number">7.1.</span> <span class="toc-text">现有测试手段</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%9E%E9%99%85%E9%AA%8C%E8%AF%81%E6%96%B9%E6%A1%88"><span class="toc-number">7.2.</span> <span class="toc-text">实际验证方案</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%B5%8B%E8%AF%95%E8%A6%86%E7%9B%96%E7%9A%84%E5%B1%80%E9%99%90%E6%80%A7"><span class="toc-number">7.3.</span> <span class="toc-text">测试覆盖的局限性</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%B0%8F%E7%BB%93"><span class="toc-number">8.</span> <span class="toc-text">小结</span></a></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/06/04/10BASE-T1S-Arduino-Architecture-Overview/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/06/04/10BASE-T1S-Arduino-Architecture-Overview/&text=10BASE-T1S Arduino 开源库架构分析（一）：架构概览与开源评估"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/06/04/10BASE-T1S-Arduino-Architecture-Overview/&title=10BASE-T1S Arduino 开源库架构分析（一）：架构概览与开源评估"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/06/04/10BASE-T1S-Arduino-Architecture-Overview/&is_video=false&description=10BASE-T1S Arduino 开源库架构分析（一）：架构概览与开源评估"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=10BASE-T1S Arduino 开源库架构分析（一）：架构概览与开源评估&body=Check out this article: https://cursorhu.github.io/2026/06/04/10BASE-T1S-Arduino-Architecture-Overview/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/06/04/10BASE-T1S-Arduino-Architecture-Overview/&title=10BASE-T1S Arduino 开源库架构分析（一）：架构概览与开源评估"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/06/04/10BASE-T1S-Arduino-Architecture-Overview/&title=10BASE-T1S Arduino 开源库架构分析（一）：架构概览与开源评估"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/06/04/10BASE-T1S-Arduino-Architecture-Overview/&title=10BASE-T1S Arduino 开源库架构分析（一）：架构概览与开源评估"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/06/04/10BASE-T1S-Arduino-Architecture-Overview/&title=10BASE-T1S Arduino 开源库架构分析（一）：架构概览与开源评估"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/06/04/10BASE-T1S-Arduino-Architecture-Overview/&name=10BASE-T1S Arduino 开源库架构分析（一）：架构概览与开源评估&description=&lt;h2 id=&#34;系列导读&#34;&gt;&lt;a href=&#34;#系列导读&#34; class=&#34;headerlink&#34; title=&#34;系列导读&#34;&gt;&lt;/a&gt;系列导读&lt;/h2&gt;&lt;p&gt;本系列三篇文章对 Arduino 官方 10BASE-T1S 库进行完整的软件架构分析，目标是为后续移植到竞品 T1S 芯片提供技术基线：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;&lt;strong&gt;架构概览与开源评估&lt;/strong&gt;（本篇）— 分层设计、编译平台、许可证分析&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;/2026/06/04/10BASE-T1S-Protocol-Stack-Deep-Dive/&#34;&gt;协议栈深度分析&lt;/a&gt; — OA TC6 SPI 协议帧结构、数据流、PLCA&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;/2026/06/04/10BASE-T1S-Porting-Guide/&#34;&gt;移植实战指南&lt;/a&gt; — 抽象边界、可复用模块、移植 checklist&lt;/li&gt;
+&lt;/ol&gt;
+&lt;h2 id=&#34;10BASE-T1S-技术背景&#34;&gt;&lt;a href=&#34;#10BASE-T1S-技术背景&#34; class=&#34;headerlink&#34; title=&#34;10BASE-T1S 技术背景&#34;&gt;&lt;/a&gt;10BASE-T1S 技术背景&lt;/h2&gt;&lt;p&gt;10BASE-T1S 是 IEEE 802.3cg-2019 定义的单对线以太网标准，核心特性：&lt;/p&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;特性&lt;/th&gt;
+&lt;th&gt;10BASE-T1S&lt;/th&gt;
+&lt;th&gt;传统 100BASE-TX&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;&lt;tr&gt;
+&lt;td&gt;线对数&lt;/td&gt;
+&lt;td&gt;1 对&lt;/td&gt;
+&lt;td&gt;2 对&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;速率&lt;/td&gt;
+&lt;td&gt;10 Mbps&lt;/td&gt;
+&lt;td&gt;100 Mbps&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;拓扑&lt;/td&gt;
+&lt;td&gt;多点总线（multi-drop）&lt;/td&gt;
+&lt;td&gt;点对点&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;最大节点数&lt;/td&gt;
+&lt;td&gt;8（PLCA 模式）&lt;/td&gt;
+&lt;td&gt;2&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;线缆长度&lt;/td&gt;
+&lt;td&gt;25m（mixing segment）&lt;/td&gt;
+&lt;td&gt;100m&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;碰撞处理&lt;/td&gt;
+&lt;td&gt;PLCA 确定性轮询&lt;/td&gt;
+&lt;td&gt;N&amp;#x2F;A（全双工）&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;&lt;/table&gt;
+&lt;p&gt;关键 trade-off：牺牲速率换取布线简化和多点接入能力，适合汽车&amp;#x2F;工业传感器网络场景，一根双绞线串联多个节点。&lt;/p&gt;
+&lt;p&gt;PLCA（Physical Layer Collision Avoidance）是 10BASE-T1S 的核心机制：Node ID 0 作为协调器，按固定顺序给每个节点分配发送时隙，避免 CSMA&amp;#x2F;CD 的随机退避延迟。&lt;/p&gt;
+&lt;h2 id=&#34;项目概览&#34;&gt;&lt;a href=&#34;#项目概览&#34; class=&#34;headerlink&#34; title=&#34;项目概览&#34;&gt;&lt;/a&gt;项目概览&lt;/h2&gt;&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;属性&lt;/th&gt;
+&lt;th&gt;值&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;&lt;tr&gt;
+&lt;td&gt;名称&lt;/td&gt;
+&lt;td&gt;Arduino_10BASE_T1S&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;版本&lt;/td&gt;
+&lt;td&gt;0.1.1&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;维护者&lt;/td&gt;
+&lt;td&gt;Arduino (Alexander Entinger)&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;许可证&lt;/td&gt;
+&lt;td&gt;MPL-2.0（顶层）&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;仓库&lt;/td&gt;
+&lt;td&gt;&lt;a href=&#34;https://github.com/arduino-libraries/Arduino_10BASE_T1S&#34;&gt;https://github.com/arduino-libraries/Arduino_10BASE_T1S&lt;/a&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;目标芯片&lt;/td&gt;
+&lt;td&gt;Microchip LAN8650 &amp;#x2F; LAN8651 MAC-PHY&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;分类&lt;/td&gt;
+&lt;td&gt;Communication&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;&lt;/table&gt;"><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/06/04/10BASE-T1S-Arduino-Architecture-Overview/&t=10BASE-T1S Arduino 开源库架构分析（一）：架构概览与开源评估"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> 菜单</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> 目录</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> 分享</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> 返回顶部</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2026
+    cursorhu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/cursorhu">项目</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"复制到粘贴板！\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "复制成功！");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+</body>
+</html>
