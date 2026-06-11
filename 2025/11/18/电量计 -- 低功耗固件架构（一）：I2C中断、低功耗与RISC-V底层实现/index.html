@@ -128,7 +128,14 @@
 &lt;p&gt;本文以purdy_g2电量计固件为例，展示如何在RISC-V平台上做这些工程权衡。该芯片基于HBird E200 RISC-V内核，32MHz主频，配备PLIC中断控制器、硬件I2C从机、VADC&amp;#x2F;CADC双ADC子系统。&lt;/p&gt;
 &lt;h2 id=&#34;I2C从机中断驱动架构&#34;&gt;&lt;a href=&#34;#I2C从机中断驱动架构&#34; class=&#34;headerlink&#34; title=&#34;I2C从机中断驱动架构&#34;&gt;&lt;/a&gt;I2C从机中断驱动架构&lt;/h2&gt;&lt;p&gt;电量计通过I2C&amp;#x2F;SMBus与主机通信，遵循SBS（Smart Battery Specification）协议。主机随时可能发起读写请求，固件必须在I2C时钟的SCL周期内完成应答，否则总线超时。&lt;/p&gt;
 &lt;h3 id=&#34;状态机设计&#34;&gt;&lt;a href=&#34;#状态机设计&#34; class=&#34;headerlink&#34; title=&#34;状态机设计&#34;&gt;&lt;/a&gt;状态机设计&lt;/h3&gt;&lt;p&gt;I2C从机采用三态状态机，完全由中断驱动：&lt;/p&gt;
-&lt;figure class=&#34;highlight plaintext&#34;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&#34;gutter&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;3&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;4&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;5&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;6&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&#34;code&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;stateDiagram-v2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    [*] --&amp;gt; IDLE&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    IDLE --&amp;gt; SLVRCV : &amp;quot;地址匹配 (写方向)&amp;quot;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    SLVRCV --&amp;gt; SLVSND : &amp;quot;重复START (读方向)&amp;quot;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    SLVRCV --&amp;gt; IDLE : &amp;quot;STOP / NACK&amp;quot;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    SLVSND --&amp;gt; IDLE : &amp;quot;STOP / NACK&amp;quot;&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;
+&lt;div class=&#34;mermaid&#34;&gt;
+stateDiagram-v2
+    [*] --&gt; IDLE
+    IDLE --&gt; SLVRCV : &#34;地址匹配 (写方向)&#34;
+    SLVRCV --&gt; SLVSND : &#34;重复START (读方向)&#34;
+    SLVRCV --&gt; IDLE : &#34;STOP / NACK&#34;
+    SLVSND --&gt; IDLE : &#34;STOP / NACK&#34;
+&lt;/div&gt;
 
 &lt;p&gt;典型的SMBus读事务流程：&lt;/p&gt;
 &lt;ol&gt;
@@ -199,7 +206,14 @@
 <p>本文以purdy_g2电量计固件为例，展示如何在RISC-V平台上做这些工程权衡。该芯片基于HBird E200 RISC-V内核，32MHz主频，配备PLIC中断控制器、硬件I2C从机、VADC&#x2F;CADC双ADC子系统。</p>
 <h2 id="I2C从机中断驱动架构"><a href="#I2C从机中断驱动架构" class="headerlink" title="I2C从机中断驱动架构"></a>I2C从机中断驱动架构</h2><p>电量计通过I2C&#x2F;SMBus与主机通信，遵循SBS（Smart Battery Specification）协议。主机随时可能发起读写请求，固件必须在I2C时钟的SCL周期内完成应答，否则总线超时。</p>
 <h3 id="状态机设计"><a href="#状态机设计" class="headerlink" title="状态机设计"></a>状态机设计</h3><p>I2C从机采用三态状态机，完全由中断驱动：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">stateDiagram-v2</span><br><span class="line">    [*] --&gt; IDLE</span><br><span class="line">    IDLE --&gt; SLVRCV : &quot;地址匹配 (写方向)&quot;</span><br><span class="line">    SLVRCV --&gt; SLVSND : &quot;重复START (读方向)&quot;</span><br><span class="line">    SLVRCV --&gt; IDLE : &quot;STOP / NACK&quot;</span><br><span class="line">    SLVSND --&gt; IDLE : &quot;STOP / NACK&quot;</span><br></pre></td></tr></table></figure>
+<div class="mermaid">
+stateDiagram-v2
+    [*] --> IDLE
+    IDLE --> SLVRCV : "地址匹配 (写方向)"
+    SLVRCV --> SLVSND : "重复START (读方向)"
+    SLVRCV --> IDLE : "STOP / NACK"
+    SLVSND --> IDLE : "STOP / NACK"
+</div>
 
 <p>典型的SMBus读事务流程：</p>
 <ol>
@@ -309,7 +323,17 @@
 <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">uintptr_t</span> <span class="title function_">handle_trap</span><span class="params">(<span class="type">uintptr_t</span> mcause, <span class="type">uintptr_t</span> epc, <span class="type">uintptr_t</span> adaddr)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">if</span> ((mcause &amp; MCAUSE_INT) &amp;&amp; ((mcause &amp; MCAUSE_CAUSE) == IRQ_M_EXT))</span><br><span class="line">        handle_m_ext_interrupt();      <span class="comment">// 外部中断 → PLIC</span></span><br><span class="line">    <span class="keyword">else</span> <span class="keyword">if</span> ((mcause &amp; MCAUSE_INT) &amp;&amp; ((mcause &amp; MCAUSE_CAUSE) == IRQ_M_TIMER))</span><br><span class="line">        handle_m_time_interrupt();     <span class="comment">// 定时器中断</span></span><br><span class="line">    <span class="keyword">else</span> <span class="keyword">if</span> ((mcause &amp; MCAUSE_INT) &amp;&amp; ((mcause &amp; MCAUSE_CAUSE) == IRQ_M_SOFT))</span><br><span class="line">        handle_m_sotfware_interrupt(); <span class="comment">// 软件中断</span></span><br><span class="line">    <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">// 未处理的异常：打印调试信息并停机</span></span><br><span class="line">        dbg_print(debug_str, mcause, epc, adaddr);</span><br><span class="line">        <span class="keyword">while</span> (<span class="number">1</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> epc;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
 <h3 id="PLIC中断控制器"><a href="#PLIC中断控制器" class="headerlink" title="PLIC中断控制器"></a>PLIC中断控制器</h3><p>PLIC（Platform-Level Interrupt Controller）是RISC-V标准的外部中断管理器。所有外设中断（I2C、ADC、Timer等）都通过PLIC路由到CPU：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">flowchart LR</span><br><span class="line">    A[&quot;I2C中断&quot;] --&gt; D[&quot;PLIC&quot;]</span><br><span class="line">    B[&quot;CADC中断&quot;] --&gt; D</span><br><span class="line">    C[&quot;Timer中断&quot;] --&gt; D</span><br><span class="line">    D --&gt; E[&quot;CPU trap_entry&quot;]</span><br><span class="line">    E --&gt; F[&quot;handle_m_ext_interrupt&quot;]</span><br><span class="line">    F --&gt; G[&quot;PLIC_claim&quot;]</span><br><span class="line">    G --&gt; H[&quot;查handler表分发&quot;]</span><br><span class="line">    H --&gt; I[&quot;PLIC_complete&quot;]</span><br></pre></td></tr></table></figure>
+<div class="mermaid">
+flowchart LR
+    A["I2C中断"] --> D["PLIC"]
+    B["CADC中断"] --> D
+    C["Timer中断"] --> D
+    D --> E["CPU trap_entry"]
+    E --> F["handle_m_ext_interrupt"]
+    F --> G["PLIC_claim"]
+    G --> H["查handler表分发"]
+    H --> I["PLIC_complete"]
+</div>
 
 <p>PLIC的Claim&#x2F;Complete协议：</p>
 <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> <span class="title function_">handle_m_ext_interrupt</span><span class="params">()</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">// Claim：获取最高优先级的pending中断号</span></span><br><span class="line">    plic_source int_num = PLIC_claim_interrupt(&amp;g_plic);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (int_num == INT_CADC)</span><br><span class="line">        interrupt_nest_mode_start();  <span class="comment">// CADC允许嵌套</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 分发：通过函数指针表调用对应handler</span></span><br><span class="line">    <span class="keyword">if</span> ((int_num &gt;= <span class="number">1</span>) &amp;&amp; (int_num &lt; PLIC_NUM_INTERRUPTS))</span><br><span class="line">        g_ext_interrupt_handlers[int_num]();</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (int_num == INT_CADC)</span><br><span class="line">        interrupt_nest_mode_end();</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Complete：通知PLIC该中断已处理完毕</span></span><br><span class="line">    PLIC_complete_interrupt(&amp;g_plic, int_num);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
@@ -323,7 +347,18 @@
 <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> <span class="title function_">handle_m_time_interrupt</span><span class="params">()</span></span><br><span class="line">&#123;</span><br><span class="line">    clear_csr(mie, MIP_MTIP);       <span class="comment">// 屏蔽timer中断（防止重入）</span></span><br><span class="line">    system_tick = (system_tick + <span class="number">1</span>) &amp; (TICKTIMERLEN - <span class="number">1</span>);</span><br><span class="line">    MTimer_Config();                 <span class="comment">// 重载mtimecmp += 4096</span></span><br><span class="line">    set_csr(mie, MIP_MTIP);        <span class="comment">// 重新使能timer中断</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
 <h2 id="主循环架构与状态机"><a href="#主循环架构与状态机" class="headerlink" title="主循环架构与状态机"></a>主循环架构与状态机</h2><h3 id="超级循环模式"><a href="#超级循环模式" class="headerlink" title="超级循环模式"></a>超级循环模式</h3><p>固件不使用RTOS，采用经典的超级循环（super loop）+ 中断驱动模式。所有业务逻辑在主循环中按时间片执行：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">flowchart TD</span><br><span class="line">    A[&quot;main_loop()&quot;] --&gt; B[&quot;systime_update_EX()&quot;]</span><br><span class="line">    B --&gt; C&#123;&quot;systime_passed_sec()?&quot;&#125;</span><br><span class="line">    C --&gt;|&quot;否&quot;| H[&quot;__WFI()&quot;]</span><br><span class="line">    C --&gt;|&quot;是&quot;| D[&quot;dacq_update - ADC数据采集&quot;]</span><br><span class="line">    D --&gt; E[&quot;sbsif_update - SBS数据更新&quot;]</span><br><span class="line">    E --&gt; F[&quot;fg_update - 电量算法&quot;]</span><br><span class="line">    F --&gt; G[&quot;stm_update - 状态机/睡眠决策&quot;]</span><br><span class="line">    G --&gt; H</span><br><span class="line">    H --&gt; A</span><br></pre></td></tr></table></figure>
+<div class="mermaid">
+flowchart TD
+    A["main_loop()"] --> B["systime_update_EX()"]
+    B --> C{"systime_passed_sec()?"}
+    C -->|"否"| H["__WFI()"]
+    C -->|"是"| D["dacq_update - ADC数据采集"]
+    D --> E["sbsif_update - SBS数据更新"]
+    E --> F["fg_update - 电量算法"]
+    F --> G["stm_update - 状态机/睡眠决策"]
+    G --> H
+    H --> A
+</div>
 
 <p>时间层次：</p>
 <ul>
@@ -331,7 +366,16 @@
 <li><strong>1秒</strong>：8次tick后触发业务逻辑（ADC采集、电量计算、状态机）</li>
 <li><strong>分钟&#x2F;小时</strong>：SOH计算、温度趋势分析等慢任务</li>
 </ul>
-<h3 id="功耗状态转换"><a href="#功耗状态转换" class="headerlink" title="功耗状态转换"></a>功耗状态转换</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">flowchart LR</span><br><span class="line">    A[&quot;Active&quot;] --&gt;|&quot;空闲超时&quot;| B[&quot;Sleep Prepare&quot;]</span><br><span class="line">    B --&gt;|&quot;延迟到期&quot;| C[&quot;Sleep&quot;]</span><br><span class="line">    C --&gt;|&quot;mtime/I2C唤醒&quot;| A</span><br><span class="line">    A --&gt;|&quot;主机命令&quot;| D[&quot;Deep Sleep Prepare&quot;]</span><br><span class="line">    D --&gt;|&quot;延迟到期&quot;| E[&quot;Deep Sleep&quot;]</span><br><span class="line">    E --&gt;|&quot;I2C唤醒&quot;| A</span><br><span class="line">    B --&gt;|&quot;I2C活动&quot;| A</span><br></pre></td></tr></table></figure>
+<h3 id="功耗状态转换"><a href="#功耗状态转换" class="headerlink" title="功耗状态转换"></a>功耗状态转换</h3><div class="mermaid">
+flowchart LR
+    A["Active"] -->|"空闲超时"| B["Sleep Prepare"]
+    B -->|"延迟到期"| C["Sleep"]
+    C -->|"mtime/I2C唤醒"| A
+    A -->|"主机命令"| D["Deep Sleep Prepare"]
+    D -->|"延迟到期"| E["Deep Sleep"]
+    E -->|"I2C唤醒"| A
+    B -->|"I2C活动"| A
+</div>
 
 <p>关键设计：Sleep Prepare状态下如果检测到I2C活动，立即取消睡眠准备，回到Active。这避免了”正在进入睡眠时主机发来请求”的竞态条件。</p>
 <h2 id="性能与功耗的权衡总结"><a href="#性能与功耗的权衡总结" class="headerlink" title="性能与功耗的权衡总结"></a>性能与功耗的权衡总结</h2><table>
@@ -445,7 +489,14 @@
 &lt;p&gt;本文以purdy_g2电量计固件为例，展示如何在RISC-V平台上做这些工程权衡。该芯片基于HBird E200 RISC-V内核，32MHz主频，配备PLIC中断控制器、硬件I2C从机、VADC&amp;#x2F;CADC双ADC子系统。&lt;/p&gt;
 &lt;h2 id=&#34;I2C从机中断驱动架构&#34;&gt;&lt;a href=&#34;#I2C从机中断驱动架构&#34; class=&#34;headerlink&#34; title=&#34;I2C从机中断驱动架构&#34;&gt;&lt;/a&gt;I2C从机中断驱动架构&lt;/h2&gt;&lt;p&gt;电量计通过I2C&amp;#x2F;SMBus与主机通信，遵循SBS（Smart Battery Specification）协议。主机随时可能发起读写请求，固件必须在I2C时钟的SCL周期内完成应答，否则总线超时。&lt;/p&gt;
 &lt;h3 id=&#34;状态机设计&#34;&gt;&lt;a href=&#34;#状态机设计&#34; class=&#34;headerlink&#34; title=&#34;状态机设计&#34;&gt;&lt;/a&gt;状态机设计&lt;/h3&gt;&lt;p&gt;I2C从机采用三态状态机，完全由中断驱动：&lt;/p&gt;
-&lt;figure class=&#34;highlight plaintext&#34;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&#34;gutter&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;3&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;4&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;5&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;6&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&#34;code&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;stateDiagram-v2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    [*] --&amp;gt; IDLE&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    IDLE --&amp;gt; SLVRCV : &amp;quot;地址匹配 (写方向)&amp;quot;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    SLVRCV --&amp;gt; SLVSND : &amp;quot;重复START (读方向)&amp;quot;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    SLVRCV --&amp;gt; IDLE : &amp;quot;STOP / NACK&amp;quot;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    SLVSND --&amp;gt; IDLE : &amp;quot;STOP / NACK&amp;quot;&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;
+&lt;div class=&#34;mermaid&#34;&gt;
+stateDiagram-v2
+    [*] --&gt; IDLE
+    IDLE --&gt; SLVRCV : &#34;地址匹配 (写方向)&#34;
+    SLVRCV --&gt; SLVSND : &#34;重复START (读方向)&#34;
+    SLVRCV --&gt; IDLE : &#34;STOP / NACK&#34;
+    SLVSND --&gt; IDLE : &#34;STOP / NACK&#34;
+&lt;/div&gt;
 
 &lt;p&gt;典型的SMBus读事务流程：&lt;/p&gt;
 &lt;ol&gt;
@@ -556,6 +607,41 @@
 <!-- Disqus Comments -->
 
 <!-- utterances Comments -->
+
+<!-- Mermaid diagrams -->
+
+  <script type="text/javascript">
+  (function() {
+    var mermaidElements = document.querySelectorAll('.mermaid');
+    if (!mermaidElements.length) return;
+
+    var mermaidTheme = 'auto';
+    if (mermaidTheme === 'auto') {
+      var colorscheme = 'dark';
+      mermaidTheme = (colorscheme === 'dark' || colorscheme === 'classic') ? 'dark' : 'default';
+    }
+
+    function initMermaid() {
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: mermaidTheme,
+        logLevel: 'error',
+        securityLevel: 'loose',
+        flowchart: { curve: 'basis' },
+        gantt: { axisFormat: '%m/%d/%Y' },
+        sequence: { actorMargin: 50 }
+      });
+      mermaid.run({ nodes: mermaidElements });
+    }
+
+    var script = document.createElement('script');
+    
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.4.1/mermaid.min.js';
+    
+    script.onload = initMermaid;
+    document.head.appendChild(script);
+  })();
+  </script>
 
 </body>
 </html>

@@ -198,7 +198,14 @@
 
 <p>为什么要固定地址？这是OTP（一次性编程）芯片的需求——向量表中的ISR地址在出厂时烧录，后续固件更新只能修改非ISR区域的代码。ISR入口地址必须在芯片生命周期内保持不变。</p>
 <h3 id="状态机"><a href="#状态机" class="headerlink" title="状态机"></a>状态机</h3><p>与RISC-V平台完全相同的三态设计：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">stateDiagram-v2</span><br><span class="line">    [*] --&gt; IDLE</span><br><span class="line">    IDLE --&gt; SLVRCV : &quot;地址匹配 + 写方向&quot;</span><br><span class="line">    SLVRCV --&gt; SLVSND : &quot;重复START + 读方向&quot;</span><br><span class="line">    SLVRCV --&gt; IDLE : &quot;STOP / NACK&quot;</span><br><span class="line">    SLVSND --&gt; IDLE : &quot;STOP / NACK&quot;</span><br></pre></td></tr></table></figure>
+<div class="mermaid">
+stateDiagram-v2
+    [*] --> IDLE
+    IDLE --> SLVRCV : "地址匹配 + 写方向"
+    SLVRCV --> SLVSND : "重复START + 读方向"
+    SLVRCV --> IDLE : "STOP / NACK"
+    SLVSND --> IDLE : "STOP / NACK"
+</div>
 
 <p><strong>接收阶段——命令解析与数据接收：</strong></p>
 <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (i2cif_p-&gt;isr2stat &amp; I2C_ISR2_SLV_RXNE) &#123;</span><br><span class="line">    i2cif_p-&gt;data = Chip_I2C_ReadRXData(i2cif_p-&gt;pI2C_Base);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (i2cif_p-&gt;rx_idx == <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="comment">// 第一个字节是SBS命令码</span></span><br><span class="line">        i2cif_p-&gt;i2c_cmd = (<span class="type">uint8_t</span>)i2cif_p-&gt;data;</span><br><span class="line">        <span class="comment">// 线性查找命令定义表</span></span><br><span class="line">        <span class="keyword">do</span> &#123;</span><br><span class="line">            <span class="keyword">if</span> (((sbsd_cmd_def[sbd_idx] &amp; SBSD_CMD_Msk)</span><br><span class="line">                 &gt;&gt; SBSD_CMD_Pos) == i2cif_p-&gt;i2c_cmd)</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">        &#125; <span class="keyword">while</span> (sbd_idx++ &lt; SBSD_CMD_MAX);</span><br><span class="line">        <span class="comment">// 提取协议长度</span></span><br><span class="line">        i2cif_p-&gt;rx_size = ((sbsd_cmd_def[sbd_idx]</span><br><span class="line">                             &amp; SBSD_LEN_Msk) &gt;&gt; SBSD_LEN_Pos) + <span class="number">1</span>;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        i2cif_p-&gt;rx_buffer[rx_idx - <span class="number">1</span>] = (<span class="type">uint8_t</span>)data;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 逐字节累计PEC</span></span><br><span class="line">    i2cif_p-&gt;i2c_pec = i2cif_calc_pec(data, i2cif_p-&gt;i2c_pec);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
@@ -581,6 +588,41 @@
 <!-- Disqus Comments -->
 
 <!-- utterances Comments -->
+
+<!-- Mermaid diagrams -->
+
+  <script type="text/javascript">
+  (function() {
+    var mermaidElements = document.querySelectorAll('.mermaid');
+    if (!mermaidElements.length) return;
+
+    var mermaidTheme = 'auto';
+    if (mermaidTheme === 'auto') {
+      var colorscheme = 'dark';
+      mermaidTheme = (colorscheme === 'dark' || colorscheme === 'classic') ? 'dark' : 'default';
+    }
+
+    function initMermaid() {
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: mermaidTheme,
+        logLevel: 'error',
+        securityLevel: 'loose',
+        flowchart: { curve: 'basis' },
+        gantt: { axisFormat: '%m/%d/%Y' },
+        sequence: { actorMargin: 50 }
+      });
+      mermaid.run({ nodes: mermaidElements });
+    }
+
+    var script = document.createElement('script');
+    
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.4.1/mermaid.min.js';
+    
+    script.onload = initMermaid;
+    document.head.appendChild(script);
+  })();
+  </script>
 
 </body>
 </html>

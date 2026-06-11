@@ -139,7 +139,36 @@
 &lt;li&gt;用相同的 UDP echo 测试方法验证竞品芯片功能&lt;/li&gt;
 &lt;/ul&gt;
 &lt;h2 id=&#34;架构抽象边界&#34;&gt;&lt;a href=&#34;#架构抽象边界&#34; class=&#34;headerlink&#34; title=&#34;架构抽象边界&#34;&gt;&lt;/a&gt;架构抽象边界&lt;/h2&gt;&lt;p&gt;移植的核心问题是：&lt;strong&gt;哪些模块与 Microchip LAN8651 芯片绑定，哪些是通用的？&lt;/strong&gt;&lt;/p&gt;
-&lt;figure class=&#34;highlight plaintext&#34;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&#34;gutter&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;3&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;4&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;5&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;6&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;7&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;8&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;9&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;10&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;11&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;12&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;13&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;14&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;15&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;16&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;17&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;18&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;19&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;20&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;21&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;22&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;23&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;24&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;25&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;26&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;27&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&#34;code&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;graph TB&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    subgraph &amp;quot;可直接复用 (Chip-Independent)&amp;quot;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        A1[&amp;quot;Arduino_10BASE_T1S_UDP&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        A2[&amp;quot;lwIP TCP/IP Stack&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        A3[&amp;quot;T1SPlcaSettings&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        A4[&amp;quot;T1SMacSettings&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        A5[&amp;quot;MacAddress&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    end&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    subgraph &amp;quot;条件复用 (取决于竞品是否兼容 OA TC6)&amp;quot;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        B1[&amp;quot;libtc6 协议核心 (tc6.cpp)&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        B2[&amp;quot;Credit 管理 / Chunk 分帧&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        B3[&amp;quot;Header/Footer 解析&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    end&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    subgraph &amp;quot;必须替换 (Chip-Specific)&amp;quot;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        C1[&amp;quot;TC6_Io (SPI 配置)&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        C2[&amp;quot;tc6-regs.cpp (寄存器初始化)&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        C3[&amp;quot;芯片 ID 校验逻辑&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        C4[&amp;quot;PHY 校准参数&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        C5[&amp;quot;PLCA 寄存器地址&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    end&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    A1 --&amp;gt; A2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    A2 --&amp;gt; B1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    B1 --&amp;gt; C1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    B1 --&amp;gt; C2&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;
+&lt;div class=&#34;mermaid&#34;&gt;
+graph TB
+    subgraph &#34;可直接复用 (Chip-Independent)&#34;
+        A1[&#34;Arduino_10BASE_T1S_UDP&#34;]
+        A2[&#34;lwIP TCP/IP Stack&#34;]
+        A3[&#34;T1SPlcaSettings&#34;]
+        A4[&#34;T1SMacSettings&#34;]
+        A5[&#34;MacAddress&#34;]
+    end
+
+&lt;pre&gt;&lt;code&gt;subgraph &amp;quot;条件复用 (取决于竞品是否兼容 OA TC6)&amp;quot;
+    B1[&amp;quot;libtc6 协议核心 (tc6.cpp)&amp;quot;]
+    B2[&amp;quot;Credit 管理 / Chunk 分帧&amp;quot;]
+    B3[&amp;quot;Header/Footer 解析&amp;quot;]
+end
+
+subgraph &amp;quot;必须替换 (Chip-Specific)&amp;quot;
+    C1[&amp;quot;TC6_Io (SPI 配置)&amp;quot;]
+    C2[&amp;quot;tc6-regs.cpp (寄存器初始化)&amp;quot;]
+    C3[&amp;quot;芯片 ID 校验逻辑&amp;quot;]
+    C4[&amp;quot;PHY 校准参数&amp;quot;]
+    C5[&amp;quot;PLCA 寄存器地址&amp;quot;]
+end
+
+A1 --&amp;gt; A2
+A2 --&amp;gt; B1
+B1 --&amp;gt; C1
+B1 --&amp;gt; C2
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
 
 &lt;h2 id=&#34;场景一：竞品兼容-OA-TC6-SPI-协议&#34;&gt;&lt;a href=&#34;#场景一：竞品兼容-OA-TC6-SPI-协议&#34; class=&#34;headerlink&#34; title=&#34;场景一：竞品兼容 OA TC6 SPI 协议&#34;&gt;&lt;/a&gt;场景一：竞品兼容 OA TC6 SPI 协议&lt;/h2&gt;&lt;p&gt;如果竞品芯片也实现了 Open Alliance TC6 SPI 接口（DNC&amp;#x2F;SEQ&amp;#x2F;DV&amp;#x2F;SV&amp;#x2F;EV 帧结构一致），移植工作量最小：&lt;/p&gt;"><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
   <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/06/04/10BASE-T1S-Porting-Guide/&t=10BASE-T1S Arduino 开源库架构分析（三）：移植实战指南"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
@@ -211,7 +240,36 @@
 <li>用相同的 UDP echo 测试方法验证竞品芯片功能</li>
 </ul>
 <h2 id="架构抽象边界"><a href="#架构抽象边界" class="headerlink" title="架构抽象边界"></a>架构抽象边界</h2><p>移植的核心问题是：<strong>哪些模块与 Microchip LAN8651 芯片绑定，哪些是通用的？</strong></p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line">graph TB</span><br><span class="line">    subgraph &quot;可直接复用 (Chip-Independent)&quot;</span><br><span class="line">        A1[&quot;Arduino_10BASE_T1S_UDP&quot;]</span><br><span class="line">        A2[&quot;lwIP TCP/IP Stack&quot;]</span><br><span class="line">        A3[&quot;T1SPlcaSettings&quot;]</span><br><span class="line">        A4[&quot;T1SMacSettings&quot;]</span><br><span class="line">        A5[&quot;MacAddress&quot;]</span><br><span class="line">    end</span><br><span class="line"></span><br><span class="line">    subgraph &quot;条件复用 (取决于竞品是否兼容 OA TC6)&quot;</span><br><span class="line">        B1[&quot;libtc6 协议核心 (tc6.cpp)&quot;]</span><br><span class="line">        B2[&quot;Credit 管理 / Chunk 分帧&quot;]</span><br><span class="line">        B3[&quot;Header/Footer 解析&quot;]</span><br><span class="line">    end</span><br><span class="line"></span><br><span class="line">    subgraph &quot;必须替换 (Chip-Specific)&quot;</span><br><span class="line">        C1[&quot;TC6_Io (SPI 配置)&quot;]</span><br><span class="line">        C2[&quot;tc6-regs.cpp (寄存器初始化)&quot;]</span><br><span class="line">        C3[&quot;芯片 ID 校验逻辑&quot;]</span><br><span class="line">        C4[&quot;PHY 校准参数&quot;]</span><br><span class="line">        C5[&quot;PLCA 寄存器地址&quot;]</span><br><span class="line">    end</span><br><span class="line"></span><br><span class="line">    A1 --&gt; A2</span><br><span class="line">    A2 --&gt; B1</span><br><span class="line">    B1 --&gt; C1</span><br><span class="line">    B1 --&gt; C2</span><br></pre></td></tr></table></figure>
+<div class="mermaid">
+graph TB
+    subgraph "可直接复用 (Chip-Independent)"
+        A1["Arduino_10BASE_T1S_UDP"]
+        A2["lwIP TCP/IP Stack"]
+        A3["T1SPlcaSettings"]
+        A4["T1SMacSettings"]
+        A5["MacAddress"]
+    end
+
+<pre><code>subgraph &quot;条件复用 (取决于竞品是否兼容 OA TC6)&quot;
+    B1[&quot;libtc6 协议核心 (tc6.cpp)&quot;]
+    B2[&quot;Credit 管理 / Chunk 分帧&quot;]
+    B3[&quot;Header/Footer 解析&quot;]
+end
+
+subgraph &quot;必须替换 (Chip-Specific)&quot;
+    C1[&quot;TC6_Io (SPI 配置)&quot;]
+    C2[&quot;tc6-regs.cpp (寄存器初始化)&quot;]
+    C3[&quot;芯片 ID 校验逻辑&quot;]
+    C4[&quot;PHY 校准参数&quot;]
+    C5[&quot;PLCA 寄存器地址&quot;]
+end
+
+A1 --&gt; A2
+A2 --&gt; B1
+B1 --&gt; C1
+B1 --&gt; C2
+</code></pre>
+</div>
 
 <h2 id="场景一：竞品兼容-OA-TC6-SPI-协议"><a href="#场景一：竞品兼容-OA-TC6-SPI-协议" class="headerlink" title="场景一：竞品兼容 OA TC6 SPI 协议"></a>场景一：竞品兼容 OA TC6 SPI 协议</h2><p>如果竞品芯片也实现了 Open Alliance TC6 SPI 接口（DNC&#x2F;SEQ&#x2F;DV&#x2F;SV&#x2F;EV 帧结构一致），移植工作量最小：</p>
 <h3 id="需要修改的文件"><a href="#需要修改的文件" class="headerlink" title="需要修改的文件"></a>需要修改的文件</h3><table>
@@ -261,7 +319,28 @@
 <figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// LAN8651 PLCA 寄存器地址</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PLCA_CONTROL_0   0x0004CA01  <span class="comment">// PLCA 使能</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PLCA_CONTROL_1   0x0004CA02  <span class="comment">// Node ID + Count</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PLCA_BURST_MODE  0x0004CA05  <span class="comment">// Burst 配置</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> COL_DET_CTRL0    0x00040087  <span class="comment">// 碰撞检测模式</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 替换为竞品地址</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PLCA_CONTROL_0   0x????????</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PLCA_CONTROL_1   0x????????</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PLCA_BURST_MODE  0x????????</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> COL_DET_CTRL0    0x????????</span></span><br></pre></td></tr></table></figure>
 
 <h2 id="场景二：竞品使用私有-SPI-协议"><a href="#场景二：竞品使用私有-SPI-协议" class="headerlink" title="场景二：竞品使用私有 SPI 协议"></a>场景二：竞品使用私有 SPI 协议</h2><p>如果竞品芯片不兼容 OA TC6（使用自定义寄存器协议或不同的帧封装），需要替换整个协议层：</p>
-<h3 id="需要替换的模块"><a href="#需要替换的模块" class="headerlink" title="需要替换的模块"></a>需要替换的模块</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">graph TB</span><br><span class="line">    subgraph &quot;保留&quot;</span><br><span class="line">        A[&quot;Arduino_10BASE_T1S_UDP + lwIP&quot;]</span><br><span class="line">    end</span><br><span class="line"></span><br><span class="line">    subgraph &quot;重新实现的接口层&quot;</span><br><span class="line">        B[&quot;新的 PHY Driver Class&quot;]</span><br><span class="line">    end</span><br><span class="line"></span><br><span class="line">    subgraph &quot;全部替换&quot;</span><br><span class="line">        C[&quot;竞品 SPI 协议实现&quot;]</span><br><span class="line">        D[&quot;竞品寄存器驱动&quot;]</span><br><span class="line">        E[&quot;竞品 chunk/frame 处理&quot;]</span><br><span class="line">    end</span><br><span class="line"></span><br><span class="line">    A --&gt; B</span><br><span class="line">    B --&gt; C</span><br><span class="line">    B --&gt; D</span><br><span class="line">    C --&gt; E</span><br></pre></td></tr></table></figure>
+<h3 id="需要替换的模块"><a href="#需要替换的模块" class="headerlink" title="需要替换的模块"></a>需要替换的模块</h3><div class="mermaid">
+graph TB
+    subgraph "保留"
+        A["Arduino_10BASE_T1S_UDP + lwIP"]
+    end
+
+<pre><code>subgraph &quot;重新实现的接口层&quot;
+    B[&quot;新的 PHY Driver Class&quot;]
+end
+
+subgraph &quot;全部替换&quot;
+    C[&quot;竞品 SPI 协议实现&quot;]
+    D[&quot;竞品寄存器驱动&quot;]
+    E[&quot;竞品 chunk/frame 处理&quot;]
+end
+
+A --&gt; B
+B --&gt; C
+B --&gt; D
+C --&gt; E
+</code></pre>
+</div>
 
 <h3 id="需要实现的接口"><a href="#需要实现的接口" class="headerlink" title="需要实现的接口"></a>需要实现的接口</h3><p><code>Arduino_10BASE_T1S_PHY_Interface</code> 定义了上层需要的抽象接口：</p>
 <figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// src/Arduino_10BASE_T1S_PHY_Interface.h</span></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">Arduino_10BASE_T1S_PHY_Interface</span> &#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="keyword">virtual</span> <span class="type">bool</span> <span class="title">begin</span><span class="params">(IPAddress ip, IPAddress mask, IPAddress gw,</span></span></span><br><span class="line"><span class="params"><span class="function">                       MacAddress mac,</span></span></span><br><span class="line"><span class="params"><span class="function">                       T1SPlcaSettings plca,</span></span></span><br><span class="line"><span class="params"><span class="function">                       T1SMacSettings mac_settings)</span> </span>= <span class="number">0</span>;</span><br><span class="line">    <span class="function"><span class="keyword">virtual</span> <span class="type">void</span> <span class="title">service</span><span class="params">()</span> </span>= <span class="number">0</span>;</span><br><span class="line">    <span class="function"><span class="keyword">virtual</span> <span class="type">bool</span> <span class="title">getPlcaStatus</span><span class="params">(PlcaStatusCallback callback)</span> </span>= <span class="number">0</span>;</span><br><span class="line">    <span class="function"><span class="keyword">virtual</span> <span class="type">void</span> <span class="title">enablePlca</span><span class="params">()</span> </span>= <span class="number">0</span>;</span><br><span class="line">    <span class="function"><span class="keyword">virtual</span> <span class="type">bool</span> <span class="title">sendWouldBlock</span><span class="params">()</span> </span>= <span class="number">0</span>;</span><br><span class="line">    <span class="function"><span class="keyword">virtual</span> <span class="type">void</span> <span class="title">digitalWrite</span><span class="params">(DIO dio, <span class="type">bool</span> value)</span> </span>= <span class="number">0</span>;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
@@ -361,7 +440,12 @@
 <li><input disabled="" type="checkbox"> 异常恢复：拔线重插、节点加入&#x2F;退出</li>
 <li><input disabled="" type="checkbox"> 温度&#x2F;电压边界条件（如果需要）</li>
 </ul>
-<h2 id="验证方案"><a href="#验证方案" class="headerlink" title="验证方案"></a>验证方案</h2><h3 id="测试拓扑"><a href="#测试拓扑" class="headerlink" title="测试拓扑"></a>测试拓扑</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">graph LR</span><br><span class="line">    A[&quot;Arduino + 竞品 T1S\n(Node 1, UDP Client)&quot;] --&gt;|&quot;单对双绞线&quot;| B[&quot;Multi-drop Bus&quot;]</span><br><span class="line">    C[&quot;Arduino + LAN8651\n(Node 0, UDP Server)&quot;] --&gt;|&quot;单对双绞线&quot;| B</span><br><span class="line">    D[&quot;EVB-LAN8670-USB\n(Linux, tcpdump)&quot;] --&gt;|&quot;单对双绞线&quot;| B</span><br></pre></td></tr></table></figure>
+<h2 id="验证方案"><a href="#验证方案" class="headerlink" title="验证方案"></a>验证方案</h2><h3 id="测试拓扑"><a href="#测试拓扑" class="headerlink" title="测试拓扑"></a>测试拓扑</h3><div class="mermaid">
+graph LR
+    A["Arduino + 竞品 T1S\n(Node 1, UDP Client)"] -->|"单对双绞线"| B["Multi-drop Bus"]
+    C["Arduino + LAN8651\n(Node 0, UDP Server)"] -->|"单对双绞线"| B
+    D["EVB-LAN8670-USB\n(Linux, tcpdump)"] -->|"单对双绞线"| B
+</div>
 
 <h3 id="验证项"><a href="#验证项" class="headerlink" title="验证项"></a>验证项</h3><table>
 <thead>
@@ -484,7 +568,36 @@
 &lt;li&gt;用相同的 UDP echo 测试方法验证竞品芯片功能&lt;/li&gt;
 &lt;/ul&gt;
 &lt;h2 id=&#34;架构抽象边界&#34;&gt;&lt;a href=&#34;#架构抽象边界&#34; class=&#34;headerlink&#34; title=&#34;架构抽象边界&#34;&gt;&lt;/a&gt;架构抽象边界&lt;/h2&gt;&lt;p&gt;移植的核心问题是：&lt;strong&gt;哪些模块与 Microchip LAN8651 芯片绑定，哪些是通用的？&lt;/strong&gt;&lt;/p&gt;
-&lt;figure class=&#34;highlight plaintext&#34;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&#34;gutter&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;3&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;4&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;5&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;6&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;7&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;8&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;9&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;10&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;11&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;12&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;13&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;14&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;15&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;16&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;17&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;18&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;19&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;20&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;21&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;22&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;23&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;24&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;25&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;26&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;27&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&#34;code&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;graph TB&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    subgraph &amp;quot;可直接复用 (Chip-Independent)&amp;quot;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        A1[&amp;quot;Arduino_10BASE_T1S_UDP&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        A2[&amp;quot;lwIP TCP/IP Stack&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        A3[&amp;quot;T1SPlcaSettings&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        A4[&amp;quot;T1SMacSettings&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        A5[&amp;quot;MacAddress&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    end&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    subgraph &amp;quot;条件复用 (取决于竞品是否兼容 OA TC6)&amp;quot;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        B1[&amp;quot;libtc6 协议核心 (tc6.cpp)&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        B2[&amp;quot;Credit 管理 / Chunk 分帧&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        B3[&amp;quot;Header/Footer 解析&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    end&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    subgraph &amp;quot;必须替换 (Chip-Specific)&amp;quot;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        C1[&amp;quot;TC6_Io (SPI 配置)&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        C2[&amp;quot;tc6-regs.cpp (寄存器初始化)&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        C3[&amp;quot;芯片 ID 校验逻辑&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        C4[&amp;quot;PHY 校准参数&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        C5[&amp;quot;PLCA 寄存器地址&amp;quot;]&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    end&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    A1 --&amp;gt; A2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    A2 --&amp;gt; B1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    B1 --&amp;gt; C1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;    B1 --&amp;gt; C2&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;
+&lt;div class=&#34;mermaid&#34;&gt;
+graph TB
+    subgraph &#34;可直接复用 (Chip-Independent)&#34;
+        A1[&#34;Arduino_10BASE_T1S_UDP&#34;]
+        A2[&#34;lwIP TCP/IP Stack&#34;]
+        A3[&#34;T1SPlcaSettings&#34;]
+        A4[&#34;T1SMacSettings&#34;]
+        A5[&#34;MacAddress&#34;]
+    end
+
+&lt;pre&gt;&lt;code&gt;subgraph &amp;quot;条件复用 (取决于竞品是否兼容 OA TC6)&amp;quot;
+    B1[&amp;quot;libtc6 协议核心 (tc6.cpp)&amp;quot;]
+    B2[&amp;quot;Credit 管理 / Chunk 分帧&amp;quot;]
+    B3[&amp;quot;Header/Footer 解析&amp;quot;]
+end
+
+subgraph &amp;quot;必须替换 (Chip-Specific)&amp;quot;
+    C1[&amp;quot;TC6_Io (SPI 配置)&amp;quot;]
+    C2[&amp;quot;tc6-regs.cpp (寄存器初始化)&amp;quot;]
+    C3[&amp;quot;芯片 ID 校验逻辑&amp;quot;]
+    C4[&amp;quot;PHY 校准参数&amp;quot;]
+    C5[&amp;quot;PLCA 寄存器地址&amp;quot;]
+end
+
+A1 --&amp;gt; A2
+A2 --&amp;gt; B1
+B1 --&amp;gt; C1
+B1 --&amp;gt; C2
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
 
 &lt;h2 id=&#34;场景一：竞品兼容-OA-TC6-SPI-协议&#34;&gt;&lt;a href=&#34;#场景一：竞品兼容-OA-TC6-SPI-协议&#34; class=&#34;headerlink&#34; title=&#34;场景一：竞品兼容 OA TC6 SPI 协议&#34;&gt;&lt;/a&gt;场景一：竞品兼容 OA TC6 SPI 协议&lt;/h2&gt;&lt;p&gt;如果竞品芯片也实现了 Open Alliance TC6 SPI 接口（DNC&amp;#x2F;SEQ&amp;#x2F;DV&amp;#x2F;SV&amp;#x2F;EV 帧结构一致），移植工作量最小：&lt;/p&gt;"><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
   <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/06/04/10BASE-T1S-Porting-Guide/&t=10BASE-T1S Arduino 开源库架构分析（三）：移植实战指南"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
@@ -588,6 +701,41 @@
 <!-- Disqus Comments -->
 
 <!-- utterances Comments -->
+
+<!-- Mermaid diagrams -->
+
+  <script type="text/javascript">
+  (function() {
+    var mermaidElements = document.querySelectorAll('.mermaid');
+    if (!mermaidElements.length) return;
+
+    var mermaidTheme = 'auto';
+    if (mermaidTheme === 'auto') {
+      var colorscheme = 'dark';
+      mermaidTheme = (colorscheme === 'dark' || colorscheme === 'classic') ? 'dark' : 'default';
+    }
+
+    function initMermaid() {
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: mermaidTheme,
+        logLevel: 'error',
+        securityLevel: 'loose',
+        flowchart: { curve: 'basis' },
+        gantt: { axisFormat: '%m/%d/%Y' },
+        sequence: { actorMargin: 50 }
+      });
+      mermaid.run({ nodes: mermaidElements });
+    }
+
+    var script = document.createElement('script');
+    
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.4.1/mermaid.min.js';
+    
+    script.onload = initMermaid;
+    document.head.appendChild(script);
+  })();
+  </script>
 
 </body>
 </html>

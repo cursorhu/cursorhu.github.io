@@ -379,9 +379,55 @@
 </tr>
 </tbody></table>
 <p><strong>Secure Mode</strong>：控制帧可选启用保护模式，payload 区域同时包含正常数据和反转数据，MAC-PHY 做一致性校验。用于关键寄存器写入（MAC 地址、PLCA 配置等）。</p>
-<h2 id="端到端数据流"><a href="#端到端数据流" class="headerlink" title="端到端数据流"></a>端到端数据流</h2><h3 id="TX-路径"><a href="#TX-路径" class="headerlink" title="TX 路径"></a>TX 路径</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">sequenceDiagram</span><br><span class="line">    participant App as &quot;Arduino App&quot;</span><br><span class="line">    participant UDP as &quot;Arduino_10BASE_T1S_UDP&quot;</span><br><span class="line">    participant lwIP as &quot;lwIP Stack&quot;</span><br><span class="line">    participant TC6 as &quot;libtc6&quot;</span><br><span class="line">    participant IO as &quot;TC6_Io&quot;</span><br><span class="line">    participant HW as &quot;LAN8651&quot;</span><br><span class="line"></span><br><span class="line">    App-&gt;&gt;UDP: beginPacket() + write() + endPacket()</span><br><span class="line">    UDP-&gt;&gt;lwIP: udp_sendto(pbuf)</span><br><span class="line">    lwIP-&gt;&gt;lwIP: ARP resolve + IP header</span><br><span class="line">    lwIP-&gt;&gt;TC6: lwIpOut(netif, pbuf)</span><br><span class="line">    TC6-&gt;&gt;TC6: enqueue to eth_q</span><br><span class="line">    Note over TC6: service() 被调用时</span><br><span class="line">    TC6-&gt;&gt;TC6: process_tx(): 从 eth_q 取帧</span><br><span class="line">    TC6-&gt;&gt;TC6: mk_data_tx(): 拆分为 64B chunks</span><br><span class="line">    TC6-&gt;&gt;TC6: 生成 TX Header (DNC=1, DV=1, SV/EV)</span><br><span class="line">    TC6-&gt;&gt;IO: TC6_CB_OnSpiTransaction(pTx, pRx, len)</span><br><span class="line">    IO-&gt;&gt;HW: SPI 全双工传输 (68 bytes)</span><br><span class="line">    HW-&gt;&gt;HW: MAC 处理 + PHY 发送</span><br></pre></td></tr></table></figure>
+<h2 id="端到端数据流"><a href="#端到端数据流" class="headerlink" title="端到端数据流"></a>端到端数据流</h2><h3 id="TX-路径"><a href="#TX-路径" class="headerlink" title="TX 路径"></a>TX 路径</h3><div class="mermaid">
+sequenceDiagram
+    participant App as "Arduino App"
+    participant UDP as "Arduino_10BASE_T1S_UDP"
+    participant lwIP as "lwIP Stack"
+    participant TC6 as "libtc6"
+    participant IO as "TC6_Io"
+    participant HW as "LAN8651"
 
-<h3 id="RX-路径"><a href="#RX-路径" class="headerlink" title="RX 路径"></a>RX 路径</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">sequenceDiagram</span><br><span class="line">    participant HW as &quot;LAN8651&quot;</span><br><span class="line">    participant IO as &quot;TC6_Io&quot;</span><br><span class="line">    participant TC6 as &quot;libtc6&quot;</span><br><span class="line">    participant lwIP as &quot;lwIP Stack&quot;</span><br><span class="line">    participant UDP as &quot;Arduino_10BASE_T1S_UDP&quot;</span><br><span class="line">    participant App as &quot;Arduino App&quot;</span><br><span class="line"></span><br><span class="line">    HW-&gt;&gt;HW: PHY 接收 + MAC 校验</span><br><span class="line">    HW--&gt;&gt;IO: IRQ 拉低</span><br><span class="line">    IO-&gt;&gt;IO: onInterrupt() (ISR, 计数器++)</span><br><span class="line">    Note over IO: service() 检测到中断</span><br><span class="line">    IO-&gt;&gt;TC6: TC6_Service()</span><br><span class="line">    TC6-&gt;&gt;IO: TC6_CB_OnSpiTransaction(empty_tx, pRx)</span><br><span class="line">    IO-&gt;&gt;HW: SPI 传输（发空 chunk 换接收数据）</span><br><span class="line">    TC6-&gt;&gt;TC6: process_rx(): 解析 Footer</span><br><span class="line">    TC6-&gt;&gt;TC6: 根据 SV/EV/SWO/EBO 重组帧</span><br><span class="line">    TC6-&gt;&gt;lwIP: TC6_CB_OnRxEthernetPacket()</span><br><span class="line">    lwIP-&gt;&gt;lwIP: ethernet_input() -&gt; ARP/IP</span><br><span class="line">    lwIP-&gt;&gt;UDP: udp_recv callback</span><br><span class="line">    UDP-&gt;&gt;UDP: 存入 _rx_pkt_list 队列</span><br><span class="line">    App-&gt;&gt;UDP: parsePacket() + read()</span><br></pre></td></tr></table></figure>
+<pre><code>App-&gt;&gt;UDP: beginPacket() + write() + endPacket()
+UDP-&gt;&gt;lwIP: udp_sendto(pbuf)
+lwIP-&gt;&gt;lwIP: ARP resolve + IP header
+lwIP-&gt;&gt;TC6: lwIpOut(netif, pbuf)
+TC6-&gt;&gt;TC6: enqueue to eth_q
+Note over TC6: service() 被调用时
+TC6-&gt;&gt;TC6: process_tx(): 从 eth_q 取帧
+TC6-&gt;&gt;TC6: mk_data_tx(): 拆分为 64B chunks
+TC6-&gt;&gt;TC6: 生成 TX Header (DNC=1, DV=1, SV/EV)
+TC6-&gt;&gt;IO: TC6_CB_OnSpiTransaction(pTx, pRx, len)
+IO-&gt;&gt;HW: SPI 全双工传输 (68 bytes)
+HW-&gt;&gt;HW: MAC 处理 + PHY 发送
+</code></pre>
+</div>
+
+<h3 id="RX-路径"><a href="#RX-路径" class="headerlink" title="RX 路径"></a>RX 路径</h3><div class="mermaid">
+sequenceDiagram
+    participant HW as "LAN8651"
+    participant IO as "TC6_Io"
+    participant TC6 as "libtc6"
+    participant lwIP as "lwIP Stack"
+    participant UDP as "Arduino_10BASE_T1S_UDP"
+    participant App as "Arduino App"
+
+<pre><code>HW-&gt;&gt;HW: PHY 接收 + MAC 校验
+HW--&gt;&gt;IO: IRQ 拉低
+IO-&gt;&gt;IO: onInterrupt() (ISR, 计数器++)
+Note over IO: service() 检测到中断
+IO-&gt;&gt;TC6: TC6_Service()
+TC6-&gt;&gt;IO: TC6_CB_OnSpiTransaction(empty_tx, pRx)
+IO-&gt;&gt;HW: SPI 传输（发空 chunk 换接收数据）
+TC6-&gt;&gt;TC6: process_rx(): 解析 Footer
+TC6-&gt;&gt;TC6: 根据 SV/EV/SWO/EBO 重组帧
+TC6-&gt;&gt;lwIP: TC6_CB_OnRxEthernetPacket()
+lwIP-&gt;&gt;lwIP: ethernet_input() -&gt; ARP/IP
+lwIP-&gt;&gt;UDP: udp_recv callback
+UDP-&gt;&gt;UDP: 存入 _rx_pkt_list 队列
+App-&gt;&gt;UDP: parsePacket() + read()
+</code></pre>
+</div>
 
 <h3 id="Service-Loop-核心逻辑"><a href="#Service-Loop-核心逻辑" class="headerlink" title="Service Loop 核心逻辑"></a>Service Loop 核心逻辑</h3><p><code>service()</code> 是整个协议栈的驱动心跳，必须高频调用：</p>
 <figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// src/microchip/TC6_Arduino_10BASE_T1S.cpp:205-219</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">TC6_Arduino_10BASE_T1S::service</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="built_in">sys_check_timeouts</span>();  <span class="comment">// lwIP 定时器（ARP 老化、TCP 重传等）</span></span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (_tc6_io.<span class="built_in">isInterruptActive</span>())</span><br><span class="line">  &#123;</span><br><span class="line">    <span class="keyword">if</span> (<span class="built_in">TC6_Service</span>(_lw.tc.tc6, <span class="literal">false</span>))  <span class="comment">// false = 非强制服务</span></span><br><span class="line">      _tc6_io.<span class="built_in">releaseInterrupt</span>();</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">else</span> <span class="keyword">if</span> (_lw.tc.tc6NeedService)</span><br><span class="line">  &#123;</span><br><span class="line">    _lw.tc.tc6NeedService = <span class="literal">false</span>;</span><br><span class="line">    <span class="built_in">TC6_Service</span>(_lw.tc.tc6, <span class="literal">true</span>);  <span class="comment">// true = 强制服务（有待发数据）</span></span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
@@ -395,7 +441,20 @@
 <h2 id="Credit-流控机制"><a href="#Credit-流控机制" class="headerlink" title="Credit 流控机制"></a>Credit 流控机制</h2><p>Credit 机制防止 MCU 溢出 MAC-PHY 的内部缓冲区：</p>
 <figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// src/microchip/lib/libtc6/src/tc6.cpp (TC6_t 结构体)</span></span><br><span class="line"><span class="type">uint8_t</span> txc;  <span class="comment">// TX credits，初始值由 MAC-PHY 在首次 Footer 中报告</span></span><br><span class="line"><span class="type">uint8_t</span> rca;  <span class="comment">// RX chunks available</span></span><br></pre></td></tr></table></figure>
 
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">graph TD</span><br><span class="line">    A[&quot;MCU 发送有效 chunk&quot;] --&gt;|&quot;txc--&quot;| B&#123;&quot;txc &gt; 0?&quot;&#125;</span><br><span class="line">    B --&gt;|&quot;Yes&quot;| C[&quot;继续发送&quot;]</span><br><span class="line">    B --&gt;|&quot;No&quot;| D[&quot;等待，发空 chunk&quot;]</span><br><span class="line">    D --&gt; E[&quot;读取 Footer 中 TXC 字段&quot;]</span><br><span class="line">    E --&gt;|&quot;更新 txc&quot;| A</span><br><span class="line"></span><br><span class="line">    F[&quot;Footer.RCA &gt; 0&quot;] --&gt; G[&quot;MCU 发空 chunk (DV=0)&quot;]</span><br><span class="line">    G --&gt; H[&quot;接收 RX payload&quot;]</span><br><span class="line">    H --&gt; I[&quot;RCA-- 直到 0&quot;]</span><br></pre></td></tr></table></figure>
+
+<div class="mermaid">
+graph TD
+    A["MCU 发送有效 chunk"] -->|"txc--"| B{"txc > 0?"}
+    B -->|"Yes"| C["继续发送"]
+    B -->|"No"| D["等待，发空 chunk"]
+    D --> E["读取 Footer 中 TXC 字段"]
+    E -->|"更新 txc"| A
+
+<pre><code>F[&quot;Footer.RCA &gt; 0&quot;] --&gt; G[&quot;MCU 发空 chunk (DV=0)&quot;]
+G --&gt; H[&quot;接收 RX payload&quot;]
+H --&gt; I[&quot;RCA-- 直到 0&quot;]
+</code></pre>
+</div>
 
 <p><strong>空 chunk 的作用</strong>：当 MCU 没有数据要发但有数据要收时，发送 DV&#x3D;0 的空 chunk，SPI 全双工特性保证同时能收到 MAC-PHY 的数据 chunk。这是 OA TC6 协议的关键设计——用”发送换接收”。</p>
 <h2 id="PLCA-多点总线管理"><a href="#PLCA-多点总线管理" class="headerlink" title="PLCA 多点总线管理"></a>PLCA 多点总线管理</h2><h3 id="PLCA-vs-CSMA-CD"><a href="#PLCA-vs-CSMA-CD" class="headerlink" title="PLCA vs CSMA&#x2F;CD"></a>PLCA vs CSMA&#x2F;CD</h3><table>
@@ -471,7 +530,23 @@
 </tbody></table>
 <p><strong>运行时监控</strong>：应用代码每秒读取 PLCA_STATUS 寄存器，如果 bit[15]&#x3D;0 表示 PLCA 失效（协调器离线），自动调用 <code>enablePlca()</code> 重新尝试。</p>
 <h2 id="LAN865x-初始化序列"><a href="#LAN865x-初始化序列" class="headerlink" title="LAN865x 初始化序列"></a>LAN865x 初始化序列</h2><p>初始化是一个严格有序的多阶段过程：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">graph TD</span><br><span class="line">    A[&quot;硬件复位 (RESET pin LOW 100ms)&quot;] --&gt; B[&quot;软复位 (REG 0x03 = 0x01, unprotected)&quot;]</span><br><span class="line">    B --&gt; C[&quot;软复位 (REG 0x03 = 0x01, protected)&quot;]</span><br><span class="line">    C --&gt; D[&quot;读取 Chip ID (REG 0x01)&quot;]</span><br><span class="line">    D --&gt; E&#123;&quot;OUI=0x1F0, Model=0x1B?&quot;&#125;</span><br><span class="line">    E --&gt;|&quot;No&quot;| F[&quot;初始化失败&quot;]</span><br><span class="line">    E --&gt;|&quot;Yes&quot;| G[&quot;读取 Chip Revision (REG 0x000A0094)&quot;]</span><br><span class="line">    G --&gt; H[&quot;写入 32 条初始化寄存器 (TC6_MEMMAP)&quot;]</span><br><span class="line">    H --&gt; I[&quot;修订相关配置 (Rev1: 0x5F21, Rev2: 0x3F31)&quot;]</span><br><span class="line">    I --&gt; J[&quot;写入 MAC 地址 (SPEC_ADD1/2)&quot;]</span><br><span class="line">    J --&gt; K[&quot;设置混杂模式 (NETWORK_CONFIG)&quot;]</span><br><span class="line">    K --&gt; L[&quot;PHY 校准 (InitChip - 读间接寄存器)&quot;]</span><br><span class="line">    L --&gt; M[&quot;PLCA 配置 (HandlePlca)&quot;]</span><br><span class="line">    M --&gt; N[&quot;Cut-Through/Store-Forward 模式 (CONFIG0)&quot;]</span><br><span class="line">    N --&gt; O[&quot;使能 MAC (NETWORK_CONTROL = 0x0C)&quot;]</span><br></pre></td></tr></table></figure>
+<div class="mermaid">
+graph TD
+    A["硬件复位 (RESET pin LOW 100ms)"] --> B["软复位 (REG 0x03 = 0x01, unprotected)"]
+    B --> C["软复位 (REG 0x03 = 0x01, protected)"]
+    C --> D["读取 Chip ID (REG 0x01)"]
+    D --> E{"OUI=0x1F0, Model=0x1B?"}
+    E -->|"No"| F["初始化失败"]
+    E -->|"Yes"| G["读取 Chip Revision (REG 0x000A0094)"]
+    G --> H["写入 32 条初始化寄存器 (TC6_MEMMAP)"]
+    H --> I["修订相关配置 (Rev1: 0x5F21, Rev2: 0x3F31)"]
+    I --> J["写入 MAC 地址 (SPEC_ADD1/2)"]
+    J --> K["设置混杂模式 (NETWORK_CONFIG)"]
+    K --> L["PHY 校准 (InitChip - 读间接寄存器)"]
+    L --> M["PLCA 配置 (HandlePlca)"]
+    M --> N["Cut-Through/Store-Forward 模式 (CONFIG0)"]
+    N --> O["使能 MAC (NETWORK_CONTROL = 0x0C)"]
+</div>
 
 <h3 id="初始化寄存器表（部分关键项）"><a href="#初始化寄存器表（部分关键项）" class="headerlink" title="初始化寄存器表（部分关键项）"></a>初始化寄存器表（部分关键项）</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// src/microchip/lib/libtc6/src/tc6-regs.cpp:297-331</span></span><br><span class="line"><span class="type">static</span> <span class="type">const</span> MemoryMap_t TC6_MEMMAP[] = &#123;</span><br><span class="line">    &#123; .address=<span class="number">0x00000004</span>, .value=<span class="number">0x00000026</span>, .op=MemOp_Write, .secure=<span class="literal">false</span> &#125;,  <span class="comment">// CONFIG0: SPI 配置</span></span><br><span class="line">    &#123; .address=<span class="number">0x00010000</span>, .value=<span class="number">0x00000000</span>, .op=MemOp_Write, .secure=<span class="literal">true</span>  &#125;,  <span class="comment">// NETWORK_CONTROL: MAC 禁用</span></span><br><span class="line">    &#123; .address=<span class="number">0x00040091</span>, .value=<span class="number">0x00009660</span>, .op=MemOp_Write, .secure=<span class="literal">true</span>  &#125;,  <span class="comment">// PHY 配置</span></span><br><span class="line">    <span class="comment">// ... 28 条 PHY 校准/配置寄存器 ...</span></span><br><span class="line">    &#123; .address=<span class="number">0x0000000C</span>, .value=<span class="number">0x00000100</span>, .op=MemOp_Write, .secure=<span class="literal">true</span>  &#125;,  <span class="comment">// IMASK0: 中断掩码</span></span><br><span class="line">    &#123; .address=<span class="number">0x00040081</span>, .value=<span class="number">0x000000E0</span>, .op=MemOp_Write, .secure=<span class="literal">true</span>  &#125;,  <span class="comment">// DEEP_SLEEP_CTRL_1</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
 
@@ -698,6 +773,41 @@
 <!-- Disqus Comments -->
 
 <!-- utterances Comments -->
+
+<!-- Mermaid diagrams -->
+
+  <script type="text/javascript">
+  (function() {
+    var mermaidElements = document.querySelectorAll('.mermaid');
+    if (!mermaidElements.length) return;
+
+    var mermaidTheme = 'auto';
+    if (mermaidTheme === 'auto') {
+      var colorscheme = 'dark';
+      mermaidTheme = (colorscheme === 'dark' || colorscheme === 'classic') ? 'dark' : 'default';
+    }
+
+    function initMermaid() {
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: mermaidTheme,
+        logLevel: 'error',
+        securityLevel: 'loose',
+        flowchart: { curve: 'basis' },
+        gantt: { axisFormat: '%m/%d/%Y' },
+        sequence: { actorMargin: 50 }
+      });
+      mermaid.run({ nodes: mermaidElements });
+    }
+
+    var script = document.createElement('script');
+    
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.4.1/mermaid.min.js';
+    
+    script.onload = initMermaid;
+    document.head.appendChild(script);
+  })();
+  </script>
 
 </body>
 </html>

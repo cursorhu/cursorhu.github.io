@@ -311,7 +311,19 @@
 
 <p>DoD（放电深度）与SOC的关系简单：$SOC &#x3D; 1 - DoD$。DoD每次更新基于库仑计数：</p>
 <p>$$DoD_{new} &#x3D; DoD_{old} + \frac{I \times \Delta t}{Q_{max} \times 3600}$$</p>
-<h2 id="算法整体流程"><a href="#算法整体流程" class="headerlink" title="算法整体流程"></a>算法整体流程</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">flowchart TD</span><br><span class="line">    A[&quot;初始化: 加载R_LF表, OCV表, 温度系数&quot;] --&gt; B[&quot;查OCV表获取当前开路电压&quot;]</span><br><span class="line">    B --&gt; C[&quot;计算RC参数: R_k, C_k, R_s&quot;]</span><br><span class="line">    C --&gt; D&#123;&quot;|I| &gt;= 10mA ?&quot;&#125;</span><br><span class="line">    D --&gt;|是| E[&quot;求解非线性方程更新R_LF&quot;]</span><br><span class="line">    D --&gt;|否| F[&quot;保持R_LF不变&quot;]</span><br><span class="line">    E --&gt; G[&quot;更新RC网络电压状态&quot;]</span><br><span class="line">    F --&gt; G</span><br><span class="line">    G --&gt; H[&quot;库仑计数更新DoD&quot;]</span><br><span class="line">    H --&gt; I[&quot;输出: SOC, R_LF, R_total, OCV&quot;]</span><br><span class="line">    I --&gt; B</span><br></pre></td></tr></table></figure>
+<h2 id="算法整体流程"><a href="#算法整体流程" class="headerlink" title="算法整体流程"></a>算法整体流程</h2><div class="mermaid">
+flowchart TD
+    A["初始化: 加载R_LF表, OCV表, 温度系数"] --> B["查OCV表获取当前开路电压"]
+    B --> C["计算RC参数: R_k, C_k, R_s"]
+    C --> D{"|I| >= 10mA ?"}
+    D -->|是| E["求解非线性方程更新R_LF"]
+    D -->|否| F["保持R_LF不变"]
+    E --> G["更新RC网络电压状态"]
+    F --> G
+    G --> H["库仑计数更新DoD"]
+    H --> I["输出: SOC, R_LF, R_total, OCV"]
+    I --> B
+</div>
 
 <p>算法每秒执行一次。只有在电流足够大（|I| &gt; 10mA）时才更新R_LF，因为静置状态下KVL方程退化（电流趋零，R_LF无法从方程中分离）。</p>
 <h2 id="Python仿真验证"><a href="#Python仿真验证" class="headerlink" title="Python仿真验证"></a>Python仿真验证</h2><p>完整的仿真类 <code>BatteryModel</code> 封装了上述所有计算。核心 <code>update_parameters</code> 方法在每个时间步执行：</p>
@@ -514,6 +526,41 @@
 <!-- Disqus Comments -->
 
 <!-- utterances Comments -->
+
+<!-- Mermaid diagrams -->
+
+  <script type="text/javascript">
+  (function() {
+    var mermaidElements = document.querySelectorAll('.mermaid');
+    if (!mermaidElements.length) return;
+
+    var mermaidTheme = 'auto';
+    if (mermaidTheme === 'auto') {
+      var colorscheme = 'dark';
+      mermaidTheme = (colorscheme === 'dark' || colorscheme === 'classic') ? 'dark' : 'default';
+    }
+
+    function initMermaid() {
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: mermaidTheme,
+        logLevel: 'error',
+        securityLevel: 'loose',
+        flowchart: { curve: 'basis' },
+        gantt: { axisFormat: '%m/%d/%Y' },
+        sequence: { actorMargin: 50 }
+      });
+      mermaid.run({ nodes: mermaidElements });
+    }
+
+    var script = document.createElement('script');
+    
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.4.1/mermaid.min.js';
+    
+    script.onload = initMermaid;
+    document.head.appendChild(script);
+  })();
+  </script>
 
 </body>
 </html>

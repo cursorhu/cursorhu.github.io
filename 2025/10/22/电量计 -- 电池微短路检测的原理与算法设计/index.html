@@ -102,7 +102,7 @@
         <li><a class="icon" aria-label="上一篇" href="/2025/10/23/Android%20ADB%E8%B0%83%E8%AF%95%E5%9F%BA%E7%A1%80/"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
         
         
-        <li><a class="icon" aria-label="下一篇" href="/2025/10/21/Windows%E9%A9%B1%E5%8A%A8%E8%B0%83%E8%AF%95_01_BSOD_0xA_IRQL%E5%88%86%E6%9E%90%E6%8A%A5%E5%91%8A/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="下一篇" href="/2025/10/21/Windows%E9%A9%B1%E5%8A%A8%E8%B0%83%E8%AF%95_02_BSOD%E8%B0%83%E8%AF%95%E6%96%B9%E6%B3%95%E4%B8%8EStorport%E4%BB%A3%E7%A0%81%E5%88%86%E6%9E%90/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
         
         <li><a class="icon" aria-label="返回顶部" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
         <li><a class="icon" aria-label="分享文章" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
@@ -306,7 +306,13 @@
 </tr>
 </tbody></table>
 <h2 id="算法流程详解"><a href="#算法流程详解" class="headerlink" title="算法流程详解"></a>算法流程详解</h2><p>整体算法可归纳为4个阶段：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">flowchart TD</span><br><span class="line">    A[&quot;阶段一 - 状态采样&quot;] --&gt; B[&quot;阶段二 - 容量差异计算&quot;]</span><br><span class="line">    B --&gt; C[&quot;阶段三 - 多级数据处理&quot;]</span><br><span class="line">    C --&gt; D[&quot;阶段四 - 故障判定&quot;]</span><br><span class="line">    D --&gt;|未告警| A</span><br></pre></td></tr></table></figure>
+<div class="mermaid">
+flowchart TD
+    A["阶段一 - 状态采样"] --> B["阶段二 - 容量差异计算"]
+    B --> C["阶段三 - 多级数据处理"]
+    C --> D["阶段四 - 故障判定"]
+    D -->|未告警| A
+</div>
 
 <h3 id="阶段一：状态采样"><a href="#阶段一：状态采样" class="headerlink" title="阶段一：状态采样"></a>阶段一：状态采样</h3><p>检测周期开始时记录初始状态 $(V_0, I_0, T_0, SOC_0)$，等待预设的检测间隔（30分钟至2小时），然后记录终态 $(V_1, I_1, T_1, SOC_1)$。</p>
 <h3 id="阶段二：容量差异计算"><a href="#阶段二：容量差异计算" class="headerlink" title="阶段二：容量差异计算"></a>阶段二：容量差异计算</h3><p>满足检测条件后，依次执行：</p>
@@ -321,7 +327,13 @@
 <p><strong>Step 4：漏电流与短路电阻</strong></p>
 <p>$$I_{leak} &#x3D; \frac{\Delta Q_{leak} \times 1000}{\Delta t}$$<br>$$R_{short} &#x3D; \frac{(OCV_0 + OCV_1) &#x2F; 2}{I_{leak}}$$</p>
 <h3 id="阶段三：多级数据处理"><a href="#阶段三：多级数据处理" class="headerlink" title="阶段三：多级数据处理"></a>阶段三：多级数据处理</h3><p>原始计算得到的漏电流和短路电阻包含较大噪声，需要经过三级滤波处理：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">flowchart LR</span><br><span class="line">    A[&quot;原始 R_short, I_leak&quot;] --&gt; B[&quot;中值滤波&quot;]</span><br><span class="line">    B --&gt; C[&quot;自适应加权修正&quot;]</span><br><span class="line">    C --&gt; D[&quot;自适应卡尔曼滤波&quot;]</span><br><span class="line">    D --&gt; E[&quot;最终 I_final&quot;]</span><br></pre></td></tr></table></figure>
+<div class="mermaid">
+flowchart LR
+    A["原始 R_short, I_leak"] --> B["中值滤波"]
+    B --> C["自适应加权修正"]
+    C --> D["自适应卡尔曼滤波"]
+    D --> E["最终 I_final"]
+</div>
 
 <h3 id="阶段四：故障判定"><a href="#阶段四：故障判定" class="headerlink" title="阶段四：故障判定"></a>阶段四：故障判定</h3><p>将最终滤波后的漏电流 $I_{final}$ 与告警阈值比较：</p>
 <ul>
@@ -351,7 +363,16 @@
 </ul>
 <p>卡尔曼滤波器的具体实现（状态方程、自适应参数调整、数据结构）详见系列文章《卡尔曼滤波在电池内部短路漏电流检测中的应用》。</p>
 <h2 id="多节电池归一化方法"><a href="#多节电池归一化方法" class="headerlink" title="多节电池归一化方法"></a>多节电池归一化方法</h2><h3 id="问题场景"><a href="#问题场景" class="headerlink" title="问题场景"></a>问题场景</h3><p>在多节电池串联系统中，电量计往往只能获取电池组总电压和平均电压，无法获取单体电压。此时需要将多节系统归一化为单节等效模型进行检测。</p>
-<h3 id="归一化流程"><a href="#归一化流程" class="headerlink" title="归一化流程"></a>归一化流程</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">flowchart TD</span><br><span class="line">    A[&quot;获取总电压 V_total 和节数 N&quot;] --&gt; B[&quot;计算平均单节电压&quot;]</span><br><span class="line">    B --&gt; C[&quot;归一化为单节等效模型&quot;]</span><br><span class="line">    C --&gt; D[&quot;使用单节算法计算总漏电荷 Q_total&quot;]</span><br><span class="line">    D --&gt; E[&quot;计算等效短路电流和电阻&quot;]</span><br><span class="line">    E --&gt; F&#123;&quot;有单体采样?&quot;&#125;</span><br><span class="line">    F --&gt;|是| G[&quot;通过电压下降速率差异定位短路节&quot;]</span><br><span class="line">    F --&gt;|否| H[&quot;仅输出归一化结果&quot;]</span><br></pre></td></tr></table></figure>
+<h3 id="归一化流程"><a href="#归一化流程" class="headerlink" title="归一化流程"></a>归一化流程</h3><div class="mermaid">
+flowchart TD
+    A["获取总电压 V_total 和节数 N"] --> B["计算平均单节电压"]
+    B --> C["归一化为单节等效模型"]
+    C --> D["使用单节算法计算总漏电荷 Q_total"]
+    D --> E["计算等效短路电流和电阻"]
+    E --> F{"有单体采样?"}
+    F -->|是| G["通过电压下降速率差异定位短路节"]
+    F -->|否| H["仅输出归一化结果"]
+</div>
 
 <p><strong>Step 1</strong>：计算单节平均电压</p>
 <p>$$V_{cell_avg} &#x3D; \frac{V_{total}}{N_{cells}}$$</p>
@@ -366,7 +387,32 @@
 <li>多节电池同时发生较轻微短路（各节电阻更大）</li>
 </ul>
 <p>若电池管理系统具备单体电压采集功能，可在检测到异常后，通过比较各单体电压下降速率的差异来定位具体短路节。</p>
-<h2 id="系统架构"><a href="#系统架构" class="headerlink" title="系统架构"></a>系统架构</h2><h3 id="硬件组成"><a href="#硬件组成" class="headerlink" title="硬件组成"></a>硬件组成</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">flowchart LR</span><br><span class="line">    subgraph 电池系统</span><br><span class="line">        BAT[&quot;电池组/单体电池&quot;]</span><br><span class="line">    end</span><br><span class="line">    subgraph 电池管理芯片</span><br><span class="line">        VA[&quot;电压采集&quot;]</span><br><span class="line">        IA[&quot;电流采集&quot;]</span><br><span class="line">        TA[&quot;温度采集&quot;]</span><br><span class="line">        CC[&quot;库仑计数器&quot;]</span><br><span class="line">    end</span><br><span class="line">    subgraph 微控制器</span><br><span class="line">        CTRL[&quot;控制协调&quot;]</span><br><span class="line">        ALG[&quot;算法模块&quot;]</span><br><span class="line">    end</span><br><span class="line">    subgraph 存储</span><br><span class="line">        FLASH[&quot;Flash - 内阻表/OCV表/配置&quot;]</span><br><span class="line">        RAM[&quot;RAM - 数据窗口/滤波器状态&quot;]</span><br><span class="line">    end</span><br><span class="line">    BAT --&gt; VA &amp; IA &amp; TA &amp; CC</span><br><span class="line">    VA &amp; IA &amp; TA &amp; CC --&gt; CTRL</span><br><span class="line">    FLASH --&gt; ALG</span><br><span class="line">    RAM &lt;--&gt; ALG</span><br><span class="line">    CTRL --&gt; ALG</span><br><span class="line">    ALG --&gt; OUT[&quot;告警输出/通信接口&quot;]</span><br></pre></td></tr></table></figure>
+<h2 id="系统架构"><a href="#系统架构" class="headerlink" title="系统架构"></a>系统架构</h2><h3 id="硬件组成"><a href="#硬件组成" class="headerlink" title="硬件组成"></a>硬件组成</h3><div class="mermaid">
+flowchart LR
+    subgraph 电池系统
+        BAT["电池组/单体电池"]
+    end
+    subgraph 电池管理芯片
+        VA["电压采集"]
+        IA["电流采集"]
+        TA["温度采集"]
+        CC["库仑计数器"]
+    end
+    subgraph 微控制器
+        CTRL["控制协调"]
+        ALG["算法模块"]
+    end
+    subgraph 存储
+        FLASH["Flash - 内阻表/OCV表/配置"]
+        RAM["RAM - 数据窗口/滤波器状态"]
+    end
+    BAT --> VA & IA & TA & CC
+    VA & IA & TA & CC --> CTRL
+    FLASH --> ALG
+    RAM <--> ALG
+    CTRL --> ALG
+    ALG --> OUT["告警输出/通信接口"]
+</div>
 
 <h3 id="软件模块划分"><a href="#软件模块划分" class="headerlink" title="软件模块划分"></a>软件模块划分</h3><table>
 <thead>
@@ -706,6 +752,41 @@
 <!-- Disqus Comments -->
 
 <!-- utterances Comments -->
+
+<!-- Mermaid diagrams -->
+
+  <script type="text/javascript">
+  (function() {
+    var mermaidElements = document.querySelectorAll('.mermaid');
+    if (!mermaidElements.length) return;
+
+    var mermaidTheme = 'auto';
+    if (mermaidTheme === 'auto') {
+      var colorscheme = 'dark';
+      mermaidTheme = (colorscheme === 'dark' || colorscheme === 'classic') ? 'dark' : 'default';
+    }
+
+    function initMermaid() {
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: mermaidTheme,
+        logLevel: 'error',
+        securityLevel: 'loose',
+        flowchart: { curve: 'basis' },
+        gantt: { axisFormat: '%m/%d/%Y' },
+        sequence: { actorMargin: 50 }
+      });
+      mermaid.run({ nodes: mermaidElements });
+    }
+
+    var script = document.createElement('script');
+    
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.4.1/mermaid.min.js';
+    
+    script.onload = initMermaid;
+    document.head.appendChild(script);
+  })();
+  </script>
 
 </body>
 </html>
