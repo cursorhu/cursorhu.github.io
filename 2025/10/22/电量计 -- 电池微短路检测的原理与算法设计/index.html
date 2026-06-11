@@ -306,13 +306,13 @@
 </tr>
 </tbody></table>
 <h2 id="算法流程详解"><a href="#算法流程详解" class="headerlink" title="算法流程详解"></a>算法流程详解</h2><p>整体算法可归纳为4个阶段：</p>
-<div class="mermaid">
+<pre class="mermaid">
 flowchart TD
     A["阶段一 - 状态采样"] --> B["阶段二 - 容量差异计算"]
     B --> C["阶段三 - 多级数据处理"]
     C --> D["阶段四 - 故障判定"]
     D -->|未告警| A
-</div>
+</pre>
 
 <h3 id="阶段一：状态采样"><a href="#阶段一：状态采样" class="headerlink" title="阶段一：状态采样"></a>阶段一：状态采样</h3><p>检测周期开始时记录初始状态 $(V_0, I_0, T_0, SOC_0)$，等待预设的检测间隔（30分钟至2小时），然后记录终态 $(V_1, I_1, T_1, SOC_1)$。</p>
 <h3 id="阶段二：容量差异计算"><a href="#阶段二：容量差异计算" class="headerlink" title="阶段二：容量差异计算"></a>阶段二：容量差异计算</h3><p>满足检测条件后，依次执行：</p>
@@ -327,13 +327,13 @@ flowchart TD
 <p><strong>Step 4：漏电流与短路电阻</strong></p>
 <p>$$I_{leak} &#x3D; \frac{\Delta Q_{leak} \times 1000}{\Delta t}$$<br>$$R_{short} &#x3D; \frac{(OCV_0 + OCV_1) &#x2F; 2}{I_{leak}}$$</p>
 <h3 id="阶段三：多级数据处理"><a href="#阶段三：多级数据处理" class="headerlink" title="阶段三：多级数据处理"></a>阶段三：多级数据处理</h3><p>原始计算得到的漏电流和短路电阻包含较大噪声，需要经过三级滤波处理：</p>
-<div class="mermaid">
+<pre class="mermaid">
 flowchart LR
     A["原始 R_short, I_leak"] --> B["中值滤波"]
     B --> C["自适应加权修正"]
     C --> D["自适应卡尔曼滤波"]
     D --> E["最终 I_final"]
-</div>
+</pre>
 
 <h3 id="阶段四：故障判定"><a href="#阶段四：故障判定" class="headerlink" title="阶段四：故障判定"></a>阶段四：故障判定</h3><p>将最终滤波后的漏电流 $I_{final}$ 与告警阈值比较：</p>
 <ul>
@@ -363,7 +363,7 @@ flowchart LR
 </ul>
 <p>卡尔曼滤波器的具体实现（状态方程、自适应参数调整、数据结构）详见系列文章《卡尔曼滤波在电池内部短路漏电流检测中的应用》。</p>
 <h2 id="多节电池归一化方法"><a href="#多节电池归一化方法" class="headerlink" title="多节电池归一化方法"></a>多节电池归一化方法</h2><h3 id="问题场景"><a href="#问题场景" class="headerlink" title="问题场景"></a>问题场景</h3><p>在多节电池串联系统中，电量计往往只能获取电池组总电压和平均电压，无法获取单体电压。此时需要将多节系统归一化为单节等效模型进行检测。</p>
-<h3 id="归一化流程"><a href="#归一化流程" class="headerlink" title="归一化流程"></a>归一化流程</h3><div class="mermaid">
+<h3 id="归一化流程"><a href="#归一化流程" class="headerlink" title="归一化流程"></a>归一化流程</h3><pre class="mermaid">
 flowchart TD
     A["获取总电压 V_total 和节数 N"] --> B["计算平均单节电压"]
     B --> C["归一化为单节等效模型"]
@@ -372,7 +372,7 @@ flowchart TD
     E --> F{"有单体采样?"}
     F -->|是| G["通过电压下降速率差异定位短路节"]
     F -->|否| H["仅输出归一化结果"]
-</div>
+</pre>
 
 <p><strong>Step 1</strong>：计算单节平均电压</p>
 <p>$$V_{cell_avg} &#x3D; \frac{V_{total}}{N_{cells}}$$</p>
@@ -387,7 +387,7 @@ flowchart TD
 <li>多节电池同时发生较轻微短路（各节电阻更大）</li>
 </ul>
 <p>若电池管理系统具备单体电压采集功能，可在检测到异常后，通过比较各单体电压下降速率的差异来定位具体短路节。</p>
-<h2 id="系统架构"><a href="#系统架构" class="headerlink" title="系统架构"></a>系统架构</h2><h3 id="硬件组成"><a href="#硬件组成" class="headerlink" title="硬件组成"></a>硬件组成</h3><div class="mermaid">
+<h2 id="系统架构"><a href="#系统架构" class="headerlink" title="系统架构"></a>系统架构</h2><h3 id="硬件组成"><a href="#硬件组成" class="headerlink" title="硬件组成"></a>硬件组成</h3><pre class="mermaid">
 flowchart LR
     subgraph 电池系统
         BAT["电池组/单体电池"]
@@ -412,7 +412,7 @@ flowchart LR
     RAM <--> ALG
     CTRL --> ALG
     ALG --> OUT["告警输出/通信接口"]
-</div>
+</pre>
 
 <h3 id="软件模块划分"><a href="#软件模块划分" class="headerlink" title="软件模块划分"></a>软件模块划分</h3><table>
 <thead>
@@ -781,7 +781,7 @@ flowchart LR
 
     var script = document.createElement('script');
     
-    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.4.1/mermaid.min.js';
+    script.src = 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js';
     
     script.onload = initMermaid;
     document.head.appendChild(script);

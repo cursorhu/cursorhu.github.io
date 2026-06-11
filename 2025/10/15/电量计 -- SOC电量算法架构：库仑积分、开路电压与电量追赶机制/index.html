@@ -126,7 +126,7 @@
   <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2025/10/15/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20SOC%E7%94%B5%E9%87%8F%E7%AE%97%E6%B3%95%E6%9E%B6%E6%9E%84%EF%BC%9A%E5%BA%93%E4%BB%91%E7%A7%AF%E5%88%86%E3%80%81%E5%BC%80%E8%B7%AF%E7%94%B5%E5%8E%8B%E4%B8%8E%E7%94%B5%E9%87%8F%E8%BF%BD%E8%B5%B6%E6%9C%BA%E5%88%B6/&title=电量计 -- SOC电量算法架构：库仑积分、开路电压与电量追赶机制"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
   <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2025/10/15/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20SOC%E7%94%B5%E9%87%8F%E7%AE%97%E6%B3%95%E6%9E%B6%E6%9E%84%EF%BC%9A%E5%BA%93%E4%BB%91%E7%A7%AF%E5%88%86%E3%80%81%E5%BC%80%E8%B7%AF%E7%94%B5%E5%8E%8B%E4%B8%8E%E7%94%B5%E9%87%8F%E8%BF%BD%E8%B5%B6%E6%9C%BA%E5%88%B6/&name=电量计 -- SOC电量算法架构：库仑积分、开路电压与电量追赶机制&description=&lt;h1 id=&#34;SOC电量算法架构：库仑积分、开路电压与电量追赶机制&#34;&gt;&lt;a href=&#34;#SOC电量算法架构：库仑积分、开路电压与电量追赶机制&#34; class=&#34;headerlink&#34; title=&#34;SOC电量算法架构：库仑积分、开路电压与电量追赶机制&#34;&gt;&lt;/a&gt;SOC电量算法架构：库仑积分、开路电压与电量追赶机制&lt;/h1&gt;&lt;p&gt;电量计的核心任务是回答一个看似简单的问题：电池还剩多少电？但由于电池的非线性特性、温度影响、老化效应，这个问题远比想象中复杂。本文基于实际产品固件（Newton平台 lib_fg.c），详细拆解SOC算法的完整架构。&lt;/p&gt;
 &lt;h2 id=&#34;整体架构概览&#34;&gt;&lt;a href=&#34;#整体架构概览&#34; class=&#34;headerlink&#34; title=&#34;整体架构概览&#34;&gt;&lt;/a&gt;整体架构概览&lt;/h2&gt;&lt;p&gt;SOC算法不是单一方法，而是多种方法的协同：&lt;/p&gt;
-&lt;div class=&#34;mermaid&#34;&gt;
+&lt;pre class=&#34;mermaid&#34;&gt;
 flowchart TD
     A[&#34;开路电压法 OCV&#34;] --&gt;|&#34;初始化/静置&#34;| D[&#34;RSOC&#34;]
     B[&#34;库仑积分法 CC&#34;] --&gt;|&#34;充放电过程&#34;| D
@@ -134,7 +134,7 @@ flowchart TD
     E[&#34;DFCC动态容量&#34;] --&gt;|&#34;修正FCC&#34;| B
     F[&#34;温度阻抗补偿&#34;] --&gt;|&#34;修正电压&#34;| A
     F --&gt;|&#34;修正容量&#34;| E
-&lt;/div&gt;
+&lt;/pre&gt;
 
 &lt;table&gt;
 &lt;thead&gt;
@@ -231,7 +231,7 @@ flowchart TD
   <div class="content e-content" itemprop="articleBody">
     <h1 id="SOC电量算法架构：库仑积分、开路电压与电量追赶机制"><a href="#SOC电量算法架构：库仑积分、开路电压与电量追赶机制" class="headerlink" title="SOC电量算法架构：库仑积分、开路电压与电量追赶机制"></a>SOC电量算法架构：库仑积分、开路电压与电量追赶机制</h1><p>电量计的核心任务是回答一个看似简单的问题：电池还剩多少电？但由于电池的非线性特性、温度影响、老化效应，这个问题远比想象中复杂。本文基于实际产品固件（Newton平台 lib_fg.c），详细拆解SOC算法的完整架构。</p>
 <h2 id="整体架构概览"><a href="#整体架构概览" class="headerlink" title="整体架构概览"></a>整体架构概览</h2><p>SOC算法不是单一方法，而是多种方法的协同：</p>
-<div class="mermaid">
+<pre class="mermaid">
 flowchart TD
     A["开路电压法 OCV"] -->|"初始化/静置"| D["RSOC"]
     B["库仑积分法 CC"] -->|"充放电过程"| D
@@ -239,7 +239,7 @@ flowchart TD
     E["DFCC动态容量"] -->|"修正FCC"| B
     F["温度阻抗补偿"] -->|"修正电压"| A
     F -->|"修正容量"| E
-</div>
+</pre>
 
 <table>
 <thead>
@@ -388,7 +388,7 @@ flowchart TD
 <p>$$FCC_{new} &#x3D; \alpha \times FCC_{measured} + (1 - \alpha) \times FCC_{old}$$</p>
 <p>平滑因子 $\alpha$ 通常取0.3，避免单次测量误差过大影响FCC。</p>
 <h2 id="状态机与算法流程"><a href="#状态机与算法流程" class="headerlink" title="状态机与算法流程"></a>状态机与算法流程</h2><p>整体算法由状态机驱动，根据电池工作状态选择不同的处理分支：</p>
-<div class="mermaid">
+<pre class="mermaid">
 flowchart TD
     A["fg_update - 每秒调用"] --> B["电压/电流平均值计算"]
     B --> C["库仑计数累加"]
@@ -402,7 +402,7 @@ flowchart TD
     H & I & J --> K["更新FACC/CC_PRV"]
     K --> L["计算最终RSOC和RCA"]
     L --> M["输出结果"]
-</div>
+</pre>
 
 <h3 id="静置处理-fg-idle-process"><a href="#静置处理-fg-idle-process" class="headerlink" title="静置处理 (fg_idle_process)"></a>静置处理 (fg_idle_process)</h3><ul>
 <li>电压稳定性检测（50mV窗口内）</li>
@@ -491,7 +491,7 @@ flowchart TD
   <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2025/10/15/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20SOC%E7%94%B5%E9%87%8F%E7%AE%97%E6%B3%95%E6%9E%B6%E6%9E%84%EF%BC%9A%E5%BA%93%E4%BB%91%E7%A7%AF%E5%88%86%E3%80%81%E5%BC%80%E8%B7%AF%E7%94%B5%E5%8E%8B%E4%B8%8E%E7%94%B5%E9%87%8F%E8%BF%BD%E8%B5%B6%E6%9C%BA%E5%88%B6/&title=电量计 -- SOC电量算法架构：库仑积分、开路电压与电量追赶机制"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
   <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2025/10/15/%E7%94%B5%E9%87%8F%E8%AE%A1%20--%20SOC%E7%94%B5%E9%87%8F%E7%AE%97%E6%B3%95%E6%9E%B6%E6%9E%84%EF%BC%9A%E5%BA%93%E4%BB%91%E7%A7%AF%E5%88%86%E3%80%81%E5%BC%80%E8%B7%AF%E7%94%B5%E5%8E%8B%E4%B8%8E%E7%94%B5%E9%87%8F%E8%BF%BD%E8%B5%B6%E6%9C%BA%E5%88%B6/&name=电量计 -- SOC电量算法架构：库仑积分、开路电压与电量追赶机制&description=&lt;h1 id=&#34;SOC电量算法架构：库仑积分、开路电压与电量追赶机制&#34;&gt;&lt;a href=&#34;#SOC电量算法架构：库仑积分、开路电压与电量追赶机制&#34; class=&#34;headerlink&#34; title=&#34;SOC电量算法架构：库仑积分、开路电压与电量追赶机制&#34;&gt;&lt;/a&gt;SOC电量算法架构：库仑积分、开路电压与电量追赶机制&lt;/h1&gt;&lt;p&gt;电量计的核心任务是回答一个看似简单的问题：电池还剩多少电？但由于电池的非线性特性、温度影响、老化效应，这个问题远比想象中复杂。本文基于实际产品固件（Newton平台 lib_fg.c），详细拆解SOC算法的完整架构。&lt;/p&gt;
 &lt;h2 id=&#34;整体架构概览&#34;&gt;&lt;a href=&#34;#整体架构概览&#34; class=&#34;headerlink&#34; title=&#34;整体架构概览&#34;&gt;&lt;/a&gt;整体架构概览&lt;/h2&gt;&lt;p&gt;SOC算法不是单一方法，而是多种方法的协同：&lt;/p&gt;
-&lt;div class=&#34;mermaid&#34;&gt;
+&lt;pre class=&#34;mermaid&#34;&gt;
 flowchart TD
     A[&#34;开路电压法 OCV&#34;] --&gt;|&#34;初始化/静置&#34;| D[&#34;RSOC&#34;]
     B[&#34;库仑积分法 CC&#34;] --&gt;|&#34;充放电过程&#34;| D
@@ -499,7 +499,7 @@ flowchart TD
     E[&#34;DFCC动态容量&#34;] --&gt;|&#34;修正FCC&#34;| B
     F[&#34;温度阻抗补偿&#34;] --&gt;|&#34;修正电压&#34;| A
     F --&gt;|&#34;修正容量&#34;| E
-&lt;/div&gt;
+&lt;/pre&gt;
 
 &lt;table&gt;
 &lt;thead&gt;
@@ -667,7 +667,7 @@ flowchart TD
 
     var script = document.createElement('script');
     
-    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.4.1/mermaid.min.js';
+    script.src = 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js';
     
     script.onload = initMermaid;
     document.head.appendChild(script);

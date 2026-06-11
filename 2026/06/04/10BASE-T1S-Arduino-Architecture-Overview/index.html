@@ -351,52 +351,51 @@
 </tr>
 </tbody></table>
 <p>这是 Arduino 官方维护的库，通过 Arduino Library Manager 分发，提供从 SPI 驱动到 UDP socket 的完整协议栈。</p>
-<h2 id="软件架构分层"><a href="#软件架构分层" class="headerlink" title="软件架构分层"></a>软件架构分层</h2><div class="mermaid">
+<h2 id="软件架构分层"><a href="#软件架构分层" class="headerlink" title="软件架构分层"></a>软件架构分层</h2><pre class="mermaid">
 graph TB
     subgraph "Application Layer"
         A1["Arduino Sketch (UDP_Client / UDP_Server)"]
         A2["Arduino_10BASE_T1S_UDP"]
     end
 
-<pre><code>subgraph &quot;Network Layer&quot;
-    B1[&quot;lwIP TCP/IP Stack&quot;]
-    B2[&quot;UDP PCB / ARP / ICMP / IPv4&quot;]
-end
+    subgraph "Network Layer"
+        B1["lwIP TCP/IP Stack"]
+        B2["UDP PCB / ARP / ICMP / IPv4"]
+    end
 
-subgraph &quot;Protocol Layer&quot;
-    C1[&quot;libtc6 v3.1.3&quot;]
-    C2[&quot;OA TC6 SPI Protocol&quot;]
-    C3[&quot;Credit Mgmt / Chunk Framing&quot;]
-end
+    subgraph "Protocol Layer"
+        C1["libtc6 v3.1.3"]
+        C2["OA TC6 SPI Protocol"]
+        C3["Credit Mgmt / Chunk Framing"]
+    end
 
-subgraph &quot;HAL Layer&quot;
-    D1[&quot;TC6_Io&quot;]
-    D2[&quot;SPI + GPIO (CS/RESET/IRQ)&quot;]
-end
+    subgraph "HAL Layer"
+        D1["TC6_Io"]
+        D2["SPI + GPIO (CS/RESET/IRQ)"]
+    end
 
-subgraph &quot;Hardware&quot;
-    E1[&quot;LAN8650/8651 MAC-PHY&quot;]
-    E2[&quot;10BASE-T1S PHY Twisted Pair&quot;]
-end
+    subgraph "Hardware"
+        E1["LAN8650/8651 MAC-PHY"]
+        E2["10BASE-T1S PHY Twisted Pair"]
+    end
 
-A1 --&gt; A2
-A2 --&gt; B1
-B1 --&gt; B2
-B2 --&gt; C1
-C1 --&gt; C2
-C2 --&gt; C3
-C3 --&gt; D1
-D1 --&gt; D2
-D2 --&gt; E1
-E1 --&gt; E2
-</code></pre>
-</div>
+    A1 --> A2
+    A2 --> B1
+    B1 --> B2
+    B2 --> C1
+    C1 --> C2
+    C2 --> C3
+    C3 --> D1
+    D1 --> D2
+    D2 --> E1
+    E1 --> E2
+</pre>
 
 <h3 id="各层职责"><a href="#各层职责" class="headerlink" title="各层职责"></a>各层职责</h3><p><strong>Application Layer</strong> — 用户代码接口，继承 Arduino 标准 <code>UDP</code> 基类，提供 <code>beginPacket()</code> &#x2F; <code>write()</code> &#x2F; <code>endPacket()</code> &#x2F; <code>parsePacket()</code> 标准 API。</p>
 <p><strong>Network Layer</strong> — 完整的 lwIP 嵌入式 TCP&#x2F;IP 协议栈，处理 ARP、ICMP、IPv4 路由、UDP 多路复用。MTU 设为 1536 字节。</p>
 <p><strong>Protocol Layer</strong> — Microchip 提供的 libtc6 库，实现 Open Alliance TC6 SPI 协议：将以太网帧拆分为 64 字节 chunk，附加 4 字节 header&#x2F;footer，通过 SPI 全双工传输，管理 TX&#x2F;RX credit 流控。</p>
 <p><strong>HAL Layer</strong> — <code>TC6_Io</code> 类封装 Arduino SPI 接口，配置 24MHz 时钟、Mode 0、MSB-first，控制 CS&#x2F;RESET&#x2F;IRQ 三根 GPIO。</p>
-<h3 id="类关系"><a href="#类关系" class="headerlink" title="类关系"></a>类关系</h3><div class="mermaid">
+<h3 id="类关系"><a href="#类关系" class="headerlink" title="类关系"></a>类关系</h3><pre class="mermaid">
 classDiagram
     class Arduino_10BASE_T1S_PHY_Interface {
         <<abstract>>
@@ -406,38 +405,37 @@ classDiagram
         +enablePlca()
     }
 
-<pre><code>class TC6_Arduino_10BASE_T1S {
-    -TC6_Io&amp; io
-    -netif lwip_netif
-    +begin(ip, mask, gw, mac, plca, mac_settings)
-    +service()
-    +digitalWrite(dio, val)
-}
+    class TC6_Arduino_10BASE_T1S {
+        -TC6_Io& io
+        -netif lwip_netif
+        +begin(ip, mask, gw, mac, plca, mac_settings)
+        +service()
+        +digitalWrite(dio, val)
+    }
 
-class TC6_Io {
-    -HardwareSPI&amp; spi
-    -int cs_pin, reset_pin, irq_pin
-    +begin()
-    +spiTransaction(pTx, pRx, len)
-    +onInterrupt()
-}
+    class TC6_Io {
+        -HardwareSPI& spi
+        -int cs_pin, reset_pin, irq_pin
+        +begin()
+        +spiTransaction(pTx, pRx, len)
+        +onInterrupt()
+    }
 
-class Arduino_10BASE_T1S_UDP {
-    -udp_pcb* pcb
-    -list~UdpRxPacket~ rx_pkt_list
-    +begin(port)
-    +beginPacket(ip, port)
-    +write(buf, len)
-    +endPacket()
-    +parsePacket()
-    +read(buf, len)
-}
+    class Arduino_10BASE_T1S_UDP {
+        -udp_pcb* pcb
+        -list~UdpRxPacket~ rx_pkt_list
+        +begin(port)
+        +beginPacket(ip, port)
+        +write(buf, len)
+        +endPacket()
+        +parsePacket()
+        +read(buf, len)
+    }
 
-Arduino_10BASE_T1S_PHY_Interface &lt;|-- TC6_Arduino_10BASE_T1S
-TC6_Arduino_10BASE_T1S --&gt; TC6_Io
-Arduino_10BASE_T1S_UDP --&gt; TC6_Arduino_10BASE_T1S
-</code></pre>
-</div>
+    Arduino_10BASE_T1S_PHY_Interface <|-- TC6_Arduino_10BASE_T1S
+    TC6_Arduino_10BASE_T1S --> TC6_Io
+    Arduino_10BASE_T1S_UDP --> TC6_Arduino_10BASE_T1S
+</pre>
 
 <h3 id="典型使用代码"><a href="#典型使用代码" class="headerlink" title="典型使用代码"></a>典型使用代码</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 实例化 PHY（宏展开为 TC6_Io + TC6_Arduino_10BASE_T1S 对象）</span></span><br><span class="line"><span class="built_in">Arduino_10BASE_T1S_PHY_TC6</span>(SPI, CS_PIN, RESET_PIN, IRQ_PIN);</span><br><span class="line">Arduino_10BASE_T1S_UDP udp_client;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">setup</span><span class="params">()</span> </span>&#123;</span><br><span class="line">  <span class="built_in">pinMode</span>(IRQ_PIN, INPUT_PULLUP);</span><br><span class="line">  <span class="built_in">attachInterrupt</span>(<span class="built_in">digitalPinToInterrupt</span>(IRQ_PIN),</span><br><span class="line">                  []() &#123; t1s_io.<span class="built_in">onInterrupt</span>(); &#125;, FALLING);</span><br><span class="line"></span><br><span class="line">  t1s_io.<span class="built_in">begin</span>();</span><br><span class="line">  t1s_phy.<span class="built_in">begin</span>(ip_addr, network_mask, gateway,</span><br><span class="line">                mac_addr, t1s_plca_settings, t1s_default_mac_settings);</span><br><span class="line">  udp_client.<span class="built_in">begin</span>(UDP_CLIENT_PORT);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">loop</span><span class="params">()</span> </span>&#123;</span><br><span class="line">  t1s_phy.<span class="built_in">service</span>();  <span class="comment">// 必须高频调用，驱动 SPI 收发和 lwIP 定时器</span></span><br><span class="line">  <span class="comment">// ... UDP 收发逻辑</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
@@ -570,12 +568,12 @@ Arduino_10BASE_T1S_UDP --&gt; TC6_Arduino_10BASE_T1S
 </tr>
 </tbody></table>
 <h3 id="实际验证方案"><a href="#实际验证方案" class="headerlink" title="实际验证方案"></a>实际验证方案</h3><p>项目依赖手动硬件测试，典型测试拓扑：</p>
-<div class="mermaid">
+<pre class="mermaid">
 graph LR
     A["Arduino UNO R4 WiFi\n(UDP Client, Node 1)"] -->|"单对双绞线\n10BASE-T1S"| B["Multi-drop Bus"]
     C["Arduino UNO R4 WiFi\n(UDP Server, Node 0)"] -->|"单对双绞线"| B
     D["EVB-LAN8670-USB\n(Linux Host, Node 0)"] -->|"单对双绞线"| B
-</div>
+</pre>
 
 <ul>
 <li><strong>Arduino 侧</strong>：运行 UDP_Client &#x2F; UDP_Server example，通过 Serial 观察收发日志</li>
@@ -859,7 +857,7 @@ graph LR
 
     var script = document.createElement('script');
     
-    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.4.1/mermaid.min.js';
+    script.src = 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js';
     
     script.onload = initMermaid;
     document.head.appendChild(script);
