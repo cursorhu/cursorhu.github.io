@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="系列导读本文面向首次接触 Arduino 嵌入式开发链路的传统 MCU 工程师（熟悉 Keil、IAR、STM32CubeIDE），以 Microchip LAN8650&#x2F;LAN8651 + Arduino UNO R4 Minima + Arduino_10BASE_T1S v0.1.1 为蓝本，把 Arduino IDE 这一”看似点击即上传”工具背后的完整编译架构讲清楚。 同系列其">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Arduino IDE 编译架构深度解析：以 Microchip LAN8650&#x2F;LAN8651 10BASE-T1S 为例">
+<meta property="og:url" content="https://cursorhu.github.io/2026/07/31/10BASE_T1S_Arduino_Compilation_Architecture_Deep_Dive/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="系列导读本文面向首次接触 Arduino 嵌入式开发链路的传统 MCU 工程师（熟悉 Keil、IAR、STM32CubeIDE），以 Microchip LAN8650&#x2F;LAN8651 + Arduino UNO R4 Minima + Arduino_10BASE_T1S v0.1.1 为蓝本，把 Arduino IDE 这一”看似点击即上传”工具背后的完整编译架构讲清楚。 同系列其">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-07-30T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-07-31T03:36:43.179Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="10BASE-T1S">
+<meta property="article:tag" content="Arduino">
+<meta property="article:tag" content="GCC">
+<meta property="article:tag" content="LAN8651">
+<meta property="article:tag" content="Microchip LAN8650">
+<meta property="article:tag" content="libtc6">
+<meta property="article:tag" content="内存布局">
+<meta property="article:tag" content="编译系统">
+<meta property="article:tag" content="链接脚本">
+<meta name="twitter:card" content="summary">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>Arduino IDE 编译架构深度解析：以 Microchip LAN8650/LAN8651 10BASE-T1S 为例</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+		<script type="text/x-mathjax-config">
+		  MathJax.Hub.Config({
+			tex2jax: {
+			  skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+			  inlineMath: [['$','$']]
+			}
+		  });
+		</script>
+		<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-MML-AM_CHTML' async></script>
+	
+<meta name="generator" content="Hexo 8.0.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="顶部" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="上一篇" href="/2026/07/31/10BASE-T1S_Arduino_IDE_Build_System_Internals/"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="下一篇" href="/2026/07/31/10BASE-T1S-Code-Interfaces-UDP-API/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="返回顶部" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="分享文章" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">上一篇</span>
+      <span id="i-next" class="info" style="display:none;">下一篇</span>
+      <span id="i-top" class="info" style="display:none;">返回顶部</span>
+      <span id="i-share" class="info" style="display:none;">分享文章</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/07/31/10BASE_T1S_Arduino_Compilation_Architecture_Deep_Dive/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S_Arduino_Compilation_Architecture_Deep_Dive/&text=Arduino IDE 编译架构深度解析：以 Microchip LAN8650/LAN8651 10BASE-T1S 为例"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S_Arduino_Compilation_Architecture_Deep_Dive/&title=Arduino IDE 编译架构深度解析：以 Microchip LAN8650/LAN8651 10BASE-T1S 为例"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S_Arduino_Compilation_Architecture_Deep_Dive/&is_video=false&description=Arduino IDE 编译架构深度解析：以 Microchip LAN8650/LAN8651 10BASE-T1S 为例"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=Arduino IDE 编译架构深度解析：以 Microchip LAN8650/LAN8651 10BASE-T1S 为例&body=Check out this article: https://cursorhu.github.io/2026/07/31/10BASE_T1S_Arduino_Compilation_Architecture_Deep_Dive/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S_Arduino_Compilation_Architecture_Deep_Dive/&title=Arduino IDE 编译架构深度解析：以 Microchip LAN8650/LAN8651 10BASE-T1S 为例"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S_Arduino_Compilation_Architecture_Deep_Dive/&title=Arduino IDE 编译架构深度解析：以 Microchip LAN8650/LAN8651 10BASE-T1S 为例"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S_Arduino_Compilation_Architecture_Deep_Dive/&title=Arduino IDE 编译架构深度解析：以 Microchip LAN8650/LAN8651 10BASE-T1S 为例"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S_Arduino_Compilation_Architecture_Deep_Dive/&title=Arduino IDE 编译架构深度解析：以 Microchip LAN8650/LAN8651 10BASE-T1S 为例"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S_Arduino_Compilation_Architecture_Deep_Dive/&name=Arduino IDE 编译架构深度解析：以 Microchip LAN8650/LAN8651 10BASE-T1S 为例&description=&lt;h2 id=&#34;系列导读&#34;&gt;&lt;a href=&#34;#系列导读&#34; class=&#34;headerlink&#34; title=&#34;系列导读&#34;&gt;&lt;/a&gt;系列导读&lt;/h2&gt;&lt;p&gt;本文面向&lt;strong&gt;首次接触 Arduino 嵌入式开发链路的传统 MCU 工程师&lt;/strong&gt;（熟悉 Keil、IAR、STM32CubeIDE），以 &lt;strong&gt;Microchip LAN8650&amp;#x2F;LAN8651 + Arduino UNO R4 Minima + &lt;code&gt;Arduino_10BASE_T1S&lt;/code&gt; v0.1.1&lt;/strong&gt; 为蓝本，把 Arduino IDE 这一”看似点击即上传”工具背后的完整编译架构讲清楚。&lt;/p&gt;
+&lt;h3 id=&#34;同系列其它文章&#34;&gt;&lt;a href=&#34;#同系列其它文章&#34; class=&#34;headerlink&#34; title=&#34;同系列其它文章&#34;&gt;&lt;/a&gt;同系列其它文章&lt;/h3&gt;&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;#&lt;/th&gt;
+&lt;th&gt;标题&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;&lt;tr&gt;
+&lt;td&gt;0&lt;/td&gt;
+&lt;td&gt;&lt;a href=&#34;/2026/07/31/10BASE-T1S-Code-Interfaces-Index/&#34;&gt;系列索引与全局速查&lt;/a&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;1&lt;/td&gt;
+&lt;td&gt;&lt;a href=&#34;/2026/07/31/10BASE-T1S-Code-Interfaces-UDP-API/&#34;&gt;应用层 UDP Socket API&lt;/a&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;2&lt;/td&gt;
+&lt;td&gt;&lt;a href=&#34;/2026/07/31/10BASE-T1S-Code-Interfaces-PHY-and-HAL/&#34;&gt;PHY Interface 与 HAL 层&lt;/a&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;3&lt;/td&gt;
+&lt;td&gt;&lt;a href=&#34;/2026/07/31/10BASE-T1S-Code-Interfaces-libtc6-and-lwip/&#34;&gt;libtc6 协议核心与 lwIP 集成&lt;/a&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;4&lt;/td&gt;
+&lt;td&gt;&lt;a href=&#34;/2026/07/31/10BASE-T1S-Code-Interfaces-Auxiliary-and-lwip/&#34;&gt;辅助类与 lwIP 配置&lt;/a&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;-&lt;/td&gt;
+&lt;td&gt;&lt;a href=&#34;/2026/06/04/10BASE-T1S-Arduino-Architecture-Overview/&#34;&gt;架构概览&lt;/a&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;-&lt;/td&gt;
+&lt;td&gt;&lt;a href=&#34;/2026/06/04/10BASE-T1S-Protocol-Stack-Deep-Dive/&#34;&gt;OA TC6 协议栈深度分析&lt;/a&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;-&lt;/td&gt;
+&lt;td&gt;&lt;a href=&#34;/2026/06/04/10BASE-T1S-Porting-Guide/&#34;&gt;移植实战指南&lt;/a&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;&lt;/table&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;1-核心问题解答&#34;&gt;&lt;a href=&#34;#1-核心问题解答&#34; class=&#34;headerlink&#34; title=&#34;1. 核心问题解答&#34;&gt;&lt;/a&gt;1. 核心问题解答&lt;/h2&gt;&lt;h3 id=&#34;1-1-两个芯片，Arduino-IDE-烧录到哪个？&#34;&gt;&lt;a href=&#34;#1-1-两个芯片，Arduino-IDE-烧录到哪个？&#34; class=&#34;headerlink&#34; title=&#34;1.1 两个芯片，Arduino IDE 烧录到哪个？&#34;&gt;&lt;/a&gt;1.1 两个芯片，Arduino IDE 烧录到哪个？&lt;/h3&gt;&lt;p&gt;&lt;strong&gt;Arduino UNO R4 Minima + 10BASE-T 扩展板系统架构&lt;/strong&gt;：&lt;/p&gt;
+&lt;figure class=&#34;highlight plaintext&#34;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&#34;gutter&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;3&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;4&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;5&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;6&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;7&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;8&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;9&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;10&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;11&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;12&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;13&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;14&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;15&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;16&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;17&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;18&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;19&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;20&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;21&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;22&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;23&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;24&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;25&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;26&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;27&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;28&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&#34;code&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;┌─────────────────────────────────────────────────────────────┐&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│ Arduino UNO R4 Minima 主板                                  │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                                                             │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  ┌──────────────────────┐          ┌────────────────────┐ │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  │ Renesas RA4M1        │          │ 你的扩展板         │ │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  │ (主MCU)              │◄───SPI──►│ Microchip LAN8650  │ │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  │                      │          │ /LAN8651 MAC-PHY  │ │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  │ Cortex-M4 48MHz      │          └────────────────────┘ │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  │ 256KB Flash          │                                  │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  │ 32KB RAM             │          ┌────────────────────┐ │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  │                      │          │ 以太网变压器        │ │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  │ 运行的代码:          │          │ + RJ45接口         │ │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  │ - UDP_Client.ino     │          └────────────────────┘ │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  │ - lwIP协议栈         │                                  │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  │ - libtc6 协议        │                                  │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  │ - SPI 驱动           │                                  │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  │ - MAC-PHY 寄存器配置 │                                  │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  └──────────┬───────────┘                                  │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│             │                                              │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  ┌──────────▼───────────┐                                 │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  │ USB转串口芯片         │                                 │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  │ (用于烧录和串口通信)  │                                 │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  └──────────┬───────────┘                                 │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│             │                                              │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;└─────────────┼──────────────────────────────────────────────┘&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;              │ USB-C 线缆&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;              ▼&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;      PC (Arduino IDE)&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;
+
+&lt;p&gt;&lt;strong&gt;明确答案&lt;/strong&gt;：&lt;/p&gt;"><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/07/31/10BASE_T1S_Arduino_Compilation_Architecture_Deep_Dive/&t=Arduino IDE 编译架构深度解析：以 Microchip LAN8650/LAN8651 10BASE-T1S 为例"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%B3%BB%E5%88%97%E5%AF%BC%E8%AF%BB"><span class="toc-number">1.</span> <span class="toc-text">系列导读</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%90%8C%E7%B3%BB%E5%88%97%E5%85%B6%E5%AE%83%E6%96%87%E7%AB%A0"><span class="toc-number">1.1.</span> <span class="toc-text">同系列其它文章</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E6%A0%B8%E5%BF%83%E9%97%AE%E9%A2%98%E8%A7%A3%E7%AD%94"><span class="toc-number">2.</span> <span class="toc-text">1. 核心问题解答</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-%E4%B8%A4%E4%B8%AA%E8%8A%AF%E7%89%87%EF%BC%8CArduino-IDE-%E7%83%A7%E5%BD%95%E5%88%B0%E5%93%AA%E4%B8%AA%EF%BC%9F"><span class="toc-number">2.1.</span> <span class="toc-text">1.1 两个芯片，Arduino IDE 烧录到哪个？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-2-%E4%B8%BA%E4%BB%80%E4%B9%88%E4%BD%A0%E7%9C%8B%E4%B8%8D%E5%88%B0%E5%BA%95%E5%B1%82%E5%BA%93%E7%9A%84%E7%BC%96%E8%AF%91%E8%BF%87%E7%A8%8B%EF%BC%9F"><span class="toc-number">2.2.</span> <span class="toc-text">1.2 为什么你看不到底层库的编译过程？</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-Arduino-%E5%BA%93%E7%9A%84%E6%A0%87%E5%87%86%E7%BB%93%E6%9E%84%E4%B8%8E-Microchip-%E6%96%B9%E6%A1%88%E5%AE%9E%E4%BE%8B"><span class="toc-number">3.</span> <span class="toc-text">2. Arduino 库的标准结构与 Microchip 方案实例</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-Arduino-%E5%BA%93%E7%9A%84%E7%9B%AE%E5%BD%95%E7%BA%A6%E5%AE%9A"><span class="toc-number">3.1.</span> <span class="toc-text">2.1 Arduino 库的目录约定</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-Arduino-IDE-%E7%9A%84%E8%87%AA%E5%8A%A8%E5%8F%91%E7%8E%B0%E8%A7%84%E5%88%99"><span class="toc-number">3.2.</span> <span class="toc-text">2.2 Arduino IDE 的自动发现规则</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-%E7%A4%BA%E4%BE%8B%E5%B7%A5%E7%A8%8B%E7%9A%84%E5%8F%AF%E8%A7%81%E6%96%87%E4%BB%B6%E6%95%B0%E9%87%8F"><span class="toc-number">3.3.</span> <span class="toc-text">2.3 示例工程的可见文件数量</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-Arduino-IDE-vs-Keil-%E5%B7%A5%E7%A8%8B%E5%AF%B9%E6%AF%94"><span class="toc-number">4.</span> <span class="toc-text">3. Arduino IDE vs Keil 工程对比</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E5%B7%A5%E7%A8%8B%E6%96%87%E4%BB%B6%E4%BD%8D%E7%BD%AE%E5%AF%B9%E6%AF%94"><span class="toc-number">4.1.</span> <span class="toc-text">3.1 工程文件位置对比</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E9%85%8D%E7%BD%AE%E6%96%87%E4%BB%B6%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84"><span class="toc-number">4.2.</span> <span class="toc-text">3.2 配置文件层次结构</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-%E5%86%85%E5%AD%98%E6%98%A0%E5%B0%84%E8%AF%A6%E8%A7%A3"><span class="toc-number">5.</span> <span class="toc-text">4. 内存映射详解</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-memory-regions-ld-%E6%96%87%E4%BB%B6%E5%86%85%E5%AE%B9"><span class="toc-number">5.1.</span> <span class="toc-text">4.1 memory_regions.ld 文件内容</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-Flash-%E5%B8%83%E5%B1%80%E5%9B%BE"><span class="toc-number">5.2.</span> <span class="toc-text">4.2 Flash 布局图</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-%E5%AE%8C%E6%95%B4%E7%BC%96%E8%AF%91%E9%93%BE%E6%8E%A5%E7%83%A7%E5%BD%95%E6%B5%81%E7%A8%8B%EF%BC%887-%E9%98%B6%E6%AE%B5%EF%BC%89"><span class="toc-number">6.</span> <span class="toc-text">5. 完整编译链接烧录流程（7 阶段）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E9%98%B6%E6%AE%B5-1%EF%BC%9A%E6%BA%90%E6%96%87%E4%BB%B6%E6%89%AB%E6%8F%8F"><span class="toc-number">6.1.</span> <span class="toc-text">5.1 阶段 1：源文件扫描</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E9%98%B6%E6%AE%B5-2%EF%BC%9A%E7%BC%96%E8%AF%91-c-cpp-%E2%86%92-o"><span class="toc-number">6.2.</span> <span class="toc-text">5.2 阶段 2：编译 (.c&#x2F;.cpp → .o)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-%E9%98%B6%E6%AE%B5-3%EF%BC%9A%E6%89%93%E5%8C%85%E6%A0%B8%E5%BF%83%E5%BA%93-o-%E2%86%92-core-a"><span class="toc-number">6.3.</span> <span class="toc-text">5.3 阶段 3：打包核心库 (.o → core.a)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-4-%E9%98%B6%E6%AE%B5-4%EF%BC%9A%E9%93%BE%E6%8E%A5-o-a-%E2%86%92-elf"><span class="toc-number">6.4.</span> <span class="toc-text">5.4 阶段 4：链接 (.o + .a → .elf)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-5-%E9%98%B6%E6%AE%B5-5%EF%BC%9A%E7%94%9F%E6%88%90%E4%BA%8C%E8%BF%9B%E5%88%B6-elf-%E2%86%92-bin"><span class="toc-number">6.5.</span> <span class="toc-text">5.5 阶段 5：生成二进制 (.elf → .bin)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-6-%E9%98%B6%E6%AE%B5-6%EF%BC%9A%E8%AE%A1%E7%AE%97%E5%A4%A7%E5%B0%8F"><span class="toc-number">6.6.</span> <span class="toc-text">5.6 阶段 6：计算大小</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-7-%E9%98%B6%E6%AE%B5-7%EF%BC%9A%E7%83%A7%E5%BD%95%E5%88%B0-MCU"><span class="toc-number">6.7.</span> <span class="toc-text">5.7 阶段 7：烧录到 MCU</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6-%E5%85%B3%E9%94%AE%E4%BA%A7%E7%89%A9%E8%AF%A6%E8%A7%A3"><span class="toc-number">7.</span> <span class="toc-text">6. 关键产物详解</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-map-%E6%96%87%E4%BB%B6-%E2%80%94-%E6%9C%80%E9%87%8D%E8%A6%81%E7%9A%84%E8%B0%83%E8%AF%95%E5%B7%A5%E5%85%B7"><span class="toc-number">7.1.</span> <span class="toc-text">6.1 .map 文件 — 最重要的调试工具</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E4%B8%89%E7%A7%8D%E4%BA%A7%E7%89%A9%E6%96%87%E4%BB%B6"><span class="toc-number">7.2.</span> <span class="toc-text">6.2 三种产物文件</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#7-%E8%B0%83%E8%AF%95%E6%8A%80%E5%B7%A7"><span class="toc-number">8.</span> <span class="toc-text">7. 调试技巧</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#7-1-%E5%90%AF%E7%94%A8%E8%AF%A6%E7%BB%86%E7%BC%96%E8%AF%91%E8%BE%93%E5%87%BA"><span class="toc-number">8.1.</span> <span class="toc-text">7.1 启用详细编译输出</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-2-%E4%BD%BF%E7%94%A8-arduino-cli-%E5%91%BD%E4%BB%A4%E8%A1%8C%E7%BC%96%E8%AF%91"><span class="toc-number">8.2.</span> <span class="toc-text">7.2 使用 arduino-cli 命令行编译</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-3-%E5%8F%8D%E6%B1%87%E7%BC%96%E6%9F%A5%E7%9C%8B%E7%94%9F%E6%88%90%E7%9A%84%E4%BB%A3%E7%A0%81"><span class="toc-number">8.3.</span> <span class="toc-text">7.3 反汇编查看生成的代码</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-4-%E5%88%86%E6%9E%90-Flash-%E4%BD%BF%E7%94%A8%E6%83%85%E5%86%B5"><span class="toc-number">8.4.</span> <span class="toc-text">7.4 分析 Flash 使用情况</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-5-%E5%88%86%E6%9E%90-RAM-%E4%BD%BF%E7%94%A8%E6%83%85%E5%86%B5"><span class="toc-number">8.5.</span> <span class="toc-text">7.5 分析 RAM 使用情况</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-6-%E5%90%84%E6%A8%A1%E5%9D%97-Flash-RAM-%E5%8D%A0%E6%AF%94%E9%80%9F%E6%9F%A5"><span class="toc-number">8.6.</span> <span class="toc-text">7.6 各模块 Flash&#x2F;RAM 占比速查</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#8-%E5%B8%B8%E8%A7%81%E9%94%99%E8%AF%AF%E4%B8%8E%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88"><span class="toc-number">9.</span> <span class="toc-text">8. 常见错误与解决方案</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#8-1-Flash-%E7%A9%BA%E9%97%B4%E4%B8%8D%E8%B6%B3"><span class="toc-number">9.1.</span> <span class="toc-text">8.1 Flash 空间不足</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8-2-RAM-%E7%A9%BA%E9%97%B4%E4%B8%8D%E8%B6%B3"><span class="toc-number">9.2.</span> <span class="toc-text">8.2 RAM 空间不足</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8-3-%E9%93%BE%E6%8E%A5%E9%94%99%E8%AF%AF%EF%BC%9Aundefined-reference"><span class="toc-number">9.3.</span> <span class="toc-text">8.3 链接错误：undefined reference</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8-4-%E9%93%BE%E6%8E%A5%E9%94%99%E8%AF%AF%EF%BC%9Amultiple-definition"><span class="toc-number">9.4.</span> <span class="toc-text">8.4 链接错误：multiple definition</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8-5-%E7%83%A7%E5%BD%95%E5%A4%B1%E8%B4%A5"><span class="toc-number">9.5.</span> <span class="toc-text">8.5 烧录失败</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8-6-%E6%89%BE%E4%B8%8D%E5%88%B0%E5%BA%93"><span class="toc-number">9.6.</span> <span class="toc-text">8.6 找不到库</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#9-%E5%BC%80%E5%8F%91%E5%B7%A5%E4%BD%9C%E6%B5%81%E5%BB%BA%E8%AE%AE"><span class="toc-number">10.</span> <span class="toc-text">9. 开发工作流建议</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#9-1-%E9%98%B6%E6%AE%B5%E5%8C%96%E9%9B%86%E6%88%90%E7%AD%96%E7%95%A5"><span class="toc-number">10.1.</span> <span class="toc-text">9.1 阶段化集成策略</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#9-2-%E9%98%B6%E6%AE%B5-1-%E6%A8%A1%E6%9D%BF%EF%BC%9A%E4%BB%85%E9%AA%8C%E8%AF%81-SPI%EF%BC%88%E4%B8%8D%E4%BE%9D%E8%B5%96%E5%AE%8C%E6%95%B4%E5%BA%93%EF%BC%89"><span class="toc-number">10.2.</span> <span class="toc-text">9.2 阶段 1 模板：仅验证 SPI（不依赖完整库）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#9-3-%E9%98%B6%E6%AE%B5-3-%E6%A8%A1%E6%9D%BF%EF%BC%9AlwIP-loopback-%E6%B5%8B%E8%AF%95"><span class="toc-number">10.3.</span> <span class="toc-text">9.3 阶段 3 模板：lwIP loopback 测试</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#9-4-%E5%AE%8C%E6%95%B4%E5%B7%A5%E4%BD%9C%E6%B5%81-checklist"><span class="toc-number">10.4.</span> <span class="toc-text">9.4 完整工作流 checklist</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#10-%E6%8E%A8%E8%8D%90%E7%9A%84%E5%B7%A5%E5%85%B7%E9%93%BE"><span class="toc-number">11.</span> <span class="toc-text">10. 推荐的工具链</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#10-1-VSCode-Arduino-%E6%8F%92%E4%BB%B6"><span class="toc-number">11.1.</span> <span class="toc-text">10.1 VSCode + Arduino 插件</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#10-2-%E5%91%BD%E4%BB%A4%E8%A1%8C%EF%BC%9Aarduino-cli"><span class="toc-number">11.2.</span> <span class="toc-text">10.2 命令行：arduino-cli</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#10-3-%E7%89%88%E6%9C%AC%E6%8E%A7%E5%88%B6"><span class="toc-number">11.3.</span> <span class="toc-text">10.3 版本控制</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#10-4-%E6%8C%81%E7%BB%AD%E9%9B%86%E6%88%90%EF%BC%88GitHub-Actions%EF%BC%89"><span class="toc-number">11.4.</span> <span class="toc-text">10.4 持续集成（GitHub Actions）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#11-%E4%B8%8E-Keil-%E5%B7%A5%E7%A8%8B%E7%9A%84%E5%AE%8C%E6%95%B4%E6%93%8D%E4%BD%9C%E5%AF%B9%E6%AF%94"><span class="toc-number">12.</span> <span class="toc-text">11. 与 Keil 工程的完整操作对比</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#12-%E6%80%BB%E7%BB%93"><span class="toc-number">13.</span> <span class="toc-text">12. 总结</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#12-1-%E5%85%B3%E9%94%AE%E8%A6%81%E7%82%B9"><span class="toc-number">13.1.</span> <span class="toc-text">12.1 关键要点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#12-2-%E6%96%87%E4%BB%B6%E6%B5%81%E7%A8%8B%E6%80%BB%E7%BB%93"><span class="toc-number">13.2.</span> <span class="toc-text">12.2 文件流程总结</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#12-3-%E6%8E%A8%E8%8D%90%E5%B7%A5%E4%BD%9C%E6%B5%81"><span class="toc-number">13.3.</span> <span class="toc-text">12.3 推荐工作流</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#12-4-%E4%BD%95%E6%97%B6%E8%B7%B3%E5%87%BA-Arduino-%E6%A1%86%E6%9E%B6"><span class="toc-number">13.4.</span> <span class="toc-text">12.4 何时跳出 Arduino 框架</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#13-%E5%8F%82%E8%80%83%E8%B5%84%E6%BA%90"><span class="toc-number">14.</span> <span class="toc-text">13. 参考资源</span></a></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        Arduino IDE 编译架构深度解析：以 Microchip LAN8650/LAN8651 10BASE-T1S 为例
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">cursorhu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2026-07-30T16:00:00.000Z" class="dt-published" itemprop="datePublished">2026-07-31</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fa-solid fa-archive"></i>
+        <a class="category-link" href="/categories/Ethernet/">Ethernet</a> › <a class="category-link" href="/categories/Ethernet/%E5%B5%8C%E5%85%A5%E5%BC%8F%E7%BD%91%E7%BB%9C/">嵌入式网络</a> › <a class="category-link" href="/categories/Ethernet/%E5%B5%8C%E5%85%A5%E5%BC%8F%E7%BD%91%E7%BB%9C/%E5%B7%A5%E5%85%B7%E9%93%BE/">工具链</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/10BASE-T1S/" rel="tag">10BASE-T1S</a>, <a class="p-category" href="/tags/Arduino/" rel="tag">Arduino</a>, <a class="p-category" href="/tags/GCC/" rel="tag">GCC</a>, <a class="p-category" href="/tags/LAN8651/" rel="tag">LAN8651</a>, <a class="p-category" href="/tags/Microchip-LAN8650/" rel="tag">Microchip LAN8650</a>, <a class="p-category" href="/tags/libtc6/" rel="tag">libtc6</a>, <a class="p-category" href="/tags/%E5%86%85%E5%AD%98%E5%B8%83%E5%B1%80/" rel="tag">内存布局</a>, <a class="p-category" href="/tags/%E7%BC%96%E8%AF%91%E7%B3%BB%E7%BB%9F/" rel="tag">编译系统</a>, <a class="p-category" href="/tags/%E9%93%BE%E6%8E%A5%E8%84%9A%E6%9C%AC/" rel="tag">链接脚本</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <h2 id="系列导读"><a href="#系列导读" class="headerlink" title="系列导读"></a>系列导读</h2><p>本文面向<strong>首次接触 Arduino 嵌入式开发链路的传统 MCU 工程师</strong>（熟悉 Keil、IAR、STM32CubeIDE），以 <strong>Microchip LAN8650&#x2F;LAN8651 + Arduino UNO R4 Minima + <code>Arduino_10BASE_T1S</code> v0.1.1</strong> 为蓝本，把 Arduino IDE 这一”看似点击即上传”工具背后的完整编译架构讲清楚。</p>
+<h3 id="同系列其它文章"><a href="#同系列其它文章" class="headerlink" title="同系列其它文章"></a>同系列其它文章</h3><table>
+<thead>
+<tr>
+<th>#</th>
+<th>标题</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>0</td>
+<td><a href="/2026/07/31/10BASE-T1S-Code-Interfaces-Index/">系列索引与全局速查</a></td>
+</tr>
+<tr>
+<td>1</td>
+<td><a href="/2026/07/31/10BASE-T1S-Code-Interfaces-UDP-API/">应用层 UDP Socket API</a></td>
+</tr>
+<tr>
+<td>2</td>
+<td><a href="/2026/07/31/10BASE-T1S-Code-Interfaces-PHY-and-HAL/">PHY Interface 与 HAL 层</a></td>
+</tr>
+<tr>
+<td>3</td>
+<td><a href="/2026/07/31/10BASE-T1S-Code-Interfaces-libtc6-and-lwip/">libtc6 协议核心与 lwIP 集成</a></td>
+</tr>
+<tr>
+<td>4</td>
+<td><a href="/2026/07/31/10BASE-T1S-Code-Interfaces-Auxiliary-and-lwip/">辅助类与 lwIP 配置</a></td>
+</tr>
+<tr>
+<td>-</td>
+<td><a href="/2026/06/04/10BASE-T1S-Arduino-Architecture-Overview/">架构概览</a></td>
+</tr>
+<tr>
+<td>-</td>
+<td><a href="/2026/06/04/10BASE-T1S-Protocol-Stack-Deep-Dive/">OA TC6 协议栈深度分析</a></td>
+</tr>
+<tr>
+<td>-</td>
+<td><a href="/2026/06/04/10BASE-T1S-Porting-Guide/">移植实战指南</a></td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="1-核心问题解答"><a href="#1-核心问题解答" class="headerlink" title="1. 核心问题解答"></a>1. 核心问题解答</h2><h3 id="1-1-两个芯片，Arduino-IDE-烧录到哪个？"><a href="#1-1-两个芯片，Arduino-IDE-烧录到哪个？" class="headerlink" title="1.1 两个芯片，Arduino IDE 烧录到哪个？"></a>1.1 两个芯片，Arduino IDE 烧录到哪个？</h3><p><strong>Arduino UNO R4 Minima + 10BASE-T 扩展板系统架构</strong>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────┐</span><br><span class="line">│ Arduino UNO R4 Minima 主板                                  │</span><br><span class="line">│                                                             │</span><br><span class="line">│  ┌──────────────────────┐          ┌────────────────────┐ │</span><br><span class="line">│  │ Renesas RA4M1        │          │ 你的扩展板         │ │</span><br><span class="line">│  │ (主MCU)              │◄───SPI──►│ Microchip LAN8650  │ │</span><br><span class="line">│  │                      │          │ /LAN8651 MAC-PHY  │ │</span><br><span class="line">│  │ Cortex-M4 48MHz      │          └────────────────────┘ │</span><br><span class="line">│  │ 256KB Flash          │                                  │</span><br><span class="line">│  │ 32KB RAM             │          ┌────────────────────┐ │</span><br><span class="line">│  │                      │          │ 以太网变压器        │ │</span><br><span class="line">│  │ 运行的代码:          │          │ + RJ45接口         │ │</span><br><span class="line">│  │ - UDP_Client.ino     │          └────────────────────┘ │</span><br><span class="line">│  │ - lwIP协议栈         │                                  │</span><br><span class="line">│  │ - libtc6 协议        │                                  │</span><br><span class="line">│  │ - SPI 驱动           │                                  │</span><br><span class="line">│  │ - MAC-PHY 寄存器配置 │                                  │</span><br><span class="line">│  └──────────┬───────────┘                                  │</span><br><span class="line">│             │                                              │</span><br><span class="line">│  ┌──────────▼───────────┐                                 │</span><br><span class="line">│  │ USB转串口芯片         │                                 │</span><br><span class="line">│  │ (用于烧录和串口通信)  │                                 │</span><br><span class="line">│  └──────────┬───────────┘                                 │</span><br><span class="line">│             │                                              │</span><br><span class="line">└─────────────┼──────────────────────────────────────────────┘</span><br><span class="line">              │ USB-C 线缆</span><br><span class="line">              ▼</span><br><span class="line">      PC (Arduino IDE)</span><br></pre></td></tr></table></figure>
+
+<p><strong>明确答案</strong>：</p>
+<ul>
+<li>Arduino IDE <strong>只烧录主 MCU (Renesas RA4M1)</strong></li>
+<li>Microchip LAN8650&#x2F;LAN8651 MAC-PHY 芯片<strong>不需要烧录</strong>，它是 SPI 外设</li>
+<li>应用代码运行在 RA4M1 上，通过 SPI + OA TC6 协议控制 MAC-PHY</li>
+<li>MAC-PHY 内部可能有 ROM 固件（OA TC6 协议栈），但<strong>不由 Arduino IDE 烧录</strong></li>
+</ul>
+<p><strong>类比</strong>：</p>
+<ul>
+<li>RA4M1 主 MCU &#x3D; STM32 主控芯片（运行你的代码）</li>
+<li>LAN8650&#x2F;LAN8651 &#x3D; 外围的 W5500 网络芯片（通过 SPI 控制），区别是 LAN865x 使用 OA TC6 私有协议而非裸 SPI 寄存器</li>
+</ul>
+<h3 id="1-2-为什么你看不到底层库的编译过程？"><a href="#1-2-为什么你看不到底层库的编译过程？" class="headerlink" title="1.2 为什么你看不到底层库的编译过程？"></a>1.2 为什么你看不到底层库的编译过程？</h3><p>当你在 Arduino IDE 2 中打开 <code>UDP_Client.ino</code> 并点击”上传”时，背后发生了这些事情（<strong>默认在 UI 中不可见</strong>）：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line">你看到的:</span><br><span class="line">┌─────────────────────────────┐</span><br><span class="line">│ UDP_Client.ino              │  &lt;-- 你只编辑这个文件</span><br><span class="line">│ #include &lt;Arduino_10BASE…   │</span><br><span class="line">│ void setup() &#123; ... &#125;        │</span><br><span class="line">│ void loop() &#123; ... &#125;         │</span><br><span class="line">└─────────────────────────────┘</span><br><span class="line">              ↓ 点击&quot;上传&quot;</span><br><span class="line">         [黑盒过程]</span><br><span class="line">              ↓</span><br><span class="line">┌─────────────────────────────┐</span><br><span class="line">│ 烧录到 Arduino R4           │</span><br><span class="line">└─────────────────────────────┘</span><br><span class="line"></span><br><span class="line">实际发生的（隐藏过程）:</span><br><span class="line">┌─────────────────────────────────────────────────────────────┐</span><br><span class="line">│ 1. Arduino IDE 扫描 #include 语句                            │</span><br><span class="line">│    发现: Arduino_10BASE_T1S.h                                │</span><br><span class="line">├─────────────────────────────────────────────────────────────┤</span><br><span class="line">│ 2. 在库目录中查找:                                           │</span><br><span class="line">│    Windows: %USERPROFILE%\Documents\Arduino\libraries\       │</span><br><span class="line">│    或:   %LOCALAPPDATA%\Arduino15\libraries\                 │</span><br><span class="line">│    找到: Arduino_10BASE_T1S/                                 │</span><br><span class="line">├─────────────────────────────────────────────────────────────┤</span><br><span class="line">│ 3. Arduino-CLI 递归扫描库的 src/ 目录:                       │</span><br><span class="line">│    src/Arduino_10BASE_T1S_UDP.cpp          ✓ 加入编译       │</span><br><span class="line">│    src/MacAddress.cpp                      ✓ 加入编译       │</span><br><span class="line">│    src/microchip/TC6_Arduino_10BASE_T1S.cpp ✓ 加入编译      │</span><br><span class="line">│    src/microchip/TC6_Io.cpp                ✓ 加入编译       │</span><br><span class="line">│    src/microchip/lib/libtc6/src/tc6.cpp    ✓ 加入编译       │</span><br><span class="line">│    src/microchip/lib/libtc6/src/tc6-regs.cpp ✓ 加入编译     │</span><br><span class="line">│    src/lib/liblwip/*.c                     ✓ 全部加入编译   │</span><br><span class="line">├─────────────────────────────────────────────────────────────┤</span><br><span class="line">│ 4. 调用 arm-none-eabi-g++ 编译器:                            │</span><br><span class="line">│    编译每个 .cpp/.c 文件 → .o 目标文件                       │</span><br><span class="line">│    链接所有 .o + Arduino 核心库 → .elf 可执行文件           │</span><br><span class="line">│    转换 .elf → .bin 二进制镜像                               │</span><br><span class="line">├─────────────────────────────────────────────────────────────┤</span><br><span class="line">│ 5. 调用 bossac 烧录工具:                                     │</span><br><span class="line">│    通过 USB 串口上传 .bin 到 Arduino R4 Flash               │</span><br><span class="line">└─────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<p><strong>关键点</strong>：Arduino IDE 会<strong>自动</strong>编译 <code>src/</code> 目录下的所有 <code>.cpp</code> 和 <code>.c</code> 文件，你不需要手动指定。这就是为什么看起来”魔法”，但本质是 GNU Make + GCC 的工程化封装。</p>
+<hr>
+<h2 id="2-Arduino-库的标准结构与-Microchip-方案实例"><a href="#2-Arduino-库的标准结构与-Microchip-方案实例" class="headerlink" title="2. Arduino 库的标准结构与 Microchip 方案实例"></a>2. Arduino 库的标准结构与 Microchip 方案实例</h2><h3 id="2-1-Arduino-库的目录约定"><a href="#2-1-Arduino-库的目录约定" class="headerlink" title="2.1 Arduino 库的目录约定"></a>2.1 Arduino 库的目录约定</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br></pre></td><td class="code"><pre><span class="line">Arduino_10BASE_T1S/                    # 库根目录</span><br><span class="line">│</span><br><span class="line">├── library.properties                 # 库元数据（IDE 读取这个识别库）</span><br><span class="line">│   name=Arduino_10BASE_T1S</span><br><span class="line">│   version=0.1.1</span><br><span class="line">│   architectures=renesas_uno          # 支持 UNO R4</span><br><span class="line">│</span><br><span class="line">├── examples/                          # 示例代码（用户可见）</span><br><span class="line">│   ├── UDP_Client/</span><br><span class="line">│   │   └── UDP_Client.ino            # ← 用户编辑这个</span><br><span class="line">│   ├── UDP_Server/</span><br><span class="line">│   │   └── UDP_Server.ino</span><br><span class="line">│   └── pingpong/</span><br><span class="line">│       └── pingpong.ino</span><br><span class="line">│</span><br><span class="line">└── src/                               # 库源码（自动编译，用户不可见）</span><br><span class="line">    ├── Arduino_10BASE_T1S.h          # 主头文件</span><br><span class="line">    ├── Arduino_10BASE_T1S_PHY_Interface.h  # PHY 抽象基类</span><br><span class="line">    ├── Arduino_10BASE_T1S_UDP.h      # UDP Socket API</span><br><span class="line">    ├── Arduino_10BASE_T1S_UDP.cpp    # ← IDE 自动编译</span><br><span class="line">    ├── MacAddress.h/.cpp             # MAC 地址工具类</span><br><span class="line">    ├── T1SPlcaSettings.h/.cpp        # PLCA 配置</span><br><span class="line">    ├── T1SMacSettings.h/.cpp         # MAC 配置</span><br><span class="line">    │</span><br><span class="line">    ├── microchip/                    # Microchip 特定代码（vendor 子目录）</span><br><span class="line">    │   ├── TC6_Arduino_10BASE_T1S.h/.cpp   # TC6 PHY 实现</span><br><span class="line">    │   ├── TC6_Io.h/.cpp                   # SPI HAL</span><br><span class="line">    │   └── lib/</span><br><span class="line">    │       ├── libtc6/                     # Microchip OA TC6 核心（C API）</span><br><span class="line">    │       │   ├── inc/tc6.h               # 公共 API</span><br><span class="line">    │       │   ├── inc/tc6-regs.h          # LAN865x 寄存器表</span><br><span class="line">    │       │   ├── src/tc6.cpp             # 协议状态机</span><br><span class="line">    │       │   ├── src/tc6-regs.cpp        # 寄存器访问实现</span><br><span class="line">    │       │   └── cfg-example/tc6-conf.h  # libtc6 配置宏</span><br><span class="line">    │       └── liblwip/                    # 移植后的 lwIP 协议栈</span><br><span class="line">    │           ├── core/                   # ~80 个 .c 文件</span><br><span class="line">    │           │   ├── ipv4/ip4.c</span><br><span class="line">    │           │   ├── udp.c</span><br><span class="line">    │           │   ├── tcp.c</span><br><span class="line">    │           │   └── ...</span><br><span class="line">    │           ├── netif/</span><br><span class="line">    │           │   ├── ethernet.c</span><br><span class="line">    │           │   └── etharp.c</span><br><span class="line">    │           └── cfg/lwipopts.h          # lwIP 配置</span><br><span class="line">    │</span><br><span class="line">    └── lib/                          # 第三方库（可与 vendor 同级）</span><br><span class="line">        └── liblwip/                  # lwIP 协议栈（本仓库实际位置）</span><br><span class="line">            └── ...</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-2-Arduino-IDE-的自动发现规则"><a href="#2-2-Arduino-IDE-的自动发现规则" class="headerlink" title="2.2 Arduino IDE 的自动发现规则"></a>2.2 Arduino IDE 的自动发现规则</h3><ol>
+<li>任何在 <code>src/</code> 目录下的 <code>.cpp</code> &#x2F; <code>.c</code> &#x2F; <code>.S</code> 文件都会被编译</li>
+<li><strong>包括所有子目录</strong>（递归扫描）—— 这是为什么 <code>src/microchip/lib/libtc6/src/</code> 里的 100+ 文件会自动加入</li>
+<li><code>src/**/include/</code> 下的头文件自动加入编译器的 include 路径</li>
+<li>用户只需要在 <code>.ino</code> 文件中 <code>#include</code> 主头文件</li>
+<li>链接顺序与文件顺序无关，由符号解析自动完成（除非有 circular reference）</li>
+</ol>
+<h3 id="2-3-示例工程的可见文件数量"><a href="#2-3-示例工程的可见文件数量" class="headerlink" title="2.3 示例工程的可见文件数量"></a>2.3 示例工程的可见文件数量</h3><p>一个完整的 <code>UDP_Client</code> 编译大约涉及：</p>
+<table>
+<thead>
+<tr>
+<th>来源</th>
+<th>文件数</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Sketch (<code>UDP_Client.ino</code>)</td>
+<td>1</td>
+<td>用户编辑</td>
+</tr>
+<tr>
+<td>Arduino_10BASE_T1S <code>src/</code></td>
+<td>~10</td>
+<td>库本身</td>
+</tr>
+<tr>
+<td>libtc6 <code>src/</code></td>
+<td>~10</td>
+<td>协议状态机、寄存器访问</td>
+</tr>
+<tr>
+<td>liblwip <code>core/</code></td>
+<td>~80</td>
+<td>完整 TCP&#x2F;IP 协议栈（仅用到的部分编译进去）</td>
+</tr>
+<tr>
+<td>Arduino Core</td>
+<td>~30</td>
+<td><code>main.cpp</code>, <code>wiring.c</code>, <code>HardwareSerial.cpp</code> 等</td>
+</tr>
+<tr>
+<td>Renesas FSP 静态库</td>
+<td>1 个 <code>.a</code></td>
+<td>链接形式提供，不可见</td>
+</tr>
+<tr>
+<td><strong>合计编译单元</strong></td>
+<td><strong>~150 个 .o</strong></td>
+<td></td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="3-Arduino-IDE-vs-Keil-工程对比"><a href="#3-Arduino-IDE-vs-Keil-工程对比" class="headerlink" title="3. Arduino IDE vs Keil 工程对比"></a>3. Arduino IDE vs Keil 工程对比</h2><h3 id="3-1-工程文件位置对比"><a href="#3-1-工程文件位置对比" class="headerlink" title="3.1 工程文件位置对比"></a>3.1 工程文件位置对比</h3><table>
+<thead>
+<tr>
+<th>特性</th>
+<th>Keil uVision</th>
+<th>Arduino IDE</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>工程文件</strong></td>
+<td><code>.uvproj</code> (单一 XML 文件)</td>
+<td>分散在多个 <code>.txt</code> 文件</td>
+</tr>
+<tr>
+<td><strong>位置</strong></td>
+<td>项目目录下</td>
+<td><code>%LOCALAPPDATA%\Arduino15\packages\</code></td>
+</tr>
+<tr>
+<td><strong>源文件列表</strong></td>
+<td>手动添加到工程树</td>
+<td><strong>自动扫描</strong> <code>src/</code> 目录</td>
+</tr>
+<tr>
+<td><strong>编译选项</strong></td>
+<td>Project Options 对话框</td>
+<td><code>platform.txt</code> 文本配置</td>
+</tr>
+<tr>
+<td><strong>链接脚本</strong></td>
+<td><code>.sct</code> (Scatter file)</td>
+<td><code>.ld</code> (GNU Linker script)</td>
+</tr>
+<tr>
+<td><strong>板卡配置</strong></td>
+<td>Device 数据库</td>
+<td><code>boards.txt</code></td>
+</tr>
+<tr>
+<td><strong>输出文件</strong></td>
+<td><code>.axf</code> + <code>.hex</code></td>
+<td><code>.elf</code> + <code>.bin</code> + <code>.map</code></td>
+</tr>
+<tr>
+<td><strong>内存视图</strong></td>
+<td>Memory Map 窗口</td>
+<td>读 <code>.map</code> 文件</td>
+</tr>
+<tr>
+<td><strong>烧录工具</strong></td>
+<td>ULINK&#x2F;J-Link</td>
+<td>dfu-util &#x2F; bossac</td>
+</tr>
+<tr>
+<td><strong>调试</strong></td>
+<td>硬件调试器 (SWD&#x2F;JTAG)</td>
+<td><strong>无硬件调试</strong>，仅串口</td>
+</tr>
+</tbody></table>
+<h3 id="3-2-配置文件层次结构"><a href="#3-2-配置文件层次结构" class="headerlink" title="3.2 配置文件层次结构"></a>3.2 配置文件层次结构</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line">%LOCALAPPDATA%\Arduino15\packages\arduino\</span><br><span class="line">└── hardware\renesas_uno\1.6.0\              ✓ 已安装</span><br><span class="line">    │</span><br><span class="line">    ├── boards.txt              ← 板卡定义（选择哪个板子）</span><br><span class="line">    │   定义内容：</span><br><span class="line">    │   - minima.name=Arduino UNO R4 Minima</span><br><span class="line">    │   - minima.build.mcu=cortex-m4</span><br><span class="line">    │   - minima.upload.maximum_size=262144  (256KB Flash)</span><br><span class="line">    │   - minima.upload.maximum_data_size=32768  (32KB RAM)</span><br><span class="line">    │</span><br><span class="line">    ├── platform.txt            ← 编译规则（如何编译）</span><br><span class="line">    │   定义内容：</span><br><span class="line">    │   - 编译器路径和参数</span><br><span class="line">    │   - 链接器参数</span><br><span class="line">    │   - 如何生成 .bin 文件</span><br><span class="line">    │   - 烧录工具配置</span><br><span class="line">    │</span><br><span class="line">    └── variants\MINIMA\        ← 板卡特定文件 ✓ 已安装</span><br><span class="line">        ├── memory_regions.ld   ← 内存映射（重要！）✓</span><br><span class="line">        ├── fsp.ld              ← 主链接脚本 ✓</span><br><span class="line">        ├── pins_arduino.h      ← 引脚定义 ✓</span><br><span class="line">        └── libs\libfsp.a       ← Renesas FSP 静态库</span><br><span class="line"></span><br><span class="line">编译工具链 (%LOCALAPPDATA%\Arduino15\packages\arduino\tools\):</span><br><span class="line">├── arm-none-eabi-gcc\7-2017q4\  ← GCC 编译器 ✓</span><br><span class="line">├── dfu-util\0.11.0-arduino5\    ← DFU 烧录工具 ✓</span><br><span class="line">├── bossac\1.9.1-arduino5\       ← BOSSA 烧录工具 ✓</span><br><span class="line">└── openocd\0.11.0-arduino2\     ← 调试工具（仅 IDE 内部用）✓</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="4-内存映射详解"><a href="#4-内存映射详解" class="headerlink" title="4. 内存映射详解"></a>4. 内存映射详解</h2><h3 id="4-1-memory-regions-ld-文件内容"><a href="#4-1-memory-regions-ld-文件内容" class="headerlink" title="4.1 memory_regions.ld 文件内容"></a>4.1 <code>memory_regions.ld</code> 文件内容</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">/* Arduino UNO R4 Minima 内存映射 */</span><br><span class="line">RAM_START = 0x20000000;          /* SRAM 起始地址 */</span><br><span class="line">RAM_LENGTH = 0x8000;             /* 32KB = 32768 字节 */</span><br><span class="line"></span><br><span class="line">FLASH_START = 0x00000000;        /* Flash 起始地址 */</span><br><span class="line">FLASH_LENGTH = 0x40000;          /* 256KB = 262144 字节 */</span><br><span class="line"></span><br><span class="line">FLASH_IMAGE_START = 0x4000;      /* 应用程序起始（重要！）*/</span><br><span class="line">                                 /* 16KB 偏移，前面是 Bootloader */</span><br><span class="line"></span><br><span class="line">DATA_FLASH_START = 0x40100000;   /* 数据 Flash（用于 EEPROM 模拟）*/</span><br><span class="line">DATA_FLASH_LENGTH = 0x2000;      /* 8KB */</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-2-Flash-布局图"><a href="#4-2-Flash-布局图" class="headerlink" title="4.2 Flash 布局图"></a>4.2 Flash 布局图</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line">RA4M1 Flash (256KB) 完整布局:</span><br><span class="line"></span><br><span class="line">地址范围                    大小      用途                    烧录方式</span><br><span class="line">┌──────────────────────────────────────────────────────────────┐</span><br><span class="line">│ 0x00000000 - 0x00003FFF   16KB    DFU Bootloader          出厂固化 │</span><br><span class="line">│                                   (Arduino 官方烧录的)           │</span><br><span class="line">│                                   负责 USB DFU 协议              │</span><br><span class="line">├──────────────────────────────────────────────────────────────┤</span><br><span class="line">│ 0x00004000 - 0x0003FFFF   240KB   你的应用程序  ← IDE 烧录到这里 │</span><br><span class="line">│                                   - .text (代码段)             │</span><br><span class="line">│                                   - .rodata (常量)             │</span><br><span class="line">│                                   - .data 初始值               │</span><br><span class="line">│                                   - 中断向量表                 │</span><br><span class="line">└──────────────────────────────────────────────────────────────┘</span><br><span class="line"></span><br><span class="line">RAM (32KB) 布局:</span><br><span class="line"></span><br><span class="line">地址范围                    用途</span><br><span class="line">┌──────────────────────────────────────────────────────────────┐</span><br><span class="line">│ 0x20000000 - 0x200007FF   .data 段 (初始化全局变量)           │</span><br><span class="line">├──────────────────────────────────────────────────────────────┤</span><br><span class="line">│ 0x20000800 - 0x20006FFF   .bss 段 (未初始化全局变量)          │</span><br><span class="line">│                           - lwIP heap                         │</span><br><span class="line">│                           - pbuf pool                         │</span><br><span class="line">├──────────────────────────────────────────────────────────────┤</span><br><span class="line">│ 0x20007000 - 0x20007BFF   Heap (动态分配)                     │</span><br><span class="line">├──────────────────────────────────────────────────────────────┤</span><br><span class="line">│ 0x20007C00 - 0x20007FFF   Stack (函数调用栈)                  │</span><br><span class="line">└──────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<p><strong>关键点</strong>：</p>
+<ul>
+<li>用户程序从 <code>0x4000</code> 开始，不是 <code>0x0000</code></li>
+<li>前 16KB 被 Bootloader 占用（不可覆盖）</li>
+<li><code>boards.txt</code> 中 <code>upload.address=0x00010000</code> 是 DFU 协议的参数（不是实际烧录偏移）</li>
+</ul>
+<hr>
+<h2 id="5-完整编译链接烧录流程（7-阶段）"><a href="#5-完整编译链接烧录流程（7-阶段）" class="headerlink" title="5. 完整编译链接烧录流程（7 阶段）"></a>5. 完整编译链接烧录流程（7 阶段）</h2><h3 id="5-1-阶段-1：源文件扫描"><a href="#5-1-阶段-1：源文件扫描" class="headerlink" title="5.1 阶段 1：源文件扫描"></a>5.1 阶段 1：源文件扫描</h3><p>Arduino IDE 递归扫描以下目录（约 120-150 个源文件）：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">你的 Sketch:</span><br><span class="line">└── UDP_Client.ino</span><br><span class="line"></span><br><span class="line">库目录 (自动发现):</span><br><span class="line">└── libraries/Arduino_10BASE_T1S/src/</span><br><span class="line">    ├── *.cpp/*.c        (约 10 个文件)</span><br><span class="line">    └── lib/liblwip/     (约 80 个 .c 文件)</span><br><span class="line"></span><br><span class="line">Arduino 核心库:</span><br><span class="line">└── cores/arduino/       (约 30 个文件)</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-2-阶段-2：编译-c-cpp-→-o"><a href="#5-2-阶段-2：编译-c-cpp-→-o" class="headerlink" title="5.2 阶段 2：编译 (.c&#x2F;.cpp → .o)"></a>5.2 阶段 2：编译 (.c&#x2F;.cpp → .o)</h3><p><strong>编译命令示例</strong>：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">arm-none-eabi-g++ \</span><br><span class="line">  -c -Os -g3 \</span><br><span class="line">  -std=gnu++17 \</span><br><span class="line">  -mcpu=cortex-m4 \</span><br><span class="line">  -mfpu=fpv4-sp-d16 \</span><br><span class="line">  -mfloat-abi=hard \</span><br><span class="line">  -mthumb \</span><br><span class="line">  -ffunction-sections \</span><br><span class="line">  -fdata-sections \</span><br><span class="line">  -fno-rtti \</span><br><span class="line">  -fno-exceptions \</span><br><span class="line">  -DARDUINO_UNOR4_MINIMA \</span><br><span class="line">  -DF_CPU=48000000 \</span><br><span class="line">  -I... \</span><br><span class="line">  Arduino_10BASE_T1S_UDP.cpp \</span><br><span class="line">  -o Arduino_10BASE_T1S_UDP.cpp.o</span><br></pre></td></tr></table></figure>
+
+<p><strong>关键编译选项</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>选项</th>
+<th>作用</th>
+<th>为什么需要</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>-Os</code></td>
+<td>优化大小</td>
+<td>Flash 只有 256KB</td>
+</tr>
+<tr>
+<td><code>-ffunction-sections</code></td>
+<td>每个函数独立段</td>
+<td>链接时可以移除未使用函数</td>
+</tr>
+<tr>
+<td><code>-fno-rtti</code></td>
+<td>禁用 RTTI</td>
+<td>节省 Flash 空间</td>
+</tr>
+<tr>
+<td><code>-fno-exceptions</code></td>
+<td>禁用异常</td>
+<td>节省 Flash 空间</td>
+</tr>
+<tr>
+<td><code>-mcpu=cortex-m4</code></td>
+<td>目标 CPU</td>
+<td>生成 Cortex-M4 指令</td>
+</tr>
+<tr>
+<td><code>-mfloat-abi=hard</code></td>
+<td>硬件浮点</td>
+<td>使用 FPU 加速浮点运算</td>
+</tr>
+<tr>
+<td><code>-g3</code></td>
+<td>最高级别调试信息</td>
+<td><code>.map</code> 与 <code>.elf</code> 仍可定位符号</td>
+</tr>
+</tbody></table>
+<h3 id="5-3-阶段-3：打包核心库-o-→-core-a"><a href="#5-3-阶段-3：打包核心库-o-→-core-a" class="headerlink" title="5.3 阶段 3：打包核心库 (.o → core.a)"></a>5.3 阶段 3：打包核心库 (.o → core.a)</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">arm-none-eabi-ar rcs core.a \</span><br><span class="line">  main.cpp.o \</span><br><span class="line">  wiring.c.o \</span><br><span class="line">  HardwareSerial.cpp.o \</span><br><span class="line">  ... (所有 Arduino 核心 .o 文件)</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-4-阶段-4：链接-o-a-→-elf"><a href="#5-4-阶段-4：链接-o-a-→-elf" class="headerlink" title="5.4 阶段 4：链接 (.o + .a → .elf)"></a>5.4 阶段 4：链接 (.o + .a → .elf)</h3><p><strong>链接命令</strong>：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">arm-none-eabi-g++ \</span><br><span class="line">  -mcpu=cortex-m4 \</span><br><span class="line">  -mfpu=fpv4-sp-d16 \</span><br><span class="line">  -mfloat-abi=hard \</span><br><span class="line">  -Wl,--gc-sections \            <span class="comment"># 垃圾回收未使用代码</span></span><br><span class="line">  --specs=nano.specs \           <span class="comment"># 使用 newlib-nano</span></span><br><span class="line">  -T fsp.ld \                    <span class="comment"># 链接脚本</span></span><br><span class="line">  -o UDP_Client.ino.elf \</span><br><span class="line">  \</span><br><span class="line">  *.o \                          <span class="comment"># 所有 .o 文件</span></span><br><span class="line">  -Wl,--whole-archive \</span><br><span class="line">  libfsp.a \                     <span class="comment"># Renesas FSP 库</span></span><br><span class="line">  core.a \                       <span class="comment"># Arduino 核心库</span></span><br><span class="line">  -Wl,--no-whole-archive \</span><br><span class="line">  -lstdc++ -lm -lc -lgcc \</span><br><span class="line">  -Wl,-Map,UDP_Client.ino.map   <span class="comment"># 生成 Map 文件</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>链接脚本 <code>fsp.ld</code> 的作用</strong>：</p>
+<ul>
+<li>定义内存区域 (Flash @ 0x0, RAM @ 0x20000000)</li>
+<li>定义段布局 (<code>.text</code>, <code>.data</code>, <code>.bss</code>, <code>.heap</code>, <code>.stack</code>)</li>
+<li>设置入口点 (<code>Reset_Handler</code>)</li>
+<li>定义堆栈大小</li>
+</ul>
+<p><strong>精简版 <code>fsp.ld</code></strong>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br></pre></td><td class="code"><pre><span class="line">MEMORY</span><br><span class="line">&#123;</span><br><span class="line">  FLASH (rx)  : ORIGIN = 0x00000000, LENGTH = 0x40000</span><br><span class="line">  RAM (rwx)   : ORIGIN = 0x20000000, LENGTH = 0x8000</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">SECTIONS</span><br><span class="line">&#123;</span><br><span class="line">  .vectors 0x00004000 : &#123; KEEP(*(.vectors)) &#125; &gt; FLASH</span><br><span class="line">  </span><br><span class="line">  .text : &#123;</span><br><span class="line">    *(.text*)</span><br><span class="line">    *(.rodata*)</span><br><span class="line">  &#125; &gt; FLASH</span><br><span class="line">  </span><br><span class="line">  .data : &#123;</span><br><span class="line">    _sdata = .;</span><br><span class="line">    *(.data*)</span><br><span class="line">    _edata = .;</span><br><span class="line">  &#125; &gt; RAM AT &gt; FLASH</span><br><span class="line">  </span><br><span class="line">  .bss : &#123;</span><br><span class="line">    _sbss = .;</span><br><span class="line">    *(.bss*)</span><br><span class="line">    _ebss = .;</span><br><span class="line">  &#125; &gt; RAM</span><br><span class="line">  </span><br><span class="line">  .heap : &#123;</span><br><span class="line">    _heap_start = .;</span><br><span class="line">    . = . + 0x2000;  /* 8KB heap */</span><br><span class="line">    _heap_end = .;</span><br><span class="line">  &#125; &gt; RAM</span><br><span class="line">  </span><br><span class="line">  .stack : &#123;</span><br><span class="line">    . = ALIGN(8);</span><br><span class="line">    _stack_end = .;</span><br><span class="line">    . = . + 0x400;   /* 1KB stack */</span><br><span class="line">    _stack_start = .;</span><br><span class="line">  &#125; &gt; RAM</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-5-阶段-5：生成二进制-elf-→-bin"><a href="#5-5-阶段-5：生成二进制-elf-→-bin" class="headerlink" title="5.5 阶段 5：生成二进制 (.elf → .bin)"></a>5.5 阶段 5：生成二进制 (.elf → .bin)</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">arm-none-eabi-objcopy \</span><br><span class="line">  -O binary \</span><br><span class="line">  -j .text \</span><br><span class="line">  -j .data \</span><br><span class="line">  UDP_Client.ino.elf \</span><br><span class="line">  UDP_Client.ino.bin</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-6-阶段-6：计算大小"><a href="#5-6-阶段-6：计算大小" class="headerlink" title="5.6 阶段 6：计算大小"></a>5.6 阶段 6：计算大小</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">arm-none-eabi-size -A UDP_Client.ino.elf</span><br></pre></td></tr></table></figure>
+
+<p><strong>典型输出</strong>（<code>UDP_Client</code> + <code>Arduino_10BASE_T1S</code> v0.1.1）：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">section            size      addr</span><br><span class="line">.text            98234   0x4100      ← 代码段</span><br><span class="line">.rodata          12456   0x1c01a     ← 只读数据</span><br><span class="line">.data             2048   0x20000000  ← 初始化数据</span><br><span class="line">.bss             26408   0x20000800  ← 未初始化数据</span><br><span class="line"></span><br><span class="line">Total Flash: 110690 / 262144 (42%)</span><br><span class="line">Total RAM:    28456 / 32768  (86%)  ← 警告：RAM 几乎用完！</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-7-阶段-7：烧录到-MCU"><a href="#5-7-阶段-7：烧录到-MCU" class="headerlink" title="5.7 阶段 7：烧录到 MCU"></a>5.7 阶段 7：烧录到 MCU</h3><p><strong>使用 <code>bossac</code> 工具</strong>（UNO R4 默认烧录器）：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">bossac --port=COM3 -e -w -v -b UDP_Client.ino.bin -R</span><br></pre></td></tr></table></figure>
+
+<p><strong>烧录过程</strong>：</p>
+<ol>
+<li>PC 打开串口，触发 RA4M1 复位进入 Bootloader</li>
+<li>Bootloader 擦除 Flash (0x4000-0x3FFFF)</li>
+<li>逐块写入 <code>.bin</code> 内容</li>
+<li>验证后复位，从 0x4000 开始运行</li>
+</ol>
+<blockquote>
+<p><strong>注意</strong>：一些板子（Portenta H7）使用 DFU 而非 BOSSA，烧录命令变为 <code>dfu-util --device ... -D *.bin</code>。</p>
+</blockquote>
+<hr>
+<h2 id="6-关键产物详解"><a href="#6-关键产物详解" class="headerlink" title="6. 关键产物详解"></a>6. 关键产物详解</h2><h3 id="6-1-map-文件-—-最重要的调试工具"><a href="#6-1-map-文件-—-最重要的调试工具" class="headerlink" title="6.1 .map 文件 — 最重要的调试工具"></a>6.1 <code>.map</code> 文件 — 最重要的调试工具</h3><p><strong>位置</strong>：<code>build/UDP_Client.ino.map</code></p>
+<p><strong>用途</strong>：</p>
+<ul>
+<li>查看每个函数的 Flash 地址</li>
+<li>查看全局变量的 RAM 地址</li>
+<li>找出最大的函数（优化 Flash 使用）</li>
+<li>定位链接错误（undefined reference &#x2F; multiple definition）</li>
+</ul>
+<p><strong>示例内容</strong>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">.text           0x00004100    0x17fda</span><br><span class="line"> .text          0x00004100       0x48 main.cpp.o</span><br><span class="line">                0x00004100                main</span><br><span class="line"> .text          0x00004148      0x128 Arduino_10BASE_T1S_UDP.cpp.o</span><br><span class="line">                0x00004148                Arduino_10BASE_T1S_UDP::begin</span><br><span class="line">                0x00004198                Arduino_10BASE_T1S_UDP::endPacket</span><br><span class="line"> .text          0x00004270      0x234 TC6_Io.cpp.o</span><br><span class="line">                0x00004270                TC6_Io::spiTransaction</span><br><span class="line">                </span><br><span class="line">.data           0x20000000      0x800</span><br><span class="line"> .data          0x20000000       0x10 Arduino_10BASE_T1S_UDP.cpp.o</span><br><span class="line">                0x20000000                _rx_pkt_list</span><br><span class="line">                </span><br><span class="line">.bss            0x20000800     0x6738</span><br><span class="line"> .bss           0x20000800     0x1000 lwip_mem.c.o</span><br><span class="line">                0x20000800                lwip_heap</span><br></pre></td></tr></table></figure>
+
+<p><strong>使用技巧</strong>：</p>
+<figure class="highlight powershell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查找某个函数的地址</span></span><br><span class="line"><span class="built_in">Select-String</span> <span class="literal">-Path</span> build/*.map <span class="literal">-Pattern</span> <span class="string">&quot;TC6_Io::spiTransaction&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 找出最大的 10 个函数</span></span><br><span class="line"><span class="built_in">Get-Content</span> build/*.map | <span class="built_in">Select-String</span> <span class="string">&quot;\.text\.&quot;</span> | </span><br><span class="line">  <span class="built_in">ForEach-Object</span> &#123; <span class="variable">$_</span>.ToString().Split() &#125; |</span><br><span class="line">  <span class="built_in">Where-Object</span> &#123; <span class="variable">$_</span> <span class="operator">-match</span> <span class="string">&quot;^0x[0-9a-f]&#123;4,&#125;<span class="variable">$</span>&quot;</span> &#125; |</span><br><span class="line">  <span class="built_in">Sort-Object</span> <span class="literal">-Descending</span> | <span class="built_in">Select-Object</span> <span class="literal">-First</span> <span class="number">10</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看 lwIP 占用的 Flash</span></span><br><span class="line"><span class="built_in">Select-String</span> <span class="literal">-Path</span> build/*.map <span class="literal">-Pattern</span> <span class="string">&quot;lwip&quot;</span> | <span class="built_in">Measure-Object</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="6-2-三种产物文件"><a href="#6-2-三种产物文件" class="headerlink" title="6.2 三种产物文件"></a>6.2 三种产物文件</h3><table>
+<thead>
+<tr>
+<th>文件</th>
+<th>大小</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>UDP_Client.ino.elf</code></td>
+<td>~400KB</td>
+<td>完整 ELF，含调试符号、<code>.map</code> 信息、<code>.bin</code> 内容</td>
+</tr>
+<tr>
+<td><code>UDP_Client.ino.bin</code></td>
+<td>~110KB</td>
+<td>纯二进制，烧录用</td>
+</tr>
+<tr>
+<td><code>UDP_Client.ino.map</code></td>
+<td>~200KB</td>
+<td>文本格式符号表，调试用</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="7-调试技巧"><a href="#7-调试技巧" class="headerlink" title="7. 调试技巧"></a>7. 调试技巧</h2><h3 id="7-1-启用详细编译输出"><a href="#7-1-启用详细编译输出" class="headerlink" title="7.1 启用详细编译输出"></a>7.1 启用详细编译输出</h3><p><strong>Arduino IDE</strong>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">文件 → 首选项</span><br><span class="line">☑ 编译时显示详细输出</span><br><span class="line">☑ 上传时显示详细输出</span><br></pre></td></tr></table></figure>
+
+<p>你将看到完整的编译命令，例如：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">&quot;C:\...\arm-none-eabi-g++&quot; -c -Os -g3 -mcpu=cortex-m4 ...</span><br><span class="line">  -o &quot;Arduino_10BASE_T1S_UDP.cpp.o&quot;</span><br><span class="line">  &quot;Arduino_10BASE_T1S_UDP.cpp&quot;</span><br><span class="line"></span><br><span class="line">编译完成后:</span><br><span class="line">Sketch uses 110834 bytes (42%) of program storage space.</span><br><span class="line">Global variables use 28456 bytes (86%) of dynamic memory.</span><br></pre></td></tr></table></figure>
+
+<h3 id="7-2-使用-arduino-cli-命令行编译"><a href="#7-2-使用-arduino-cli-命令行编译" class="headerlink" title="7.2 使用 arduino-cli 命令行编译"></a>7.2 使用 <code>arduino-cli</code> 命令行编译</h3><figure class="highlight powershell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 编译</span></span><br><span class="line">arduino<span class="literal">-cli</span> compile <span class="literal">--fqbn</span> arduino:renesas_uno:minima `</span><br><span class="line">  <span class="literal">--verbose</span> `</span><br><span class="line">  <span class="literal">--build-path</span> ./build `</span><br><span class="line">  UDP_Client.ino</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看生成的文件</span></span><br><span class="line"><span class="built_in">ls</span> build/</span><br><span class="line"><span class="comment"># UDP_Client.ino.elf</span></span><br><span class="line"><span class="comment"># UDP_Client.ino.bin</span></span><br><span class="line"><span class="comment"># UDP_Client.ino.map  ← 最重要</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 烧录</span></span><br><span class="line">arduino<span class="literal">-cli</span> upload <span class="literal">--fqbn</span> arduino:renesas_uno:minima `</span><br><span class="line">  <span class="literal">--port</span> COM3 `</span><br><span class="line">  <span class="literal">--input-dir</span> build</span><br></pre></td></tr></table></figure>
+
+<h3 id="7-3-反汇编查看生成的代码"><a href="#7-3-反汇编查看生成的代码" class="headerlink" title="7.3 反汇编查看生成的代码"></a>7.3 反汇编查看生成的代码</h3><figure class="highlight powershell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 反汇编整个 .elf 文件</span></span><br><span class="line">arm<span class="literal">-none-eabi-objdump</span> <span class="literal">-D</span> build/UDP_Client.ino.elf &gt; disassembly.txt</span><br><span class="line"></span><br><span class="line"><span class="comment"># 只反汇编代码段（带源码混合）</span></span><br><span class="line">arm<span class="literal">-none-eabi-objdump</span> <span class="literal">-S</span> build/UDP_Client.ino.elf &gt; disassembly_with_source.txt</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看某个函数的汇编</span></span><br><span class="line">arm<span class="literal">-none-eabi-objdump</span> <span class="literal">-D</span> build/UDP_Client.ino.elf | <span class="built_in">Select-String</span> <span class="literal">-Pattern</span> <span class="string">&quot;TC6_Io::spiTransaction&quot;</span> <span class="literal">-Context</span> <span class="number">0</span>,<span class="number">50</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>输出示例</strong>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">00004270 &lt;TC6_Io::spiTransaction&gt;:</span><br><span class="line">    4270:    b580         push    &#123;r7, lr&#125;</span><br><span class="line">    4272:    b084         sub     sp, #16</span><br><span class="line">    4274:    af00         add     r7, sp, #0</span><br><span class="line">    4276:    60f8         str     r0, [r7, #12]</span><br><span class="line">    4278:    60b9         str     r1, [r7, #8]</span><br><span class="line">    427a:    607a         str     r2, [r7, #4]</span><br><span class="line">    427c:    803b         strh    r3, [r7, #0]</span><br><span class="line">    427e:    68fb         ldr     r3, [r7, #12]</span><br><span class="line">    4280:    68db         ldr     r3, [r3, #12]   # _cs_pin</span><br><span class="line">    4282:    2200         movs    r2, #0</span><br><span class="line">    4284:    4619         mov     r1, r3</span><br><span class="line">    4286:    2000         movs    r0, #0</span><br><span class="line">    4288:    f7ff fffe    bl      digitalWrite</span><br><span class="line">    ...</span><br></pre></td></tr></table></figure>
+
+<h3 id="7-4-分析-Flash-使用情况"><a href="#7-4-分析-Flash-使用情况" class="headerlink" title="7.4 分析 Flash 使用情况"></a>7.4 分析 Flash 使用情况</h3><figure class="highlight powershell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 方法 1: 查看 .map 文件中的 section 大小</span></span><br><span class="line"><span class="built_in">Get-Content</span> build/UDP_Client.ino.map | <span class="built_in">Select-String</span> <span class="string">&quot;^\.text&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 方法 2: 使用 size 工具的详细模式</span></span><br><span class="line">arm<span class="literal">-none-eabi-size</span> <span class="literal">-A</span> <span class="literal">-d</span> build/UDP_Client.ino.elf</span><br><span class="line"></span><br><span class="line"><span class="comment"># 方法 3: 找出最大的符号</span></span><br><span class="line">arm<span class="literal">-none-eabi-nm</span> <span class="literal">--size-sort</span> <span class="literal">-C</span> <span class="literal">-r</span> build/UDP_Client.ino.elf | <span class="built_in">Select-Object</span> <span class="literal">-First</span> <span class="number">20</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="7-5-分析-RAM-使用情况"><a href="#7-5-分析-RAM-使用情况" class="headerlink" title="7.5 分析 RAM 使用情况"></a>7.5 分析 RAM 使用情况</h3><figure class="highlight powershell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看 .data 和 .bss 段</span></span><br><span class="line">arm<span class="literal">-none-eabi-size</span> <span class="literal">-A</span> build/UDP_Client.ino.elf | <span class="built_in">Select-String</span> <span class="string">&quot;data|bss&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 找出最大的全局变量</span></span><br><span class="line">arm<span class="literal">-none-eabi-nm</span> <span class="literal">--size-sort</span> <span class="literal">-C</span> <span class="literal">-r</span> build/UDP_Client.ino.elf | </span><br><span class="line">  <span class="built_in">Select-String</span> <span class="string">&quot; B | b &quot;</span> | <span class="built_in">Select-Object</span> <span class="literal">-First</span> <span class="number">20</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="7-6-各模块-Flash-RAM-占比速查"><a href="#7-6-各模块-Flash-RAM-占比速查" class="headerlink" title="7.6 各模块 Flash&#x2F;RAM 占比速查"></a>7.6 各模块 Flash&#x2F;RAM 占比速查</h3><p>依据 <code>Arduino_10BASE_T1S</code> v0.1.1 实测：</p>
+<table>
+<thead>
+<tr>
+<th>模块</th>
+<th>Flash 占比</th>
+<th>备注</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>lwIP (<code>liblwip/</code>)</td>
+<td>~45 KB</td>
+<td>UDP + ARP + ICMP 全开约 45 KB；禁 TCP 后降至 ~38 KB</td>
+</tr>
+<tr>
+<td>libtc6 (<code>libtc6/</code>)</td>
+<td>~15 KB</td>
+<td>OA TC6 协议状态机 + 寄存器访问</td>
+</tr>
+<tr>
+<td>库包装层（<code>TC6_Arduino_10BASE_T1S</code> 等）</td>
+<td>~8 KB</td>
+<td>包括 lwIP 集成回调</td>
+</tr>
+<tr>
+<td>Arduino Core</td>
+<td>~30 KB</td>
+<td><code>main.cpp</code>, <code>HardwareSerial</code>, <code>Print</code>, <code>Stream</code> 等</td>
+</tr>
+<tr>
+<td>FSP HAL（Renesas 静态库）</td>
+<td>~12 KB</td>
+<td><code>libfsp.a</code> 中实际被链入的部分</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="8-常见错误与解决方案"><a href="#8-常见错误与解决方案" class="headerlink" title="8. 常见错误与解决方案"></a>8. 常见错误与解决方案</h2><h3 id="8-1-Flash-空间不足"><a href="#8-1-Flash-空间不足" class="headerlink" title="8.1 Flash 空间不足"></a>8.1 Flash 空间不足</h3><p><strong>错误信息</strong>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">Sketch uses 268000 bytes (102%) of program storage space.</span><br><span class="line">Maximum is 262144 bytes.</span><br></pre></td></tr></table></figure>
+
+<p><strong>根因分析</strong>：通常因为开启了 TCP &#x2F; DHCP &#x2F; DNS 等未用功能。</p>
+<p><strong>解决方案</strong>：</p>
+<p><strong>1. 禁用 TCP（如果只用 UDP）</strong>：</p>
+<p>编辑 <code>src/lib/liblwip/cfg/lwipopts.h</code>：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">define</span> LWIP_TCP 0</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MEMP_NUM_TCP_PCB 0</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>2. 减少 pbuf pool</strong>：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">define</span> PBUF_POOL_SIZE 8    <span class="comment">// 原来 16</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MEMP_NUM_PBUF 8     <span class="comment">// 原来 16</span></span></span><br></pre></td></tr></table></figure>
+
+<p><strong>3. 移除未使用的功能</strong>：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">define</span> LWIP_DHCP 0       <span class="comment">// 如果不用 DHCP</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> LWIP_AUTOIP 0     <span class="comment">// 如果不用 AutoIP</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> LWIP_IGMP 0       <span class="comment">// 如果不用多播</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> LWIP_DNS 0        <span class="comment">// 如果不用 DNS</span></span></span><br></pre></td></tr></table></figure>
+
+<h3 id="8-2-RAM-空间不足"><a href="#8-2-RAM-空间不足" class="headerlink" title="8.2 RAM 空间不足"></a>8.2 RAM 空间不足</h3><p><strong>错误信息</strong>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">Global variables use 33000 bytes (101%) of dynamic memory,</span><br><span class="line">leaving -768 bytes for local variables.</span><br></pre></td></tr></table></figure>
+
+<p><strong>根因</strong>：UNO R4 Minima 只有 32KB RAM，lwIP heap + pbuf pool + 你的全局变量很容易突破。</p>
+<p><strong>解决方案</strong>：</p>
+<p><strong>1. 减少 lwIP 内存池</strong>：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">define</span> MEM_SIZE (12*1024)   <span class="comment">// 原来 16KB，改为 12KB</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PBUF_POOL_SIZE 6     <span class="comment">// 原来 16</span></span></span><br></pre></td></tr></table></figure>
+
+<p><strong>2. 减少 TCP 缓冲区</strong>（如果仍启用 TCP）：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">define</span> TCP_SND_BUF (2*TCP_MSS)  <span class="comment">// 原来 4*TCP_MSS</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> TCP_WND (2*TCP_MSS)      <span class="comment">// 原来 4*TCP_MSS</span></span></span><br></pre></td></tr></table></figure>
+
+<p><strong>3. 使用动态内存</strong>（小心内存碎片）：</p>
+<p>将大的静态缓冲区改为 <code>malloc/free</code> 或 C++ <code>new/delete</code>。</p>
+<h3 id="8-3-链接错误：undefined-reference"><a href="#8-3-链接错误：undefined-reference" class="headerlink" title="8.3 链接错误：undefined reference"></a>8.3 链接错误：<code>undefined reference</code></h3><p><strong>错误示例</strong>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">undefined reference to `TC6_Service&#x27;</span><br></pre></td></tr></table></figure>
+
+<p><strong>原因</strong>：</p>
+<ul>
+<li>函数声明了但没有定义</li>
+<li>库文件没有正确链接（被 IDE 自动排除）</li>
+</ul>
+<p><strong>解决</strong>：</p>
+<ol>
+<li>确认源文件在 <code>src/</code> 目录下（含子目录）</li>
+<li>检查函数名是否正确（C++ 注意命名空间 <code>Mchp::TC6::</code>）</li>
+<li>重启 Arduino IDE 刷新库缓存</li>
+<li>用 <code>arduino-cli compile --verbose</code> 看哪些 <code>.cpp</code> 被加入编译列表</li>
+</ol>
+<h3 id="8-4-链接错误：multiple-definition"><a href="#8-4-链接错误：multiple-definition" class="headerlink" title="8.4 链接错误：multiple definition"></a>8.4 链接错误：<code>multiple definition</code></h3><p><strong>错误示例</strong>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">multiple definition of `TC6_Service&#x27;</span><br></pre></td></tr></table></figure>
+
+<p><strong>原因</strong>：通常是把同一库复制了多份，或多个库包含同名符号。</p>
+<p><strong>解决</strong>：</p>
+<ol>
+<li>检查 <code>~/Documents/Arduino/libraries/</code> 下是否有多份相同库</li>
+<li>检查 IDE 内置库与用户库是否冲突</li>
+<li>必要时给某个库的符号加前缀（例如 <code>mchp_tc6_service</code> vs <code>vendor_tc6_service</code>）</li>
+</ol>
+<h3 id="8-5-烧录失败"><a href="#8-5-烧录失败" class="headerlink" title="8.5 烧录失败"></a>8.5 烧录失败</h3><p><strong>错误信息</strong>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">No DFU capable USB device found  (dfu-util)</span><br><span class="line">或</span><br><span class="line">Could not find device on COM3   (bossac)</span><br></pre></td></tr></table></figure>
+
+<p><strong>解决</strong>：</p>
+<ol>
+<li>双击 Arduino 板上的 RESET 按钮，让 Bootloader 接管</li>
+<li>检查 USB 线缆是否支持数据传输（部分便宜线只供电）</li>
+<li>更新 USB 驱动（CH340 &#x2F; RA4M1 内置）</li>
+<li>检查串口是否被其他程序占用（关闭串口监视器再烧录）</li>
+<li>UNO R4 Minima 默认用 BOSSA，要确保 Board 选择正确</li>
+</ol>
+<h3 id="8-6-找不到库"><a href="#8-6-找不到库" class="headerlink" title="8.6 找不到库"></a>8.6 找不到库</h3><p><strong>错误信息</strong>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">fatal error: Arduino_10BASE_T1S.h: No such file or directory</span><br><span class="line"> #include &lt;Arduino_10BASE_T1S.h&gt;</span><br><span class="line">          ^~~~~~~~~~~~~~~~~~~~~~~~~</span><br></pre></td></tr></table></figure>
+
+<p><strong>原因</strong>：库没有安装或路径不对。</p>
+<p><strong>解决</strong>：</p>
+<ol>
+<li>检查库目录是否存在：<code>~/Documents/Arduino/libraries/Arduino_10BASE_T1S/</code></li>
+<li>确认 <code>library.properties</code> 文件存在</li>
+<li>重启 Arduino IDE（IDE 启动时扫描库目录）</li>
+<li><code>arduino-cli</code> 用户：<code>arduino-cli lib install Arduino_10BASE_T1S</code></li>
+</ol>
+<hr>
+<h2 id="9-开发工作流建议"><a href="#9-开发工作流建议" class="headerlink" title="9. 开发工作流建议"></a>9. 开发工作流建议</h2><h3 id="9-1-阶段化集成策略"><a href="#9-1-阶段化集成策略" class="headerlink" title="9.1 阶段化集成策略"></a>9.1 阶段化集成策略</h3><p>强烈推荐<strong>自底向上</strong>逐步集成，每一步可独立验证：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">阶段 1: SPI 通信        ─── 不依赖 lwIP 与协议栈</span><br><span class="line">        ↓</span><br><span class="line">阶段 2: libtc6 协议     ─── 验证 SPI 帧收发、寄存器读写</span><br><span class="line">        ↓</span><br><span class="line">阶段 3: lwIP 初始化    ─── 仅 netif + IP 配置，不发包</span><br><span class="line">        ↓</span><br><span class="line">阶段 4: ARP / ICMP     ─── 用 ping 验证链路</span><br><span class="line">        ↓</span><br><span class="line">阶段 5: UDP            ─── UDP echo / 简单数据收发</span><br><span class="line">        ↓</span><br><span class="line">阶段 6: 完整应用       ─── 集成到 sketch 中</span><br></pre></td></tr></table></figure>
+
+<h3 id="9-2-阶段-1-模板：仅验证-SPI（不依赖完整库）"><a href="#9-2-阶段-1-模板：仅验证-SPI（不依赖完整库）" class="headerlink" title="9.2 阶段 1 模板：仅验证 SPI（不依赖完整库）"></a>9.2 阶段 1 模板：仅验证 SPI（不依赖完整库）</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;SPI.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> CS_PIN    9</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> RESET_PIN 6</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">setup</span><span class="params">()</span> </span>&#123;</span><br><span class="line">  Serial.<span class="built_in">begin</span>(<span class="number">115200</span>);</span><br><span class="line">  <span class="keyword">while</span> (!Serial);</span><br><span class="line"></span><br><span class="line">  <span class="built_in">pinMode</span>(CS_PIN, OUTPUT);</span><br><span class="line">  <span class="built_in">digitalWrite</span>(CS_PIN, HIGH);</span><br><span class="line"></span><br><span class="line">  <span class="built_in">pinMode</span>(RESET_PIN, OUTPUT);</span><br><span class="line">  <span class="built_in">digitalWrite</span>(RESET_PIN, LOW);</span><br><span class="line">  <span class="built_in">delay</span>(<span class="number">100</span>);</span><br><span class="line">  <span class="built_in">digitalWrite</span>(RESET_PIN, HIGH);</span><br><span class="line">  <span class="built_in">delay</span>(<span class="number">100</span>);</span><br><span class="line"></span><br><span class="line">  SPI.<span class="built_in">begin</span>();</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 通过 TC6 协议读取 chip_id</span></span><br><span class="line">  <span class="type">uint32_t</span> chip_id = <span class="built_in">readReg</span>(<span class="number">0x00000001</span>);</span><br><span class="line">  Serial.<span class="built_in">print</span>(<span class="string">&quot;Chip ID: 0x&quot;</span>);</span><br><span class="line">  Serial.<span class="built_in">println</span>(chip_id, HEX);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">loop</span><span class="params">()</span> </span>&#123;&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">uint32_t</span> <span class="title">readReg</span><span class="params">(<span class="type">uint32_t</span> addr)</span> </span>&#123;</span><br><span class="line">  <span class="comment">// OA TC6 控制帧的读寄存器协议（详见协议栈深度分析文章）</span></span><br><span class="line">  <span class="comment">// ...</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>优势</strong>：快速验证硬件连接，不需要完整的网络栈，单个文件即可调试。</p>
+<h3 id="9-3-阶段-3-模板：lwIP-loopback-测试"><a href="#9-3-阶段-3-模板：lwIP-loopback-测试" class="headerlink" title="9.3 阶段 3 模板：lwIP loopback 测试"></a>9.3 阶段 3 模板：lwIP loopback 测试</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 配置 lwIP 使用 loopback</span></span><br><span class="line"><span class="built_in">netif_add</span>(&amp;netif, &amp;ipaddr, &amp;netmask, &amp;gw, <span class="literal">NULL</span>, netif_init_loopback, ethernet_input);</span><br><span class="line"><span class="built_in">netif_set_link_up</span>(&amp;netif);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 测试 UDP echo 到 127.0.0.1</span></span><br><span class="line">udp.<span class="built_in">beginPacket</span>(<span class="built_in">IPAddress</span>(<span class="number">127</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">1</span>), <span class="number">8888</span>);</span><br><span class="line">udp.<span class="built_in">write</span>(<span class="string">&quot;test&quot;</span>);</span><br><span class="line">udp.<span class="built_in">endPacket</span>();</span><br></pre></td></tr></table></figure>
+
+<p>此阶段不接 MAC-PHY，验证 lwIP 协议栈本身的配置是否正确。</p>
+<h3 id="9-4-完整工作流-checklist"><a href="#9-4-完整工作流-checklist" class="headerlink" title="9.4 完整工作流 checklist"></a>9.4 完整工作流 checklist</h3><ul>
+<li><input disabled="" type="checkbox"> <strong>Step 1</strong>：运行 Microchip 官方 <code>UDP_Client</code> 示例通过</li>
+<li><input disabled="" type="checkbox"> <strong>Step 2</strong>：读 <code>.map</code> 文件确认 lwIP &#x2F; libtc6 各占多少 Flash</li>
+<li><input disabled="" type="checkbox"> <strong>Step 3</strong>：按需裁剪 <code>lwipopts.h</code></li>
+<li><input disabled="" type="checkbox"> <strong>Step 4</strong>：用 <code>arduino-cli</code> 集成到自己的构建脚本</li>
+<li><input disabled="" type="checkbox"> <strong>Step 5</strong>：配置 CI 自动编译（GitHub Actions &#x2F; GitLab CI）</li>
+<li><input disabled="" type="checkbox"> <strong>Step 6</strong>：用 <code>objdump</code> 反汇编关键函数，验证性能假设</li>
+</ul>
+<hr>
+<h2 id="10-推荐的工具链"><a href="#10-推荐的工具链" class="headerlink" title="10. 推荐的工具链"></a>10. 推荐的工具链</h2><h3 id="10-1-VSCode-Arduino-插件"><a href="#10-1-VSCode-Arduino-插件" class="headerlink" title="10.1 VSCode + Arduino 插件"></a>10.1 VSCode + Arduino 插件</h3><figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// .vscode/settings.json</span></span><br><span class="line"><span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;arduino.path&quot;</span><span class="punctuation">:</span> <span class="string">&quot;C:/Program Files/Arduino IDE&quot;</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;arduino.useArduinoCli&quot;</span><span class="punctuation">:</span> <span class="literal"><span class="keyword">true</span></span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;C_Cpp.default.includePath&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span></span><br><span class="line">    <span class="string">&quot;C:/Users/你的用户名/AppData/Local/Arduino15/packages/arduino/hardware/renesas_uno/1.x.x/cores/arduino&quot;</span><span class="punctuation">,</span></span><br><span class="line">    <span class="string">&quot;C:/Users/你的用户名/Documents/Arduino/libraries/**&quot;</span></span><br><span class="line">  <span class="punctuation">]</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>优势</strong>：</p>
+<ul>
+<li>代码补全（IntelliSense）</li>
+<li>定义跳转（F12）</li>
+<li>Git 集成</li>
+<li>多文件编辑友好</li>
+</ul>
+<h3 id="10-2-命令行：arduino-cli"><a href="#10-2-命令行：arduino-cli" class="headerlink" title="10.2 命令行：arduino-cli"></a>10.2 命令行：<code>arduino-cli</code></h3><p>安装：</p>
+<figure class="highlight powershell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Windows (用 Scoop)</span></span><br><span class="line">scoop install arduino<span class="literal">-cli</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 或下载 zip: https://github.com/arduino/arduino-cli/releases</span></span><br></pre></td></tr></table></figure>
+
+<p>完整编译+烧录+监视串口：</p>
+<figure class="highlight powershell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 配置核心</span></span><br><span class="line">arduino<span class="literal">-cli</span> core <span class="built_in">update-index</span></span><br><span class="line">arduino<span class="literal">-cli</span> core install arduino:renesas_uno</span><br><span class="line"></span><br><span class="line"><span class="comment"># 编译</span></span><br><span class="line">arduino<span class="literal">-cli</span> compile <span class="literal">--fqbn</span> arduino:renesas_uno:minima `</span><br><span class="line">  <span class="literal">--output-dir</span> build `</span><br><span class="line">  .\examples\UDP_Client\UDP_Client.ino</span><br><span class="line"></span><br><span class="line"><span class="comment"># 烧录</span></span><br><span class="line">arduino<span class="literal">-cli</span> upload <span class="literal">--fqbn</span> arduino:renesas_uno:minima `</span><br><span class="line">  <span class="literal">--port</span> COM3 `</span><br><span class="line">  <span class="literal">--input-dir</span> build</span><br><span class="line"></span><br><span class="line"><span class="comment"># 监视串口</span></span><br><span class="line">arduino<span class="literal">-cli</span> monitor <span class="literal">--port</span> COM3 <span class="literal">--config</span> baudrate=<span class="number">115200</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="10-3-版本控制"><a href="#10-3-版本控制" class="headerlink" title="10.3 版本控制"></a>10.3 版本控制</h3><p><code>.gitignore</code>（至少包含）：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">build/</span><br><span class="line">*.bin</span><br><span class="line">*.elf</span><br><span class="line">*.hex</span><br><span class="line">*.map</span><br><span class="line">.DS_Store</span><br></pre></td></tr></table></figure>
+
+<h3 id="10-4-持续集成（GitHub-Actions）"><a href="#10-4-持续集成（GitHub-Actions）" class="headerlink" title="10.4 持续集成（GitHub Actions）"></a>10.4 持续集成（GitHub Actions）</h3><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># .github/workflows/build.yml</span></span><br><span class="line"><span class="attr">name:</span> <span class="string">Arduino</span> <span class="string">CI</span></span><br><span class="line"></span><br><span class="line"><span class="attr">on:</span> [<span class="string">push</span>, <span class="string">pull_request</span>]</span><br><span class="line"></span><br><span class="line"><span class="attr">jobs:</span></span><br><span class="line">  <span class="attr">build:</span></span><br><span class="line">    <span class="attr">runs-on:</span> <span class="string">ubuntu-latest</span></span><br><span class="line">    <span class="attr">steps:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">uses:</span> <span class="string">actions/checkout@v4</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">uses:</span> <span class="string">arduino/setup-arduino-cli@v1</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">run:</span> <span class="string">|</span></span><br><span class="line"><span class="string">          arduino-cli core update-index</span></span><br><span class="line"><span class="string">          arduino-cli core install arduino:renesas_uno</span></span><br><span class="line"><span class="string">          arduino-cli compile --fqbn arduino:renesas_uno:minima examples/UDP_Client</span></span><br><span class="line"><span class="string">          arduino-cli compile --fqbn arduino:renesas_uno:minima examples/UDP_Server</span></span><br><span class="line"><span class="string">          arduino-cli compile --fqbn arduino:renesas_uno:minima examples/pingpong</span></span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="11-与-Keil-工程的完整操作对比"><a href="#11-与-Keil-工程的完整操作对比" class="headerlink" title="11. 与 Keil 工程的完整操作对比"></a>11. 与 Keil 工程的完整操作对比</h2><table>
+<thead>
+<tr>
+<th>任务</th>
+<th>Keil uVision</th>
+<th>Arduino IDE</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>新建工程</strong></td>
+<td>New Project → 选择 Device</td>
+<td>新建 Sketch，IDE 自动配置</td>
+</tr>
+<tr>
+<td><strong>添加源文件</strong></td>
+<td>右键工程 → Add Files</td>
+<td>放到 <code>src/</code> 目录，自动扫描</td>
+</tr>
+<tr>
+<td><strong>配置编译选项</strong></td>
+<td>Project Options → C&#x2F;C++</td>
+<td>编辑 <code>platform.txt</code>（高级）</td>
+</tr>
+<tr>
+<td><strong>配置链接器</strong></td>
+<td>Project Options → Linker</td>
+<td>编辑 <code>fsp.ld</code>（高级）</td>
+</tr>
+<tr>
+<td><strong>编译</strong></td>
+<td>Build 按钮 (F7)</td>
+<td>验证按钮 (Ctrl+R)</td>
+</tr>
+<tr>
+<td><strong>查看输出</strong></td>
+<td>Build Output 窗口</td>
+<td>控制台</td>
+</tr>
+<tr>
+<td><strong>查看内存使用</strong></td>
+<td>Linker → Memory Map</td>
+<td>读 <code>.map</code> 文件</td>
+</tr>
+<tr>
+<td><strong>烧录</strong></td>
+<td>Download 按钮 (F8)</td>
+<td>上传按钮 (Ctrl+U)</td>
+</tr>
+<tr>
+<td><strong>调试</strong></td>
+<td>Debug → Start (F5)</td>
+<td><strong>无硬件调试器</strong></td>
+</tr>
+<tr>
+<td><strong>断点调试</strong></td>
+<td>支持</td>
+<td>不支持，只能 <code>Serial.print()</code></td>
+</tr>
+<tr>
+<td><strong>查看寄存器</strong></td>
+<td>Peripherals 窗口</td>
+<td>不支持</td>
+</tr>
+<tr>
+<td><strong>查看变量</strong></td>
+<td>Watch 窗口</td>
+<td>不支持</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="12-总结"><a href="#12-总结" class="headerlink" title="12. 总结"></a>12. 总结</h2><h3 id="12-1-关键要点"><a href="#12-1-关键要点" class="headerlink" title="12.1 关键要点"></a>12.1 关键要点</h3><ol>
+<li><strong>烧录目标明确</strong>：Arduino IDE 只烧录 RA4M1 主 MCU，不烧录 LAN865x MAC-PHY</li>
+<li><strong>自动化程度高</strong>：源文件自动扫描（递归 <code>src/</code>），无需手动管理工程文件</li>
+<li><strong>配置三件套</strong>：<code>boards.txt</code>（板卡）、<code>platform.txt</code>（工具链）、<code>fsp.ld</code>（链接脚本）</li>
+<li><strong>Flash 布局</strong>：0x0000-0x3FFF 是 Bootloader，用户程序从 0x4000 开始</li>
+<li><strong>调试受限</strong>：无硬件调试器，只能用 <code>Serial.print()</code> 和 <code>.map</code> 文件</li>
+</ol>
+<h3 id="12-2-文件流程总结"><a href="#12-2-文件流程总结" class="headerlink" title="12.2 文件流程总结"></a>12.2 文件流程总结</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">源文件 (.ino/.cpp/.c)                       ← Arduino_10BASE_T1S/src/ + Sketch</span><br><span class="line">    ↓ arm-none-eabi-gcc/g++ -c</span><br><span class="line">目标文件 (.o) × 约 150 个</span><br><span class="line">    ↓ arm-none-eabi-ar</span><br><span class="line">静态库 (core.a, libfsp.a)</span><br><span class="line">    ↓ arm-none-eabi-g++ -T fsp.ld</span><br><span class="line">ELF 可执行文件 (.elf) + Map 文件 (.map)</span><br><span class="line">    ↓ arm-none-eabi-objcopy</span><br><span class="line">纯二进制文件 (.bin)</span><br><span class="line">    ↓ bossac (UNO R4) 或 dfu-util (Portenta H7)</span><br><span class="line">RA4M1 Flash @ 0x4000</span><br></pre></td></tr></table></figure>
+
+<h3 id="12-3-推荐工作流"><a href="#12-3-推荐工作流" class="headerlink" title="12.3 推荐工作流"></a>12.3 推荐工作流</h3><ol>
+<li><strong>开发阶段</strong>：使用 Arduino IDE，利用自动化</li>
+<li><strong>调试阶段</strong>：读 <code>.map</code> 文件，用 <code>Serial.print()</code> + 串口监视器</li>
+<li><strong>优化阶段</strong>：分析 <code>.map</code>、反汇编 <code>.elf</code>、裁剪 <code>lwipopts.h</code></li>
+<li><strong>生产阶段</strong>：使用 <code>arduino-cli</code> 自动化编译烧录，集成 CI</li>
+</ol>
+<h3 id="12-4-何时跳出-Arduino-框架"><a href="#12-4-何时跳出-Arduino-框架" class="headerlink" title="12.4 何时跳出 Arduino 框架"></a>12.4 何时跳出 Arduino 框架</h3><p>以下场景应考虑切到 PlatformIO + 自定义 <code>platform.txt</code>，或直接用 CMake + GNU Arm 工具链：</p>
+<ul>
+<li>需要精细控制链接脚本（如多段 Flash 分配）</li>
+<li>需要硬件调试器（GDB + OpenOCD）</li>
+<li>需要集成 RTOS（FreeRTOS 已有 Arduino 绑定但配置受限）</li>
+<li>库需要跨 MCU 平台（不只是 renesas_uno）</li>
+</ul>
+<hr>
+<h2 id="13-参考资源"><a href="#13-参考资源" class="headerlink" title="13. 参考资源"></a>13. 参考资源</h2><ul>
+<li><strong>Arduino CLI 文档</strong>: <a target="_blank" rel="noopener" href="https://arduino.github.io/arduino-cli/">https://arduino.github.io/arduino-cli/</a></li>
+<li><strong>ARM GCC 工具链</strong>: <a target="_blank" rel="noopener" href="https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain">https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain</a></li>
+<li><strong>GNU Linker 手册</strong>: <a target="_blank" rel="noopener" href="https://sourceware.org/binutils/docs/ld/">https://sourceware.org/binutils/docs/ld/</a></li>
+<li><strong>Microchip LAN8650&#x2F;LAN8651 产品页</strong>: <a target="_blank" rel="noopener" href="https://www.microchip.com/en-us/product/LAN8650">https://www.microchip.com/en-us/product/LAN8650</a></li>
+<li><strong>Arduino UNO R4 Minima 文档</strong>: <a target="_blank" rel="noopener" href="https://docs.arduino.cc/hardware/uno-r4-minima">https://docs.arduino.cc/hardware/uno-r4-minima</a></li>
+<li><strong>OA TC6 协议规范</strong>（Microchip 私有，需 NDA）</li>
+</ul>
+<hr>
+<p><strong>文档结束</strong></p>
+<p><strong>下一步阅读</strong>：</p>
+<ul>
+<li>想理解 OA TC6 协议帧本身 → <a href="/2026/06/04/10BASE-T1S-Protocol-Stack-Deep-Dive/">10BASE-T1S-Arduino-Architecture-Overview（二）：OA TC6 协议栈深度分析</a></li>
+<li>想理解库的代码接口 → <a href="/2026/07/31/10BASE-T1S-Code-Interfaces-Index/">10BASE-T1S Arduino 代码接口深度解析（〇）：系列索引</a></li>
+<li>想把库移植到其它 MCU&#x2F;MAC-PHY → <a href="/2026/06/04/10BASE-T1S-Porting-Guide/">10BASE-T1S-Arduino-Architecture-Overview（三）：移植实战指南</a></li>
+</ul>
+<p><strong>调试建议</strong>：使用 <code>arduino-cli compile --verbose</code> 查看完整编译过程。</p>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">首页</a></li>
+        
+          <li><a href="/archives/">归档</a></li>
+        
+          <li><a href="/tags/">标签</a></li>
+        
+          <li><a href="/categories/">分类</a></li>
+        
+          <li><a href="/search/">搜索</a></li>
+        
+          <li><a href="/about/">关于</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%B3%BB%E5%88%97%E5%AF%BC%E8%AF%BB"><span class="toc-number">1.</span> <span class="toc-text">系列导读</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%90%8C%E7%B3%BB%E5%88%97%E5%85%B6%E5%AE%83%E6%96%87%E7%AB%A0"><span class="toc-number">1.1.</span> <span class="toc-text">同系列其它文章</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E6%A0%B8%E5%BF%83%E9%97%AE%E9%A2%98%E8%A7%A3%E7%AD%94"><span class="toc-number">2.</span> <span class="toc-text">1. 核心问题解答</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-%E4%B8%A4%E4%B8%AA%E8%8A%AF%E7%89%87%EF%BC%8CArduino-IDE-%E7%83%A7%E5%BD%95%E5%88%B0%E5%93%AA%E4%B8%AA%EF%BC%9F"><span class="toc-number">2.1.</span> <span class="toc-text">1.1 两个芯片，Arduino IDE 烧录到哪个？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-2-%E4%B8%BA%E4%BB%80%E4%B9%88%E4%BD%A0%E7%9C%8B%E4%B8%8D%E5%88%B0%E5%BA%95%E5%B1%82%E5%BA%93%E7%9A%84%E7%BC%96%E8%AF%91%E8%BF%87%E7%A8%8B%EF%BC%9F"><span class="toc-number">2.2.</span> <span class="toc-text">1.2 为什么你看不到底层库的编译过程？</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-Arduino-%E5%BA%93%E7%9A%84%E6%A0%87%E5%87%86%E7%BB%93%E6%9E%84%E4%B8%8E-Microchip-%E6%96%B9%E6%A1%88%E5%AE%9E%E4%BE%8B"><span class="toc-number">3.</span> <span class="toc-text">2. Arduino 库的标准结构与 Microchip 方案实例</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-Arduino-%E5%BA%93%E7%9A%84%E7%9B%AE%E5%BD%95%E7%BA%A6%E5%AE%9A"><span class="toc-number">3.1.</span> <span class="toc-text">2.1 Arduino 库的目录约定</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-Arduino-IDE-%E7%9A%84%E8%87%AA%E5%8A%A8%E5%8F%91%E7%8E%B0%E8%A7%84%E5%88%99"><span class="toc-number">3.2.</span> <span class="toc-text">2.2 Arduino IDE 的自动发现规则</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-%E7%A4%BA%E4%BE%8B%E5%B7%A5%E7%A8%8B%E7%9A%84%E5%8F%AF%E8%A7%81%E6%96%87%E4%BB%B6%E6%95%B0%E9%87%8F"><span class="toc-number">3.3.</span> <span class="toc-text">2.3 示例工程的可见文件数量</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-Arduino-IDE-vs-Keil-%E5%B7%A5%E7%A8%8B%E5%AF%B9%E6%AF%94"><span class="toc-number">4.</span> <span class="toc-text">3. Arduino IDE vs Keil 工程对比</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E5%B7%A5%E7%A8%8B%E6%96%87%E4%BB%B6%E4%BD%8D%E7%BD%AE%E5%AF%B9%E6%AF%94"><span class="toc-number">4.1.</span> <span class="toc-text">3.1 工程文件位置对比</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E9%85%8D%E7%BD%AE%E6%96%87%E4%BB%B6%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84"><span class="toc-number">4.2.</span> <span class="toc-text">3.2 配置文件层次结构</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-%E5%86%85%E5%AD%98%E6%98%A0%E5%B0%84%E8%AF%A6%E8%A7%A3"><span class="toc-number">5.</span> <span class="toc-text">4. 内存映射详解</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-memory-regions-ld-%E6%96%87%E4%BB%B6%E5%86%85%E5%AE%B9"><span class="toc-number">5.1.</span> <span class="toc-text">4.1 memory_regions.ld 文件内容</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-Flash-%E5%B8%83%E5%B1%80%E5%9B%BE"><span class="toc-number">5.2.</span> <span class="toc-text">4.2 Flash 布局图</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-%E5%AE%8C%E6%95%B4%E7%BC%96%E8%AF%91%E9%93%BE%E6%8E%A5%E7%83%A7%E5%BD%95%E6%B5%81%E7%A8%8B%EF%BC%887-%E9%98%B6%E6%AE%B5%EF%BC%89"><span class="toc-number">6.</span> <span class="toc-text">5. 完整编译链接烧录流程（7 阶段）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E9%98%B6%E6%AE%B5-1%EF%BC%9A%E6%BA%90%E6%96%87%E4%BB%B6%E6%89%AB%E6%8F%8F"><span class="toc-number">6.1.</span> <span class="toc-text">5.1 阶段 1：源文件扫描</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E9%98%B6%E6%AE%B5-2%EF%BC%9A%E7%BC%96%E8%AF%91-c-cpp-%E2%86%92-o"><span class="toc-number">6.2.</span> <span class="toc-text">5.2 阶段 2：编译 (.c&#x2F;.cpp → .o)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-%E9%98%B6%E6%AE%B5-3%EF%BC%9A%E6%89%93%E5%8C%85%E6%A0%B8%E5%BF%83%E5%BA%93-o-%E2%86%92-core-a"><span class="toc-number">6.3.</span> <span class="toc-text">5.3 阶段 3：打包核心库 (.o → core.a)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-4-%E9%98%B6%E6%AE%B5-4%EF%BC%9A%E9%93%BE%E6%8E%A5-o-a-%E2%86%92-elf"><span class="toc-number">6.4.</span> <span class="toc-text">5.4 阶段 4：链接 (.o + .a → .elf)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-5-%E9%98%B6%E6%AE%B5-5%EF%BC%9A%E7%94%9F%E6%88%90%E4%BA%8C%E8%BF%9B%E5%88%B6-elf-%E2%86%92-bin"><span class="toc-number">6.5.</span> <span class="toc-text">5.5 阶段 5：生成二进制 (.elf → .bin)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-6-%E9%98%B6%E6%AE%B5-6%EF%BC%9A%E8%AE%A1%E7%AE%97%E5%A4%A7%E5%B0%8F"><span class="toc-number">6.6.</span> <span class="toc-text">5.6 阶段 6：计算大小</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-7-%E9%98%B6%E6%AE%B5-7%EF%BC%9A%E7%83%A7%E5%BD%95%E5%88%B0-MCU"><span class="toc-number">6.7.</span> <span class="toc-text">5.7 阶段 7：烧录到 MCU</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6-%E5%85%B3%E9%94%AE%E4%BA%A7%E7%89%A9%E8%AF%A6%E8%A7%A3"><span class="toc-number">7.</span> <span class="toc-text">6. 关键产物详解</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-map-%E6%96%87%E4%BB%B6-%E2%80%94-%E6%9C%80%E9%87%8D%E8%A6%81%E7%9A%84%E8%B0%83%E8%AF%95%E5%B7%A5%E5%85%B7"><span class="toc-number">7.1.</span> <span class="toc-text">6.1 .map 文件 — 最重要的调试工具</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E4%B8%89%E7%A7%8D%E4%BA%A7%E7%89%A9%E6%96%87%E4%BB%B6"><span class="toc-number">7.2.</span> <span class="toc-text">6.2 三种产物文件</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#7-%E8%B0%83%E8%AF%95%E6%8A%80%E5%B7%A7"><span class="toc-number">8.</span> <span class="toc-text">7. 调试技巧</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#7-1-%E5%90%AF%E7%94%A8%E8%AF%A6%E7%BB%86%E7%BC%96%E8%AF%91%E8%BE%93%E5%87%BA"><span class="toc-number">8.1.</span> <span class="toc-text">7.1 启用详细编译输出</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-2-%E4%BD%BF%E7%94%A8-arduino-cli-%E5%91%BD%E4%BB%A4%E8%A1%8C%E7%BC%96%E8%AF%91"><span class="toc-number">8.2.</span> <span class="toc-text">7.2 使用 arduino-cli 命令行编译</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-3-%E5%8F%8D%E6%B1%87%E7%BC%96%E6%9F%A5%E7%9C%8B%E7%94%9F%E6%88%90%E7%9A%84%E4%BB%A3%E7%A0%81"><span class="toc-number">8.3.</span> <span class="toc-text">7.3 反汇编查看生成的代码</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-4-%E5%88%86%E6%9E%90-Flash-%E4%BD%BF%E7%94%A8%E6%83%85%E5%86%B5"><span class="toc-number">8.4.</span> <span class="toc-text">7.4 分析 Flash 使用情况</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-5-%E5%88%86%E6%9E%90-RAM-%E4%BD%BF%E7%94%A8%E6%83%85%E5%86%B5"><span class="toc-number">8.5.</span> <span class="toc-text">7.5 分析 RAM 使用情况</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-6-%E5%90%84%E6%A8%A1%E5%9D%97-Flash-RAM-%E5%8D%A0%E6%AF%94%E9%80%9F%E6%9F%A5"><span class="toc-number">8.6.</span> <span class="toc-text">7.6 各模块 Flash&#x2F;RAM 占比速查</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#8-%E5%B8%B8%E8%A7%81%E9%94%99%E8%AF%AF%E4%B8%8E%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88"><span class="toc-number">9.</span> <span class="toc-text">8. 常见错误与解决方案</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#8-1-Flash-%E7%A9%BA%E9%97%B4%E4%B8%8D%E8%B6%B3"><span class="toc-number">9.1.</span> <span class="toc-text">8.1 Flash 空间不足</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8-2-RAM-%E7%A9%BA%E9%97%B4%E4%B8%8D%E8%B6%B3"><span class="toc-number">9.2.</span> <span class="toc-text">8.2 RAM 空间不足</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8-3-%E9%93%BE%E6%8E%A5%E9%94%99%E8%AF%AF%EF%BC%9Aundefined-reference"><span class="toc-number">9.3.</span> <span class="toc-text">8.3 链接错误：undefined reference</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8-4-%E9%93%BE%E6%8E%A5%E9%94%99%E8%AF%AF%EF%BC%9Amultiple-definition"><span class="toc-number">9.4.</span> <span class="toc-text">8.4 链接错误：multiple definition</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8-5-%E7%83%A7%E5%BD%95%E5%A4%B1%E8%B4%A5"><span class="toc-number">9.5.</span> <span class="toc-text">8.5 烧录失败</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8-6-%E6%89%BE%E4%B8%8D%E5%88%B0%E5%BA%93"><span class="toc-number">9.6.</span> <span class="toc-text">8.6 找不到库</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#9-%E5%BC%80%E5%8F%91%E5%B7%A5%E4%BD%9C%E6%B5%81%E5%BB%BA%E8%AE%AE"><span class="toc-number">10.</span> <span class="toc-text">9. 开发工作流建议</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#9-1-%E9%98%B6%E6%AE%B5%E5%8C%96%E9%9B%86%E6%88%90%E7%AD%96%E7%95%A5"><span class="toc-number">10.1.</span> <span class="toc-text">9.1 阶段化集成策略</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#9-2-%E9%98%B6%E6%AE%B5-1-%E6%A8%A1%E6%9D%BF%EF%BC%9A%E4%BB%85%E9%AA%8C%E8%AF%81-SPI%EF%BC%88%E4%B8%8D%E4%BE%9D%E8%B5%96%E5%AE%8C%E6%95%B4%E5%BA%93%EF%BC%89"><span class="toc-number">10.2.</span> <span class="toc-text">9.2 阶段 1 模板：仅验证 SPI（不依赖完整库）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#9-3-%E9%98%B6%E6%AE%B5-3-%E6%A8%A1%E6%9D%BF%EF%BC%9AlwIP-loopback-%E6%B5%8B%E8%AF%95"><span class="toc-number">10.3.</span> <span class="toc-text">9.3 阶段 3 模板：lwIP loopback 测试</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#9-4-%E5%AE%8C%E6%95%B4%E5%B7%A5%E4%BD%9C%E6%B5%81-checklist"><span class="toc-number">10.4.</span> <span class="toc-text">9.4 完整工作流 checklist</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#10-%E6%8E%A8%E8%8D%90%E7%9A%84%E5%B7%A5%E5%85%B7%E9%93%BE"><span class="toc-number">11.</span> <span class="toc-text">10. 推荐的工具链</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#10-1-VSCode-Arduino-%E6%8F%92%E4%BB%B6"><span class="toc-number">11.1.</span> <span class="toc-text">10.1 VSCode + Arduino 插件</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#10-2-%E5%91%BD%E4%BB%A4%E8%A1%8C%EF%BC%9Aarduino-cli"><span class="toc-number">11.2.</span> <span class="toc-text">10.2 命令行：arduino-cli</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#10-3-%E7%89%88%E6%9C%AC%E6%8E%A7%E5%88%B6"><span class="toc-number">11.3.</span> <span class="toc-text">10.3 版本控制</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#10-4-%E6%8C%81%E7%BB%AD%E9%9B%86%E6%88%90%EF%BC%88GitHub-Actions%EF%BC%89"><span class="toc-number">11.4.</span> <span class="toc-text">10.4 持续集成（GitHub Actions）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#11-%E4%B8%8E-Keil-%E5%B7%A5%E7%A8%8B%E7%9A%84%E5%AE%8C%E6%95%B4%E6%93%8D%E4%BD%9C%E5%AF%B9%E6%AF%94"><span class="toc-number">12.</span> <span class="toc-text">11. 与 Keil 工程的完整操作对比</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#12-%E6%80%BB%E7%BB%93"><span class="toc-number">13.</span> <span class="toc-text">12. 总结</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#12-1-%E5%85%B3%E9%94%AE%E8%A6%81%E7%82%B9"><span class="toc-number">13.1.</span> <span class="toc-text">12.1 关键要点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#12-2-%E6%96%87%E4%BB%B6%E6%B5%81%E7%A8%8B%E6%80%BB%E7%BB%93"><span class="toc-number">13.2.</span> <span class="toc-text">12.2 文件流程总结</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#12-3-%E6%8E%A8%E8%8D%90%E5%B7%A5%E4%BD%9C%E6%B5%81"><span class="toc-number">13.3.</span> <span class="toc-text">12.3 推荐工作流</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#12-4-%E4%BD%95%E6%97%B6%E8%B7%B3%E5%87%BA-Arduino-%E6%A1%86%E6%9E%B6"><span class="toc-number">13.4.</span> <span class="toc-text">12.4 何时跳出 Arduino 框架</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#13-%E5%8F%82%E8%80%83%E8%B5%84%E6%BA%90"><span class="toc-number">14.</span> <span class="toc-text">13. 参考资源</span></a></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/07/31/10BASE_T1S_Arduino_Compilation_Architecture_Deep_Dive/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S_Arduino_Compilation_Architecture_Deep_Dive/&text=Arduino IDE 编译架构深度解析：以 Microchip LAN8650/LAN8651 10BASE-T1S 为例"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S_Arduino_Compilation_Architecture_Deep_Dive/&title=Arduino IDE 编译架构深度解析：以 Microchip LAN8650/LAN8651 10BASE-T1S 为例"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S_Arduino_Compilation_Architecture_Deep_Dive/&is_video=false&description=Arduino IDE 编译架构深度解析：以 Microchip LAN8650/LAN8651 10BASE-T1S 为例"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=Arduino IDE 编译架构深度解析：以 Microchip LAN8650/LAN8651 10BASE-T1S 为例&body=Check out this article: https://cursorhu.github.io/2026/07/31/10BASE_T1S_Arduino_Compilation_Architecture_Deep_Dive/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S_Arduino_Compilation_Architecture_Deep_Dive/&title=Arduino IDE 编译架构深度解析：以 Microchip LAN8650/LAN8651 10BASE-T1S 为例"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S_Arduino_Compilation_Architecture_Deep_Dive/&title=Arduino IDE 编译架构深度解析：以 Microchip LAN8650/LAN8651 10BASE-T1S 为例"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S_Arduino_Compilation_Architecture_Deep_Dive/&title=Arduino IDE 编译架构深度解析：以 Microchip LAN8650/LAN8651 10BASE-T1S 为例"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S_Arduino_Compilation_Architecture_Deep_Dive/&title=Arduino IDE 编译架构深度解析：以 Microchip LAN8650/LAN8651 10BASE-T1S 为例"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S_Arduino_Compilation_Architecture_Deep_Dive/&name=Arduino IDE 编译架构深度解析：以 Microchip LAN8650/LAN8651 10BASE-T1S 为例&description=&lt;h2 id=&#34;系列导读&#34;&gt;&lt;a href=&#34;#系列导读&#34; class=&#34;headerlink&#34; title=&#34;系列导读&#34;&gt;&lt;/a&gt;系列导读&lt;/h2&gt;&lt;p&gt;本文面向&lt;strong&gt;首次接触 Arduino 嵌入式开发链路的传统 MCU 工程师&lt;/strong&gt;（熟悉 Keil、IAR、STM32CubeIDE），以 &lt;strong&gt;Microchip LAN8650&amp;#x2F;LAN8651 + Arduino UNO R4 Minima + &lt;code&gt;Arduino_10BASE_T1S&lt;/code&gt; v0.1.1&lt;/strong&gt; 为蓝本，把 Arduino IDE 这一”看似点击即上传”工具背后的完整编译架构讲清楚。&lt;/p&gt;
+&lt;h3 id=&#34;同系列其它文章&#34;&gt;&lt;a href=&#34;#同系列其它文章&#34; class=&#34;headerlink&#34; title=&#34;同系列其它文章&#34;&gt;&lt;/a&gt;同系列其它文章&lt;/h3&gt;&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;#&lt;/th&gt;
+&lt;th&gt;标题&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;&lt;tr&gt;
+&lt;td&gt;0&lt;/td&gt;
+&lt;td&gt;&lt;a href=&#34;/2026/07/31/10BASE-T1S-Code-Interfaces-Index/&#34;&gt;系列索引与全局速查&lt;/a&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;1&lt;/td&gt;
+&lt;td&gt;&lt;a href=&#34;/2026/07/31/10BASE-T1S-Code-Interfaces-UDP-API/&#34;&gt;应用层 UDP Socket API&lt;/a&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;2&lt;/td&gt;
+&lt;td&gt;&lt;a href=&#34;/2026/07/31/10BASE-T1S-Code-Interfaces-PHY-and-HAL/&#34;&gt;PHY Interface 与 HAL 层&lt;/a&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;3&lt;/td&gt;
+&lt;td&gt;&lt;a href=&#34;/2026/07/31/10BASE-T1S-Code-Interfaces-libtc6-and-lwip/&#34;&gt;libtc6 协议核心与 lwIP 集成&lt;/a&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;4&lt;/td&gt;
+&lt;td&gt;&lt;a href=&#34;/2026/07/31/10BASE-T1S-Code-Interfaces-Auxiliary-and-lwip/&#34;&gt;辅助类与 lwIP 配置&lt;/a&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;-&lt;/td&gt;
+&lt;td&gt;&lt;a href=&#34;/2026/06/04/10BASE-T1S-Arduino-Architecture-Overview/&#34;&gt;架构概览&lt;/a&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;-&lt;/td&gt;
+&lt;td&gt;&lt;a href=&#34;/2026/06/04/10BASE-T1S-Protocol-Stack-Deep-Dive/&#34;&gt;OA TC6 协议栈深度分析&lt;/a&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;-&lt;/td&gt;
+&lt;td&gt;&lt;a href=&#34;/2026/06/04/10BASE-T1S-Porting-Guide/&#34;&gt;移植实战指南&lt;/a&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;&lt;/table&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;1-核心问题解答&#34;&gt;&lt;a href=&#34;#1-核心问题解答&#34; class=&#34;headerlink&#34; title=&#34;1. 核心问题解答&#34;&gt;&lt;/a&gt;1. 核心问题解答&lt;/h2&gt;&lt;h3 id=&#34;1-1-两个芯片，Arduino-IDE-烧录到哪个？&#34;&gt;&lt;a href=&#34;#1-1-两个芯片，Arduino-IDE-烧录到哪个？&#34; class=&#34;headerlink&#34; title=&#34;1.1 两个芯片，Arduino IDE 烧录到哪个？&#34;&gt;&lt;/a&gt;1.1 两个芯片，Arduino IDE 烧录到哪个？&lt;/h3&gt;&lt;p&gt;&lt;strong&gt;Arduino UNO R4 Minima + 10BASE-T 扩展板系统架构&lt;/strong&gt;：&lt;/p&gt;
+&lt;figure class=&#34;highlight plaintext&#34;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&#34;gutter&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;3&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;4&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;5&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;6&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;7&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;8&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;9&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;10&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;11&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;12&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;13&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;14&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;15&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;16&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;17&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;18&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;19&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;20&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;21&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;22&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;23&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;24&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;25&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;26&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;27&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;28&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&#34;code&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;┌─────────────────────────────────────────────────────────────┐&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│ Arduino UNO R4 Minima 主板                                  │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                                                             │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  ┌──────────────────────┐          ┌────────────────────┐ │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  │ Renesas RA4M1        │          │ 你的扩展板         │ │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  │ (主MCU)              │◄───SPI──►│ Microchip LAN8650  │ │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  │                      │          │ /LAN8651 MAC-PHY  │ │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  │ Cortex-M4 48MHz      │          └────────────────────┘ │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  │ 256KB Flash          │                                  │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  │ 32KB RAM             │          ┌────────────────────┐ │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  │                      │          │ 以太网变压器        │ │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  │ 运行的代码:          │          │ + RJ45接口         │ │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  │ - UDP_Client.ino     │          └────────────────────┘ │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  │ - lwIP协议栈         │                                  │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  │ - libtc6 协议        │                                  │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  │ - SPI 驱动           │                                  │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  │ - MAC-PHY 寄存器配置 │                                  │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  └──────────┬───────────┘                                  │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│             │                                              │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  ┌──────────▼───────────┐                                 │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  │ USB转串口芯片         │                                 │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  │ (用于烧录和串口通信)  │                                 │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  └──────────┬───────────┘                                 │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│             │                                              │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;└─────────────┼──────────────────────────────────────────────┘&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;              │ USB-C 线缆&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;              ▼&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;      PC (Arduino IDE)&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;
+
+&lt;p&gt;&lt;strong&gt;明确答案&lt;/strong&gt;：&lt;/p&gt;"><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/07/31/10BASE_T1S_Arduino_Compilation_Architecture_Deep_Dive/&t=Arduino IDE 编译架构深度解析：以 Microchip LAN8650/LAN8651 10BASE-T1S 为例"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> 菜单</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> 目录</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> 分享</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> 返回顶部</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2026
+    cursorhu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"复制到粘贴板！\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "复制成功！");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+<!-- Mermaid diagrams -->
+
+  <script type="text/javascript">
+  (function() {
+    var mermaidElements = document.querySelectorAll('.mermaid');
+    if (!mermaidElements.length) return;
+
+    var mermaidTheme = 'auto';
+    if (mermaidTheme === 'auto') {
+      var colorscheme = 'dark';
+      mermaidTheme = (colorscheme === 'dark' || colorscheme === 'classic') ? 'dark' : 'default';
+    }
+
+    function initMermaid() {
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: mermaidTheme,
+        logLevel: 'error',
+        securityLevel: 'loose',
+        flowchart: { curve: 'basis' },
+        gantt: { axisFormat: '%m/%d/%Y' },
+        sequence: { actorMargin: 50 }
+      });
+      mermaid.run({ nodes: mermaidElements });
+    }
+
+    var script = document.createElement('script');
+    
+    script.src = 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js';
+    
+    script.onload = initMermaid;
+    document.head.appendChild(script);
+  })();
+  </script>
+
+</body>
+</html>

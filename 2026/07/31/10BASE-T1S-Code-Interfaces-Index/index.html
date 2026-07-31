@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="系列导读本系列四篇从代码接口视角对 Arduino_10BASE_T1S 库 v0.1.1 进行完整拆解，逐函数、逐字段、逐回调地列出语义、约束、错误模式和移植要点。配套已发布的架构&#x2F;协议&#x2F;移植&#x2F;构建文档共同构成完整的代码理解资料库。 1. 系列文章索引本系列（代码接口级）   # 标题 主要内容    0 系列索引与全局速查（本篇） 全局架构、文件清单、API 速查">
+<meta property="og:type" content="article">
+<meta property="og:title" content="10BASE-T1S Arduino 代码接口深度解析（〇）：系列索引与全局速查">
+<meta property="og:url" content="https://cursorhu.github.io/2026/07/31/10BASE-T1S-Code-Interfaces-Index/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="系列导读本系列四篇从代码接口视角对 Arduino_10BASE_T1S 库 v0.1.1 进行完整拆解，逐函数、逐字段、逐回调地列出语义、约束、错误模式和移植要点。配套已发布的架构&#x2F;协议&#x2F;移植&#x2F;构建文档共同构成完整的代码理解资料库。 1. 系列文章索引本系列（代码接口级）   # 标题 主要内容    0 系列索引与全局速查（本篇） 全局架构、文件清单、API 速查">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-07-30T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-07-31T02:35:49.775Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="10BASE-T1S">
+<meta property="article:tag" content="API 参考">
+<meta property="article:tag" content="Arduino">
+<meta property="article:tag" content="代码接口">
+<meta property="article:tag" content="全局速查">
+<meta property="article:tag" content="系列索引">
+<meta name="twitter:card" content="summary">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>10BASE-T1S Arduino 代码接口深度解析（〇）：系列索引与全局速查</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+		<script type="text/x-mathjax-config">
+		  MathJax.Hub.Config({
+			tex2jax: {
+			  skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+			  inlineMath: [['$','$']]
+			}
+		  });
+		</script>
+		<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-MML-AM_CHTML' async></script>
+	
+<meta name="generator" content="Hexo 8.0.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="顶部" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="上一篇" href="/2026/07/31/10BASE-T1S-Code-Interfaces-Auxiliary-and-lwip/"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="下一篇" href="/2026/07/31/10BASE-T1S-Code-Interfaces-PHY-and-HAL/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="返回顶部" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="分享文章" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">上一篇</span>
+      <span id="i-next" class="info" style="display:none;">下一篇</span>
+      <span id="i-top" class="info" style="display:none;">返回顶部</span>
+      <span id="i-share" class="info" style="display:none;">分享文章</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/07/31/10BASE-T1S-Code-Interfaces-Index/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/07/31/10BASE-T1S-Code-Interfaces-Index/&text=10BASE-T1S Arduino 代码接口深度解析（〇）：系列索引与全局速查"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/07/31/10BASE-T1S-Code-Interfaces-Index/&title=10BASE-T1S Arduino 代码接口深度解析（〇）：系列索引与全局速查"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/07/31/10BASE-T1S-Code-Interfaces-Index/&is_video=false&description=10BASE-T1S Arduino 代码接口深度解析（〇）：系列索引与全局速查"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=10BASE-T1S Arduino 代码接口深度解析（〇）：系列索引与全局速查&body=Check out this article: https://cursorhu.github.io/2026/07/31/10BASE-T1S-Code-Interfaces-Index/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/07/31/10BASE-T1S-Code-Interfaces-Index/&title=10BASE-T1S Arduino 代码接口深度解析（〇）：系列索引与全局速查"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/07/31/10BASE-T1S-Code-Interfaces-Index/&title=10BASE-T1S Arduino 代码接口深度解析（〇）：系列索引与全局速查"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/07/31/10BASE-T1S-Code-Interfaces-Index/&title=10BASE-T1S Arduino 代码接口深度解析（〇）：系列索引与全局速查"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/07/31/10BASE-T1S-Code-Interfaces-Index/&title=10BASE-T1S Arduino 代码接口深度解析（〇）：系列索引与全局速查"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/07/31/10BASE-T1S-Code-Interfaces-Index/&name=10BASE-T1S Arduino 代码接口深度解析（〇）：系列索引与全局速查&description=&lt;h2 id=&#34;系列导读&#34;&gt;&lt;a href=&#34;#系列导读&#34; class=&#34;headerlink&#34; title=&#34;系列导读&#34;&gt;&lt;/a&gt;系列导读&lt;/h2&gt;&lt;p&gt;本系列&lt;strong&gt;四篇&lt;/strong&gt;从代码接口视角对 Arduino_10BASE_T1S 库 v0.1.1 进行完整拆解，逐函数、逐字段、逐回调地列出语义、约束、错误模式和移植要点。配套已发布的架构&amp;#x2F;协议&amp;#x2F;移植&amp;#x2F;构建文档共同构成完整的代码理解资料库。&lt;/p&gt;
+&lt;h2 id=&#34;1-系列文章索引&#34;&gt;&lt;a href=&#34;#1-系列文章索引&#34; class=&#34;headerlink&#34; title=&#34;1. 系列文章索引&#34;&gt;&lt;/a&gt;1. 系列文章索引&lt;/h2&gt;&lt;h3 id=&#34;本系列（代码接口级）&#34;&gt;&lt;a href=&#34;#本系列（代码接口级）&#34; class=&#34;headerlink&#34; title=&#34;本系列（代码接口级）&#34;&gt;&lt;/a&gt;本系列（代码接口级）&lt;/h3&gt;&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;#&lt;/th&gt;
+&lt;th&gt;标题&lt;/th&gt;
+&lt;th&gt;主要内容&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;0&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;&lt;strong&gt;系列索引与全局速查&lt;/strong&gt;（本篇）&lt;/td&gt;
+&lt;td&gt;全局架构、文件清单、API 速查、移植决策树&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;1&lt;/td&gt;
+&lt;td&gt;&lt;a href=&#34;/2026/07/31/10BASE-T1S-Code-Interfaces-UDP-API/&#34;&gt;应用层 UDP Socket API&lt;/a&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;Arduino_10BASE_T1S_UDP&lt;/code&gt;、内部 &lt;code&gt;UdpRxPacket&lt;/code&gt;、发送&amp;#x2F;接收状态机、错误码&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;2&lt;/td&gt;
+&lt;td&gt;&lt;a href=&#34;/2026/07/31/10BASE-T1S-Code-Interfaces-PHY-and-HAL/&#34;&gt;PHY Interface 与 HAL 层&lt;/a&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;Arduino_10BASE_T1S_PHY_Interface&lt;/code&gt;、&lt;code&gt;TC6_Arduino_10BASE_T1S&lt;/code&gt;、&lt;code&gt;TC6_Io&lt;/code&gt; SPI HAL&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;3&lt;/td&gt;
+&lt;td&gt;&lt;a href=&#34;/2026/07/31/10BASE-T1S-Code-Interfaces-libtc6-and-lwip/&#34;&gt;libtc6 协议核心与 lwIP 集成&lt;/a&gt;&lt;/td&gt;
+&lt;td&gt;libtc6 C API、回调契约、lwIP netif、7 阶段寄存器队列&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;4&lt;/td&gt;
+&lt;td&gt;&lt;a href=&#34;/2026/07/31/10BASE-T1S-Code-Interfaces-Auxiliary-and-lwip/&#34;&gt;辅助类与 lwIP 配置&lt;/a&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;MacAddress&lt;/code&gt; &amp;#x2F; &lt;code&gt;T1SPlcaSettings&lt;/code&gt; &amp;#x2F; &lt;code&gt;T1SMacSettings&lt;/code&gt;、&lt;code&gt;lwipopts.h&lt;/code&gt; 详解&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;&lt;/table&gt;
+&lt;h3 id=&#34;配套系列（架构级）&#34;&gt;&lt;a href=&#34;#配套系列（架构级）&#34; class=&#34;headerlink&#34; title=&#34;配套系列（架构级）&#34;&gt;&lt;/a&gt;配套系列（架构级）&lt;/h3&gt;&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;标题&lt;/th&gt;
+&lt;th&gt;内容&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;&lt;tr&gt;
+&lt;td&gt;&lt;a href=&#34;/2026/06/04/10BASE-T1S-Arduino-Architecture-Overview/&#34;&gt;10BASE-T1S Arduino 开源库架构分析（一）：架构概览与开源评估&lt;/a&gt;&lt;/td&gt;
+&lt;td&gt;四层架构、CI 矩阵、许可证分析&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;a href=&#34;/2026/06/04/10BASE-T1S-Protocol-Stack-Deep-Dive/&#34;&gt;10BASE-T1S Arduino 开源库架构分析（二）：OA TC6 协议栈深度分析&lt;/a&gt;&lt;/td&gt;
+&lt;td&gt;OA TC6 帧结构、Credit 流控、PLCA 寄存器、初始化序列&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;a href=&#34;/2026/06/04/10BASE-T1S-Porting-Guide/&#34;&gt;10BASE-T1S Arduino 开源库架构分析（三）：移植实战指南&lt;/a&gt;&lt;/td&gt;
+&lt;td&gt;抽象边界、可复用模块、移植 checklist&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;a href=&#34;/2026/07/28/Arduino_IDE_Build_System_Deep_Dive/&#34;&gt;Arduino IDE 编译系统深度解析&lt;/a&gt;&lt;/td&gt;
+&lt;td&gt;从源码到 Flash 的完整流程、内存布局&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;a href=&#34;/2026/07/28/Arduino_R4_Lumissil_Development_Environment_Setup/&#34;&gt;Arduino R4 Lumissil 开发环境完整指南&lt;/a&gt;&lt;/td&gt;
+&lt;td&gt;Lumissil 移植环境搭建&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;a href=&#34;/2026/07/29/Lumissil_SoC_Integration_Architecture_Decision/&#34;&gt;Lumissil SoC 集成架构决策&lt;/a&gt;&lt;/td&gt;
+&lt;td&gt;单芯片集成方案对比、libtc6&amp;#x2F;lwIP&amp;#x2F;C 语言取舍&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;&lt;/table&gt;
+&lt;h2 id=&#34;2-全局架构与文件映射&#34;&gt;&lt;a href=&#34;#2-全局架构与文件映射&#34; class=&#34;headerlink&#34; title=&#34;2. 全局架构与文件映射&#34;&gt;&lt;/a&gt;2. 全局架构与文件映射&lt;/h2&gt;&lt;figure class=&#34;highlight plaintext&#34;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&#34;gutter&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;3&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;4&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;5&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;6&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;7&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;8&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;9&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;10&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;11&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;12&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;13&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;14&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;15&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;16&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;17&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;18&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;19&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;20&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;21&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;22&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;23&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;24&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;25&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;26&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;27&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;28&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;29&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;30&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;31&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;32&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;33&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;34&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;35&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;36&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;37&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;38&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;39&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;40&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;41&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;42&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&#34;code&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;┌─────────────────────────────────────────────────────────────────────┐&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                          Sketch (.ino)                              │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  Arduino_10BASE_T1S_PHY_TC6(SPI, 9, 6, 2);                         │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  Arduino_10BASE_T1S_UDP udp;                                        │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  t1s_io.begin(); t1s_phy.begin(...); udp.begin(port);               │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;└─────────────────────────────────────────────────────────────────────┘&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;       │                       │                       │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;       ▼                       ▼                       ▼&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;┌──────────────────┐  ┌────────────────────────┐  ┌─────────────────┐&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│ Arduino_10BASE_  │  │ TC6_Arduino_10BASE_T1S │  │ Arduino_10BASE_ │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│ T1S_UDP.h/cpp    │  │ .h/cpp                 │  │ T1S.h           │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                  │  │ (继承 PHY_Interface)   │  │ (主入口 + 宏)   │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│ UDP socket API   │  │ lwIP ↔ libtc6 桥接      │  │                 │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;└──────────────────┘  └────────────────────────┘  └─────────────────┘&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;       │                       │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;       │                       ├─→ MacAddress.h/cpp&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;       │                       ├─→ T1SPlcaSettings.h/cpp&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;       │                       ├─→ T1SMacSettings.h/cpp&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;       │                       │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;       │                       └─→ microchip/TC6_Io.h/cpp (HAL)&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;       │                                  │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;       ▼                                  ▼&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;┌─────────────────────────────────────────────────────────────────────┐&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│ lib/liblwip/   (lwIP TCP/IP 协议栈 + cfg/lwipopts.h 重命名)        │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│ lib/lwip_sys_now.cpp  (sys_now → millis())                         │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;└─────────────────────────────────────────────────────────────────────┘&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;       │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;       ▼&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;┌─────────────────────────────────────────────────────────────────────┐&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│ microchip/lib/libtc6/                                                │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   inc/tc6.h         (公开 C API + 回调声明)                         │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   src/tc6.cpp       (协议核心：chunk/credit/状态机)                  │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   src/tc6-queue.h   (3 个无锁环形队列)                              │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   inc/tc6-regs.h    (LAN865x 寄存器层 API)                         │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   src/tc6-regs.cpp  (32 条寄存器初始化表 + PLCA + Chip ID)          │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   cfg-example/tc6-conf.h  (编译配置)                                │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;└─────────────────────────────────────────────────────────────────────┘&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;       │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;       ▼  SPI (24 MHz, Mode 0, MSB First)&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;┌─────────────────────────────────────────────────────────────────────┐&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│              LAN8651 MAC-PHY  →  10BASE-T1S 双绞线                 │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;└─────────────────────────────────────────────────────────────────────┘&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;
+
+&lt;h2 id=&#34;3-文件清单与作用&#34;&gt;&lt;a href=&#34;#3-文件清单与作用&#34; class=&#34;headerlink&#34; title=&#34;3. 文件清单与作用&#34;&gt;&lt;/a&gt;3. 文件清单与作用&lt;/h2&gt;"><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/07/31/10BASE-T1S-Code-Interfaces-Index/&t=10BASE-T1S Arduino 代码接口深度解析（〇）：系列索引与全局速查"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%B3%BB%E5%88%97%E5%AF%BC%E8%AF%BB"><span class="toc-number">1.</span> <span class="toc-text">系列导读</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E7%B3%BB%E5%88%97%E6%96%87%E7%AB%A0%E7%B4%A2%E5%BC%95"><span class="toc-number">2.</span> <span class="toc-text">1. 系列文章索引</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9C%AC%E7%B3%BB%E5%88%97%EF%BC%88%E4%BB%A3%E7%A0%81%E6%8E%A5%E5%8F%A3%E7%BA%A7%EF%BC%89"><span class="toc-number">2.1.</span> <span class="toc-text">本系列（代码接口级）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%85%8D%E5%A5%97%E7%B3%BB%E5%88%97%EF%BC%88%E6%9E%B6%E6%9E%84%E7%BA%A7%EF%BC%89"><span class="toc-number">2.2.</span> <span class="toc-text">配套系列（架构级）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-%E5%85%A8%E5%B1%80%E6%9E%B6%E6%9E%84%E4%B8%8E%E6%96%87%E4%BB%B6%E6%98%A0%E5%B0%84"><span class="toc-number">3.</span> <span class="toc-text">2. 全局架构与文件映射</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-%E6%96%87%E4%BB%B6%E6%B8%85%E5%8D%95%E4%B8%8E%E4%BD%9C%E7%94%A8"><span class="toc-number">4.</span> <span class="toc-text">3. 文件清单与作用</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E5%BA%94%E7%94%A8%E5%B1%82%E4%B8%8E%E5%85%AC%E5%BC%80-API"><span class="toc-number">4.1.</span> <span class="toc-text">3.1 应用层与公开 API</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-PHY-%E4%B8%8E-HAL-%E5%B1%82"><span class="toc-number">4.2.</span> <span class="toc-text">3.2 PHY 与 HAL 层</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-libtc6-%E5%8D%8F%E8%AE%AE%E6%A0%B8%E5%BF%83"><span class="toc-number">4.3.</span> <span class="toc-text">3.3 libtc6 协议核心</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-4-lwIP-%E9%9B%86%E6%88%90"><span class="toc-number">4.4.</span> <span class="toc-text">3.4 lwIP 集成</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-5-Examples"><span class="toc-number">4.5.</span> <span class="toc-text">3.5 Examples</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-%E5%85%A8%E5%B1%80-API-%E9%80%9F%E6%9F%A5%E8%A1%A8"><span class="toc-number">5.</span> <span class="toc-text">4. 全局 API 速查表</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-%E5%BA%94%E7%94%A8%E5%B1%82%EF%BC%88C-Arduino%EF%BC%89"><span class="toc-number">5.1.</span> <span class="toc-text">4.1 应用层（C++ &#x2F; Arduino）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-libtc6-%E6%A0%B8%E5%BF%83%EF%BC%88C-API%EF%BC%89"><span class="toc-number">5.2.</span> <span class="toc-text">4.2 libtc6 核心（C API）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-libtc6-%E5%BF%85%E5%AE%9E%E7%8E%B0%E5%9B%9E%E8%B0%83%EF%BC%88C-API%EF%BC%89"><span class="toc-number">5.3.</span> <span class="toc-text">4.3 libtc6 必实现回调（C API）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-%E5%86%85%E5%AD%98%E9%A2%84%E7%AE%97%E9%80%9F%E6%9F%A5%EF%BC%88UNO-R4-Minima%EF%BC%89"><span class="toc-number">6.</span> <span class="toc-text">5. 内存预算速查（UNO R4 Minima）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6-%E7%A7%BB%E6%A4%8D%E5%86%B3%E7%AD%96%E6%A0%91"><span class="toc-number">7.</span> <span class="toc-text">6. 移植决策树</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#7-%E5%85%B3%E9%94%AE%E8%AE%BE%E8%AE%A1%E5%86%B3%E7%AD%96%EF%BC%88FAQ-%E9%A3%8E%E6%A0%BC%EF%BC%89"><span class="toc-number">8.</span> <span class="toc-text">7. 关键设计决策（FAQ 风格）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Q-%E4%B8%BA%E4%BB%80%E4%B9%88-Arduino-10BASE-T1S-UDP-endPacket-%E8%BF%94%E5%9B%9E%E5%80%BC%E6%98%AF-0-%E6%88%96-1%EF%BC%8C%E8%80%8C%E4%B8%8D%E6%98%AF%E7%BB%9F%E4%B8%80%E7%9A%84-1-0%EF%BC%9F"><span class="toc-number">8.1.</span> <span class="toc-text">Q: 为什么 Arduino_10BASE_T1S_UDP::endPacket() 返回值是 0 或 -1，而不是统一的 1&#x2F;0？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Q-T1SPlcaSettings-%E9%BB%98%E8%AE%A4%E6%9E%84%E9%80%A0%E4%B8%BA%E4%BB%80%E4%B9%88%E6%98%AF-Node-0%EF%BC%88Coordinator%EF%BC%89%EF%BC%9F"><span class="toc-number">8.2.</span> <span class="toc-text">Q: T1SPlcaSettings 默认构造为什么是 Node 0（Coordinator）？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Q-%E5%BA%93%E7%A6%81%E7%94%A8-TCP%EF%BC%8C%E6%80%8E%E4%B9%88%E5%90%AF%E7%94%A8%EF%BC%9F"><span class="toc-number">8.3.</span> <span class="toc-text">Q: 库禁用 TCP，怎么启用？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Q-begin-%E5%A4%B1%E8%B4%A5%E5%90%8E%E8%83%BD%E5%90%A6%E9%87%8D%E8%AF%95%EF%BC%9F"><span class="toc-number">8.4.</span> <span class="toc-text">Q: begin() 失败后能否重试？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Q-%E5%A6%82%E4%BD%95%E5%9C%A8%E5%A4%9A%E4%B8%AA-sketch-%E4%B9%8B%E9%97%B4%E5%85%B1%E4%BA%AB%E5%90%8C%E4%B8%80%E4%B8%AA-PHY-%E5%AE%9E%E4%BE%8B%EF%BC%9F"><span class="toc-number">8.5.</span> <span class="toc-text">Q: 如何在多个 sketch 之间共享同一个 PHY 实例？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Q-%E4%B8%BA%E4%BB%80%E4%B9%88-lwipopts-h-%E9%87%8D%E5%91%BD%E5%90%8D%E6%89%80%E6%9C%89%E7%AC%A6%E5%8F%B7%EF%BC%9F"><span class="toc-number">8.6.</span> <span class="toc-text">Q: 为什么 lwipopts.h 重命名所有符号？</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#8-%E5%B8%B8%E8%A7%81%E9%94%99%E8%AF%AF%E6%81%A2%E5%A4%8D%E6%B5%81%E7%A8%8B"><span class="toc-number">9.</span> <span class="toc-text">8. 常见错误恢复流程</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#8-1-libtc6-%E9%94%99%E8%AF%AF%E5%88%B0%E5%8A%A8%E4%BD%9C"><span class="toc-number">9.1.</span> <span class="toc-text">8.1 libtc6 错误到动作</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8-2-TC6Regs-%E4%BA%8B%E4%BB%B6%E5%88%B0%E5%8A%A8%E4%BD%9C"><span class="toc-number">9.2.</span> <span class="toc-text">8.2 TC6Regs 事件到动作</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#9-%E8%B0%83%E8%AF%95%E5%85%A5%E5%8F%A3%E6%B1%87%E6%80%BB"><span class="toc-number">10.</span> <span class="toc-text">9. 调试入口汇总</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#9-1-%E5%90%AF%E7%94%A8-libtc6-%E9%94%99%E8%AF%AF%E6%89%93%E5%8D%B0"><span class="toc-number">10.1.</span> <span class="toc-text">9.1 启用 libtc6 错误打印</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#9-2-%E6%B7%BB%E5%8A%A0-RX-TX-%E8%AE%A1%E6%95%B0%E5%99%A8"><span class="toc-number">10.2.</span> <span class="toc-text">9.2 添加 RX&#x2F;TX 计数器</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#9-3-%E7%9B%91%E6%8E%A7-service-%E9%A2%91%E7%8E%87"><span class="toc-number">10.3.</span> <span class="toc-text">9.3 监控 service() 频率</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#9-4-lwIP-%E8%B0%83%E8%AF%95"><span class="toc-number">10.4.</span> <span class="toc-text">9.4 lwIP 调试</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#10-%E5%AE%8C%E6%95%B4%E9%98%85%E8%AF%BB%E8%B7%AF%E5%BE%84%E5%BB%BA%E8%AE%AE"><span class="toc-number">11.</span> <span class="toc-text">10. 完整阅读路径建议</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%B7%AF%E5%BE%84-A%EF%BC%9A%E5%BA%94%E7%94%A8%E5%BC%80%E5%8F%91%E8%80%85%EF%BC%88%E5%8F%AA%E6%83%B3%E7%94%A8%E5%BA%93%EF%BC%89"><span class="toc-number">11.1.</span> <span class="toc-text">路径 A：应用开发者（只想用库）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%B7%AF%E5%BE%84-B%EF%BC%9A%E7%A7%BB%E6%A4%8D%E8%80%85%EF%BC%88%E6%94%B9-HAL-%E6%88%96-PHY-%E5%90%8E%E7%AB%AF%EF%BC%89"><span class="toc-number">11.2.</span> <span class="toc-text">路径 B：移植者（改 HAL 或 PHY 后端）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%B7%AF%E5%BE%84-C%EF%BC%9A%E8%8A%AF%E7%89%87%E6%9B%BF%E6%8D%A2%EF%BC%88%E7%A7%BB%E6%A4%8D%E5%88%B0%E9%9D%9E-LAN865x%EF%BC%89"><span class="toc-number">11.3.</span> <span class="toc-text">路径 C：芯片替换（移植到非 LAN865x）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%B7%AF%E5%BE%84-D%EF%BC%9A%E6%9E%B6%E6%9E%84%E7%90%86%E8%A7%A3%EF%BC%88%E4%B8%8D%E6%83%B3%E6%94%B9%E4%BB%A3%E7%A0%81%EF%BC%89"><span class="toc-number">11.4.</span> <span class="toc-text">路径 D：架构理解（不想改代码）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#11-%E5%B0%8F%E7%BB%93"><span class="toc-number">12.</span> <span class="toc-text">11. 小结</span></a></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        10BASE-T1S Arduino 代码接口深度解析（〇）：系列索引与全局速查
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">cursorhu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2026-07-30T16:00:00.000Z" class="dt-published" itemprop="datePublished">2026-07-31</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fa-solid fa-archive"></i>
+        <a class="category-link" href="/categories/Ethernet/">Ethernet</a> › <a class="category-link" href="/categories/Ethernet/%E5%B5%8C%E5%85%A5%E5%BC%8F%E7%BD%91%E7%BB%9C/">嵌入式网络</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/10BASE-T1S/" rel="tag">10BASE-T1S</a>, <a class="p-category" href="/tags/API-%E5%8F%82%E8%80%83/" rel="tag">API 参考</a>, <a class="p-category" href="/tags/Arduino/" rel="tag">Arduino</a>, <a class="p-category" href="/tags/%E4%BB%A3%E7%A0%81%E6%8E%A5%E5%8F%A3/" rel="tag">代码接口</a>, <a class="p-category" href="/tags/%E5%85%A8%E5%B1%80%E9%80%9F%E6%9F%A5/" rel="tag">全局速查</a>, <a class="p-category" href="/tags/%E7%B3%BB%E5%88%97%E7%B4%A2%E5%BC%95/" rel="tag">系列索引</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <h2 id="系列导读"><a href="#系列导读" class="headerlink" title="系列导读"></a>系列导读</h2><p>本系列<strong>四篇</strong>从代码接口视角对 Arduino_10BASE_T1S 库 v0.1.1 进行完整拆解，逐函数、逐字段、逐回调地列出语义、约束、错误模式和移植要点。配套已发布的架构&#x2F;协议&#x2F;移植&#x2F;构建文档共同构成完整的代码理解资料库。</p>
+<h2 id="1-系列文章索引"><a href="#1-系列文章索引" class="headerlink" title="1. 系列文章索引"></a>1. 系列文章索引</h2><h3 id="本系列（代码接口级）"><a href="#本系列（代码接口级）" class="headerlink" title="本系列（代码接口级）"></a>本系列（代码接口级）</h3><table>
+<thead>
+<tr>
+<th>#</th>
+<th>标题</th>
+<th>主要内容</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>0</strong></td>
+<td><strong>系列索引与全局速查</strong>（本篇）</td>
+<td>全局架构、文件清单、API 速查、移植决策树</td>
+</tr>
+<tr>
+<td>1</td>
+<td><a href="/2026/07/31/10BASE-T1S-Code-Interfaces-UDP-API/">应用层 UDP Socket API</a></td>
+<td><code>Arduino_10BASE_T1S_UDP</code>、内部 <code>UdpRxPacket</code>、发送&#x2F;接收状态机、错误码</td>
+</tr>
+<tr>
+<td>2</td>
+<td><a href="/2026/07/31/10BASE-T1S-Code-Interfaces-PHY-and-HAL/">PHY Interface 与 HAL 层</a></td>
+<td><code>Arduino_10BASE_T1S_PHY_Interface</code>、<code>TC6_Arduino_10BASE_T1S</code>、<code>TC6_Io</code> SPI HAL</td>
+</tr>
+<tr>
+<td>3</td>
+<td><a href="/2026/07/31/10BASE-T1S-Code-Interfaces-libtc6-and-lwip/">libtc6 协议核心与 lwIP 集成</a></td>
+<td>libtc6 C API、回调契约、lwIP netif、7 阶段寄存器队列</td>
+</tr>
+<tr>
+<td>4</td>
+<td><a href="/2026/07/31/10BASE-T1S-Code-Interfaces-Auxiliary-and-lwip/">辅助类与 lwIP 配置</a></td>
+<td><code>MacAddress</code> &#x2F; <code>T1SPlcaSettings</code> &#x2F; <code>T1SMacSettings</code>、<code>lwipopts.h</code> 详解</td>
+</tr>
+</tbody></table>
+<h3 id="配套系列（架构级）"><a href="#配套系列（架构级）" class="headerlink" title="配套系列（架构级）"></a>配套系列（架构级）</h3><table>
+<thead>
+<tr>
+<th>标题</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><a href="/2026/06/04/10BASE-T1S-Arduino-Architecture-Overview/">10BASE-T1S Arduino 开源库架构分析（一）：架构概览与开源评估</a></td>
+<td>四层架构、CI 矩阵、许可证分析</td>
+</tr>
+<tr>
+<td><a href="/2026/06/04/10BASE-T1S-Protocol-Stack-Deep-Dive/">10BASE-T1S Arduino 开源库架构分析（二）：OA TC6 协议栈深度分析</a></td>
+<td>OA TC6 帧结构、Credit 流控、PLCA 寄存器、初始化序列</td>
+</tr>
+<tr>
+<td><a href="/2026/06/04/10BASE-T1S-Porting-Guide/">10BASE-T1S Arduino 开源库架构分析（三）：移植实战指南</a></td>
+<td>抽象边界、可复用模块、移植 checklist</td>
+</tr>
+<tr>
+<td><a href="/2026/07/28/Arduino_IDE_Build_System_Deep_Dive/">Arduino IDE 编译系统深度解析</a></td>
+<td>从源码到 Flash 的完整流程、内存布局</td>
+</tr>
+<tr>
+<td><a href="/2026/07/28/Arduino_R4_Lumissil_Development_Environment_Setup/">Arduino R4 Lumissil 开发环境完整指南</a></td>
+<td>Lumissil 移植环境搭建</td>
+</tr>
+<tr>
+<td><a href="/2026/07/29/Lumissil_SoC_Integration_Architecture_Decision/">Lumissil SoC 集成架构决策</a></td>
+<td>单芯片集成方案对比、libtc6&#x2F;lwIP&#x2F;C 语言取舍</td>
+</tr>
+</tbody></table>
+<h2 id="2-全局架构与文件映射"><a href="#2-全局架构与文件映射" class="headerlink" title="2. 全局架构与文件映射"></a>2. 全局架构与文件映射</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                          Sketch (.ino)                              │</span><br><span class="line">│  Arduino_10BASE_T1S_PHY_TC6(SPI, 9, 6, 2);                         │</span><br><span class="line">│  Arduino_10BASE_T1S_UDP udp;                                        │</span><br><span class="line">│  t1s_io.begin(); t1s_phy.begin(...); udp.begin(port);               │</span><br><span class="line">└─────────────────────────────────────────────────────────────────────┘</span><br><span class="line">       │                       │                       │</span><br><span class="line">       ▼                       ▼                       ▼</span><br><span class="line">┌──────────────────┐  ┌────────────────────────┐  ┌─────────────────┐</span><br><span class="line">│ Arduino_10BASE_  │  │ TC6_Arduino_10BASE_T1S │  │ Arduino_10BASE_ │</span><br><span class="line">│ T1S_UDP.h/cpp    │  │ .h/cpp                 │  │ T1S.h           │</span><br><span class="line">│                  │  │ (继承 PHY_Interface)   │  │ (主入口 + 宏)   │</span><br><span class="line">│ UDP socket API   │  │ lwIP ↔ libtc6 桥接      │  │                 │</span><br><span class="line">└──────────────────┘  └────────────────────────┘  └─────────────────┘</span><br><span class="line">       │                       │</span><br><span class="line">       │                       ├─→ MacAddress.h/cpp</span><br><span class="line">       │                       ├─→ T1SPlcaSettings.h/cpp</span><br><span class="line">       │                       ├─→ T1SMacSettings.h/cpp</span><br><span class="line">       │                       │</span><br><span class="line">       │                       └─→ microchip/TC6_Io.h/cpp (HAL)</span><br><span class="line">       │                                  │</span><br><span class="line">       ▼                                  ▼</span><br><span class="line">┌─────────────────────────────────────────────────────────────────────┐</span><br><span class="line">│ lib/liblwip/   (lwIP TCP/IP 协议栈 + cfg/lwipopts.h 重命名)        │</span><br><span class="line">│ lib/lwip_sys_now.cpp  (sys_now → millis())                         │</span><br><span class="line">└─────────────────────────────────────────────────────────────────────┘</span><br><span class="line">       │</span><br><span class="line">       ▼</span><br><span class="line">┌─────────────────────────────────────────────────────────────────────┐</span><br><span class="line">│ microchip/lib/libtc6/                                                │</span><br><span class="line">│   inc/tc6.h         (公开 C API + 回调声明)                         │</span><br><span class="line">│   src/tc6.cpp       (协议核心：chunk/credit/状态机)                  │</span><br><span class="line">│   src/tc6-queue.h   (3 个无锁环形队列)                              │</span><br><span class="line">│   inc/tc6-regs.h    (LAN865x 寄存器层 API)                         │</span><br><span class="line">│   src/tc6-regs.cpp  (32 条寄存器初始化表 + PLCA + Chip ID)          │</span><br><span class="line">│   cfg-example/tc6-conf.h  (编译配置)                                │</span><br><span class="line">└─────────────────────────────────────────────────────────────────────┘</span><br><span class="line">       │</span><br><span class="line">       ▼  SPI (24 MHz, Mode 0, MSB First)</span><br><span class="line">┌─────────────────────────────────────────────────────────────────────┐</span><br><span class="line">│              LAN8651 MAC-PHY  →  10BASE-T1S 双绞线                 │</span><br><span class="line">└─────────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<h2 id="3-文件清单与作用"><a href="#3-文件清单与作用" class="headerlink" title="3. 文件清单与作用"></a>3. 文件清单与作用</h2><h3 id="3-1-应用层与公开-API"><a href="#3-1-应用层与公开-API" class="headerlink" title="3.1 应用层与公开 API"></a>3.1 应用层与公开 API</h3><table>
+<thead>
+<tr>
+<th>文件</th>
+<th>行数</th>
+<th>作用</th>
+<th>文档</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>src/Arduino_10BASE_T1S.h</code></td>
+<td>64</td>
+<td>主入口、<code>Arduino_10BASE_T1S_PHY_TC6</code> 宏、板卡引脚定义</td>
+<td>[1]</td>
+</tr>
+<tr>
+<td><code>src/Arduino_10BASE_T1S_PHY_Interface.h</code></td>
+<td>54</td>
+<td>抽象基类（预留）</td>
+<td>[2]</td>
+</tr>
+<tr>
+<td><code>src/Arduino_10BASE_T1S_UDP.h</code></td>
+<td>304</td>
+<td>UDP socket 类声明、内部 <code>UdpRxPacket</code></td>
+<td>[1]</td>
+</tr>
+<tr>
+<td><code>src/Arduino_10BASE_T1S_UDP.cpp</code></td>
+<td>257</td>
+<td>UDP 实现</td>
+<td>[1]</td>
+</tr>
+<tr>
+<td><code>src/MacAddress.h</code> &#x2F; <code>.cpp</code></td>
+<td>48 &#x2F; 109</td>
+<td>6 字节 MAC 地址 + UID 生成</td>
+<td>[4]</td>
+</tr>
+<tr>
+<td><code>src/T1SPlcaSettings.h</code> &#x2F; <code>.cpp</code></td>
+<td>57 &#x2F; 56</td>
+<td>PLCA 节点配置</td>
+<td>[4]</td>
+</tr>
+<tr>
+<td><code>src/T1SMacSettings.h</code> &#x2F; <code>.cpp</code></td>
+<td>50 &#x2F; 51</td>
+<td>MAC 行为配置</td>
+<td>[4]</td>
+</tr>
+</tbody></table>
+<h3 id="3-2-PHY-与-HAL-层"><a href="#3-2-PHY-与-HAL-层" class="headerlink" title="3.2 PHY 与 HAL 层"></a>3.2 PHY 与 HAL 层</h3><table>
+<thead>
+<tr>
+<th>文件</th>
+<th>行数</th>
+<th>作用</th>
+<th>文档</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>src/microchip/TC6_Arduino_10BASE_T1S.h</code></td>
+<td>156</td>
+<td>PHY 实现类 + <code>DIO</code> 枚举</td>
+<td>[2]</td>
+</tr>
+<tr>
+<td><code>src/microchip/TC6_Arduino_10BASE_T1S.cpp</code></td>
+<td>668</td>
+<td>核心集成（lwIP ↔ libtc6）</td>
+<td>[2][3]</td>
+</tr>
+<tr>
+<td><code>src/microchip/TC6_Io.h</code></td>
+<td>69</td>
+<td>SPI HAL 类声明</td>
+<td>[2]</td>
+</tr>
+<tr>
+<td><code>src/microchip/TC6_Io.cpp</code></td>
+<td>107</td>
+<td>SPI HAL 实现（24MHz, Mode 0）</td>
+<td>[2]</td>
+</tr>
+</tbody></table>
+<h3 id="3-3-libtc6-协议核心"><a href="#3-3-libtc6-协议核心" class="headerlink" title="3.3 libtc6 协议核心"></a>3.3 libtc6 协议核心</h3><table>
+<thead>
+<tr>
+<th>文件</th>
+<th>行数</th>
+<th>作用</th>
+<th>文档</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>src/microchip/lib/libtc6/inc/tc6.h</code></td>
+<td>344</td>
+<td>公开 C API + 回调声明 + 类型定义</td>
+<td>[3]</td>
+</tr>
+<tr>
+<td><code>src/microchip/lib/libtc6/src/tc6.cpp</code></td>
+<td>1318</td>
+<td>OA TC6 协议核心实现</td>
+<td>[3]</td>
+</tr>
+<tr>
+<td><code>src/microchip/lib/libtc6/src/tc6-queue.h</code></td>
+<td>300</td>
+<td>三种无锁环形队列（自动生成）</td>
+<td>[3]</td>
+</tr>
+<tr>
+<td><code>src/microchip/lib/libtc6/inc/tc6-regs.h</code></td>
+<td>222</td>
+<td>LAN865x 寄存器层 API</td>
+<td>[3]</td>
+</tr>
+<tr>
+<td><code>src/microchip/lib/libtc6/src/tc6-regs.cpp</code></td>
+<td>~700</td>
+<td>LAN865x 32 条初始化表 + Chip ID + PLCA</td>
+<td>[3]</td>
+</tr>
+<tr>
+<td><code>src/microchip/lib/libtc6/cfg-example/tc6-conf.h</code></td>
+<td>153</td>
+<td>编译时配置（队列大小、instance 数）</td>
+<td>[3]</td>
+</tr>
+</tbody></table>
+<h3 id="3-4-lwIP-集成"><a href="#3-4-lwIP-集成" class="headerlink" title="3.4 lwIP 集成"></a>3.4 lwIP 集成</h3><table>
+<thead>
+<tr>
+<th>文件</th>
+<th>作用</th>
+<th>文档</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>src/lib/liblwip/</code> (整个子目录)</td>
+<td>lwIP 协议栈（已重命名符号）</td>
+<td>[3]</td>
+</tr>
+<tr>
+<td><code>src/lib/liblwip/cfg/lwipopts.h</code></td>
+<td>lwIP 编译配置（592 行重命名 + 选项）</td>
+<td>[4]</td>
+</tr>
+<tr>
+<td><code>src/lib/lwip_sys_now.cpp</code></td>
+<td><code>sys_now()</code> 桥接到 <code>millis()</code></td>
+<td>[4]</td>
+</tr>
+</tbody></table>
+<h3 id="3-5-Examples"><a href="#3-5-Examples" class="headerlink" title="3.5 Examples"></a>3.5 Examples</h3><table>
+<thead>
+<tr>
+<th>文件</th>
+<th>演示内容</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>examples/UDP_Client/UDP_Client.ino</code></td>
+<td>客户端循环发包 + 接收 echo + PLCA 状态监控</td>
+</tr>
+<tr>
+<td><code>examples/UDP_Server/UDP_Server.ino</code></td>
+<td>服务端 echo 回环 + PLCA Coordinator 配置</td>
+</tr>
+<tr>
+<td><code>examples/pingpong/pingpong.ino</code></td>
+<td>多节点互发 ping&#x2F;pong（broadcast）</td>
+</tr>
+<tr>
+<td><code>examples/tools/Generate-MAC/Generate-MAC.ino</code></td>
+<td>打印 MAC 地址</td>
+</tr>
+<tr>
+<td><code>examples/tools/Control-DIOx/Control-DIOx.ino</code></td>
+<td>通过 LAN8651 GPIO 控制 PoDL 电源</td>
+</tr>
+<tr>
+<td><code>examples/tools/PoDL-Source/PoDL-Source.ino</code></td>
+<td>PoDL 电源端</td>
+</tr>
+<tr>
+<td><code>examples/tools/PoDL-Sink-Auto-TurnOff/PoDL-Sink-Auto-TurnOff.ino</code></td>
+<td>PoDL 接收端自动断电</td>
+</tr>
+</tbody></table>
+<h2 id="4-全局-API-速查表"><a href="#4-全局-API-速查表" class="headerlink" title="4. 全局 API 速查表"></a>4. 全局 API 速查表</h2><h3 id="4-1-应用层（C-Arduino）"><a href="#4-1-应用层（C-Arduino）" class="headerlink" title="4.1 应用层（C++ &#x2F; Arduino）"></a>4.1 应用层（C++ &#x2F; Arduino）</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 1. 实例化 PHY + HAL（宏展开）</span></span><br><span class="line"><span class="built_in">Arduino_10BASE_T1S_PHY_TC6</span>(SPI, CS_PIN, RESET_PIN, IRQ_PIN);</span><br><span class="line">Arduino_10BASE_T1S_UDP udp_client;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 2. 中断配置</span></span><br><span class="line"><span class="built_in">attachInterrupt</span>(<span class="built_in">digitalPinToInterrupt</span>(IRQ_PIN),</span><br><span class="line">                []() &#123; t1s_io.<span class="built_in">onInterrupt</span>(); &#125;, FALLING);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 3. HAL + PHY 初始化</span></span><br><span class="line">t1s_io.<span class="built_in">begin</span>();</span><br><span class="line">MacAddress <span class="type">const</span> mac = MacAddress::<span class="built_in">create_from_uid</span>();</span><br><span class="line"><span class="function">T1SPlcaSettings <span class="type">const</span> <span class="title">plca</span><span class="params">(<span class="number">1</span>)</span></span>;  <span class="comment">// Node 1, default others</span></span><br><span class="line">T1SMacSettings <span class="type">const</span> mac_settings;  <span class="comment">// 全默认</span></span><br><span class="line"></span><br><span class="line"><span class="type">bool</span> ok = t1s_phy.<span class="built_in">begin</span>(ip_addr, network_mask, gateway,</span><br><span class="line">                        mac, plca, mac_settings);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 4. UDP socket</span></span><br><span class="line">udp_client.<span class="built_in">begin</span>(<span class="number">8889</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 5. 发送</span></span><br><span class="line">udp_client.<span class="built_in">beginPacket</span>(server_ip, <span class="number">8888</span>);</span><br><span class="line">udp_client.<span class="built_in">write</span>(<span class="string">&quot;hello&quot;</span>, <span class="number">5</span>);</span><br><span class="line"><span class="type">int</span> rc = udp_client.<span class="built_in">endPacket</span>();  <span class="comment">// 1 = OK, 0 或 -1 = 失败</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 6. 接收</span></span><br><span class="line"><span class="type">int</span> size = udp_client.<span class="built_in">parsePacket</span>();</span><br><span class="line"><span class="keyword">if</span> (size &gt; <span class="number">0</span>) &#123;</span><br><span class="line">  <span class="type">uint8_t</span> buf[<span class="number">256</span>];</span><br><span class="line">  <span class="type">int</span> n = udp_client.<span class="built_in">read</span>(buf, <span class="built_in">sizeof</span>(buf));</span><br><span class="line">  IPAddress remote = udp_client.<span class="built_in">remoteIP</span>();</span><br><span class="line">  <span class="type">uint16_t</span> port = udp_client.<span class="built_in">remotePort</span>();</span><br><span class="line">  udp_client.<span class="built_in">flush</span>();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 7. 主循环</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">loop</span><span class="params">()</span> </span>&#123;</span><br><span class="line">  t1s_phy.<span class="built_in">service</span>();   <span class="comment">// 必调，越快越好</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 8. PLCA 状态</span></span><br><span class="line">t1s_phy.<span class="built_in">getPlcaStatus</span>([](<span class="type">bool</span> success, <span class="type">bool</span> active) &#123;</span><br><span class="line">  <span class="keyword">if</span> (success &amp;&amp; !active) t1s_phy.<span class="built_in">enablePlca</span>();</span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-2-libtc6-核心（C-API）"><a href="#4-2-libtc6-核心（C-API）" class="headerlink" title="4.2 libtc6 核心（C API）"></a>4.2 libtc6 核心（C API）</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 初始化</span></span><br><span class="line">TC6_t *tc6 = TC6_Init(global_tag);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 周期调用</span></span><br><span class="line">TC6_Service(tc6, <span class="comment">/*IRQ level*/</span> <span class="literal">false</span>);   <span class="comment">// IRQ 触发时</span></span><br><span class="line">TC6_Service(tc6, <span class="literal">true</span>);                  <span class="comment">// TC6_CB_OnNeedService 触发时</span></span><br><span class="line">TC6Regs_CheckTimers();                    <span class="comment">// 寄存器超时检查</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 发送</span></span><br><span class="line"><span class="type">uint8_t</span> frame[<span class="number">64</span>];</span><br><span class="line">TC6_SendRawEthernetPacket(tc6, frame, <span class="keyword">sizeof</span>(frame), <span class="number">0</span>, <span class="literal">NULL</span>, <span class="literal">NULL</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 寄存器</span></span><br><span class="line">TC6_ReadRegister(tc6, <span class="number">0x00010000</span>, <span class="literal">true</span>, OnRegRead, <span class="literal">NULL</span>);</span><br><span class="line">TC6_WriteRegister(tc6, <span class="number">0x00010000</span>, <span class="number">0x0C</span>, <span class="literal">true</span>, OnRegWrite, <span class="literal">NULL</span>);</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-3-libtc6-必实现回调（C-API）"><a href="#4-3-libtc6-必实现回调（C-API）" class="headerlink" title="4.3 libtc6 必实现回调（C API）"></a>4.3 libtc6 必实现回调（C API）</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">extern</span> <span class="type">bool</span> <span class="title function_">TC6_CB_OnSpiTransaction</span><span class="params">(TC6_t*, <span class="type">uint8_t</span>*, <span class="type">uint8_t</span>*, <span class="type">uint16_t</span>, <span class="type">void</span>*)</span>;</span><br><span class="line"><span class="keyword">extern</span> <span class="type">void</span> <span class="title function_">TC6_CB_OnRxEthernetSlice</span><span class="params">(TC6_t*, <span class="type">const</span> <span class="type">uint8_t</span>*, <span class="type">uint16_t</span>, <span class="type">uint16_t</span>, <span class="type">void</span>*)</span>;</span><br><span class="line"><span class="keyword">extern</span> <span class="type">void</span> <span class="title function_">TC6_CB_OnRxEthernetPacket</span><span class="params">(TC6_t*, <span class="type">bool</span>, <span class="type">uint16_t</span>, <span class="type">uint64_t</span>*, <span class="type">void</span>*)</span>;</span><br><span class="line"><span class="keyword">extern</span> <span class="type">void</span> <span class="title function_">TC6_CB_OnNeedService</span><span class="params">(TC6_t*, <span class="type">void</span>*)</span>;</span><br><span class="line"><span class="keyword">extern</span> <span class="type">void</span> <span class="title function_">TC6_CB_OnError</span><span class="params">(TC6_t*, TC6_Error_t, <span class="type">void</span>*)</span>;</span><br><span class="line"><span class="keyword">extern</span> <span class="type">void</span> <span class="title function_">TC6_CB_OnExtendedStatus</span><span class="params">(TC6_t*, <span class="type">void</span>*)</span>;  <span class="comment">// 通常由 tc6-regs 实现</span></span><br><span class="line"><span class="keyword">extern</span> <span class="type">uint32_t</span> <span class="title function_">TC6Regs_CB_GetTicksMs</span><span class="params">(<span class="type">void</span>)</span>;</span><br><span class="line"><span class="keyword">extern</span> <span class="type">void</span> <span class="title function_">TC6Regs_CB_OnEvent</span><span class="params">(TC6_t*, TC6Regs_Event_t, <span class="type">void</span>*)</span>;</span><br></pre></td></tr></table></figure>
+
+<h2 id="5-内存预算速查（UNO-R4-Minima）"><a href="#5-内存预算速查（UNO-R4-Minima）" class="headerlink" title="5. 内存预算速查（UNO R4 Minima）"></a>5. 内存预算速查（UNO R4 Minima）</h2><table>
+<thead>
+<tr>
+<th>模块</th>
+<th>Flash</th>
+<th>RAM</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Arduino 核心 + SPI 库</td>
+<td>~25KB</td>
+<td>~5KB</td>
+</tr>
+<tr>
+<td>liblwip（裁剪版）</td>
+<td>~30KB</td>
+<td>~6KB</td>
+</tr>
+<tr>
+<td>libtc6 + tc6-regs</td>
+<td>~20KB</td>
+<td>~5KB</td>
+</tr>
+<tr>
+<td>TC6_Io + TC6_Arduino_10BASE_T1S</td>
+<td>~8KB</td>
+<td>~2KB</td>
+</tr>
+<tr>
+<td>Arduino_10BASE_T1S_UDP</td>
+<td>~3KB</td>
+<td>~1.5KB（10 包排队）</td>
+</tr>
+<tr>
+<td>UDP_Client.ino sketch</td>
+<td>~5KB</td>
+<td>~1KB</td>
+</tr>
+<tr>
+<td><strong>合计</strong></td>
+<td><strong>~91KB</strong></td>
+<td><strong>~20KB</strong></td>
+</tr>
+<tr>
+<td><strong>可用</strong></td>
+<td><strong>256KB (35%)</strong></td>
+<td><strong>32KB (62%)</strong></td>
+</tr>
+</tbody></table>
+<p>详细 <code>lwipopts.h</code> 调优见文档 [4]。</p>
+<h2 id="6-移植决策树"><a href="#6-移植决策树" class="headerlink" title="6. 移植决策树"></a>6. 移植决策树</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">要移植到非 Arduino 平台？</span><br><span class="line">├─ 是</span><br><span class="line">│   ├─ 是否仍是 SPI + LAN865x？</span><br><span class="line">│   │   ├─ 是 → 仅替换 TC6_Io 内部 5 个方法 + sys_now + millis</span><br><span class="line">│   │   └─ 否 → 继续</span><br><span class="line">│   └─ 是否仍是 OA TC6 协议？</span><br><span class="line">│       ├─ 是 → 保留 libtc6，仅重写回调实现</span><br><span class="line">│       └─ 否 → 整体替换协议层（最复杂）</span><br><span class="line">└─ 否（仅改 MCU 型号）</span><br><span class="line">    ├─ 是 Lumissil SoC 单芯片方案？</span><br><span class="line">    │   └─ 是 → 删除 TC6_Io + libtc6，保留 lwIP + Arduino_UDP</span><br><span class="line">    │           实现 MAC descriptor 驱动（详见 Lumissil_SoC 决策文档）</span><br><span class="line">    └─ 否（仍外挂不同 MAC-PHY）</span><br><span class="line">        ├─ MAC-PHY 兼容 OA TC6？</span><br><span class="line">        │   ├─ 是 → 替换 TC6_Io（SPI）+ tc6-regs.cpp（寄存器表）</span><br><span class="line">        │   └─ 否 → 整体替换协议层</span><br></pre></td></tr></table></figure>
+
+<h2 id="7-关键设计决策（FAQ-风格）"><a href="#7-关键设计决策（FAQ-风格）" class="headerlink" title="7. 关键设计决策（FAQ 风格）"></a>7. 关键设计决策（FAQ 风格）</h2><h3 id="Q-为什么-Arduino-10BASE-T1S-UDP-endPacket-返回值是-0-或-1，而不是统一的-1-0？"><a href="#Q-为什么-Arduino-10BASE-T1S-UDP-endPacket-返回值是-0-或-1，而不是统一的-1-0？" class="headerlink" title="Q: 为什么 Arduino_10BASE_T1S_UDP::endPacket() 返回值是 0 或 -1，而不是统一的 1/0？"></a>Q: 为什么 <code>Arduino_10BASE_T1S_UDP::endPacket()</code> 返回值是 <code>0</code> 或 <code>-1</code>，而不是统一的 <code>1/0</code>？</h3><p>A: 历史原因——<code>endPacket()</code> 实现混合了 lwIP <code>udp_sendto()</code>（返回 <code>err_t</code>，枚举）的失败码 <code>-1</code> 和 <code>_udp_pcb == nullptr</code> 检查的 <code>0</code>。调用方必须<strong>同时</strong>处理这两个值。详见文档 [1] 第 2.4 节。</p>
+<h3 id="Q-T1SPlcaSettings-默认构造为什么是-Node-0（Coordinator）？"><a href="#Q-T1SPlcaSettings-默认构造为什么是-Node-0（Coordinator）？" class="headerlink" title="Q: T1SPlcaSettings 默认构造为什么是 Node 0（Coordinator）？"></a>Q: <code>T1SPlcaSettings</code> 默认构造为什么是 Node 0（Coordinator）？</h3><p>A: 库作者把 <code>DEFAULT_NODE_ID = 0</code> 设为默认值。在 sketch 中<strong>必须</strong>显式传入自己的 Node ID，否则两块板子都是 Node 0 会冲突。常见错误：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 错误：两块板子都用默认 = 都是 Node 0</span></span><br><span class="line">T1SPlcaSettings plca;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 正确：每块板子指定不同 Node ID</span></span><br><span class="line"><span class="function">T1SPlcaSettings <span class="title">plca</span><span class="params">(MY_NODE_NUMBER)</span></span>;</span><br></pre></td></tr></table></figure>
+
+<h3 id="Q-库禁用-TCP，怎么启用？"><a href="#Q-库禁用-TCP，怎么启用？" class="headerlink" title="Q: 库禁用 TCP，怎么启用？"></a>Q: 库禁用 TCP，怎么启用？</h3><p>A: 编辑 <code>src/lib/liblwip/cfg/lwipopts.h</code>，把 <code>LWIP_TCP</code> 改为 <code>1</code>，并相应调大 <code>MEMP_NUM_TCP_PCB</code> 等。<strong>注意</strong>：UNO R4 Minima（32KB RAM）启用 TCP 会立即超 RAM。详见文档 [4] 第 4.10 节。</p>
+<h3 id="Q-begin-失败后能否重试？"><a href="#Q-begin-失败后能否重试？" class="headerlink" title="Q: begin() 失败后能否重试？"></a>Q: <code>begin()</code> 失败后能否重试？</h3><p>A: <strong>不建议</strong>。当前 <code>TC6_Arduino_10BASE_T1S::begin()</code> 失败时<strong>不会清理</strong>已经创建的 <code>TC6_t*</code> 实例和已注册的 netif。重试会导致内存泄漏和重复注册。修复需要修改 <code>begin()</code> 入口加 cleanup 逻辑。</p>
+<h3 id="Q-如何在多个-sketch-之间共享同一个-PHY-实例？"><a href="#Q-如何在多个-sketch-之间共享同一个-PHY-实例？" class="headerlink" title="Q: 如何在多个 sketch 之间共享同一个 PHY 实例？"></a>Q: 如何在多个 sketch 之间共享同一个 PHY 实例？</h3><p>A: 当前<strong>不支持</strong>。<code>Arduino_10BASE_T1S_PHY_TC6</code> 宏产生固定名字 <code>t1s_io</code> &#x2F; <code>t1s_phy</code>，无法在多个 .ino 文件中分别调用。</p>
+<h3 id="Q-为什么-lwipopts-h-重命名所有符号？"><a href="#Q-为什么-lwipopts-h-重命名所有符号？" class="headerlink" title="Q: 为什么 lwipopts.h 重命名所有符号？"></a>Q: 为什么 <code>lwipopts.h</code> 重命名所有符号？</h3><p>A: 防止与 Arduino 核心库、其他库的符号冲突。详见文档 [4] 第 4.9 节。</p>
+<h2 id="8-常见错误恢复流程"><a href="#8-常见错误恢复流程" class="headerlink" title="8. 常见错误恢复流程"></a>8. 常见错误恢复流程</h2><h3 id="8-1-libtc6-错误到动作"><a href="#8-1-libtc6-错误到动作" class="headerlink" title="8.1 libtc6 错误到动作"></a>8.1 libtc6 错误到动作</h3><table>
+<thead>
+<tr>
+<th>错误</th>
+<th>默认恢复</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>TC6Error_NoHardware</code></td>
+<td><code>TC6Regs_Reinit</code></td>
+</tr>
+<tr>
+<td><code>TC6Error_BadChecksum</code></td>
+<td><code>TC6Regs_Reinit</code></td>
+</tr>
+<tr>
+<td><code>TC6Error_UnexpectedCtrl</code></td>
+<td><code>TC6Regs_Reinit</code></td>
+</tr>
+<tr>
+<td><code>TC6Error_BadTxData</code></td>
+<td><code>TC6Regs_Reinit</code></td>
+</tr>
+<tr>
+<td><code>TC6Error_SyncLost</code></td>
+<td><code>TC6Regs_Reinit</code></td>
+</tr>
+<tr>
+<td><code>TC6Error_SpiError</code></td>
+<td><code>TC6Regs_Reinit</code></td>
+</tr>
+</tbody></table>
+<h3 id="8-2-TC6Regs-事件到动作"><a href="#8-2-TC6Regs-事件到动作" class="headerlink" title="8.2 TC6Regs 事件到动作"></a>8.2 TC6Regs 事件到动作</h3><table>
+<thead>
+<tr>
+<th>事件</th>
+<th>默认恢复</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>TC6Regs_Event_Loss_of_Framing_Error</code></td>
+<td><code>TC6Regs_Reinit</code></td>
+</tr>
+<tr>
+<td><code>TC6Regs_Event_RX_Non_Recoverable_Error</code></td>
+<td><code>TC6Regs_Reinit</code></td>
+</tr>
+<tr>
+<td><code>TC6Regs_Event_TX_Non_Recoverable_Error</code></td>
+<td><code>TC6Regs_Reinit</code></td>
+</tr>
+<tr>
+<td><code>TC6Regs_Event_Unsupported_Hardware</code></td>
+<td>标记 init failed</td>
+</tr>
+<tr>
+<td>其他</td>
+<td>仅日志（默认 PRINT 空）</td>
+</tr>
+</tbody></table>
+<h2 id="9-调试入口汇总"><a href="#9-调试入口汇总" class="headerlink" title="9. 调试入口汇总"></a>9. 调试入口汇总</h2><h3 id="9-1-启用-libtc6-错误打印"><a href="#9-1-启用-libtc6-错误打印" class="headerlink" title="9.1 启用 libtc6 错误打印"></a>9.1 启用 libtc6 错误打印</h3><p>修改 <code>src/microchip/TC6_Arduino_10BASE_T1S.cpp:493</code>：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 原始：</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PRINT(...)</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 改为：</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PRINT(...) Serial.printf(__VA_ARGS__)</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="9-2-添加-RX-TX-计数器"><a href="#9-2-添加-RX-TX-计数器" class="headerlink" title="9.2 添加 RX&#x2F;TX 计数器"></a>9.2 添加 RX&#x2F;TX 计数器</h3><p>在 <code>TC6_CB_OnRxEthernetPacket</code> 和 <code>lwIpOut</code> 加 static 计数器，定期打印：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">uint32_t</span> rx_count = <span class="number">0</span>, tx_count = <span class="number">0</span>, err_count = <span class="number">0</span>;</span><br></pre></td></tr></table></figure>
+
+<h3 id="9-3-监控-service-频率"><a href="#9-3-监控-service-频率" class="headerlink" title="9.3 监控 service() 频率"></a>9.3 监控 service() 频率</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">uint32_t</span> prev = <span class="number">0</span>, cnt = <span class="number">0</span>;</span><br><span class="line">cnt++;</span><br><span class="line"><span class="type">uint32_t</span> now = <span class="built_in">millis</span>();</span><br><span class="line"><span class="keyword">if</span> (now - prev &gt; <span class="number">1000</span>) &#123;</span><br><span class="line">  Serial.<span class="built_in">print</span>(<span class="string">&quot;service() rate: &quot;</span>);</span><br><span class="line">  Serial.<span class="built_in">print</span>(cnt);</span><br><span class="line">  Serial.<span class="built_in">println</span>(<span class="string">&quot; Hz&quot;</span>);</span><br><span class="line">  prev = now; cnt = <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="9-4-lwIP-调试"><a href="#9-4-lwIP-调试" class="headerlink" title="9.4 lwIP 调试"></a>9.4 lwIP 调试</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// lwipopts.h 临时打开</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> LWIP_DEBUG 1</span></span><br><span class="line"><span class="keyword">extern</span> <span class="string">&quot;C&quot;</span> <span class="type">unsigned</span> <span class="type">char</span> debug_flags = LWIP_DBG_ON;</span><br></pre></td></tr></table></figure>
+
+<h2 id="10-完整阅读路径建议"><a href="#10-完整阅读路径建议" class="headerlink" title="10. 完整阅读路径建议"></a>10. 完整阅读路径建议</h2><h3 id="路径-A：应用开发者（只想用库）"><a href="#路径-A：应用开发者（只想用库）" class="headerlink" title="路径 A：应用开发者（只想用库）"></a>路径 A：应用开发者（只想用库）</h3><ol>
+<li>文档 [1] 速读 → UDP API 完整契约</li>
+<li>文档 [4] 速读 → 三个辅助类的用法</li>
+<li>直接用 <code>UDP_Client.ino</code> &#x2F; <code>UDP_Server.ino</code> 起步</li>
+</ol>
+<h3 id="路径-B：移植者（改-HAL-或-PHY-后端）"><a href="#路径-B：移植者（改-HAL-或-PHY-后端）" class="headerlink" title="路径 B：移植者（改 HAL 或 PHY 后端）"></a>路径 B：移植者（改 HAL 或 PHY 后端）</h3><ol>
+<li>文档 [2] 全文 → <code>TC6_Io</code> 和 <code>TC6_Arduino_10BASE_T1S</code> 接口</li>
+<li>文档 [3] 第 4-6 节 → libtc6 回调契约</li>
+<li>现有<a href="/2026/06/04/10BASE-T1S-Porting-Guide/">移植指南</a>作为 checklist</li>
+</ol>
+<h3 id="路径-C：芯片替换（移植到非-LAN865x）"><a href="#路径-C：芯片替换（移植到非-LAN865x）" class="headerlink" title="路径 C：芯片替换（移植到非 LAN865x）"></a>路径 C：芯片替换（移植到非 LAN865x）</h3><ol>
+<li>文档 [3] 第 6 节 → <code>tc6-regs.cpp</code> 寄存器表</li>
+<li>文档 [3] 第 8 节 → 移植到非 Arduino 平台的步骤</li>
+<li>现有<a href="/2026/06/04/10BASE-T1S-Porting-Guide/">移植指南</a>第 3-4 节</li>
+</ol>
+<h3 id="路径-D：架构理解（不想改代码）"><a href="#路径-D：架构理解（不想改代码）" class="headerlink" title="路径 D：架构理解（不想改代码）"></a>路径 D：架构理解（不想改代码）</h3><ol>
+<li><a href="/2026/06/04/10BASE-T1S-Arduino-Architecture-Overview/">架构概览</a> → 四层架构</li>
+<li><a href="/2026/06/04/10BASE-T1S-Protocol-Stack-Deep-Dive/">协议栈深度分析</a> → OA TC6 帧结构</li>
+<li>本系列文档 [0] 全局速查 + 文档 [1-2] 关键 API</li>
+</ol>
+<h2 id="11-小结"><a href="#11-小结" class="headerlink" title="11. 小结"></a>11. 小结</h2><p>本系列四篇文档的目标是<strong>让读者在不读 libtc6 源码的情况下，能正确使用和修改这个库</strong>：</p>
+<ul>
+<li>文档 [1] 解决了 “<strong>怎么用</strong>“ 的问题——逐函数告诉你行为和陷阱</li>
+<li>文档 [2] 解决了 “<strong>怎么替换 HAL</strong>“ 的问题——SPI HAL 5 个方法 + PHY 抽象</li>
+<li>文档 [3] 解决了 “<strong>怎么对接新芯片</strong>“ 的问题——回调契约 + 寄存器表</li>
+<li>文档 [4] 解决了 “<strong>怎么调优</strong>“ 的问题——辅助类 + lwIP 配置</li>
+<li>文档 [0]（本篇）提供了 “<strong>全局视图</strong>“——索引、速查、决策树</li>
+</ul>
+<p>任何 API 行为疑惑，先查本系列对应章节；任何代码报错，先查文档 [3] 第 10 节调试入口；任何移植决策，先查本篇第 6 节决策树。</p>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">首页</a></li>
+        
+          <li><a href="/archives/">归档</a></li>
+        
+          <li><a href="/tags/">标签</a></li>
+        
+          <li><a href="/categories/">分类</a></li>
+        
+          <li><a href="/search/">搜索</a></li>
+        
+          <li><a href="/about/">关于</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%B3%BB%E5%88%97%E5%AF%BC%E8%AF%BB"><span class="toc-number">1.</span> <span class="toc-text">系列导读</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E7%B3%BB%E5%88%97%E6%96%87%E7%AB%A0%E7%B4%A2%E5%BC%95"><span class="toc-number">2.</span> <span class="toc-text">1. 系列文章索引</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9C%AC%E7%B3%BB%E5%88%97%EF%BC%88%E4%BB%A3%E7%A0%81%E6%8E%A5%E5%8F%A3%E7%BA%A7%EF%BC%89"><span class="toc-number">2.1.</span> <span class="toc-text">本系列（代码接口级）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%85%8D%E5%A5%97%E7%B3%BB%E5%88%97%EF%BC%88%E6%9E%B6%E6%9E%84%E7%BA%A7%EF%BC%89"><span class="toc-number">2.2.</span> <span class="toc-text">配套系列（架构级）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-%E5%85%A8%E5%B1%80%E6%9E%B6%E6%9E%84%E4%B8%8E%E6%96%87%E4%BB%B6%E6%98%A0%E5%B0%84"><span class="toc-number">3.</span> <span class="toc-text">2. 全局架构与文件映射</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-%E6%96%87%E4%BB%B6%E6%B8%85%E5%8D%95%E4%B8%8E%E4%BD%9C%E7%94%A8"><span class="toc-number">4.</span> <span class="toc-text">3. 文件清单与作用</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E5%BA%94%E7%94%A8%E5%B1%82%E4%B8%8E%E5%85%AC%E5%BC%80-API"><span class="toc-number">4.1.</span> <span class="toc-text">3.1 应用层与公开 API</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-PHY-%E4%B8%8E-HAL-%E5%B1%82"><span class="toc-number">4.2.</span> <span class="toc-text">3.2 PHY 与 HAL 层</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-libtc6-%E5%8D%8F%E8%AE%AE%E6%A0%B8%E5%BF%83"><span class="toc-number">4.3.</span> <span class="toc-text">3.3 libtc6 协议核心</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-4-lwIP-%E9%9B%86%E6%88%90"><span class="toc-number">4.4.</span> <span class="toc-text">3.4 lwIP 集成</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-5-Examples"><span class="toc-number">4.5.</span> <span class="toc-text">3.5 Examples</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-%E5%85%A8%E5%B1%80-API-%E9%80%9F%E6%9F%A5%E8%A1%A8"><span class="toc-number">5.</span> <span class="toc-text">4. 全局 API 速查表</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-%E5%BA%94%E7%94%A8%E5%B1%82%EF%BC%88C-Arduino%EF%BC%89"><span class="toc-number">5.1.</span> <span class="toc-text">4.1 应用层（C++ &#x2F; Arduino）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-libtc6-%E6%A0%B8%E5%BF%83%EF%BC%88C-API%EF%BC%89"><span class="toc-number">5.2.</span> <span class="toc-text">4.2 libtc6 核心（C API）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-libtc6-%E5%BF%85%E5%AE%9E%E7%8E%B0%E5%9B%9E%E8%B0%83%EF%BC%88C-API%EF%BC%89"><span class="toc-number">5.3.</span> <span class="toc-text">4.3 libtc6 必实现回调（C API）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-%E5%86%85%E5%AD%98%E9%A2%84%E7%AE%97%E9%80%9F%E6%9F%A5%EF%BC%88UNO-R4-Minima%EF%BC%89"><span class="toc-number">6.</span> <span class="toc-text">5. 内存预算速查（UNO R4 Minima）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6-%E7%A7%BB%E6%A4%8D%E5%86%B3%E7%AD%96%E6%A0%91"><span class="toc-number">7.</span> <span class="toc-text">6. 移植决策树</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#7-%E5%85%B3%E9%94%AE%E8%AE%BE%E8%AE%A1%E5%86%B3%E7%AD%96%EF%BC%88FAQ-%E9%A3%8E%E6%A0%BC%EF%BC%89"><span class="toc-number">8.</span> <span class="toc-text">7. 关键设计决策（FAQ 风格）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Q-%E4%B8%BA%E4%BB%80%E4%B9%88-Arduino-10BASE-T1S-UDP-endPacket-%E8%BF%94%E5%9B%9E%E5%80%BC%E6%98%AF-0-%E6%88%96-1%EF%BC%8C%E8%80%8C%E4%B8%8D%E6%98%AF%E7%BB%9F%E4%B8%80%E7%9A%84-1-0%EF%BC%9F"><span class="toc-number">8.1.</span> <span class="toc-text">Q: 为什么 Arduino_10BASE_T1S_UDP::endPacket() 返回值是 0 或 -1，而不是统一的 1&#x2F;0？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Q-T1SPlcaSettings-%E9%BB%98%E8%AE%A4%E6%9E%84%E9%80%A0%E4%B8%BA%E4%BB%80%E4%B9%88%E6%98%AF-Node-0%EF%BC%88Coordinator%EF%BC%89%EF%BC%9F"><span class="toc-number">8.2.</span> <span class="toc-text">Q: T1SPlcaSettings 默认构造为什么是 Node 0（Coordinator）？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Q-%E5%BA%93%E7%A6%81%E7%94%A8-TCP%EF%BC%8C%E6%80%8E%E4%B9%88%E5%90%AF%E7%94%A8%EF%BC%9F"><span class="toc-number">8.3.</span> <span class="toc-text">Q: 库禁用 TCP，怎么启用？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Q-begin-%E5%A4%B1%E8%B4%A5%E5%90%8E%E8%83%BD%E5%90%A6%E9%87%8D%E8%AF%95%EF%BC%9F"><span class="toc-number">8.4.</span> <span class="toc-text">Q: begin() 失败后能否重试？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Q-%E5%A6%82%E4%BD%95%E5%9C%A8%E5%A4%9A%E4%B8%AA-sketch-%E4%B9%8B%E9%97%B4%E5%85%B1%E4%BA%AB%E5%90%8C%E4%B8%80%E4%B8%AA-PHY-%E5%AE%9E%E4%BE%8B%EF%BC%9F"><span class="toc-number">8.5.</span> <span class="toc-text">Q: 如何在多个 sketch 之间共享同一个 PHY 实例？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Q-%E4%B8%BA%E4%BB%80%E4%B9%88-lwipopts-h-%E9%87%8D%E5%91%BD%E5%90%8D%E6%89%80%E6%9C%89%E7%AC%A6%E5%8F%B7%EF%BC%9F"><span class="toc-number">8.6.</span> <span class="toc-text">Q: 为什么 lwipopts.h 重命名所有符号？</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#8-%E5%B8%B8%E8%A7%81%E9%94%99%E8%AF%AF%E6%81%A2%E5%A4%8D%E6%B5%81%E7%A8%8B"><span class="toc-number">9.</span> <span class="toc-text">8. 常见错误恢复流程</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#8-1-libtc6-%E9%94%99%E8%AF%AF%E5%88%B0%E5%8A%A8%E4%BD%9C"><span class="toc-number">9.1.</span> <span class="toc-text">8.1 libtc6 错误到动作</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8-2-TC6Regs-%E4%BA%8B%E4%BB%B6%E5%88%B0%E5%8A%A8%E4%BD%9C"><span class="toc-number">9.2.</span> <span class="toc-text">8.2 TC6Regs 事件到动作</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#9-%E8%B0%83%E8%AF%95%E5%85%A5%E5%8F%A3%E6%B1%87%E6%80%BB"><span class="toc-number">10.</span> <span class="toc-text">9. 调试入口汇总</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#9-1-%E5%90%AF%E7%94%A8-libtc6-%E9%94%99%E8%AF%AF%E6%89%93%E5%8D%B0"><span class="toc-number">10.1.</span> <span class="toc-text">9.1 启用 libtc6 错误打印</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#9-2-%E6%B7%BB%E5%8A%A0-RX-TX-%E8%AE%A1%E6%95%B0%E5%99%A8"><span class="toc-number">10.2.</span> <span class="toc-text">9.2 添加 RX&#x2F;TX 计数器</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#9-3-%E7%9B%91%E6%8E%A7-service-%E9%A2%91%E7%8E%87"><span class="toc-number">10.3.</span> <span class="toc-text">9.3 监控 service() 频率</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#9-4-lwIP-%E8%B0%83%E8%AF%95"><span class="toc-number">10.4.</span> <span class="toc-text">9.4 lwIP 调试</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#10-%E5%AE%8C%E6%95%B4%E9%98%85%E8%AF%BB%E8%B7%AF%E5%BE%84%E5%BB%BA%E8%AE%AE"><span class="toc-number">11.</span> <span class="toc-text">10. 完整阅读路径建议</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%B7%AF%E5%BE%84-A%EF%BC%9A%E5%BA%94%E7%94%A8%E5%BC%80%E5%8F%91%E8%80%85%EF%BC%88%E5%8F%AA%E6%83%B3%E7%94%A8%E5%BA%93%EF%BC%89"><span class="toc-number">11.1.</span> <span class="toc-text">路径 A：应用开发者（只想用库）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%B7%AF%E5%BE%84-B%EF%BC%9A%E7%A7%BB%E6%A4%8D%E8%80%85%EF%BC%88%E6%94%B9-HAL-%E6%88%96-PHY-%E5%90%8E%E7%AB%AF%EF%BC%89"><span class="toc-number">11.2.</span> <span class="toc-text">路径 B：移植者（改 HAL 或 PHY 后端）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%B7%AF%E5%BE%84-C%EF%BC%9A%E8%8A%AF%E7%89%87%E6%9B%BF%E6%8D%A2%EF%BC%88%E7%A7%BB%E6%A4%8D%E5%88%B0%E9%9D%9E-LAN865x%EF%BC%89"><span class="toc-number">11.3.</span> <span class="toc-text">路径 C：芯片替换（移植到非 LAN865x）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%B7%AF%E5%BE%84-D%EF%BC%9A%E6%9E%B6%E6%9E%84%E7%90%86%E8%A7%A3%EF%BC%88%E4%B8%8D%E6%83%B3%E6%94%B9%E4%BB%A3%E7%A0%81%EF%BC%89"><span class="toc-number">11.4.</span> <span class="toc-text">路径 D：架构理解（不想改代码）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#11-%E5%B0%8F%E7%BB%93"><span class="toc-number">12.</span> <span class="toc-text">11. 小结</span></a></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/07/31/10BASE-T1S-Code-Interfaces-Index/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/07/31/10BASE-T1S-Code-Interfaces-Index/&text=10BASE-T1S Arduino 代码接口深度解析（〇）：系列索引与全局速查"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/07/31/10BASE-T1S-Code-Interfaces-Index/&title=10BASE-T1S Arduino 代码接口深度解析（〇）：系列索引与全局速查"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/07/31/10BASE-T1S-Code-Interfaces-Index/&is_video=false&description=10BASE-T1S Arduino 代码接口深度解析（〇）：系列索引与全局速查"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=10BASE-T1S Arduino 代码接口深度解析（〇）：系列索引与全局速查&body=Check out this article: https://cursorhu.github.io/2026/07/31/10BASE-T1S-Code-Interfaces-Index/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/07/31/10BASE-T1S-Code-Interfaces-Index/&title=10BASE-T1S Arduino 代码接口深度解析（〇）：系列索引与全局速查"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/07/31/10BASE-T1S-Code-Interfaces-Index/&title=10BASE-T1S Arduino 代码接口深度解析（〇）：系列索引与全局速查"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/07/31/10BASE-T1S-Code-Interfaces-Index/&title=10BASE-T1S Arduino 代码接口深度解析（〇）：系列索引与全局速查"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/07/31/10BASE-T1S-Code-Interfaces-Index/&title=10BASE-T1S Arduino 代码接口深度解析（〇）：系列索引与全局速查"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/07/31/10BASE-T1S-Code-Interfaces-Index/&name=10BASE-T1S Arduino 代码接口深度解析（〇）：系列索引与全局速查&description=&lt;h2 id=&#34;系列导读&#34;&gt;&lt;a href=&#34;#系列导读&#34; class=&#34;headerlink&#34; title=&#34;系列导读&#34;&gt;&lt;/a&gt;系列导读&lt;/h2&gt;&lt;p&gt;本系列&lt;strong&gt;四篇&lt;/strong&gt;从代码接口视角对 Arduino_10BASE_T1S 库 v0.1.1 进行完整拆解，逐函数、逐字段、逐回调地列出语义、约束、错误模式和移植要点。配套已发布的架构&amp;#x2F;协议&amp;#x2F;移植&amp;#x2F;构建文档共同构成完整的代码理解资料库。&lt;/p&gt;
+&lt;h2 id=&#34;1-系列文章索引&#34;&gt;&lt;a href=&#34;#1-系列文章索引&#34; class=&#34;headerlink&#34; title=&#34;1. 系列文章索引&#34;&gt;&lt;/a&gt;1. 系列文章索引&lt;/h2&gt;&lt;h3 id=&#34;本系列（代码接口级）&#34;&gt;&lt;a href=&#34;#本系列（代码接口级）&#34; class=&#34;headerlink&#34; title=&#34;本系列（代码接口级）&#34;&gt;&lt;/a&gt;本系列（代码接口级）&lt;/h3&gt;&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;#&lt;/th&gt;
+&lt;th&gt;标题&lt;/th&gt;
+&lt;th&gt;主要内容&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;0&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;&lt;strong&gt;系列索引与全局速查&lt;/strong&gt;（本篇）&lt;/td&gt;
+&lt;td&gt;全局架构、文件清单、API 速查、移植决策树&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;1&lt;/td&gt;
+&lt;td&gt;&lt;a href=&#34;/2026/07/31/10BASE-T1S-Code-Interfaces-UDP-API/&#34;&gt;应用层 UDP Socket API&lt;/a&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;Arduino_10BASE_T1S_UDP&lt;/code&gt;、内部 &lt;code&gt;UdpRxPacket&lt;/code&gt;、发送&amp;#x2F;接收状态机、错误码&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;2&lt;/td&gt;
+&lt;td&gt;&lt;a href=&#34;/2026/07/31/10BASE-T1S-Code-Interfaces-PHY-and-HAL/&#34;&gt;PHY Interface 与 HAL 层&lt;/a&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;Arduino_10BASE_T1S_PHY_Interface&lt;/code&gt;、&lt;code&gt;TC6_Arduino_10BASE_T1S&lt;/code&gt;、&lt;code&gt;TC6_Io&lt;/code&gt; SPI HAL&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;3&lt;/td&gt;
+&lt;td&gt;&lt;a href=&#34;/2026/07/31/10BASE-T1S-Code-Interfaces-libtc6-and-lwip/&#34;&gt;libtc6 协议核心与 lwIP 集成&lt;/a&gt;&lt;/td&gt;
+&lt;td&gt;libtc6 C API、回调契约、lwIP netif、7 阶段寄存器队列&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;4&lt;/td&gt;
+&lt;td&gt;&lt;a href=&#34;/2026/07/31/10BASE-T1S-Code-Interfaces-Auxiliary-and-lwip/&#34;&gt;辅助类与 lwIP 配置&lt;/a&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;MacAddress&lt;/code&gt; &amp;#x2F; &lt;code&gt;T1SPlcaSettings&lt;/code&gt; &amp;#x2F; &lt;code&gt;T1SMacSettings&lt;/code&gt;、&lt;code&gt;lwipopts.h&lt;/code&gt; 详解&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;&lt;/table&gt;
+&lt;h3 id=&#34;配套系列（架构级）&#34;&gt;&lt;a href=&#34;#配套系列（架构级）&#34; class=&#34;headerlink&#34; title=&#34;配套系列（架构级）&#34;&gt;&lt;/a&gt;配套系列（架构级）&lt;/h3&gt;&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;标题&lt;/th&gt;
+&lt;th&gt;内容&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;&lt;tr&gt;
+&lt;td&gt;&lt;a href=&#34;/2026/06/04/10BASE-T1S-Arduino-Architecture-Overview/&#34;&gt;10BASE-T1S Arduino 开源库架构分析（一）：架构概览与开源评估&lt;/a&gt;&lt;/td&gt;
+&lt;td&gt;四层架构、CI 矩阵、许可证分析&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;a href=&#34;/2026/06/04/10BASE-T1S-Protocol-Stack-Deep-Dive/&#34;&gt;10BASE-T1S Arduino 开源库架构分析（二）：OA TC6 协议栈深度分析&lt;/a&gt;&lt;/td&gt;
+&lt;td&gt;OA TC6 帧结构、Credit 流控、PLCA 寄存器、初始化序列&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;a href=&#34;/2026/06/04/10BASE-T1S-Porting-Guide/&#34;&gt;10BASE-T1S Arduino 开源库架构分析（三）：移植实战指南&lt;/a&gt;&lt;/td&gt;
+&lt;td&gt;抽象边界、可复用模块、移植 checklist&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;a href=&#34;/2026/07/28/Arduino_IDE_Build_System_Deep_Dive/&#34;&gt;Arduino IDE 编译系统深度解析&lt;/a&gt;&lt;/td&gt;
+&lt;td&gt;从源码到 Flash 的完整流程、内存布局&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;a href=&#34;/2026/07/28/Arduino_R4_Lumissil_Development_Environment_Setup/&#34;&gt;Arduino R4 Lumissil 开发环境完整指南&lt;/a&gt;&lt;/td&gt;
+&lt;td&gt;Lumissil 移植环境搭建&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;a href=&#34;/2026/07/29/Lumissil_SoC_Integration_Architecture_Decision/&#34;&gt;Lumissil SoC 集成架构决策&lt;/a&gt;&lt;/td&gt;
+&lt;td&gt;单芯片集成方案对比、libtc6&amp;#x2F;lwIP&amp;#x2F;C 语言取舍&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;&lt;/table&gt;
+&lt;h2 id=&#34;2-全局架构与文件映射&#34;&gt;&lt;a href=&#34;#2-全局架构与文件映射&#34; class=&#34;headerlink&#34; title=&#34;2. 全局架构与文件映射&#34;&gt;&lt;/a&gt;2. 全局架构与文件映射&lt;/h2&gt;&lt;figure class=&#34;highlight plaintext&#34;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&#34;gutter&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;3&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;4&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;5&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;6&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;7&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;8&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;9&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;10&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;11&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;12&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;13&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;14&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;15&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;16&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;17&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;18&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;19&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;20&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;21&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;22&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;23&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;24&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;25&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;26&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;27&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;28&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;29&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;30&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;31&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;32&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;33&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;34&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;35&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;36&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;37&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;38&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;39&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;40&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;41&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;42&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&#34;code&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;┌─────────────────────────────────────────────────────────────────────┐&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                          Sketch (.ino)                              │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  Arduino_10BASE_T1S_PHY_TC6(SPI, 9, 6, 2);                         │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  Arduino_10BASE_T1S_UDP udp;                                        │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│  t1s_io.begin(); t1s_phy.begin(...); udp.begin(port);               │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;└─────────────────────────────────────────────────────────────────────┘&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;       │                       │                       │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;       ▼                       ▼                       ▼&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;┌──────────────────┐  ┌────────────────────────┐  ┌─────────────────┐&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│ Arduino_10BASE_  │  │ TC6_Arduino_10BASE_T1S │  │ Arduino_10BASE_ │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│ T1S_UDP.h/cpp    │  │ .h/cpp                 │  │ T1S.h           │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│                  │  │ (继承 PHY_Interface)   │  │ (主入口 + 宏)   │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│ UDP socket API   │  │ lwIP ↔ libtc6 桥接      │  │                 │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;└──────────────────┘  └────────────────────────┘  └─────────────────┘&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;       │                       │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;       │                       ├─→ MacAddress.h/cpp&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;       │                       ├─→ T1SPlcaSettings.h/cpp&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;       │                       ├─→ T1SMacSettings.h/cpp&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;       │                       │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;       │                       └─→ microchip/TC6_Io.h/cpp (HAL)&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;       │                                  │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;       ▼                                  ▼&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;┌─────────────────────────────────────────────────────────────────────┐&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│ lib/liblwip/   (lwIP TCP/IP 协议栈 + cfg/lwipopts.h 重命名)        │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│ lib/lwip_sys_now.cpp  (sys_now → millis())                         │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;└─────────────────────────────────────────────────────────────────────┘&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;       │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;       ▼&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;┌─────────────────────────────────────────────────────────────────────┐&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│ microchip/lib/libtc6/                                                │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   inc/tc6.h         (公开 C API + 回调声明)                         │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   src/tc6.cpp       (协议核心：chunk/credit/状态机)                  │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   src/tc6-queue.h   (3 个无锁环形队列)                              │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   inc/tc6-regs.h    (LAN865x 寄存器层 API)                         │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   src/tc6-regs.cpp  (32 条寄存器初始化表 + PLCA + Chip ID)          │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│   cfg-example/tc6-conf.h  (编译配置)                                │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;└─────────────────────────────────────────────────────────────────────┘&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;       │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;       ▼  SPI (24 MHz, Mode 0, MSB First)&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;┌─────────────────────────────────────────────────────────────────────┐&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;│              LAN8651 MAC-PHY  →  10BASE-T1S 双绞线                 │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;└─────────────────────────────────────────────────────────────────────┘&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;
+
+&lt;h2 id=&#34;3-文件清单与作用&#34;&gt;&lt;a href=&#34;#3-文件清单与作用&#34; class=&#34;headerlink&#34; title=&#34;3. 文件清单与作用&#34;&gt;&lt;/a&gt;3. 文件清单与作用&lt;/h2&gt;"><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/07/31/10BASE-T1S-Code-Interfaces-Index/&t=10BASE-T1S Arduino 代码接口深度解析（〇）：系列索引与全局速查"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> 菜单</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> 目录</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> 分享</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> 返回顶部</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2026
+    cursorhu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"复制到粘贴板！\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "复制成功！");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+<!-- Mermaid diagrams -->
+
+  <script type="text/javascript">
+  (function() {
+    var mermaidElements = document.querySelectorAll('.mermaid');
+    if (!mermaidElements.length) return;
+
+    var mermaidTheme = 'auto';
+    if (mermaidTheme === 'auto') {
+      var colorscheme = 'dark';
+      mermaidTheme = (colorscheme === 'dark' || colorscheme === 'classic') ? 'dark' : 'default';
+    }
+
+    function initMermaid() {
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: mermaidTheme,
+        logLevel: 'error',
+        securityLevel: 'loose',
+        flowchart: { curve: 'basis' },
+        gantt: { axisFormat: '%m/%d/%Y' },
+        sequence: { actorMargin: 50 }
+      });
+      mermaid.run({ nodes: mermaidElements });
+    }
+
+    var script = document.createElement('script');
+    
+    script.src = 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js';
+    
+    script.onload = initMermaid;
+    document.head.appendChild(script);
+  })();
+  </script>
+
+</body>
+</html>
