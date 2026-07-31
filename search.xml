@@ -38671,14 +38671,6 @@ graph TB
 <td><a href="/2026/07/28/Arduino_IDE_Build_System_Deep_Dive/">Arduino IDE 编译系统深度解析</a></td>
 <td>从源码到 Flash 的完整流程、内存布局</td>
 </tr>
-<tr>
-<td><a href="/2026/07/28/Arduino_R4_Lumissil_Development_Environment_Setup/">Arduino R4 Lumissil 开发环境完整指南</a></td>
-<td>Lumissil 移植环境搭建</td>
-</tr>
-<tr>
-<td><a href="/2026/07/29/Lumissil_SoC_Integration_Architecture_Decision/">Lumissil SoC 集成架构决策</a></td>
-<td>单芯片集成方案对比、libtc6&#x2F;lwIP&#x2F;C 语言取舍</td>
-</tr>
 </tbody></table>
 <h2 id="2-全局架构与文件映射"><a href="#2-全局架构与文件映射" class="headerlink" title="2. 全局架构与文件映射"></a>2. 全局架构与文件映射</h2><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                          Sketch (.ino)                              │</span><br><span class="line">│  Arduino_10BASE_T1S_PHY_TC6(SPI, 9, 6, 2);                         │</span><br><span class="line">│  Arduino_10BASE_T1S_UDP udp;                                        │</span><br><span class="line">│  t1s_io.begin(); t1s_phy.begin(...); udp.begin(port);               │</span><br><span class="line">└─────────────────────────────────────────────────────────────────────┘</span><br><span class="line">       │                       │                       │</span><br><span class="line">       ▼                       ▼                       ▼</span><br><span class="line">┌──────────────────┐  ┌────────────────────────┐  ┌─────────────────┐</span><br><span class="line">│ Arduino_10BASE_  │  │ TC6_Arduino_10BASE_T1S │  │ Arduino_10BASE_ │</span><br><span class="line">│ T1S_UDP.h/cpp    │  │ .h/cpp                 │  │ T1S.h           │</span><br><span class="line">│                  │  │ (继承 PHY_Interface)   │  │ (主入口 + 宏)   │</span><br><span class="line">│ UDP socket API   │  │ lwIP ↔ libtc6 桥接      │  │                 │</span><br><span class="line">└──────────────────┘  └────────────────────────┘  └─────────────────┘</span><br><span class="line">       │                       │</span><br><span class="line">       │                       ├─→ MacAddress.h/cpp</span><br><span class="line">       │                       ├─→ T1SPlcaSettings.h/cpp</span><br><span class="line">       │                       ├─→ T1SMacSettings.h/cpp</span><br><span class="line">       │                       │</span><br><span class="line">       │                       └─→ microchip/TC6_Io.h/cpp (HAL)</span><br><span class="line">       │                                  │</span><br><span class="line">       ▼                                  ▼</span><br><span class="line">┌─────────────────────────────────────────────────────────────────────┐</span><br><span class="line">│ lib/liblwip/   (lwIP TCP/IP 协议栈 + cfg/lwipopts.h 重命名)        │</span><br><span class="line">│ lib/lwip_sys_now.cpp  (sys_now → millis())                         │</span><br><span class="line">└─────────────────────────────────────────────────────────────────────┘</span><br><span class="line">       │</span><br><span class="line">       ▼</span><br><span class="line">┌─────────────────────────────────────────────────────────────────────┐</span><br><span class="line">│ microchip/lib/libtc6/                                                │</span><br><span class="line">│   inc/tc6.h         (公开 C API + 回调声明)                         │</span><br><span class="line">│   src/tc6.cpp       (协议核心：chunk/credit/状态机)                  │</span><br><span class="line">│   src/tc6-queue.h   (3 个无锁环形队列)                              │</span><br><span class="line">│   inc/tc6-regs.h    (LAN865x 寄存器层 API)                         │</span><br><span class="line">│   src/tc6-regs.cpp  (32 条寄存器初始化表 + PLCA + Chip ID)          │</span><br><span class="line">│   cfg-example/tc6-conf.h  (编译配置)                                │</span><br><span class="line">└─────────────────────────────────────────────────────────────────────┘</span><br><span class="line">       │</span><br><span class="line">       ▼  SPI (24 MHz, Mode 0, MSB First)</span><br><span class="line">┌─────────────────────────────────────────────────────────────────────┐</span><br><span class="line">│              LAN8651 MAC-PHY  →  10BASE-T1S 双绞线                 │</span><br><span class="line">└─────────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
 
@@ -40467,7 +40459,7 @@ graph TD
   </entry>
   <entry>
     <title>Arduino IDE 编译内幕：没有 Makefile 如何调用 GCC（以 UNO R4 + 10BASE-T1S 为例）</title>
-    <url>/2026/07/31/10BASE-T1S_Arduino_IDE_Build_System_Internals/</url>
+    <url>/2026/07/30/10BASE-T1S_Arduino_IDE_Build_System_Internals/</url>
     <content><![CDATA[<h2 id="系列导读"><a href="#系列导读" class="headerlink" title="系列导读"></a>系列导读</h2><p>本文深入剖析 <strong>Arduino IDE 如何在不使用 Makefile 的前提下，完成从源码到 .bin 的完整编译链路</strong>。以 Arduino UNO R4 Minima + Microchip LAN8650&#x2F;LAN8651 + <code>Arduino_10BASE_T1S</code> 库为具体实例，追踪 <code>arduino-builder</code> &#x2F; <code>arduino-cli</code> 如何自动扫描源文件、解析 <code>#include</code>、填充 <code>platform.txt</code> recipe 中的变量，最终调用真实的 <code>arm-none-eabi-gcc</code> 编译器。</p>
 <h3 id="同系列其它文章"><a href="#同系列其它文章" class="headerlink" title="同系列其它文章"></a>同系列其它文章</h3><table>
 <thead>
@@ -40909,7 +40901,7 @@ graph TD
   </entry>
   <entry>
     <title>Arduino IDE 编译架构深度解析：以 Microchip LAN8650/LAN8651 10BASE-T1S 为例</title>
-    <url>/2026/07/31/10BASE_T1S_Arduino_Compilation_Architecture_Deep_Dive/</url>
+    <url>/2026/07/30/10BASE_T1S_Arduino_Compilation_Architecture_Deep_Dive/</url>
     <content><![CDATA[<h2 id="系列导读"><a href="#系列导读" class="headerlink" title="系列导读"></a>系列导读</h2><p>本文面向<strong>首次接触 Arduino 嵌入式开发链路的传统 MCU 工程师</strong>（熟悉 Keil、IAR、STM32CubeIDE），以 <strong>Microchip LAN8650&#x2F;LAN8651 + Arduino UNO R4 Minima + <code>Arduino_10BASE_T1S</code> v0.1.1</strong> 为蓝本，把 Arduino IDE 这一”看似点击即上传”工具背后的完整编译架构讲清楚。</p>
 <h3 id="同系列其它文章"><a href="#同系列其它文章" class="headerlink" title="同系列其它文章"></a>同系列其它文章</h3><table>
 <thead>
