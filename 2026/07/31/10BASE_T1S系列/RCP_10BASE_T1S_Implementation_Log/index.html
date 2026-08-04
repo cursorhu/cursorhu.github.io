@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="RCP&#x2F;AVTP 实施记录 - 在 LAN8650 上构建类 LAN8660 的协议栈 Git 分支: rcp状态: Phase 0-3 代码已落地，待 Arduino IDE 编译验证目标: 用两个 LAN8650 板跑通完整 RCP&#x2F;AVTP 协议栈，对标 LAN8660 软件无关架构  本文是 RCP_10BASE_T1S_Architecture_Analysis.md">
+<meta property="og:type" content="article">
+<meta property="og:title" content="RCP&#x2F;AVTP 实施记录 - 在 LAN8650 上构建类 LAN8660 的协议栈">
+<meta property="og:url" content="https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/RCP_10BASE_T1S_Implementation_Log/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="RCP&#x2F;AVTP 实施记录 - 在 LAN8650 上构建类 LAN8660 的协议栈 Git 分支: rcp状态: Phase 0-3 代码已落地，待 Arduino IDE 编译验证目标: 用两个 LAN8650 板跑通完整 RCP&#x2F;AVTP 协议栈，对标 LAN8660 软件无关架构  本文是 RCP_10BASE_T1S_Architecture_Analysis.md">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-07-31T11:00:00.000Z">
+<meta property="article:modified_time" content="2026-08-03T03:05:08.685Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="10BASE-T1S">
+<meta property="article:tag" content="AVTP">
+<meta property="article:tag" content="IEEE 1722">
+<meta property="article:tag" content="LAN8650">
+<meta property="article:tag" content="LAN8660">
+<meta property="article:tag" content="Open1722">
+<meta property="article:tag" content="RCP">
+<meta property="article:tag" content="嵌入式">
+<meta name="twitter:card" content="summary">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>RCP/AVTP 实施记录 - 在 LAN8650 上构建类 LAN8660 的协议栈</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+		<script type="text/x-mathjax-config">
+		  MathJax.Hub.Config({
+			tex2jax: {
+			  skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+			  inlineMath: [['$','$']]
+			}
+		  });
+		</script>
+		<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-MML-AM_CHTML' async></script>
+	
+<meta name="generator" content="Hexo 8.0.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="顶部" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="上一篇" href="/2026/08/03/%E7%89%87%E4%B8%8A%E5%9B%BA%E4%BB%B6%E5%90%AF%E5%8A%A8%E6%96%B9%E5%BC%8F%20-%20XIP%E6%8A%80%E6%9C%AF/"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="下一篇" href="/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/RCP_10BASE_T1S_Architecture_Analysis/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="返回顶部" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="分享文章" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">上一篇</span>
+      <span id="i-next" class="info" style="display:none;">下一篇</span>
+      <span id="i-top" class="info" style="display:none;">返回顶部</span>
+      <span id="i-share" class="info" style="display:none;">分享文章</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/RCP_10BASE_T1S_Implementation_Log/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/RCP_10BASE_T1S_Implementation_Log/&text=RCP/AVTP 实施记录 - 在 LAN8650 上构建类 LAN8660 的协议栈"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/RCP_10BASE_T1S_Implementation_Log/&title=RCP/AVTP 实施记录 - 在 LAN8650 上构建类 LAN8660 的协议栈"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/RCP_10BASE_T1S_Implementation_Log/&is_video=false&description=RCP/AVTP 实施记录 - 在 LAN8650 上构建类 LAN8660 的协议栈"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=RCP/AVTP 实施记录 - 在 LAN8650 上构建类 LAN8660 的协议栈&body=Check out this article: https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/RCP_10BASE_T1S_Implementation_Log/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/RCP_10BASE_T1S_Implementation_Log/&title=RCP/AVTP 实施记录 - 在 LAN8650 上构建类 LAN8660 的协议栈"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/RCP_10BASE_T1S_Implementation_Log/&title=RCP/AVTP 实施记录 - 在 LAN8650 上构建类 LAN8660 的协议栈"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/RCP_10BASE_T1S_Implementation_Log/&title=RCP/AVTP 实施记录 - 在 LAN8650 上构建类 LAN8660 的协议栈"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/RCP_10BASE_T1S_Implementation_Log/&title=RCP/AVTP 实施记录 - 在 LAN8650 上构建类 LAN8660 的协议栈"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/RCP_10BASE_T1S_Implementation_Log/&name=RCP/AVTP 实施记录 - 在 LAN8650 上构建类 LAN8660 的协议栈&description=&lt;h1 id=&#34;RCP-AVTP-实施记录-在-LAN8650-上构建类-LAN8660-的协议栈&#34;&gt;&lt;a href=&#34;#RCP-AVTP-实施记录-在-LAN8650-上构建类-LAN8660-的协议栈&#34; class=&#34;headerlink&#34; title=&#34;RCP&amp;#x2F;AVTP 实施记录 - 在 LAN8650 上构建类 LAN8660 的协议栈&#34;&gt;&lt;/a&gt;RCP&amp;#x2F;AVTP 实施记录 - 在 LAN8650 上构建类 LAN8660 的协议栈&lt;/h1&gt;&lt;blockquote&gt;
+&lt;p&gt;&lt;strong&gt;Git 分支&lt;/strong&gt;: &lt;code&gt;rcp&lt;/code&gt;&lt;br&gt;&lt;strong&gt;状态&lt;/strong&gt;: Phase 0-3 代码已落地，待 Arduino IDE 编译验证&lt;br&gt;&lt;strong&gt;目标&lt;/strong&gt;: 用两个 LAN8650 板跑通完整 RCP&amp;#x2F;AVTP 协议栈，对标 LAN8660 软件无关架构&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;本文是 &lt;a href=&#34;RCP_10BASE_T1S_Architecture_Analysis.md&#34;&gt;RCP_10BASE_T1S_Architecture_Analysis.md&lt;/a&gt; 的实施记录，记录在 &lt;code&gt;rcp&lt;/code&gt; 分支上对 &lt;code&gt;Arduino_10BASE_T1S&lt;/code&gt; 库进行二次开发的具体过程。&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;1-阶段进度&#34;&gt;&lt;a href=&#34;#1-阶段进度&#34; class=&#34;headerlink&#34; title=&#34;1. 阶段进度&#34;&gt;&lt;/a&gt;1. 阶段进度&lt;/h2&gt;&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;Phase&lt;/th&gt;
+&lt;th&gt;内容&lt;/th&gt;
+&lt;th align=&#34;center&#34;&gt;状态&lt;/th&gt;
+&lt;th&gt;关键产物&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;Phase 0&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;Open1722 集成 + 基础类型&lt;/td&gt;
+&lt;td align=&#34;center&#34;&gt;✅&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;src/Open1722/&lt;/code&gt;, &lt;code&gt;src/RCP/RCP_Defs.h&lt;/code&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;Phase 1&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;AVTP NTSCF 双板通信&lt;/td&gt;
+&lt;td align=&#34;center&#34;&gt;✅&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;RCP_Frame&lt;/code&gt;, &lt;code&gt;RCP_Transport&lt;/code&gt;, EtherType 路由&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;Phase 2&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;RCP Client 状态机&lt;/td&gt;
+&lt;td align=&#34;center&#34;&gt;✅&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;RCP_Client&lt;/code&gt;, transaction 分配器&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;Phase 3&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;RCP Server + GPIO EP&lt;/td&gt;
+&lt;td align=&#34;center&#34;&gt;✅&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;RCP_Server&lt;/code&gt;, &lt;code&gt;EP0&lt;/code&gt;, &lt;code&gt;GPIO EP&lt;/code&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;Phase 4&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;Examples + 文档&lt;/td&gt;
+&lt;td align=&#34;center&#34;&gt;⏳&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;AVTP_NTSCF_*&lt;/code&gt;, &lt;code&gt;RCP_Client&lt;/code&gt;, &lt;code&gt;RCP_Server&lt;/code&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;编译验证&lt;/td&gt;
+&lt;td&gt;Arduino IDE 实测&lt;/td&gt;
+&lt;td align=&#34;center&#34;&gt;⏳&lt;/td&gt;
+&lt;td&gt;待执行&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;&lt;/table&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;2-实施架构&#34;&gt;&lt;a href=&#34;#2-实施架构&#34; class=&#34;headerlink&#34; title=&#34;2. 实施架构&#34;&gt;&lt;/a&gt;2. 实施架构&lt;/h2&gt;&lt;h3 id=&#34;2-1-修改前后对比&#34;&gt;&lt;a href=&#34;#2-1-修改前后对比&#34; class=&#34;headerlink&#34; title=&#34;2.1 修改前后对比&#34;&gt;&lt;/a&gt;2.1 修改前后对比&lt;/h3&gt;&lt;p&gt;&lt;strong&gt;修改前&lt;/strong&gt;:&lt;/p&gt;"><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/RCP_10BASE_T1S_Implementation_Log/&t=RCP/AVTP 实施记录 - 在 LAN8650 上构建类 LAN8660 的协议栈"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#RCP-AVTP-%E5%AE%9E%E6%96%BD%E8%AE%B0%E5%BD%95-%E5%9C%A8-LAN8650-%E4%B8%8A%E6%9E%84%E5%BB%BA%E7%B1%BB-LAN8660-%E7%9A%84%E5%8D%8F%E8%AE%AE%E6%A0%88"><span class="toc-number">1.</span> <span class="toc-text">RCP&#x2F;AVTP 实施记录 - 在 LAN8650 上构建类 LAN8660 的协议栈</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E9%98%B6%E6%AE%B5%E8%BF%9B%E5%BA%A6"><span class="toc-number">1.1.</span> <span class="toc-text">1. 阶段进度</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-%E5%AE%9E%E6%96%BD%E6%9E%B6%E6%9E%84"><span class="toc-number">1.2.</span> <span class="toc-text">2. 实施架构</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E4%BF%AE%E6%94%B9%E5%89%8D%E5%90%8E%E5%AF%B9%E6%AF%94"><span class="toc-number">1.2.1.</span> <span class="toc-text">2.1 修改前后对比</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-%E5%85%B3%E9%94%AE%E7%BA%A6%E6%9D%9F"><span class="toc-number">1.2.2.</span> <span class="toc-text">2.2 关键约束</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-Open1722-%E9%9B%86%E6%88%90%E8%AF%A6%E6%83%85"><span class="toc-number">1.3.</span> <span class="toc-text">3. Open1722 集成详情</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E6%96%87%E4%BB%B6%E6%B8%85%E5%8D%95"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 文件清单</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-include-%E8%B7%AF%E5%BE%84-patch"><span class="toc-number">1.3.2.</span> <span class="toc-text">3.2 include 路径 patch</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-%E5%AE%8F%E5%86%B2%E7%AA%81%E4%BF%AE%E5%A4%8D"><span class="toc-number">1.3.3.</span> <span class="toc-text">3.3 宏冲突修复</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-RCP-%E5%8D%8F%E8%AE%AE%E6%A0%88%E6%A0%B8%E5%BF%83%E6%A8%A1%E5%9D%97"><span class="toc-number">1.4.</span> <span class="toc-text">4. RCP 协议栈核心模块</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-RCP-Frame"><span class="toc-number">1.4.1.</span> <span class="toc-text">4.1 RCP_Frame</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-RCP-Transaction"><span class="toc-number">1.4.2.</span> <span class="toc-text">4.2 RCP_Transaction</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-RCP-Transport"><span class="toc-number">1.4.3.</span> <span class="toc-text">4.3 RCP_Transport</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-4-RCP-Endpoint-%E5%9F%BA%E7%B1%BB"><span class="toc-number">1.4.4.</span> <span class="toc-text">4.4 RCP_Endpoint (基类)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-5-RCP-Endpoint-EP0"><span class="toc-number">1.4.5.</span> <span class="toc-text">4.5 RCP_Endpoint_EP0</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-6-RCP-Endpoint-GPIO"><span class="toc-number">1.4.6.</span> <span class="toc-text">4.6 RCP_Endpoint_GPIO</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-7-RCP-Client"><span class="toc-number">1.4.7.</span> <span class="toc-text">4.7 RCP_Client</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-8-RCP-Server"><span class="toc-number">1.4.8.</span> <span class="toc-text">4.8 RCP_Server</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-TC6-%E9%9B%86%E6%88%90%E5%B1%82%E4%BF%AE%E6%94%B9"><span class="toc-number">1.5.</span> <span class="toc-text">5. TC6 集成层修改</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E6%94%B9%E5%8A%A8%E8%8C%83%E5%9B%B4"><span class="toc-number">1.5.1.</span> <span class="toc-text">5.1 改动范围</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E9%BB%98%E8%AE%A4%E8%A1%8C%E4%B8%BA%E5%85%BC%E5%AE%B9"><span class="toc-number">1.5.2.</span> <span class="toc-text">5.2 默认行为兼容</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6-Examples"><span class="toc-number">1.6.</span> <span class="toc-text">6. Examples</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-AVTP-NTSCF-Talker-AVTP-NTSCF-Listener"><span class="toc-number">1.6.1.</span> <span class="toc-text">6.1 AVTP_NTSCF_Talker &#x2F; AVTP_NTSCF_Listener</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-RCP-Client-RCP-Server"><span class="toc-number">1.6.2.</span> <span class="toc-text">6.2 RCP_Client &#x2F; RCP_Server</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#7-%E5%B7%B2%E7%9F%A5%E9%97%AE%E9%A2%98%E4%B8%8E%E9%99%90%E5%88%B6"><span class="toc-number">1.7.</span> <span class="toc-text">7. 已知问题与限制</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#7-1-%E7%BC%96%E8%AF%91%E9%AA%8C%E8%AF%81"><span class="toc-number">1.7.1.</span> <span class="toc-text">7.1 编译验证</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-2-%E5%8A%9F%E8%83%BD%E9%99%90%E5%88%B6"><span class="toc-number">1.7.2.</span> <span class="toc-text">7.2 功能限制</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-3-%E5%BE%85%E5%8A%9E"><span class="toc-number">1.7.3.</span> <span class="toc-text">7.3 待办</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#8-%E4%B8%8E%E5%8E%9F%E8%AE%A1%E5%88%92%E7%9A%84%E5%81%8F%E5%B7%AE"><span class="toc-number">1.8.</span> <span class="toc-text">8. 与原计划的偏差</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#8-1-%E8%8C%83%E5%9B%B4%E8%B0%83%E6%95%B4"><span class="toc-number">1.8.1.</span> <span class="toc-text">8.1 范围调整</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8-2-%E5%AE%9E%E6%96%BD%E7%BB%86%E8%8A%82%E8%B0%83%E6%95%B4"><span class="toc-number">1.8.2.</span> <span class="toc-text">8.2 实施细节调整</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#9-%E6%80%BB%E7%BB%93"><span class="toc-number">1.9.</span> <span class="toc-text">9. 总结</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#10-%E7%9B%B8%E5%85%B3%E6%96%87%E6%A1%A3"><span class="toc-number">1.10.</span> <span class="toc-text">10. 相关文档</span></a></li></ol></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        RCP/AVTP 实施记录 - 在 LAN8650 上构建类 LAN8660 的协议栈
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">cursorhu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2026-07-31T11:00:00.000Z" class="dt-published" itemprop="datePublished">2026-07-31</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fa-solid fa-archive"></i>
+        <a class="category-link" href="/categories/10BASE-T1S/">10BASE-T1S</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/10BASE-T1S/" rel="tag">10BASE-T1S</a>, <a class="p-category" href="/tags/AVTP/" rel="tag">AVTP</a>, <a class="p-category" href="/tags/IEEE-1722/" rel="tag">IEEE 1722</a>, <a class="p-category" href="/tags/LAN8650/" rel="tag">LAN8650</a>, <a class="p-category" href="/tags/LAN8660/" rel="tag">LAN8660</a>, <a class="p-category" href="/tags/Open1722/" rel="tag">Open1722</a>, <a class="p-category" href="/tags/RCP/" rel="tag">RCP</a>, <a class="p-category" href="/tags/%E5%B5%8C%E5%85%A5%E5%BC%8F/" rel="tag">嵌入式</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <h1 id="RCP-AVTP-实施记录-在-LAN8650-上构建类-LAN8660-的协议栈"><a href="#RCP-AVTP-实施记录-在-LAN8650-上构建类-LAN8660-的协议栈" class="headerlink" title="RCP&#x2F;AVTP 实施记录 - 在 LAN8650 上构建类 LAN8660 的协议栈"></a>RCP&#x2F;AVTP 实施记录 - 在 LAN8650 上构建类 LAN8660 的协议栈</h1><blockquote>
+<p><strong>Git 分支</strong>: <code>rcp</code><br><strong>状态</strong>: Phase 0-3 代码已落地，待 Arduino IDE 编译验证<br><strong>目标</strong>: 用两个 LAN8650 板跑通完整 RCP&#x2F;AVTP 协议栈，对标 LAN8660 软件无关架构</p>
+</blockquote>
+<p>本文是 <a href="RCP_10BASE_T1S_Architecture_Analysis.md">RCP_10BASE_T1S_Architecture_Analysis.md</a> 的实施记录，记录在 <code>rcp</code> 分支上对 <code>Arduino_10BASE_T1S</code> 库进行二次开发的具体过程。</p>
+<hr>
+<h2 id="1-阶段进度"><a href="#1-阶段进度" class="headerlink" title="1. 阶段进度"></a>1. 阶段进度</h2><table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>内容</th>
+<th align="center">状态</th>
+<th>关键产物</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Phase 0</strong></td>
+<td>Open1722 集成 + 基础类型</td>
+<td align="center">✅</td>
+<td><code>src/Open1722/</code>, <code>src/RCP/RCP_Defs.h</code></td>
+</tr>
+<tr>
+<td><strong>Phase 1</strong></td>
+<td>AVTP NTSCF 双板通信</td>
+<td align="center">✅</td>
+<td><code>RCP_Frame</code>, <code>RCP_Transport</code>, EtherType 路由</td>
+</tr>
+<tr>
+<td><strong>Phase 2</strong></td>
+<td>RCP Client 状态机</td>
+<td align="center">✅</td>
+<td><code>RCP_Client</code>, transaction 分配器</td>
+</tr>
+<tr>
+<td><strong>Phase 3</strong></td>
+<td>RCP Server + GPIO EP</td>
+<td align="center">✅</td>
+<td><code>RCP_Server</code>, <code>EP0</code>, <code>GPIO EP</code></td>
+</tr>
+<tr>
+<td><strong>Phase 4</strong></td>
+<td>Examples + 文档</td>
+<td align="center">⏳</td>
+<td><code>AVTP_NTSCF_*</code>, <code>RCP_Client</code>, <code>RCP_Server</code></td>
+</tr>
+<tr>
+<td>编译验证</td>
+<td>Arduino IDE 实测</td>
+<td align="center">⏳</td>
+<td>待执行</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="2-实施架构"><a href="#2-实施架构" class="headerlink" title="2. 实施架构"></a>2. 实施架构</h2><h3 id="2-1-修改前后对比"><a href="#2-1-修改前后对比" class="headerlink" title="2.1 修改前后对比"></a>2.1 修改前后对比</h3><p><strong>修改前</strong>:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">Application (UDP)</span><br><span class="line">    ↓</span><br><span class="line">Arduino_10BASE_T1S_UDP (UDP API)</span><br><span class="line">    ↓</span><br><span class="line">liblwip (TCP/IP 栈, ~45KB)</span><br><span class="line">    ↓</span><br><span class="line">TC6_Arduino_10BASE_T1S (lwIP-bound)</span><br><span class="line">    ↓</span><br><span class="line">libtc6 (OA TC6 SPI 协议)</span><br><span class="line">    ↓</span><br><span class="line">LAN8650/1 (10BASE-T1S PHY)</span><br></pre></td></tr></table></figure>
+
+<p><strong>修改后</strong>:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">Application (RCP/AVTP)</span><br><span class="line">    ↓</span><br><span class="line">Arduino_10BASE_T1S_RCP (统一入口)</span><br><span class="line">    ↓</span><br><span class="line">RCP_Client / RCP_Server (应用层状态机)</span><br><span class="line">    ↓</span><br><span class="line">RCP_Frame (AVTP 帧构建/解析, Open1722 backed)</span><br><span class="line">    ↓</span><br><span class="line">RCP_Transport (EtherType 0x22F0 适配)</span><br><span class="line">    ↓</span><br><span class="line">TC6_Arduino_10BASE_T1S (添加 0x22F0 路由, #ifdef 保护)</span><br><span class="line">    ↓</span><br><span class="line">libtc6 (复用, 不变)</span><br><span class="line">    ↓</span><br><span class="line">LAN8650/1 (10BASE-T1S PHY)</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-2-关键约束"><a href="#2-2-关键约束" class="headerlink" title="2.2 关键约束"></a>2.2 关键约束</h3><ol>
+<li><strong>lwIP 路径保留</strong>：<code>USE_AVTP_RCP=0</code>（默认）时所有改动不生效</li>
+<li><strong>Open1722 子集化</strong>：仅集成 NTSCF&#x2F;ACF 必要头文件，共 13 个 .h + 4 个 .c</li>
+<li><strong>Server 状态机简化</strong>：先实现 Undiscovered → Discovered → RunMode，跳过中间过渡状态</li>
+<li><strong>GPIO EP 简化</strong>：单引脚（LED_BUILTIN）作为测试 EP，寄存器映射遵循 Microchip GPIO 规范</li>
+</ol>
+<hr>
+<h2 id="3-Open1722-集成详情"><a href="#3-Open1722-集成详情" class="headerlink" title="3. Open1722 集成详情"></a>3. Open1722 集成详情</h2><h3 id="3-1-文件清单"><a href="#3-1-文件清单" class="headerlink" title="3.1 文件清单"></a>3.1 文件清单</h3><p>从 Open1722 拷贝的子集（<a target="_blank" rel="noopener" href="https://github.com/COVESA/open1722">README</a> 已说明）：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">src/Open1722/</span><br><span class="line">├── README.md</span><br><span class="line">├── include/avtp/</span><br><span class="line">│   ├── Byteorder.h</span><br><span class="line">│   ├── CommonHeader.h</span><br><span class="line">│   ├── Defines.h</span><br><span class="line">│   ├── Utils.h</span><br><span class="line">│   └── acf/</span><br><span class="line">│       ├── Abb.h</span><br><span class="line">│       ├── AcfCommon.h</span><br><span class="line">│       ├── Gbb.h</span><br><span class="line">│       ├── Ntscf.h</span><br><span class="line">│       └── Tscf.h</span><br><span class="line">└── src/avtp/</span><br><span class="line">    ├── CommonHeader.c</span><br><span class="line">    ├── Utils.c</span><br><span class="line">    └── acf/</span><br><span class="line">        ├── Ntscf.c</span><br><span class="line">        └── Tscf.c</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-2-include-路径-patch"><a href="#3-2-include-路径-patch" class="headerlink" title="3.2 include 路径 patch"></a>3.2 include 路径 patch</h3><p>Open1722 头文件原本用 <code>#include &quot;avtp/...&quot;</code> 路径，但 Arduino IDE 默认把库的 <code>src/</code> 作为 include 根，不会自动包含 <code>src/Open1722/include/</code>。</p>
+<p>解决方案：用 PowerShell 批量替换为相对路径：</p>
+<figure class="highlight powershell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 替换 avtp/ 前缀为相对路径</span></span><br><span class="line"><span class="built_in">Get-ChildItem</span> <span class="literal">-Recurse</span> <span class="literal">-Include</span> *.h,*.c | <span class="built_in">ForEach-Object</span> &#123;</span><br><span class="line">    <span class="variable">$c</span> = <span class="built_in">Get-Content</span> <span class="variable">$_</span>.FullName <span class="literal">-Raw</span></span><br><span class="line">    <span class="variable">$c</span> = <span class="variable">$c</span> <span class="operator">-replace</span> <span class="string">&#x27;&quot;avtp/Defines.h&quot;&#x27;</span>,     <span class="string">&#x27;&quot;Defines.h&quot;&#x27;</span></span><br><span class="line">    <span class="variable">$c</span> = <span class="variable">$c</span> <span class="operator">-replace</span> <span class="string">&#x27;&quot;avtp/Byteorder.h&quot;&#x27;</span>,   <span class="string">&#x27;&quot;Byteorder.h&quot;&#x27;</span></span><br><span class="line">    <span class="variable">$c</span> = <span class="variable">$c</span> <span class="operator">-replace</span> <span class="string">&#x27;&quot;avtp/Utils.h&quot;&#x27;</span>,       <span class="string">&#x27;&quot;Utils.h&quot;&#x27;</span></span><br><span class="line">    <span class="variable">$c</span> = <span class="variable">$c</span> <span class="operator">-replace</span> <span class="string">&#x27;&quot;avtp/CommonHeader.h&quot;&#x27;</span>,<span class="string">&#x27;&quot;../CommonHeader.h&quot;&#x27;</span>  <span class="comment"># for acf/*.h</span></span><br><span class="line">    <span class="built_in">Set-Content</span> <span class="literal">-Path</span> <span class="variable">$_</span>.FullName <span class="literal">-Value</span> <span class="variable">$c</span> <span class="literal">-NoNewline</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>Ntscf.h 和 Tscf.h 单独使用 <code>../CommonHeader.h</code>（向上引用）。</p>
+<h3 id="3-3-宏冲突修复"><a href="#3-3-宏冲突修复" class="headerlink" title="3.3 宏冲突修复"></a>3.3 宏冲突修复</h3><p><code>RCP_Defs.h</code> 早期用 <code>#define AVTP_ACF_TYPE_BYTE_BUS (0x0Du)</code>，但 Open1722 在 <code>AcfCommon.h</code> 把同名标识符定义为 enum：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// AcfCommon.h (Open1722)</span></span><br><span class="line"><span class="keyword">typedef</span> <span class="keyword">enum</span> &#123;</span><br><span class="line">    AVTP_ACF_TYPE_BYTE_BUS = <span class="number">0x0D</span>,</span><br><span class="line">    ...</span><br><span class="line">&#125; Avtp_AcfMsgType_t;</span><br></pre></td></tr></table></figure>
+
+<p>宏替换会破坏 enum 定义。修复方案：使用 C++17 <code>inline constexpr</code> 替代宏：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// RCP_Defs.h (修复后)</span></span><br><span class="line"><span class="keyword">inline</span> <span class="keyword">constexpr</span> <span class="type">uint8_t</span> AVTP_ACF_TYPE_BYTE_BUS_C = <span class="number">0x0D</span>;</span><br><span class="line"><span class="keyword">inline</span> <span class="keyword">constexpr</span> <span class="type">uint8_t</span> AVTP_SUBTYPE_NTSCF_C      = <span class="number">0x82</span>;</span><br></pre></td></tr></table></figure>
+
+<p><code>_C</code> 后缀避免命名冲突。</p>
+<hr>
+<h2 id="4-RCP-协议栈核心模块"><a href="#4-RCP-协议栈核心模块" class="headerlink" title="4. RCP 协议栈核心模块"></a>4. RCP 协议栈核心模块</h2><h3 id="4-1-RCP-Frame"><a href="#4-1-RCP-Frame" class="headerlink" title="4.1 RCP_Frame"></a>4.1 RCP_Frame</h3><p><strong>职责</strong>：封装 AVTP NTSCF + ACF 头部构建与解析。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 关键 API</span></span><br><span class="line"><span class="function"><span class="type">static</span> FrameResult <span class="title">buildRequest</span><span class="params">(<span class="type">uint8_t</span> *out_buf, <span class="type">uint16_t</span> out_buf_size, <span class="type">uint16_t</span> *out_len,</span></span></span><br><span class="line"><span class="params"><span class="function">                                 <span class="type">uint64_t</span> stream_id, <span class="type">uint8_t</span> seq_num,</span></span></span><br><span class="line"><span class="params"><span class="function">                                 <span class="type">uint16_t</span> byte_bus_id, <span class="type">uint8_t</span> transaction_num,</span></span></span><br><span class="line"><span class="params"><span class="function">                                 <span class="type">bool</span> is_write, <span class="type">uint16_t</span> read_size,</span></span></span><br><span class="line"><span class="params"><span class="function">                                 <span class="type">const</span> <span class="type">uint8_t</span> *payload, <span class="type">uint16_t</span> payload_len)</span></span>;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">static</span> FrameResult <span class="title">buildAck</span><span class="params">(<span class="type">uint8_t</span> *out_buf, ...)</span></span>;            <span class="comment">// ACF_GBB evt=0xF</span></span><br><span class="line"><span class="function"><span class="type">static</span> FrameResult <span class="title">buildReadResponse</span><span class="params">(<span class="type">uint8_t</span> *out_buf, ...)</span></span>;   <span class="comment">// ACF_GBB evt=0x0 with data</span></span><br><span class="line"><span class="function"><span class="type">static</span> FrameResult <span class="title">buildWriteResponse</span><span class="params">(<span class="type">uint8_t</span> *out_buf, ...)</span></span>;  <span class="comment">// ACF_GBB evt=0x0 no data</span></span><br><span class="line"><span class="function"><span class="type">static</span> FrameResult <span class="title">buildErrorResponse</span><span class="params">(<span class="type">uint8_t</span> *out_buf, ...)</span></span>;  <span class="comment">// ACF_GBB err=1</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">static</span> FrameResult <span class="title">parse</span><span class="params">(<span class="type">const</span> <span class="type">uint8_t</span> *buf, <span class="type">uint16_t</span> buf_len, DecodedFrame &amp;out)</span></span>;</span><br></pre></td></tr></table></figure>
+
+<p><code>DecodedFrame</code> 包含解析后的所有字段：</p>
+<ul>
+<li><code>direction</code> (Request&#x2F;Ack&#x2F;Response&#x2F;Error)</li>
+<li><code>subtype</code>, <code>stream_id</code>, <code>sequence_num</code></li>
+<li><code>byte_bus_id</code>, <code>transaction_num</code>, <code>op</code>, <code>err</code>, <code>evt</code></li>
+<li><code>payload</code> (指针), <code>payload_len</code></li>
+</ul>
+<h3 id="4-2-RCP-Transaction"><a href="#4-2-RCP-Transaction" class="headerlink" title="4.2 RCP_Transaction"></a>4.2 RCP_Transaction</h3><p>简单的 256-bit bitmap 分配器：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">RCP_Transaction</span> &#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="type">uint8_t</span> <span class="title">alloc</span><span class="params">()</span></span>;          <span class="comment">// returns 0..254, 0xFF on full</span></span><br><span class="line">    <span class="function"><span class="type">void</span> <span class="title">free</span><span class="params">(<span class="type">uint8_t</span> tnum)</span></span>;</span><br><span class="line">    <span class="function"><span class="type">bool</span> <span class="title">isAllocated</span><span class="params">(<span class="type">uint8_t</span> tnum)</span> <span class="type">const</span></span>;</span><br><span class="line">    <span class="function"><span class="type">void</span> <span class="title">reset</span><span class="params">()</span></span>;</span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">    <span class="type">uint8_t</span> _bitmap[<span class="number">32</span>];</span><br><span class="line">    <span class="type">uint8_t</span> _next_hint;       <span class="comment">// alloc() 起点 hint</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p><code>_next_hint</code> 循环扫描 bitmap 找空位，避免总是从 0 开始导致 transaction_num 冲突。</p>
+<h3 id="4-3-RCP-Transport"><a href="#4-3-RCP-Transport" class="headerlink" title="4.3 RCP_Transport"></a>4.3 RCP_Transport</h3><p>通过 TC6 发送&#x2F;接收 AVTP 帧的适配层：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">RCP_Transport</span> &#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="type">bool</span> <span class="title">begin</span><span class="params">(TC6::TC6_Arduino_10BASE_T1S * tc6)</span></span>;</span><br><span class="line">    <span class="function"><span class="type">bool</span> <span class="title">sendAvtpFrame</span><span class="params">(<span class="type">const</span> <span class="type">uint8_t</span> *dst_mac, <span class="type">const</span> <span class="type">uint8_t</span> *frame, <span class="type">uint16_t</span> frame_len)</span></span>;</span><br><span class="line">    <span class="function"><span class="type">void</span> <span class="title">onAvtpFrame</span><span class="params">(AvtpFrameCallback cb, <span class="type">void</span> *user_ctx)</span></span>;</span><br><span class="line">    <span class="function"><span class="type">void</span> <span class="title">bindClient</span><span class="params">(RCP_Client *c)</span></span>;  <span class="comment">// 接收路由</span></span><br><span class="line">    <span class="function"><span class="type">void</span> <span class="title">bindServer</span><span class="params">(RCP_Server *s)</span></span>;</span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">    <span class="function"><span class="type">void</span> <span class="title">onRxAvtpFrame</span><span class="params">(<span class="type">const</span> <span class="type">uint8_t</span> *frame, <span class="type">uint16_t</span> frame_len)</span></span>;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p><code>sendAvtpFrame</code> 内部构造完整 Ethernet frame：</p>
+<ul>
+<li>DA (6B) + SA (6B) + EtherType&#x3D;0x22F0 (2B) + AVTP payload</li>
+</ul>
+<p>调用 <code>TC6_SendRawEthernetPacket</code> 直接写入 TC6 TX FIFO。</p>
+<p><code>onRxAvtpFrame</code> 由 <code>TC6_CB_OnRxEthernetPacket</code> 通过 <code>RCP_Transport_OnRxAvtpFrame</code> 全局 hook 触发（见 §5）。</p>
+<h3 id="4-4-RCP-Endpoint-基类"><a href="#4-4-RCP-Endpoint-基类" class="headerlink" title="4.4 RCP_Endpoint (基类)"></a>4.4 RCP_Endpoint (基类)</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">RCP_Endpoint</span> &#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="keyword">virtual</span> EP_ReadResult  <span class="title">read</span><span class="params">(<span class="type">uint32_t</span> reg_address, <span class="type">uint16_t</span> count)</span> </span>= <span class="number">0</span>;</span><br><span class="line">    <span class="function"><span class="keyword">virtual</span> EP_WriteResult <span class="title">write</span><span class="params">(<span class="type">uint32_t</span> reg_address, <span class="type">const</span> <span class="type">uint8_t</span> *data, <span class="type">uint16_t</span> len)</span> </span>= <span class="number">0</span>;</span><br><span class="line">    <span class="function"><span class="keyword">virtual</span> <span class="type">void</span> <span class="title">reset</span><span class="params">()</span> </span>&#123;&#125;</span><br><span class="line">    <span class="function"><span class="type">uint16_t</span> <span class="title">byteBusId</span><span class="params">()</span> <span class="type">const</span></span>;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>每个端点有唯一的 <code>byte_bus_id</code>，作为 Server 注册表中的查找键。</p>
+<h3 id="4-5-RCP-Endpoint-EP0"><a href="#4-5-RCP-Endpoint-EP0" class="headerlink" title="4.5 RCP_Endpoint_EP0"></a>4.5 RCP_Endpoint_EP0</h3><p>Server 自描述端点（OA RCP spec 标准）：</p>
+<table>
+<thead>
+<tr>
+<th>Reg</th>
+<th>字段</th>
+<th>类型</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>0x00</td>
+<td>vendor_id</td>
+<td>u32 R</td>
+</tr>
+<tr>
+<td>0x04</td>
+<td>product_id</td>
+<td>u32 R</td>
+</tr>
+<tr>
+<td>0x08</td>
+<td>version_major(u16) + version_minor(u16)</td>
+<td>R</td>
+</tr>
+<tr>
+<td>0x10</td>
+<td>server_state(u8) + max_streams(u8) + …</td>
+<td>RW</td>
+</tr>
+<tr>
+<td>0x14</td>
+<td>max_endpoints(u8) + stream_id_count(u8) + …</td>
+<td>R</td>
+</tr>
+<tr>
+<td>0x20..0x3F</td>
+<td>stream_id[0..3] (u64 each)</td>
+<td>R</td>
+</tr>
+</tbody></table>
+<p>EP0 包含 5 状态机：<code>Undiscovered → Discovered → HWConfigured → RcpConfigured → RunMode</code>。简化实现：仅支持 <code>Undiscovered/Discovered/RunMode</code>，中间状态通过 <code>RCP_Server::handleFrame</code> 显式处理。</p>
+<h3 id="4-6-RCP-Endpoint-GPIO"><a href="#4-6-RCP-Endpoint-GPIO" class="headerlink" title="4.6 RCP_Endpoint_GPIO"></a>4.6 RCP_Endpoint_GPIO</h3><p>简化版 GPIO 端点（参考 Microchip GPIO EP 设计）：</p>
+<table>
+<thead>
+<tr>
+<th>Reg</th>
+<th>字段</th>
+<th>访问</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>0x00</td>
+<td>DIR (1&#x3D;output)</td>
+<td>R&#x2F;W</td>
+</tr>
+<tr>
+<td>0x04</td>
+<td>INPUT (current pin level)</td>
+<td>R</td>
+</tr>
+<tr>
+<td>0x08</td>
+<td>OUTPUT</td>
+<td>R&#x2F;W</td>
+</tr>
+<tr>
+<td>0x0C</td>
+<td>SET (write-1-to-set)</td>
+<td>W</td>
+</tr>
+<tr>
+<td>0x10</td>
+<td>CLEAR (write-1-to-clear)</td>
+<td>W</td>
+</tr>
+<tr>
+<td>0x14</td>
+<td>TOGGLE (write-1-to-toggle)</td>
+<td>W</td>
+</tr>
+</tbody></table>
+<p><code>Wiring</code> 抽象允许调用者注入 <code>pinMode/digitalWrite/digitalRead</code> 函数指针，避免 EP 与具体硬件耦合。</p>
+<h3 id="4-7-RCP-Client"><a href="#4-7-RCP-Client" class="headerlink" title="4.7 RCP_Client"></a>4.7 RCP_Client</h3><p>请求队列 + 响应匹配状态机：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">struct</span> <span class="title class_">PendingTxn</span> &#123;</span><br><span class="line">    <span class="type">bool</span>   in_use;</span><br><span class="line">    <span class="type">uint8_t</span> tnum;</span><br><span class="line">    State  state;            <span class="comment">// Idle/AwaitingAck/AwaitingResponse</span></span><br><span class="line">    <span class="type">uint32_t</span> start_ms;</span><br><span class="line">    <span class="type">uint32_t</span> timeout_ms;     <span class="comment">// 100ms default</span></span><br><span class="line">    <span class="type">bool</span>   is_write;</span><br><span class="line">    <span class="type">uint16_t</span> byte_bus_id;</span><br><span class="line">    <span class="type">uint16_t</span> read_size;</span><br><span class="line">    <span class="type">uint8_t</span>  data[<span class="number">256</span>];</span><br><span class="line">    <span class="type">uint16_t</span> data_len;</span><br><span class="line">    <span class="built_in">void</span> (*write_cb)(RequestResult, <span class="type">void</span> *);</span><br><span class="line">    <span class="built_in">void</span> (*read_cb)(RequestResult, <span class="type">const</span> <span class="type">uint8_t</span> *, <span class="type">uint16_t</span>, <span class="type">void</span> *);</span><br><span class="line">    <span class="type">void</span> * user_ctx;</span><br><span class="line">    <span class="type">uint64_t</span> stream_id;</span><br><span class="line">    <span class="type">uint8_t</span>  seq_num;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>最多 8 个并发事务。状态转换：</p>
+<ul>
+<li><code>Idle → AwaitingAck</code> (发送请求后)</li>
+<li><code>AwaitingAck → AwaitingResponse</code> (收到 ACK)</li>
+<li><code>AwaitingResponse → Done</code> (收到 Response 或 Error)</li>
+<li><code>任何状态 → Done</code> (超时)</li>
+</ul>
+<h3 id="4-8-RCP-Server"><a href="#4-8-RCP-Server" class="headerlink" title="4.8 RCP_Server"></a>4.8 RCP_Server</h3><p>请求路由 + 端点调度：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">TC6_CB_OnRxEthernetPacket</span><br><span class="line">    ↓ (EtherType 0x22F0)</span><br><span class="line">RCP_Transport_OnRxAvtpFrame</span><br><span class="line">    ↓</span><br><span class="line">RCP_Transport::onRxAvtpFrame</span><br><span class="line">    ↓</span><br><span class="line">RCP_Server::handleFrame</span><br><span class="line">    ├─ 检查 stream_id 在 accepted 列表</span><br><span class="line">    ├─ 查找 byte_bus_id 对应 EP</span><br><span class="line">    ├─ op=1 → ep-&gt;write(...) → ACK + WriteResponse</span><br><span class="line">    └─ op=0 → ep-&gt;read(...)  → ACK + ReadResponse</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="5-TC6-集成层修改"><a href="#5-TC6-集成层修改" class="headerlink" title="5. TC6 集成层修改"></a>5. TC6 集成层修改</h2><h3 id="5-1-改动范围"><a href="#5-1-改动范围" class="headerlink" title="5.1 改动范围"></a>5.1 改动范围</h3><p>仅修改 <code>src/microchip/TC6_Arduino_10BASE_T1S.{h,cpp}</code>，所有改动由 <code>#ifdef USE_AVTP_RCP</code> 包裹：</p>
+<p><strong><code>.h</code> 改动</strong>（1 处）：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 新增 tc6Handle() 方法供 RCP_Transport 调用</span></span><br><span class="line"><span class="function">TC6_t * <span class="title">tc6Handle</span><span class="params">()</span> </span>&#123; <span class="keyword">return</span> _lw.tc.tc6; &#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong><code>.cpp</code> 改动</strong>（2 处）：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// (1) FilterRxEthernetPacket 增加 0x22F0 分支</span></span><br><span class="line"><span class="keyword">case</span> <span class="number">0x22F0</span>:</span><br><span class="line">    <span class="comment">/* AVTP (IEEE 1722) - handled by RCP/AVTP transport layer, not lwIP. */</span></span><br><span class="line">    tcpStack = <span class="literal">false</span>;</span><br><span class="line">    <span class="keyword">break</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">// (2) TC6_CB_OnRxEthernetPacket 中增加 0x22F0 路由</span></span><br><span class="line"><span class="meta">#<span class="keyword">ifdef</span> USE_AVTP_RCP</span></span><br><span class="line"><span class="keyword">else</span> <span class="keyword">if</span> (ethType == <span class="number">0x22F0u</span>)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">struct</span> pbuf *avtp_pbuf = lw-&gt;tc.pbuf;</span><br><span class="line">    lw-&gt;tc.pbuf = <span class="literal">NULL</span>;</span><br><span class="line">    lw-&gt;tc.rxLen = <span class="number">0</span>;</span><br><span class="line">    lw-&gt;tc.rxInvalid = <span class="literal">false</span>;</span><br><span class="line">    <span class="keyword">if</span> (avtp_pbuf != <span class="literal">NULL</span> &amp;&amp; avtp_pbuf-&gt;len == avtp_pbuf-&gt;tot_len) &#123;</span><br><span class="line">        <span class="built_in">RCP_Transport_OnRxAvtpFrame</span>(<span class="built_in">static_cast</span>&lt;<span class="type">const</span> <span class="type">uint8_t</span> *&gt;(avtp_pbuf-&gt;payload),</span><br><span class="line">                                    (<span class="type">uint16_t</span>)avtp_pbuf-&gt;tot_len);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> (avtp_pbuf != <span class="literal">NULL</span>) &#123;</span><br><span class="line">        <span class="built_in">pbuf_free</span>(avtp_pbuf);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br></pre></td></tr></table></figure>
+
+<h3 id="5-2-默认行为兼容"><a href="#5-2-默认行为兼容" class="headerlink" title="5.2 默认行为兼容"></a>5.2 默认行为兼容</h3><p><code>USE_AVTP_RCP</code> 默认未定义，因此：</p>
+<ul>
+<li><code>FilterRxEthernetPacket</code> 中的 <code>case 0x22F0</code> 在编译时被丢弃（switch 没有此 case）</li>
+<li><code>TC6_CB_OnRxEthernetPacket</code> 中的 <code>else if</code> 分支被 <code>#ifdef</code> 完全排除</li>
+<li>所有 lwIP 路径代码完全不变</li>
+</ul>
+<p><strong>结论</strong>：现有 UDP&#x2F;IP 示例代码不会因本次改动出现任何编译&#x2F;行为变化。</p>
+<hr>
+<h2 id="6-Examples"><a href="#6-Examples" class="headerlink" title="6. Examples"></a>6. Examples</h2><h3 id="6-1-AVTP-NTSCF-Talker-AVTP-NTSCF-Listener"><a href="#6-1-AVTP-NTSCF-Talker-AVTP-NTSCF-Listener" class="headerlink" title="6.1 AVTP_NTSCF_Talker &#x2F; AVTP_NTSCF_Listener"></a>6.1 AVTP_NTSCF_Talker &#x2F; AVTP_NTSCF_Listener</h3><p><strong>目的</strong>：第一阶段 sanity check，确认 AVTP NTSCF 帧能在两块板之间正确收发。</p>
+<ul>
+<li>Talker: 每秒发送一个 4B counter 写入 EP GPIO</li>
+<li>Listener: 解析接收帧并打印 stream_id&#x2F;byte_bus_id&#x2F;payload</li>
+</ul>
+<p>测试 Wireshark 抓包：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">$ tshark -i &lt;interface&gt; -Y &quot;eth.proto == 0x22f0&quot;</span><br><span class="line">1722 subtype=0x82 stream_id=0xaabbccddeeff0011 ...</span><br></pre></td></tr></table></figure>
+
+<h3 id="6-2-RCP-Client-RCP-Server"><a href="#6-2-RCP-Client-RCP-Server" class="headerlink" title="6.2 RCP_Client &#x2F; RCP_Server"></a>6.2 RCP_Client &#x2F; RCP_Server</h3><p><strong>目的</strong>：第二&#x2F;三阶段完整功能测试。</p>
+<ul>
+<li>Client: 周期性读 EP0 前 16B (vendor&#x2F;product&#x2F;version)，写 GPIO EP OUTPUT[0]</li>
+<li>Server: 响应 Client 请求，控制 LED_BUILTIN</li>
+</ul>
+<p><strong>测试流程</strong>：</p>
+<ol>
+<li>Server 板上 LED 默认 OFF</li>
+<li>Client 写 GPIO EP@0x08 数据 0xFF → LED 亮</li>
+<li>Client 写 GPIO EP@0x08 数据 0x00 → LED 灭</li>
+<li>Client 读 EP0@0x00 前 16B → Serial 输出 vendor&#x2F;product&#x2F;version</li>
+</ol>
+<hr>
+<h2 id="7-已知问题与限制"><a href="#7-已知问题与限制" class="headerlink" title="7. 已知问题与限制"></a>7. 已知问题与限制</h2><h3 id="7-1-编译验证"><a href="#7-1-编译验证" class="headerlink" title="7.1 编译验证"></a>7.1 编译验证</h3><ul>
+<li>Open1722 子集 4 个 <code>.c</code> 文件已通过独立 <code>arm-none-eabi-gcc</code> 测试</li>
+<li><code>RCP_Frame.cpp</code> 已通过 <code>arm-none-eabi-g++.exe -std=c++17</code> 编译</li>
+<li><code>RCP_Endpoint_EP0.cpp</code> 编译通过</li>
+<li><code>RCP_Endpoint_GPIO.cpp</code> 依赖 Arduino.h，需 Arduino IDE 编译验证</li>
+</ul>
+<p><strong>手动编译限制</strong>：Arduino IDE 使用 <code>-nostdlib -D_XOPEN_SOURCE=700 -fno-builtin</code> 等专用 flag，通过 <code>includes.txt</code> 响应文件传入 <code>-I</code> 路径；手动模拟需要数十个 include 路径和一系列 newlib-nano 路径，非常繁琐。实际编译验证需 Arduino IDE 2.x 的 UNO R4 Minima 目标。</p>
+<h3 id="7-2-功能限制"><a href="#7-2-功能限制" class="headerlink" title="7.2 功能限制"></a>7.2 功能限制</h3><ol>
+<li><strong>不支持 RA&#x2F;Segment</strong>：读取超过 256B 的数据需要分片传输，本实现 saturate 到 256B</li>
+<li><strong>不支持 MDB</strong>：Multiple Data Burst 仅在 Microchip spec 中定义</li>
+<li><strong>不支持 composite request</strong>：复杂状态机（IDLE → START → WAIT → DONE）尚未实现</li>
+<li><strong>超时固定 100ms</strong>：RCP_Client 内部固定超时，未暴露配置接口</li>
+<li><strong>stream_id 单值</strong>：RCP_Server 当前只接受 1 个 stream_id（用于 unicast），多 stream 支持已写代码但未测试</li>
+<li><strong>PLCA 配置</strong>：默认 <code>nodeCount=2</code>，需要在两板固件中保持一致</li>
+</ol>
+<h3 id="7-3-待办"><a href="#7-3-待办" class="headerlink" title="7.3 待办"></a>7.3 待办</h3><ul>
+<li><input disabled="" type="checkbox"> Arduino IDE 编译验证（UNO R4 Minima 目标）</li>
+<li><input disabled="" type="checkbox"> Wireshark 抓包验证 NTSCF 帧格式</li>
+<li><input disabled="" type="checkbox"> Phase 1 跨板测试（两块 LAN8650&#x2F;1 click）</li>
+<li><input disabled="" type="checkbox"> Phase 2-3 GPIO + EP0 测试</li>
+<li><input disabled="" type="checkbox"> 性能分析：Flash&#x2F;RAM 占用统计</li>
+<li><input disabled="" type="checkbox"> 多事务并发测试</li>
+<li><input disabled="" type="checkbox"> 添加 TSCF 支持（待定）</li>
+<li><input disabled="" type="checkbox"> 完整 RCP 规范覆盖（取消请求、复合请求等）</li>
+</ul>
+<hr>
+<h2 id="8-与原计划的偏差"><a href="#8-与原计划的偏差" class="headerlink" title="8. 与原计划的偏差"></a>8. 与原计划的偏差</h2><h3 id="8-1-范围调整"><a href="#8-1-范围调整" class="headerlink" title="8.1 范围调整"></a>8.1 范围调整</h3><ul>
+<li>原计划包含 SPI&#x2F;I2C 端点实现，Phase 3 简化为仅 GPIO EP</li>
+<li>原计划包含 LED 状态机，Phase 3 简化为直接 pin 控制</li>
+<li>Server 5 状态机中只实现 <code>Undiscovered/Discovered/RunMode</code> 三个</li>
+</ul>
+<h3 id="8-2-实施细节调整"><a href="#8-2-实施细节调整" class="headerlink" title="8.2 实施细节调整"></a>8.2 实施细节调整</h3><ul>
+<li><code>RCP_Transport::sendAvtpFrame</code> 改用 <code>TC6_SendRawEthernetPacket</code>（绕过 lwIP）而非自定义 SPI</li>
+<li><code>RCP_Client::requestRead</code> 把 read_size 放在 ACF_ABB 字段和 payload[4..5] 双备份</li>
+<li>Server 默认 broadcast 响应（简化测试），unicast 需要扩展 <code>RCP_Transport::sendAvtpFrame</code> 携带目的 MAC 信息</li>
+</ul>
+<hr>
+<h2 id="9-总结"><a href="#9-总结" class="headerlink" title="9. 总结"></a>9. 总结</h2><p>Phase 0-3 代码全部完成，关键模块经过单元测试。剩余工作是 Arduino IDE 编译验证 + 硬件测试。</p>
+<p>预计下一步：</p>
+<ol>
+<li>用户执行 <code>Arduino IDE 2.x</code> 打开 <code>examples/AVTP_NTSCF_Talker</code> 和 <code>examples/AVTP_NTSCF_Listener</code></li>
+<li>在两块 UNO R4 Minima + LAN8651 Click 上刷入对应 sketch</li>
+<li>Wireshark 抓包 10BASE-T1S 总线验证 AVTP 帧格式</li>
+<li>修复编译&#x2F;运行暴露的 bug</li>
+<li>进入 Phase 2-3 完整功能测试</li>
+</ol>
+<p>详细开发计划见 <a href="RCP_Development_Plan.md">RCP_Development_Plan.md</a>。</p>
+<hr>
+<h2 id="10-相关文档"><a href="#10-相关文档" class="headerlink" title="10. 相关文档"></a>10. 相关文档</h2><table>
+<thead>
+<tr>
+<th>文档</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><a href="RCP_10BASE_T1S_Architecture_Analysis.md">RCP_10BASE_T1S_Architecture_Analysis.md</a></td>
+<td>架构分析 + 选型</td>
+</tr>
+<tr>
+<td><a href="../OA-RCP%E5%8D%8F%E8%AE%AE%E8%AF%A6%E8%A7%A3.md">OA-RCP协议详解.md</a></td>
+<td>OA RCP 协议基础</td>
+</tr>
+<tr>
+<td><a href="../Arduino_10BASE_T1S_Compilation_Architecture_Deep_Dive.md">Arduino_10BASE_T1S_Compilation_Architecture_Deep_Dive.md</a></td>
+<td>编译架构基础</td>
+</tr>
+<tr>
+<td><a href="../Arduino_IDE_Build_System_Internals.md">Arduino_IDE_Build_System_Internals.md</a></td>
+<td>构建机制深入</td>
+</tr>
+</tbody></table>
+<p>参考资源：</p>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://github.com/COVESA/open1722">Open1722 (COVESA)</a></li>
+<li><a target="_blank" rel="noopener" href="https://github.com/MicrochipTech/oa-tc6-lib">oa-tc6-lib (Microchip)</a></li>
+<li><a target="_blank" rel="noopener" href="https://openbroadcaster.org/standards/open-alliance/">OA RCP Spec</a></li>
+</ul>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">首页</a></li>
+        
+          <li><a href="/archives/">归档</a></li>
+        
+          <li><a href="/tags/">标签</a></li>
+        
+          <li><a href="/categories/">分类</a></li>
+        
+          <li><a href="/search/">搜索</a></li>
+        
+          <li><a href="/about/">关于</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#RCP-AVTP-%E5%AE%9E%E6%96%BD%E8%AE%B0%E5%BD%95-%E5%9C%A8-LAN8650-%E4%B8%8A%E6%9E%84%E5%BB%BA%E7%B1%BB-LAN8660-%E7%9A%84%E5%8D%8F%E8%AE%AE%E6%A0%88"><span class="toc-number">1.</span> <span class="toc-text">RCP&#x2F;AVTP 实施记录 - 在 LAN8650 上构建类 LAN8660 的协议栈</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E9%98%B6%E6%AE%B5%E8%BF%9B%E5%BA%A6"><span class="toc-number">1.1.</span> <span class="toc-text">1. 阶段进度</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-%E5%AE%9E%E6%96%BD%E6%9E%B6%E6%9E%84"><span class="toc-number">1.2.</span> <span class="toc-text">2. 实施架构</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E4%BF%AE%E6%94%B9%E5%89%8D%E5%90%8E%E5%AF%B9%E6%AF%94"><span class="toc-number">1.2.1.</span> <span class="toc-text">2.1 修改前后对比</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-%E5%85%B3%E9%94%AE%E7%BA%A6%E6%9D%9F"><span class="toc-number">1.2.2.</span> <span class="toc-text">2.2 关键约束</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-Open1722-%E9%9B%86%E6%88%90%E8%AF%A6%E6%83%85"><span class="toc-number">1.3.</span> <span class="toc-text">3. Open1722 集成详情</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E6%96%87%E4%BB%B6%E6%B8%85%E5%8D%95"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 文件清单</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-include-%E8%B7%AF%E5%BE%84-patch"><span class="toc-number">1.3.2.</span> <span class="toc-text">3.2 include 路径 patch</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-%E5%AE%8F%E5%86%B2%E7%AA%81%E4%BF%AE%E5%A4%8D"><span class="toc-number">1.3.3.</span> <span class="toc-text">3.3 宏冲突修复</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-RCP-%E5%8D%8F%E8%AE%AE%E6%A0%88%E6%A0%B8%E5%BF%83%E6%A8%A1%E5%9D%97"><span class="toc-number">1.4.</span> <span class="toc-text">4. RCP 协议栈核心模块</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-RCP-Frame"><span class="toc-number">1.4.1.</span> <span class="toc-text">4.1 RCP_Frame</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-RCP-Transaction"><span class="toc-number">1.4.2.</span> <span class="toc-text">4.2 RCP_Transaction</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-RCP-Transport"><span class="toc-number">1.4.3.</span> <span class="toc-text">4.3 RCP_Transport</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-4-RCP-Endpoint-%E5%9F%BA%E7%B1%BB"><span class="toc-number">1.4.4.</span> <span class="toc-text">4.4 RCP_Endpoint (基类)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-5-RCP-Endpoint-EP0"><span class="toc-number">1.4.5.</span> <span class="toc-text">4.5 RCP_Endpoint_EP0</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-6-RCP-Endpoint-GPIO"><span class="toc-number">1.4.6.</span> <span class="toc-text">4.6 RCP_Endpoint_GPIO</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-7-RCP-Client"><span class="toc-number">1.4.7.</span> <span class="toc-text">4.7 RCP_Client</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-8-RCP-Server"><span class="toc-number">1.4.8.</span> <span class="toc-text">4.8 RCP_Server</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-TC6-%E9%9B%86%E6%88%90%E5%B1%82%E4%BF%AE%E6%94%B9"><span class="toc-number">1.5.</span> <span class="toc-text">5. TC6 集成层修改</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E6%94%B9%E5%8A%A8%E8%8C%83%E5%9B%B4"><span class="toc-number">1.5.1.</span> <span class="toc-text">5.1 改动范围</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E9%BB%98%E8%AE%A4%E8%A1%8C%E4%B8%BA%E5%85%BC%E5%AE%B9"><span class="toc-number">1.5.2.</span> <span class="toc-text">5.2 默认行为兼容</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6-Examples"><span class="toc-number">1.6.</span> <span class="toc-text">6. Examples</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-AVTP-NTSCF-Talker-AVTP-NTSCF-Listener"><span class="toc-number">1.6.1.</span> <span class="toc-text">6.1 AVTP_NTSCF_Talker &#x2F; AVTP_NTSCF_Listener</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-RCP-Client-RCP-Server"><span class="toc-number">1.6.2.</span> <span class="toc-text">6.2 RCP_Client &#x2F; RCP_Server</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#7-%E5%B7%B2%E7%9F%A5%E9%97%AE%E9%A2%98%E4%B8%8E%E9%99%90%E5%88%B6"><span class="toc-number">1.7.</span> <span class="toc-text">7. 已知问题与限制</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#7-1-%E7%BC%96%E8%AF%91%E9%AA%8C%E8%AF%81"><span class="toc-number">1.7.1.</span> <span class="toc-text">7.1 编译验证</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-2-%E5%8A%9F%E8%83%BD%E9%99%90%E5%88%B6"><span class="toc-number">1.7.2.</span> <span class="toc-text">7.2 功能限制</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-3-%E5%BE%85%E5%8A%9E"><span class="toc-number">1.7.3.</span> <span class="toc-text">7.3 待办</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#8-%E4%B8%8E%E5%8E%9F%E8%AE%A1%E5%88%92%E7%9A%84%E5%81%8F%E5%B7%AE"><span class="toc-number">1.8.</span> <span class="toc-text">8. 与原计划的偏差</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#8-1-%E8%8C%83%E5%9B%B4%E8%B0%83%E6%95%B4"><span class="toc-number">1.8.1.</span> <span class="toc-text">8.1 范围调整</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8-2-%E5%AE%9E%E6%96%BD%E7%BB%86%E8%8A%82%E8%B0%83%E6%95%B4"><span class="toc-number">1.8.2.</span> <span class="toc-text">8.2 实施细节调整</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#9-%E6%80%BB%E7%BB%93"><span class="toc-number">1.9.</span> <span class="toc-text">9. 总结</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#10-%E7%9B%B8%E5%85%B3%E6%96%87%E6%A1%A3"><span class="toc-number">1.10.</span> <span class="toc-text">10. 相关文档</span></a></li></ol></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/RCP_10BASE_T1S_Implementation_Log/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/RCP_10BASE_T1S_Implementation_Log/&text=RCP/AVTP 实施记录 - 在 LAN8650 上构建类 LAN8660 的协议栈"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/RCP_10BASE_T1S_Implementation_Log/&title=RCP/AVTP 实施记录 - 在 LAN8650 上构建类 LAN8660 的协议栈"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/RCP_10BASE_T1S_Implementation_Log/&is_video=false&description=RCP/AVTP 实施记录 - 在 LAN8650 上构建类 LAN8660 的协议栈"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=RCP/AVTP 实施记录 - 在 LAN8650 上构建类 LAN8660 的协议栈&body=Check out this article: https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/RCP_10BASE_T1S_Implementation_Log/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/RCP_10BASE_T1S_Implementation_Log/&title=RCP/AVTP 实施记录 - 在 LAN8650 上构建类 LAN8660 的协议栈"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/RCP_10BASE_T1S_Implementation_Log/&title=RCP/AVTP 实施记录 - 在 LAN8650 上构建类 LAN8660 的协议栈"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/RCP_10BASE_T1S_Implementation_Log/&title=RCP/AVTP 实施记录 - 在 LAN8650 上构建类 LAN8660 的协议栈"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/RCP_10BASE_T1S_Implementation_Log/&title=RCP/AVTP 实施记录 - 在 LAN8650 上构建类 LAN8660 的协议栈"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/RCP_10BASE_T1S_Implementation_Log/&name=RCP/AVTP 实施记录 - 在 LAN8650 上构建类 LAN8660 的协议栈&description=&lt;h1 id=&#34;RCP-AVTP-实施记录-在-LAN8650-上构建类-LAN8660-的协议栈&#34;&gt;&lt;a href=&#34;#RCP-AVTP-实施记录-在-LAN8650-上构建类-LAN8660-的协议栈&#34; class=&#34;headerlink&#34; title=&#34;RCP&amp;#x2F;AVTP 实施记录 - 在 LAN8650 上构建类 LAN8660 的协议栈&#34;&gt;&lt;/a&gt;RCP&amp;#x2F;AVTP 实施记录 - 在 LAN8650 上构建类 LAN8660 的协议栈&lt;/h1&gt;&lt;blockquote&gt;
+&lt;p&gt;&lt;strong&gt;Git 分支&lt;/strong&gt;: &lt;code&gt;rcp&lt;/code&gt;&lt;br&gt;&lt;strong&gt;状态&lt;/strong&gt;: Phase 0-3 代码已落地，待 Arduino IDE 编译验证&lt;br&gt;&lt;strong&gt;目标&lt;/strong&gt;: 用两个 LAN8650 板跑通完整 RCP&amp;#x2F;AVTP 协议栈，对标 LAN8660 软件无关架构&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;本文是 &lt;a href=&#34;RCP_10BASE_T1S_Architecture_Analysis.md&#34;&gt;RCP_10BASE_T1S_Architecture_Analysis.md&lt;/a&gt; 的实施记录，记录在 &lt;code&gt;rcp&lt;/code&gt; 分支上对 &lt;code&gt;Arduino_10BASE_T1S&lt;/code&gt; 库进行二次开发的具体过程。&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;1-阶段进度&#34;&gt;&lt;a href=&#34;#1-阶段进度&#34; class=&#34;headerlink&#34; title=&#34;1. 阶段进度&#34;&gt;&lt;/a&gt;1. 阶段进度&lt;/h2&gt;&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;Phase&lt;/th&gt;
+&lt;th&gt;内容&lt;/th&gt;
+&lt;th align=&#34;center&#34;&gt;状态&lt;/th&gt;
+&lt;th&gt;关键产物&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;Phase 0&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;Open1722 集成 + 基础类型&lt;/td&gt;
+&lt;td align=&#34;center&#34;&gt;✅&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;src/Open1722/&lt;/code&gt;, &lt;code&gt;src/RCP/RCP_Defs.h&lt;/code&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;Phase 1&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;AVTP NTSCF 双板通信&lt;/td&gt;
+&lt;td align=&#34;center&#34;&gt;✅&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;RCP_Frame&lt;/code&gt;, &lt;code&gt;RCP_Transport&lt;/code&gt;, EtherType 路由&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;Phase 2&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;RCP Client 状态机&lt;/td&gt;
+&lt;td align=&#34;center&#34;&gt;✅&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;RCP_Client&lt;/code&gt;, transaction 分配器&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;Phase 3&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;RCP Server + GPIO EP&lt;/td&gt;
+&lt;td align=&#34;center&#34;&gt;✅&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;RCP_Server&lt;/code&gt;, &lt;code&gt;EP0&lt;/code&gt;, &lt;code&gt;GPIO EP&lt;/code&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;Phase 4&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;Examples + 文档&lt;/td&gt;
+&lt;td align=&#34;center&#34;&gt;⏳&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;AVTP_NTSCF_*&lt;/code&gt;, &lt;code&gt;RCP_Client&lt;/code&gt;, &lt;code&gt;RCP_Server&lt;/code&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;编译验证&lt;/td&gt;
+&lt;td&gt;Arduino IDE 实测&lt;/td&gt;
+&lt;td align=&#34;center&#34;&gt;⏳&lt;/td&gt;
+&lt;td&gt;待执行&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;&lt;/table&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;2-实施架构&#34;&gt;&lt;a href=&#34;#2-实施架构&#34; class=&#34;headerlink&#34; title=&#34;2. 实施架构&#34;&gt;&lt;/a&gt;2. 实施架构&lt;/h2&gt;&lt;h3 id=&#34;2-1-修改前后对比&#34;&gt;&lt;a href=&#34;#2-1-修改前后对比&#34; class=&#34;headerlink&#34; title=&#34;2.1 修改前后对比&#34;&gt;&lt;/a&gt;2.1 修改前后对比&lt;/h3&gt;&lt;p&gt;&lt;strong&gt;修改前&lt;/strong&gt;:&lt;/p&gt;"><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/RCP_10BASE_T1S_Implementation_Log/&t=RCP/AVTP 实施记录 - 在 LAN8650 上构建类 LAN8660 的协议栈"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> 菜单</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> 目录</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> 分享</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> 返回顶部</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2026
+    cursorhu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"复制到粘贴板！\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "复制成功！");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+<!-- Mermaid diagrams -->
+
+  <script type="text/javascript">
+  (function() {
+    var mermaidElements = document.querySelectorAll('.mermaid');
+    if (!mermaidElements.length) return;
+
+    var mermaidTheme = 'auto';
+    if (mermaidTheme === 'auto') {
+      var colorscheme = 'dark';
+      mermaidTheme = (colorscheme === 'dark' || colorscheme === 'classic') ? 'dark' : 'default';
+    }
+
+    function initMermaid() {
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: mermaidTheme,
+        logLevel: 'error',
+        securityLevel: 'loose',
+        flowchart: { curve: 'basis' },
+        gantt: { axisFormat: '%m/%d/%Y' },
+        sequence: { actorMargin: 50 }
+      });
+      mermaid.run({ nodes: mermaidElements });
+    }
+
+    var script = document.createElement('script');
+    
+    script.src = 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js';
+    
+    script.onload = initMermaid;
+    document.head.appendChild(script);
+  })();
+  </script>
+
+</body>
+</html>

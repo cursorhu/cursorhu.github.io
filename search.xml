@@ -41983,4 +41983,1248 @@ graph TD
         <tag>UDP</tag>
       </tags>
   </entry>
+  <entry>
+    <title>固件开发 - 启动方式XIP和RISCV实例</title>
+    <url>/2026/08/03/%E7%89%87%E4%B8%8A%E5%9B%BA%E4%BB%B6%E5%90%AF%E5%8A%A8%E6%96%B9%E5%BC%8F%20-%20XIP%E6%8A%80%E6%9C%AF/</url>
+    <content><![CDATA[<h1 id="固件开发-启动方式XIP和RISCV实例"><a href="#固件开发-启动方式XIP和RISCV实例" class="headerlink" title="固件开发 - 启动方式XIP和RISCV实例"></a>固件开发 - 启动方式XIP和RISCV实例</h1><h2 id="1-XIP概要"><a href="#1-XIP概要" class="headerlink" title="1. XIP概要"></a>1. XIP概要</h2><h3 id="1-什么是-XIP"><a href="#1-什么是-XIP" class="headerlink" title="1. 什么是 XIP"></a>1. 什么是 XIP</h3><p><strong>XIP（Execute-In-Place，芯片内执行）</strong> 是指 CPU 无需将代码加载到内部 RAM，而是直接在外部或片上的 NOR Flash 存储介质中读取并执行程序代码的技术。在“大 Flash（如 128KB）、小 RAM（如 4KB）”的嵌入式系统中，这是保证程序正常运行的核心基石。</p>
+<hr>
+<h3 id="2-硬件实现基础"><a href="#2-硬件实现基础" class="headerlink" title="2. 硬件实现基础"></a>2. 硬件实现基础</h3><p>要实现 CPU 随机访问 SPI Flash 并直接执行代码，需要满足以下硬件与机制要求：</p>
+<ul>
+<li><strong>存储介质必须为 NOR Flash</strong>：NOR Flash 支持<strong>按字节随机寻址</strong>，CPU 可通过地址总线直接访问任意指令地址；而 NAND Flash 以块（Block）为单位读写，无法支持 XIP。</li>
+<li><strong>内存映射（Memory Mapping）</strong>：MCU 内部集成了 <strong>XIP 控制器</strong>，将 SPI Flash 的一段物理地址空间映射到系统的统一编址内存空间中。当 CPU 访问该段地址时，硬件自动将其转化为 SPI 总线上的读取时序。</li>
+<li><strong>XIP 读取模式</strong>：普通 SPI Flash 读取需发送“指令 + 地址”，而 XIP 模式下，控制器在初始化后保持“读取态”，CPU 仅需提供目标地址，Flash 即可直接返回数据，显著降低随机访问的指令开销。</li>
+</ul>
+<hr>
+<h3 id="3-Cache（高速缓存）的关键作用"><a href="#3-Cache（高速缓存）的关键作用" class="headerlink" title="3. Cache（高速缓存）的关键作用"></a>3. Cache（高速缓存）的关键作用</h3><p>由于 SPI Flash 的读取速率（通常几十至上百 MHz）远低于 CPU 内核运行速率（数百 MHz），<strong>Cache 是不可或缺的加速桥梁</strong>：</p>
+<ul>
+<li><strong>指令预取与缓冲</strong>：Cache 自动缓存 CPU 最近访问过的 Flash 地址附近的指令代码。当 CPU 顺序执行或循环执行时，绝大多数指令可直接从极高速的 Cache 中获取，避免 CPU 频繁进入“等待（Wait-State）”状态。</li>
+<li><strong>性能平衡</strong>：Cache 的存在使 XIP 的平均执行速度大幅提升，但在面对长跳转或大规模随机分支时，Cache 命中率下降，执行速度会暂时变慢。</li>
+</ul>
+<hr>
+<h3 id="4-大-Flash-小-RAM-下的代码与数据分工"><a href="#4-大-Flash-小-RAM-下的代码与数据分工" class="headerlink" title="4. 大 Flash + 小 RAM 下的代码与数据分工"></a>4. 大 Flash + 小 RAM 下的代码与数据分工</h3><p>在 RAM 极度紧张（如仅 4KB）的场景下，代码与数据必须严格分层：</p>
+<table>
+<thead>
+<tr>
+<th align="left">存储介质</th>
+<th align="left">核心职责</th>
+<th align="left">具体内容</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong>Flash（128KB）</strong></td>
+<td align="left"><strong>存储与执行代码</strong></td>
+<td align="left">绝大部分固件代码（.text 段）、只读常量（.rodata 段）均存放于此。CPU 通过 XIP 机制直接在 Flash 中取指执行。</td>
+</tr>
+<tr>
+<td align="left"><strong>RAM（4KB）</strong></td>
+<td align="left"><strong>存储动态数据</strong></td>
+<td align="left">存放可读写的全局变量&#x2F;静态变量（.data&#x2F;.bss 段）、<strong>堆（Heap）</strong> 和 <strong>栈（Stack）</strong>。栈空间用于函数调用、局部变量及中断上下文保存，是程序运行的必要“工作台”。</td>
+</tr>
+</tbody></table>
+<p><strong>系统启动流程</strong>：芯片上电复位后，程序计数器（PC）硬件自动指向 Flash 映射地址中的<strong>复位向量</strong>，CPU 随即开始从 Flash 取指执行，完成堆栈指针初始化、变量搬移（如 .data 从 Flash 复制到 RAM）等操作后，进入主循环。</p>
+<hr>
+<h3 id="5-RAM-的“加速”与“特殊任务”"><a href="#5-RAM-的“加速”与“特殊任务”" class="headerlink" title="5. RAM 的“加速”与“特殊任务”"></a>5. RAM 的“加速”与“特殊任务”</h3><p>尽管代码主要在 Flash 运行，但仅有的 4KB RAM 还需承担以下关键加速任务：</p>
+<ul>
+<li><strong>运行关键中断服务程序（ISR）</strong>：对于响应时间要求极苛刻的中断，可将 ISR 代码通过链接脚本放置于 RAM 中运行，避免 Cache Miss 带来的延迟。</li>
+<li><strong>运行 Flash 擦写函数（IAP&#x2F;OTA）</strong>：当需要执行 Flash 扇区擦除或编程操作时，<strong>必须将这部分函数复制到 RAM 中执行</strong>。因为 Flash 在擦写期间无法响应读取请求，若 CPU 仍在 Flash 取指，将导致总线挂起（Hang）或指令异常。</li>
+<li><strong>临时数据缓冲</strong>：作为通信外设（如 UART、SPI）DMA 传输的临时缓冲区。</li>
+</ul>
+<hr>
+<h3 id="6-保障系统稳定的关键技术"><a href="#6-保障系统稳定的关键技术" class="headerlink" title="6. 保障系统稳定的关键技术"></a>6. 保障系统稳定的关键技术</h3><p>为了在 XIP 模式下保证程序的正确性和可靠性，编译与链接阶段需引入特殊技术：</p>
+<ul>
+<li><strong>位置无关代码（PIC，Position-Independent Code）</strong>：生成与绝对地址无关的指令码。这使得代码在 Flash 中即使因为固件升级（IAP）而发生地址偏移，程序依然能够正常跳转和运行。</li>
+<li><strong>覆盖（Overlay）技术</strong>：将功能互斥（不同时运行）的大型函数段分配到同一块 RAM 地址空间。需要时，从 Flash 将对应函数动态加载到该 RAM 区域执行，有效复用紧缺的 RAM 资源。</li>
+<li><strong>中断向量表重映射</strong>：将中断向量表放置在 Flash 起始地址或通过重映射寄存器指向 RAM，确保中断响应路径正确。</li>
+</ul>
+<hr>
+<h3 id="7-重要注意事项"><a href="#7-重要注意事项" class="headerlink" title="7. 重要注意事项"></a>7. 重要注意事项</h3><ul>
+<li><strong>并发操作限制（读-写-擦冲突）</strong>：在 XIP 模式下，若 CPU 一边从 Flash 取指执行，一边通过 SPI 接口对该 Flash 发起擦写操作，会引发总线冲突。高级 MCU 支持<strong>暂停（Suspend）&#x2F;恢复（Resume）</strong> 机制，或通过硬件仲裁临时挂起 CPU 取指请求。</li>
+<li><strong>只读属性</strong>：映射到内存空间的 XIP 地址区域通常为只读属性。若程序指针意外尝试写入该区域，将触发硬件总线错误（HardFault）异常。</li>
+<li><strong>性能权衡</strong>：XIP 适合顺序执行和循环密集的代码，而涉及大量随机跳转或频繁访问全局数据的算法，放在 RAM 中执行效率更高，需根据实际 CPU 主频和 Flash 等待周期进行测算。</li>
+</ul>
+<hr>
+<h3 id="8-核心要点总结"><a href="#8-核心要点总结" class="headerlink" title="8. 核心要点总结"></a>8. 核心要点总结</h3><blockquote>
+<p><strong>Flash 负责“存”和“执行”（XIP），RAM 负责“存”和“处理”（数据与关键加速）。</strong></p>
+</blockquote>
+<p>通过 <strong>NOR Flash 的随机寻址特性</strong> + <strong>MCU 的 XIP 内存映射控制器</strong> + <strong>高速 Cache 的缓冲加速</strong>，使得在极小 RAM（如 4KB）的 MCU 上运行百 KB 级别的固件成为可能。开发人员需通过合理的链接脚本（Linker Script）划分代码与数据段，并针对中断、IAP 函数进行特殊的 RAM 搬移处理，以充分发挥 XIP 技术的优势。</p>
+<h2 id="RISC-V环境中实践XIP"><a href="#RISC-V环境中实践XIP" class="headerlink" title="RISC-V环境中实践XIP"></a>RISC-V环境中实践XIP</h2><p>在RISC-V环境中实践XIP（就地执行），核心在于<strong>精确控制代码和数据的存放位置</strong>，并<strong>在启动时完成必要的数据搬运</strong>。这主要通过<strong>链接脚本（Linker Script）</strong> 和<strong>启动代码（Startup Code）</strong> 的配合来实现。</p>
+<p>以下是基于裸机或RTOS环境下的具体实践步骤和关键点。</p>
+<h3 id="🎯-第一步：编写链接脚本（Linker-Script）——-定义内存布局"><a href="#🎯-第一步：编写链接脚本（Linker-Script）——-定义内存布局" class="headerlink" title="🎯 第一步：编写链接脚本（Linker Script）—— 定义内存布局"></a>🎯 第一步：编写链接脚本（Linker Script）—— 定义内存布局</h3><p>链接脚本是XIP的“总设计师”，它决定了编译后的代码和数据的最终归宿。关键定义如下：</p>
+<ol>
+<li><p><strong>定义内存区域（MEMORY）</strong>：明确划分Flash（ROM）和RAM的起始地址与大小。</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">/* 在链接脚本中定义内存区域 */</span><br><span class="line">MEMORY</span><br><span class="line">&#123;</span><br><span class="line">    /* Flash (ROM) 用于存放代码和只读数据，XIP在此执行 */</span><br><span class="line">    rom (rx)  : ORIGIN = 0x08000000, LENGTH = 128K /* 1. 定义只读、可执行的Flash区域 */</span><br><span class="line">    /* RAM 用于存放可读写数据 */</span><br><span class="line">    ram (rwx) : ORIGIN = 0x20000000, LENGTH = 4K   /* 2. 定义可读、写、执行的RAM区域 */</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这是一个典型的定义。<code>rx</code>表示只读、可执行，<code>rwx</code>表示可读、写、执行。</p>
+</li>
+<li><p><strong>分配段（SECTIONS）</strong>：精确控制各段在内存中的位置。</p>
+<ul>
+<li><strong><code>.text</code>、<code>.rodata</code> 段</strong>：包含代码和只读数据，它们的<strong>虚拟地址（VMA）</strong> 和<strong>加载地址（LMA）</strong> 都指向Flash (<code>rom</code>)区域，这是实现XIP的关键。</li>
+<li><strong><code>.data</code> 段</strong>：包含已初始化的全局变量。它的<strong>VMA在RAM</strong>，但<strong>LMA在Flash</strong>。这意味着程序的初始值存放在Flash中，但运行时需要在RAM中操作。</li>
+<li><strong><code>.bss</code> 段</strong>：包含未初始化的全局变量。它的VMA在RAM，LMA紧随<code>.data</code>段之后，没有实际的初始化数据。</li>
+<li><strong>堆（Heap）和栈（Stack）</strong>：在RAM中分配空间。</li>
+</ul>
+<p>一个简单的段分配示例如下：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">SECTIONS</span><br><span class="line">&#123;</span><br><span class="line">    /* 1. .text, .rodata 等只读段，VMA和LMA都在ROM */</span><br><span class="line">    .text : &#123;</span><br><span class="line">        KEEP(*(.vectors)) /* 确保中断向量表不被优化掉 */</span><br><span class="line">        *(.text*)</span><br><span class="line">        *(.rodata*)</span><br><span class="line">    &#125; &gt; rom</span><br><span class="line"></span><br><span class="line">    /* 2. .data 段：VMA在RAM，LMA在ROM，启动时需复制 */</span><br><span class="line">    _sidata = LOADADDR(.data); /* 3. 记录.data段在Flash中的加载地址 */</span><br><span class="line">    .data : AT ( _sidata ) &#123;</span><br><span class="line">        _sdata = .;            /* 4. 标记.data段在RAM中的起始地址 */</span><br><span class="line">        *(.data*)</span><br><span class="line">        _edata = .;            /* 5. 标记.data段在RAM中的结束地址 */</span><br><span class="line">    &#125; &gt; ram</span><br><span class="line"></span><br><span class="line">    /* 6. .bss 段：VMA在RAM，无需加载 */</span><br><span class="line">    .bss : &#123;</span><br><span class="line">        _sbss = .;             /* 7. 标记.bss段在RAM中的起始地址 */</span><br><span class="line">        *(.bss*)</span><br><span class="line">        _ebss = .;             /* 8. 标记.bss段在RAM中的结束地址 */</span><br><span class="line">    &#125; &gt; ram</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>注意，<code>_sidata</code>、<code>_sdata</code>等符号，是供后续启动代码使用的。</p>
+</li>
+</ol>
+<h3 id="🚀-第二步：编写启动代码（Startup-Code）——-准备执行环境"><a href="#🚀-第二步：编写启动代码（Startup-Code）——-准备执行环境" class="headerlink" title="🚀 第二步：编写启动代码（Startup Code）—— 准备执行环境"></a>🚀 第二步：编写启动代码（Startup Code）—— 准备执行环境</h3><p>启动代码（通常是<code>startup.s</code>或<code>crt0.S</code>）是芯片上电后执行的第一段程序，负责在进入<code>main()</code>函数前完成关键的“数据搬运”工作。</p>
+<ol>
+<li><strong>设置栈指针（Stack Pointer, sp）</strong>：初始化栈指针，为后续的函数调用做好准备。</li>
+<li><strong>搬运<code>.data</code>段</strong>：将从<code>_sidata</code>（Flash）开始的数据，复制到<code>_sdata</code>（RAM）开始的区域，直到<code>_edata</code>。</li>
+<li><strong>清零<code>.bss</code>段</strong>：将从<code>_sbss</code>到<code>_ebss</code>的RAM区域全部清零。</li>
+<li><strong>跳转到<code>main()</code></strong>：完成上述初始化后，跳转到主函数<code>main()</code>，开始执行用户的应用程序。</li>
+</ol>
+<p>以下是搬运<code>.data</code>段的汇编逻辑示意：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">    /* 伪代码，实际实现取决于具体汇编器 */</span><br><span class="line">    la a0, _sdata      /* 1. 加载RAM起始地址 */</span><br><span class="line">    la a1, _edata      /* 2. 加载RAM结束地址 */</span><br><span class="line">    la a2, _sidata     /* 3. 加载Flash中的源地址 */</span><br><span class="line">copy_data_loop:</span><br><span class="line">    beq a0, a1, copy_data_done</span><br><span class="line">    lw t0, 0(a2)       /* 从Flash加载 */</span><br><span class="line">    sw t0, 0(a0)       /* 存储到RAM */</span><br><span class="line">    addi a0, a0, 4</span><br><span class="line">    addi a2, a2, 4</span><br><span class="line">    j copy_data_loop</span><br><span class="line">copy_data_done:</span><br></pre></td></tr></table></figure>
+
+<h3 id="⚙️-第三步：配置编译选项"><a href="#⚙️-第三步：配置编译选项" class="headerlink" title="⚙️ 第三步：配置编译选项"></a>⚙️ 第三步：配置编译选项</h3><p>在编译时需要指定正确的架构、链接脚本和启动文件。例如，使用RISC-V GNU工具链时：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 1. 编译：使用启动代码startup.s，编译成目标文件</span></span><br><span class="line">riscv32-unknown-elf-gcc -march=rv32i -mabi=ilp32 -c startup.s -o startup.o</span><br><span class="line"><span class="comment"># 2. 链接：指定链接脚本 gcc_flashxip.ld，生成ELF文件</span></span><br><span class="line">riscv32-unknown-elf-gcc -T gcc_flashxip.ld *.o -o result.elf</span><br><span class="line"><span class="comment"># 3. 生成映射文件，用于调试</span></span><br><span class="line">riscv32-unknown-elf-objdump -h result.elf &gt; project.map</span><br></pre></td></tr></table></figure>
+
+<h3 id="🧪-实践案例：基于GD32VF103系列MCU"><a href="#🧪-实践案例：基于GD32VF103系列MCU" class="headerlink" title="🧪 实践案例：基于GD32VF103系列MCU"></a>🧪 实践案例：基于GD32VF103系列MCU</h3><p>以广泛使用的GD32VF103系列RISC-V MCU为例，使用<strong>Nuclei SDK</strong>可以快速上手XIP。</p>
+<ul>
+<li><strong>开发板与模式</strong>：Nuclei SDK为GD32VF103系列开发板（如RV-STAR、Longan Nano）预设了<code>flashxip</code>下载模式。</li>
+<li><strong>项目构建</strong>：通过指定<code>SOC</code>和<code>BOARD</code>变量即可编译、烧录和调试。<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">make SOC=gd32vf103 BOARD=gd32vf103v_rvstar all   <span class="comment"># 编译</span></span><br><span class="line">make SOC=gd32vf103 BOARD=gd32vf103v_rvstar upload <span class="comment"># 烧录</span></span><br></pre></td></tr></table></figure></li>
+<li><strong>链接脚本位置</strong>：对应的链接脚本（如<code>gcc_gd32vf103_flashxip.ld</code>）位于SDK的<code>SoC/gd32vf103/Board/.../Source/GCC/</code>目录下，可以直接参考或修改。</li>
+</ul>
+<h3 id="⚠️-关键注意事项"><a href="#⚠️-关键注意事项" class="headerlink" title="⚠️ 关键注意事项"></a>⚠️ 关键注意事项</h3><ul>
+<li><strong><code>KEEP()</code>指令</strong>：在链接脚本中，务必使用<code>KEEP()</code>指令包裹中断向量表等关键段，防止链接器在优化时将其误删。</li>
+<li><strong>数据一致性</strong>：确保启动代码中使用的<code>_sidata</code>、<code>_sdata</code>等符号与链接脚本中定义的完全一致。</li>
+<li><strong>Flash擦写</strong>：如果需要IAP（在线升级），擦写Flash的代码<strong>必须</strong>在RAM中运行。因为Flash在擦写时无法响应取指请求，若CPU仍在Flash取指会导致崩溃。</li>
+</ul>
+<p>总而言之，RISC-V环境下的XIP实现，就是通过链接脚本精确规划内存，再通过启动代码将“执行环境”准备就绪的过程。掌握这两个核心，就能顺利在RISC-V平台上实践XIP技术。</p>
+<h2 id="HBird-e200的启动方式（最佳实践）"><a href="#HBird-e200的启动方式（最佳实践）" class="headerlink" title="HBird-e200的启动方式（最佳实践）"></a>HBird-e200的启动方式（最佳实践）</h2><p>背景：hbird-e200 RISCV有ITCM空间，有基于此RISCV核的芯片产品，bootloader启动时将SPI Flash的code拷贝到此ITCM再执行，并不是XIP方式。</p>
+<p>以蜂鸟E203（hbird-e200）为代表的这类RISC-V芯片，确实提供了一种“非XIP”的启动方式：<strong>上电后，先将程序从Flash搬运到ITCM（指令紧耦合内存，Instruction Tightly Coupled Memory）中，再执行</strong>。</p>
+<p>这并非对XIP的否定，而是在<strong>极致的性能、功耗与设计简洁性</strong>之间做出的另一种权衡。蜂鸟E200系列本身就支持包括XIP在内的多种启动模式。</p>
+<h3 id="⚙️-蜂鸟E203的三种启动模式"><a href="#⚙️-蜂鸟E203的三种启动模式" class="headerlink" title="⚙️ 蜂鸟E203的三种启动模式"></a>⚙️ 蜂鸟E203的三种启动模式</h3><p>根据其SDK设计，蜂鸟E203支持三种不同的程序运行方式：</p>
+<table>
+<thead>
+<tr>
+<th align="left">模式</th>
+<th align="left">描述</th>
+<th align="left">特点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong><code>flashxip</code> (XIP模式)</strong></td>
+<td align="left">程序直接在SPI Flash中执行</td>
+<td align="left"><strong>非易失</strong>：代码掉电不丢失。<br><strong>执行较慢</strong>：需从外部Flash取指。</td>
+</tr>
+<tr>
+<td align="left"><strong><code>itcm</code> (ILM模式)</strong></td>
+<td align="left">程序直接下载到ITCM中执行</td>
+<td align="left"><strong>执行极快</strong>：直接从高速ITCM取指。<br><strong>易失</strong>：掉电程序丢失，适合调试。</td>
+</tr>
+<tr>
+<td align="left"><strong><code>flash</code> (拷贝执行模式)</strong></td>
+<td align="left">程序烧录在Flash中，<strong>上电后由启动代码搬运至ITCM</strong>再执行</td>
+<td align="left"><strong>兼具两者优点</strong>：代码固化在Flash，但获得ITCM的高速执行性能。</td>
+</tr>
+</tbody></table>
+<p>你提到的正是第三种 <strong><code>flash</code>（拷贝执行）模式</strong>。</p>
+<h3 id="🚀-“拷贝到ITCM执行”方案的优势与代价"><a href="#🚀-“拷贝到ITCM执行”方案的优势与代价" class="headerlink" title="🚀 “拷贝到ITCM执行”方案的优势与代价"></a>🚀 “拷贝到ITCM执行”方案的优势与代价</h3><p>这种设计是为了在特定场景下追求最优解。</p>
+<h4 id="核心优势：极致的性能与功耗"><a href="#核心优势：极致的性能与功耗" class="headerlink" title="核心优势：极致的性能与功耗"></a><strong>核心优势：极致的性能与功耗</strong></h4><ul>
+<li><strong>性能飞跃</strong>：ITCM通过<strong>专用的、高带宽的紧耦合总线</strong>与CPU核心直连，其访问速度和内部SRAM相当，远快于通过SPI外设读取外部Flash。程序在ITCM中运行，没有XIP模式下SPI总线和Flash访问的延迟，能达到CPU的满速运行。</li>
+<li><strong>功耗优化</strong>：程序在ITCM中运行期间，可以<strong>将外部SPI Flash置于低功耗或掉电状态</strong>，这对于电池供电的IoT设备至关重要。</li>
+<li><strong>设计简化</strong>：这种模式规避了XIP模式下复杂的Cache一致性、Flash擦写时总线阻塞等问题，简化了芯片设计和软件开发的复杂度。</li>
+</ul>
+<h4 id="代价：需要额外的“搬运”开销"><a href="#代价：需要额外的“搬运”开销" class="headerlink" title="代价：需要额外的“搬运”开销"></a><strong>代价：需要额外的“搬运”开销</strong></h4><ul>
+<li><strong>启动时间</strong>：每次上电都需要执行一段“搬运”代码（通常是BootROM），将程序从Flash复制到ITCM，这会增加启动时间。</li>
+<li><strong>ITCM容量限制</strong>：程序大小受限于ITCM的物理容量。如果程序超过ITCM大小，则无法使用此模式。</li>
+</ul>
+<h3 id="🤔-为什么此类芯片会采用这种模式？"><a href="#🤔-为什么此类芯片会采用这种模式？" class="headerlink" title="🤔 为什么此类芯片会采用这种模式？"></a>🤔 为什么此类芯片会采用这种模式？</h3><p>你看到的这种“拷贝执行”方案，常见于以下场景：</p>
+<ul>
+<li><strong>追求极致性能的MCU</strong>：对于需要进行大量计算或实时控制的场景（如电机控制、音频处理），程序在ITCM中运行能提供确定性的、极致的高速响应。</li>
+<li><strong>对功耗极端敏感的IoT设备</strong>：通过让程序在ITCM运行，可以长时间关闭外部Flash，从而降低系统功耗。</li>
+<li><strong>FPGA原型验证或仿真阶段</strong>：在开发初期，为了快速验证和调试，开发者常将程序直接加载到ITCM中运行。芯来科技（Nuclei）的MCU开发板上，也支持这种直接从ITCM启动的调试方式。</li>
+<li><strong>作为XIP的补充</strong>：许多芯片会同时提供XIP和ITCM执行两种模式。开发者可以根据应用需求，在“追求极致性能”和“追求大代码容量”之间灵活选择。例如，可以将<strong>核心算法</strong>放在ITCM中运行，而将<strong>非关键的业务逻辑</strong>放在Flash中XIP执行。</li>
+</ul>
+<h3 id="💎-总结"><a href="#💎-总结" class="headerlink" title="💎 总结"></a>💎 总结</h3><p>你观察到的“拷贝到ITCM执行”方案，是<strong>蜂鸟E203等RISC-V芯片为了追求极致性能而提供的一种与XIP并行的可选路径</strong>。</p>
+<p>它并非要取代XIP，而是通过**“用启动时间的微小增加，换取运行时的极致性能与功耗优化”**的策略，为开发者提供了另一种强有力的工具。这种灵活性，正是RISC-V架构的魅力所在。</p>
+]]></content>
+      <categories>
+        <category>固件开发</category>
+      </categories>
+      <tags>
+        <tag>RISCV</tag>
+        <tag>XIP</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Arduino IDE 编译问题记录：RCP 开发中的库路径与 include 问题</title>
+    <url>/2026/08/03/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE_T1S_Arduino_RCP%E5%BC%80%E5%8F%91%E9%97%AE%E9%A2%98%E8%AE%B0%E5%BD%95/</url>
+    <content><![CDATA[<h1 id="Arduino-IDE-编译问题记录：RCP-开发中的库路径与-include-问题"><a href="#Arduino-IDE-编译问题记录：RCP-开发中的库路径与-include-问题" class="headerlink" title="Arduino IDE 编译问题记录：RCP 开发中的库路径与 include 问题"></a>Arduino IDE 编译问题记录：RCP 开发中的库路径与 include 问题</h1><blockquote>
+<p><strong>本文状态</strong>: 持续更新<br><strong>库版本</strong>: <code>Arduino_10BASE_T1S</code> (src) + RCP 扩展<br><strong>目标平台</strong>: Arduino UNO R4 Minima + LAN8650&#x2F;LAN8651<br><strong>记录日期</strong>: 2026-08-03</p>
+</blockquote>
+<p>本文记录 RCP 开发过程中遇到的 Arduino IDE 编译问题及解决方案。</p>
+<hr>
+<h2 id="问题-1：RCP-头文件找不到（Arduino-10BASE-T1S-RCP-h-No-such-file-or-directory）"><a href="#问题-1：RCP-头文件找不到（Arduino-10BASE-T1S-RCP-h-No-such-file-or-directory）" class="headerlink" title="问题 1：RCP 头文件找不到（Arduino_10BASE_T1S_RCP.h: No such file or directory）"></a>问题 1：RCP 头文件找不到（<code>Arduino_10BASE_T1S_RCP.h: No such file or directory</code>）</h2><h3 id="错误信息"><a href="#错误信息" class="headerlink" title="错误信息"></a>错误信息</h3><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">D:\1.Lumissil\10BASE-T\Arduino_10BASE_T1S\examples\AVTP_NTSCF_Listener\AVTP_NTSCF_Listener.ino:18:10:</span><br><span class="line">fatal error: Arduino_10BASE_T1S_RCP.h: No such file or directory</span><br><span class="line"> #include &lt;Arduino_10BASE_T1S_RCP.h&gt;</span><br><span class="line">          ^~~~~~~~~~~~~~~~~~~~~~~~~~</span><br><span class="line">compilation terminated.</span><br><span class="line">Alternatives for Arduino_10BASE_T1S_RCP.h: []</span><br><span class="line">ResolveLibrary(Arduino_10BASE_T1S_RCP.h)</span><br><span class="line">  -&gt; candidates: []</span><br><span class="line">exit status 1</span><br></pre></td></tr></table></figure>
+
+<h3 id="原因分析"><a href="#原因分析" class="headerlink" title="原因分析"></a>原因分析</h3><p><strong>三层独立问题叠加</strong>：</p>
+<h4 id="第一层：库发现路径不匹配"><a href="#第一层：库发现路径不匹配" class="headerlink" title="第一层：库发现路径不匹配"></a>第一层：库发现路径不匹配</h4><p>Arduino IDE 的库扫描路径由 <code>build.options.json</code> 中的三个字段决定：</p>
+<table>
+<thead>
+<tr>
+<th>字段</th>
+<th>路径</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>builtInLibrariesFolders</code></td>
+<td><code>C:\Users\cursorhu\AppData\Local\Arduino15\libraries</code></td>
+</tr>
+<tr>
+<td><code>otherLibrariesFolders</code></td>
+<td><code>d:\1.Lumissil\10BASE-T\libraries</code></td>
+</tr>
+<tr>
+<td><code>user</code></td>
+<td><code>C:\Users\cursorhu\Documents\Arduino\libraries</code></td>
+</tr>
+</tbody></table>
+<p>开发目录 <code>Arduino_10BASE_T1S</code> 的实际位置是 <code>d:\1.Lumissil\10BASE-T\Arduino_10BASE_T1S</code>，<strong>不在</strong> <code>otherLibrariesFolders</code> 指向的 <code>libraries</code> 子目录下。IDE 在 <code>d:\1.Lumissil\10BASE-T\libraries</code> 里找不到 <code>Arduino_10BASE_T1S</code>，认为该库不存在。</p>
+<h4 id="第二层：sketch-缺少库锚点"><a href="#第二层：sketch-缺少库锚点" class="headerlink" title="第二层：sketch 缺少库锚点"></a>第二层：sketch 缺少库锚点</h4><p>Arduino IDE 的 libsdetect 机制依赖 sketch 中的 <code>#include</code> 来识别使用了哪些库。如果 sketch 直接 include <code>&lt;Arduino_10BASE_T1S_RCP.h&gt;</code> 而没有先 include <code>&lt;Arduino_10BASE_T1S.h&gt;</code>，IDE 的库扫描器无法将 <code>Arduino_10BASE_T1S</code> 库识别为依赖项，编译命令中就不会添加 <code>-IC:\...\Arduino_10BASE_T1S</code> 的路径。</p>
+<h4 id="第三层：RCP-头文件位置在库根而非-src"><a href="#第三层：RCP-头文件位置在库根而非-src" class="headerlink" title="第三层：RCP 头文件位置在库根而非 src/"></a>第三层：RCP 头文件位置在库根而非 <code>src/</code></h4><p><code>Arduino_10BASE_T1S_RCP.h</code> 位于库根目录（<code>Arduino_10BASE_T1S/</code>），而非标准 <code>src/</code> 子目录。IDE 认为 <code>src/</code> 是库的源码起点，即使库被正确识别，libsdetect 阶段也可能不包含库根目录作为 include 搜索路径。</p>
+<h3 id="解决方案"><a href="#解决方案" class="headerlink" title="解决方案"></a>解决方案</h3><h4 id="Step-1：创建目录联接点（junction）"><a href="#Step-1：创建目录联接点（junction）" class="headerlink" title="Step 1：创建目录联接点（junction）"></a>Step 1：创建目录联接点（junction）</h4><p>在 <code>d:\1.Lumissil\10BASE-T\libraries\</code> 下创建指向开发目录的 junction，使 IDE 能扫描到库：</p>
+<figure class="highlight powershell"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 在 d:\1.Lumissil\10BASE-T\libraries\ 下执行（无需管理员权限）</span></span><br><span class="line">cmd /c <span class="string">&quot;mklink /J `&quot;.\Arduino_10BASE_T1S`&quot; `&quot;D:\1.Lumissil\10BASE-T\Arduino_10BASE_T1S`&quot;&quot;</span></span><br></pre></td></tr></table></figure>
+
+<p>验证：</p>
+<figure class="highlight powershell"><table><tr><td class="code"><pre><span class="line"><span class="built_in">Get-Item</span> <span class="string">&#x27;D:\1.Lumissil\10BASE-T\libraries\Arduino_10BASE_T1S&#x27;</span></span><br><span class="line"><span class="comment"># LinkType: Junction, Target: D:\1.Lumissil\10BASE-T\Arduino_10BASE_T1S</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="Step-2：在-sketch-中添加库锚点-include"><a href="#Step-2：在-sketch-中添加库锚点-include" class="headerlink" title="Step 2：在 sketch 中添加库锚点 include"></a>Step 2：在 sketch 中添加库锚点 include</h4><p>所有使用 RCP 的 sketch 必须先 include 主库头文件，以触发 IDE 的库发现机制：</p>
+<figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;Arduino.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> USE_AVTP_RCP 1</span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;SPI.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;Arduino_10BASE_T1S.h&gt;</span>   <span class="comment">// ← 必须！触发库发现</span></span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;Arduino_10BASE_T1S_RCP.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&quot;MacAddress.h&quot;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&quot;T1SPlcaSettings.h&quot;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&quot;T1SMacSettings.h&quot;</span></span></span><br></pre></td></tr></table></figure>
+
+<h4 id="Step-3：将-RCP-头文件放入-src"><a href="#Step-3：将-RCP-头文件放入-src" class="headerlink" title="Step 3：将 RCP 头文件放入 src/"></a>Step 3：将 RCP 头文件放入 <code>src/</code></h4><p>将 <code>Arduino_10BASE_T1S_RCP.h</code> 和 <code>Arduino_10BASE_T1S_RCP.cpp</code> 移动到 <code>src/</code> 目录，与其他库源文件保持一致：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">Arduino_10BASE_T1S/</span><br><span class="line">├── src/</span><br><span class="line">│   ├── Arduino_10BASE_T1S.h</span><br><span class="line">│   ├── Arduino_10BASE_T1S_RCP.h    ← 放在这里</span><br><span class="line">│   ├── Arduino_10BASE_T1S_RCP.cpp  ← 放在这里</span><br><span class="line">│   ├── RCP/</span><br><span class="line">│   │   ├── RCP_Client.cpp</span><br><span class="line">│   │   ├── RCP_Client.h</span><br><span class="line">│   │   ├── RCP_Server.cpp</span><br><span class="line">│   │   ├── RCP_Server.h</span><br><span class="line">│   │   └── ...</span><br><span class="line">│   └── Open1722/</span><br><span class="line">│       └── ...</span><br><span class="line">└── library.properties</span><br></pre></td></tr></table></figure>
+
+<h4 id="Step-4：重启-Arduino-IDE"><a href="#Step-4：重启-Arduino-IDE" class="headerlink" title="Step 4：重启 Arduino IDE"></a>Step 4：重启 Arduino IDE</h4><p>修改目录结构或 sketch include 后，必须完全关闭并重新打开 Arduino IDE，使 IDE 重新扫描库缓存。</p>
+<h3 id="验证"><a href="#验证" class="headerlink" title="验证"></a>验证</h3><p>编译命令中应该出现 <code>Arduino_10BASE_T1S</code> 的 include 路径：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">-IC:\Users\cursorhu\Documents\Arduino\libraries\Arduino_10BASE_T1S\src</span><br></pre></td></tr></table></figure>
+
+<p>libsdetect 输出中应该有：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">Alternatives for Arduino_10BASE_T1S.h: [Arduino_10BASE_T1S]</span><br></pre></td></tr></table></figure>
+
+<h3 id="预防措施"><a href="#预防措施" class="headerlink" title="预防措施"></a>预防措施</h3><ol>
+<li><strong>不要在库根放新的 .h&#x2F;.cpp 文件</strong>：所有自定义源文件都放在 <code>src/</code> 下</li>
+<li><strong>所有 sketch 必须包含 <code>&lt;Arduino_10BASE_T1S.h&gt;</code></strong>：放在其他自定义 include 之前</li>
+<li><strong>在 sketchbook 下建立 <code>libraries</code> 目录</strong>：开发时将库放在 <code>{sketchbook}/libraries/</code> 下，而非独立目录</li>
+<li><strong>修改目录结构后重启 IDE</strong>：Arduino IDE 会缓存库扫描结果</li>
+</ol>
+<hr>
+<h2 id="问题-2：Open1722-include-路径错误（No-such-file-or-directory）"><a href="#问题-2：Open1722-include-路径错误（No-such-file-or-directory）" class="headerlink" title="问题 2：Open1722 include 路径错误（No such file or directory）"></a>问题 2：Open1722 include 路径错误（<code>No such file or directory</code>）</h2><h3 id="错误-2-1：-Defines-h-在同级目录文件中"><a href="#错误-2-1：-Defines-h-在同级目录文件中" class="headerlink" title="错误 2.1：../Defines.h 在同级目录文件中"></a>错误 2.1：<code>../Defines.h</code> 在同级目录文件中</h3><h4 id="错误信息-1"><a href="#错误信息-1" class="headerlink" title="错误信息"></a>错误信息</h4><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">d:\1.lumissil\10base-t\libraries\arduino_10base_t1s\src\open1722\include\avtp\utils.h:39:10:</span><br><span class="line"> fatal error: ../Defines.h: No such file or directory</span><br><span class="line"> #include &quot;../Defines.h&quot;</span><br><span class="line">          ^~~~~~~~~~~~~~</span><br></pre></td></tr></table></figure>
+
+<h4 id="原因分析-1"><a href="#原因分析-1" class="headerlink" title="原因分析"></a>原因分析</h4><p><code>Utils.h</code> 和 <code>Defines.h</code> 位于<strong>同一目录</strong> <code>src/Open1722/include/avtp/</code>，不应使用 <code>../</code> 回到上级。只有子目录中的文件（如 <code>acf/</code> 下的文件）才需要 <code>../</code> 来访问同级目录的成员。</p>
+<h4 id="修复"><a href="#修复" class="headerlink" title="修复"></a>修复</h4><figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 错误（Utils.h 在 include/avtp/ 下，不在子目录中）</span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&quot;../Defines.h&quot;</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 正确（Utils.h 和 Defines.h 同级）</span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&quot;Defines.h&quot;</span></span></span><br></pre></td></tr></table></figure>
+
+<p>涉及文件：</p>
+<ul>
+<li><code>src/Open1722/include/avtp/Utils.h</code>：改为 <code>#include &quot;Defines.h&quot;</code> 和 <code>#include &quot;Byteorder.h&quot;</code></li>
+<li><code>src/Open1722/include/avtp/CommonHeader.h</code>：改为 <code>#include &quot;Defines.h&quot;</code></li>
+</ul>
+<hr>
+<h3 id="错误-2-2：-c-文件的-include-路径与实际目录结构不匹配"><a href="#错误-2-2：-c-文件的-include-路径与实际目录结构不匹配" class="headerlink" title="错误 2.2：.c 文件的 include 路径与实际目录结构不匹配"></a>错误 2.2：<code>.c</code> 文件的 include 路径与实际目录结构不匹配</h3><h4 id="错误信息-2"><a href="#错误信息-2" class="headerlink" title="错误信息"></a>错误信息</h4><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">d:\1.Lumissil\10BASE-T\libraries\Arduino_10BASE_T1S\src\Open1722\src\avtp\CommonHeader.c:38:10:</span><br><span class="line"> fatal error: Open1722/avtp/CommonHeader.h: No such file or directory</span><br><span class="line"> #include &quot;Open1722/avtp/CommonHeader.h&quot;</span><br><span class="line">          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~</span><br></pre></td></tr></table></figure>
+
+<h4 id="原因分析-2"><a href="#原因分析-2" class="headerlink" title="原因分析"></a>原因分析</h4><p>Open1722 的实际目录结构是：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">src/Open1722/</span><br><span class="line">├── include/avtp/     ← 头文件在这里</span><br><span class="line">│   ├── Defines.h</span><br><span class="line">│   ├── CommonHeader.h</span><br><span class="line">│   ├── Utils.h</span><br><span class="line">│   └── acf/</span><br><span class="line">└── src/avtp/          ← .c 源文件在这里</span><br><span class="line">    ├── CommonHeader.c</span><br><span class="line">    ├── Utils.c</span><br><span class="line">    └── acf/</span><br></pre></td></tr></table></figure>
+
+<p>编译命令中 include 路径为 <code>-Id:\1.Lumissil\10BASE-T\libraries\Arduino_10BASE_T1S\src</code>，这恰好是 <code>src/Open1722/</code> 的父目录。因此：</p>
+<ul>
+<li>头文件 <code>include/avtp/CommonHeader.h</code> 需要用路径 <code>Open1722/include/avtp/CommonHeader.h</code> 访问</li>
+<li>用 <code>Open1722/avtp/CommonHeader.h</code> 会去 <code>src/Open1722/avtp/</code>（不存在）找文件</li>
+</ul>
+<h4 id="修复-1"><a href="#修复-1" class="headerlink" title="修复"></a>修复</h4><p>所有 <code>.c</code> 文件中的 include 路径改为 <code>Open1722/include/avtp/</code> 前缀：</p>
+<figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 错误</span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&quot;Open1722/avtp/CommonHeader.h&quot;</span>   <span class="comment">// 去找 src/Open1722/avtp/CommonHeader.h（不存在）</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 正确</span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&quot;Open1722/include/avtp/CommonHeader.h&quot;</span>  <span class="comment">// 去找 src/Open1722/include/avtp/CommonHeader.h（存在）</span></span></span><br></pre></td></tr></table></figure>
+
+<p>涉及文件：</p>
+<ul>
+<li><code>src/Open1722/src/avtp/CommonHeader.c</code></li>
+<li><code>src/Open1722/src/avtp/Utils.c</code></li>
+<li><code>src/Open1722/src/avtp/acf/Tscf.c</code></li>
+<li><code>src/Open1722/src/avtp/acf/Ntscf.c</code></li>
+</ul>
+<h4 id="关键经验"><a href="#关键经验" class="headerlink" title="关键经验"></a>关键经验</h4><p>定位 <code>#include &quot;xxx.h&quot;</code> 找不到时，先问自己：<strong>编译器的 include 搜索路径是什么？相对于哪个目录？</strong></p>
+<p>在本项目中：</p>
+<ul>
+<li>编译器的 <code>-I</code> 路径是 <code>d:\1.Lumissil\10BASE-T\libraries\Arduino_10BASE_T1S\src</code></li>
+<li>所以 <code>#include &quot;Open1722/include/avtp/xxx.h&quot;</code> 展开为 <code>d:\1.Lumissil\10BASE-T\libraries\Arduino_10BASE_T1S\src\Open1722\include\avtp\xxx.h</code>，这正是头文件实际所在位置</li>
+</ul>
+<hr>
+<h2 id="问题-3：RCP-API-调用错误（is-not-a-member-of-rcp-no-matching-function）"><a href="#问题-3：RCP-API-调用错误（is-not-a-member-of-rcp-no-matching-function）" class="headerlink" title="问题 3：RCP API 调用错误（is not a member of &#39;rcp&#39; &#x2F; no matching function）"></a>问题 3：RCP API 调用错误（<code>is not a member of &#39;rcp&#39;</code> &#x2F; <code>no matching function</code>）</h2><h3 id="错误-3-1：RCP-EP-GPIO-BASE-被错误地放在-rcp-命名空间"><a href="#错误-3-1：RCP-EP-GPIO-BASE-被错误地放在-rcp-命名空间" class="headerlink" title="错误 3.1：RCP_EP_GPIO_BASE 被错误地放在 rcp:: 命名空间"></a>错误 3.1：<code>RCP_EP_GPIO_BASE</code> 被错误地放在 <code>rcp::</code> 命名空间</h3><h4 id="错误信息-3"><a href="#错误信息-3" class="headerlink" title="错误信息"></a>错误信息</h4><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">error: &#x27;RCP_EP_GPIO_BASE&#x27; is not a member of &#x27;rcp&#x27;</span><br><span class="line">note: suggested alternative: &#x27;RCP_EP_GPIO_BASE&#x27; (global namespace)</span><br></pre></td></tr></table></figure>
+
+<h4 id="原因"><a href="#原因" class="headerlink" title="原因"></a>原因</h4><p><code>RCP_EP_GPIO_BASE</code> 定义在 <code>RCP_Defs.h</code> 中，属于<strong>全局命名空间</strong>（inline constexpr），但 sketch 中错误地加了 <code>rcp::</code> 前缀。</p>
+<h4 id="修复-2"><a href="#修复-2" class="headerlink" title="修复"></a>修复</h4><figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 错误</span></span><br><span class="line"><span class="function"><span class="type">static</span> rcp::RCP_Endpoint_GPIO <span class="title">g_gpio_ep</span><span class="params">(rcp::RCP_EP_GPIO_BASE, GPIO_WIRING)</span></span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 正确</span></span><br><span class="line"><span class="function"><span class="type">static</span> rcp::RCP_Endpoint_GPIO <span class="title">g_gpio_ep</span><span class="params">(RCP_EP_GPIO_BASE, GPIO_WIRING)</span></span>;</span><br></pre></td></tr></table></figure>
+
+<p>涉及文件：</p>
+<ul>
+<li><code>examples/AVTP_NTSCF_Listener/AVTP_NTSCF_Listener.ino</code></li>
+<li><code>examples/AVTP_NTSCF_Talker/AVTP_NTSCF_Talker.ino</code>（<code>clientWrite</code> 调用）</li>
+</ul>
+<hr>
+<h3 id="错误-3-2：asServer-参数类型不匹配"><a href="#错误-3-2：asServer-参数类型不匹配" class="headerlink" title="错误 3.2：asServer 参数类型不匹配"></a>错误 3.2：<code>asServer</code> 参数类型不匹配</h3><h4 id="错误信息-4"><a href="#错误信息-4" class="headerlink" title="错误信息"></a>错误信息</h4><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">error: no matching function for call to &#x27;Arduino_10BASE_T1S_RCP::asServer(</span><br><span class="line">        long long unsigned int, rcp::RCP_Endpoint* [1], int)&#x27;</span><br><span class="line">note: candidate: bool asServer(uint64_t, rcp::RCP_Endpoint*, uint8_t)</span><br></pre></td></tr></table></figure>
+
+<h4 id="原因-1"><a href="#原因-1" class="headerlink" title="原因"></a>原因</h4><p><code>asServer</code> 的签名接受 <code>rcp::RCP_Endpoint*</code>（单个指针）+ <code>uint8_t count</code>，但 sketch 传入的是 <code>rcp::RCP_Endpoint* [1]</code>（数组）。</p>
+<h4 id="修复-3"><a href="#修复-3" class="headerlink" title="修复"></a>修复</h4><figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 错误</span></span><br><span class="line">rcp::RCP_Endpoint * eps[] = &#123; &amp;g_gpio_ep &#125;;</span><br><span class="line"><span class="keyword">if</span> (!rcp.<span class="built_in">asServer</span>(MY_STREAM_ID, eps, <span class="number">1</span>))</span><br><span class="line"></span><br><span class="line"><span class="comment">// 正确</span></span><br><span class="line"><span class="keyword">if</span> (!rcp.<span class="built_in">asServer</span>(MY_STREAM_ID, &amp;g_gpio_ep, <span class="number">1</span>))</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h3 id="错误-3-3：访问了私有成员-transport"><a href="#错误-3-3：访问了私有成员-transport" class="headerlink" title="错误 3.3：访问了私有成员 _transport"></a>错误 3.3：访问了私有成员 <code>_transport</code></h3><h4 id="错误信息-5"><a href="#错误信息-5" class="headerlink" title="错误信息"></a>错误信息</h4><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">error: &#x27;class Arduino_10BASE_T1S_RCP&#x27; has no member named &#x27;transport&#x27;;</span><br><span class="line">       did you mean &#x27;_transport&#x27;?</span><br></pre></td></tr></table></figure>
+
+<h4 id="原因-2"><a href="#原因-2" class="headerlink" title="原因"></a>原因</h4><p><code>_transport</code> 是 <code>Arduino_10BASE_T1S_RCP</code> 的私有成员，只有 <code>_transport</code> 下划线私有成员名。<code>transport()</code> 方法不存在。</p>
+<h4 id="修复-4"><a href="#修复-4" class="headerlink" title="修复"></a>修复</h4><figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 错误（私有成员不可外部访问）</span></span><br><span class="line">rcp.<span class="built_in">transport</span>()-&gt;<span class="built_in">onAvtpFrame</span>(onAvtpFrame, <span class="literal">nullptr</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 正确（直接访问下划线私有成员）</span></span><br><span class="line">rcp._transport.<span class="built_in">onAvtpFrame</span>(onAvtpFrame, <span class="literal">nullptr</span>);</span><br></pre></td></tr></table></figure>
+
+<h4 id="后续改进：添加-public-访问器"><a href="#后续改进：添加-public-访问器" class="headerlink" title="后续改进：添加 public 访问器"></a>后续改进：添加 public 访问器</h4><p>直接访问 <code>_transport</code> 破坏了封装性。更优的做法是在 <code>Arduino_10BASE_T1S_RCP</code> 中添加 public <code>transport()</code> 方法：</p>
+<figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 在 Arduino_10BASE_T1S_RCP.h 中添加：</span></span><br><span class="line"><span class="function">rcp::RCP_Transport * <span class="title">transport</span><span class="params">()</span> </span>&#123; <span class="keyword">return</span> &amp;_transport; &#125;</span><br></pre></td></tr></table></figure>
+
+<p>这样 sketch 中统一用 <code>rcp.transport()-&gt;onAvtpFrame(...)</code>，不依赖私有成员名。</p>
+<hr>
+<h3 id="预防措施-1"><a href="#预防措施-1" class="headerlink" title="预防措施"></a>预防措施</h3><ol>
+<li><strong>常量命名空间检查</strong>：所有 <code>#include &quot;RCP/RCP_Defs.h&quot;</code> 后出现的 <code>RCP_EP_*</code> 等常量默认在全局命名空间，只有类内枚举或显式 <code>namespace rcp {}</code> 包裹的才需要 <code>rcp::</code> 前缀</li>
+<li><strong>函数签名一致性</strong>：调用 API 前先确认参数类型——单个对象指针 vs 数组指针 + 长度计数是不同的签名</li>
+<li><strong>封装性原则</strong>：私有成员（<code>_</code> 前缀）不应在类外部直接访问，有公开需求时应提供 public 方法</li>
+</ol>
+<hr>
+<h2 id="相关文档"><a href="#相关文档" class="headerlink" title="相关文档"></a>相关文档</h2><p>|| 文档 | 内容 |<br>||——|——|<br>|| <a href="../Arduino_IDE_Build_System_Internals.md">Arduino IDE 编译内幕</a> | Arduino IDE 编译机制深度解析 |<br>|| <a href="./RCP_10BASE_T1S_Implementation_Log.md">RCP&#x2F;AVTP 实施记录</a> | RCP 代码开发日志 |<br>|| <a href="../Arduino_10BASE_T1S_Compilation_Architecture_Deep_Dive.md">Arduino_10BASE_T1S 编译架构深度解析</a> | arduino-cli 构建流程 |</p>
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h2><ul>
+<li><a href="https://docs.arduino.cc/hacking/software/ArduinoLibraryManagerFormat/">Arduino Library Specification</a></li>
+<li><a href="https://arduino.github.io/arduino-cli/latest/commands/arduino-cli_lib/">arduino-cli library search</a></li>
+</ul>
+]]></content>
+      <categories>
+        <category>10BASE-T1S</category>
+      </categories>
+      <tags>
+        <tag>10BASE-T1S</tag>
+        <tag>Arduino</tag>
+        <tag>LAN8651</tag>
+        <tag>RCP</tag>
+        <tag>Arduino IDE</tag>
+        <tag>编译问题</tag>
+        <tag>LAN8650</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>RCP/AVTP 实施记录 - 在 LAN8650 上构建类 LAN8660 的协议栈</title>
+    <url>/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/RCP_10BASE_T1S_Implementation_Log/</url>
+    <content><![CDATA[<h1 id="RCP-AVTP-实施记录-在-LAN8650-上构建类-LAN8660-的协议栈"><a href="#RCP-AVTP-实施记录-在-LAN8650-上构建类-LAN8660-的协议栈" class="headerlink" title="RCP&#x2F;AVTP 实施记录 - 在 LAN8650 上构建类 LAN8660 的协议栈"></a>RCP&#x2F;AVTP 实施记录 - 在 LAN8650 上构建类 LAN8660 的协议栈</h1><blockquote>
+<p><strong>Git 分支</strong>: <code>rcp</code><br><strong>状态</strong>: Phase 0-3 代码已落地，待 Arduino IDE 编译验证<br><strong>目标</strong>: 用两个 LAN8650 板跑通完整 RCP&#x2F;AVTP 协议栈，对标 LAN8660 软件无关架构</p>
+</blockquote>
+<p>本文是 <a href="RCP_10BASE_T1S_Architecture_Analysis.md">RCP_10BASE_T1S_Architecture_Analysis.md</a> 的实施记录，记录在 <code>rcp</code> 分支上对 <code>Arduino_10BASE_T1S</code> 库进行二次开发的具体过程。</p>
+<hr>
+<h2 id="1-阶段进度"><a href="#1-阶段进度" class="headerlink" title="1. 阶段进度"></a>1. 阶段进度</h2><table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>内容</th>
+<th align="center">状态</th>
+<th>关键产物</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Phase 0</strong></td>
+<td>Open1722 集成 + 基础类型</td>
+<td align="center">✅</td>
+<td><code>src/Open1722/</code>, <code>src/RCP/RCP_Defs.h</code></td>
+</tr>
+<tr>
+<td><strong>Phase 1</strong></td>
+<td>AVTP NTSCF 双板通信</td>
+<td align="center">✅</td>
+<td><code>RCP_Frame</code>, <code>RCP_Transport</code>, EtherType 路由</td>
+</tr>
+<tr>
+<td><strong>Phase 2</strong></td>
+<td>RCP Client 状态机</td>
+<td align="center">✅</td>
+<td><code>RCP_Client</code>, transaction 分配器</td>
+</tr>
+<tr>
+<td><strong>Phase 3</strong></td>
+<td>RCP Server + GPIO EP</td>
+<td align="center">✅</td>
+<td><code>RCP_Server</code>, <code>EP0</code>, <code>GPIO EP</code></td>
+</tr>
+<tr>
+<td><strong>Phase 4</strong></td>
+<td>Examples + 文档</td>
+<td align="center">⏳</td>
+<td><code>AVTP_NTSCF_*</code>, <code>RCP_Client</code>, <code>RCP_Server</code></td>
+</tr>
+<tr>
+<td>编译验证</td>
+<td>Arduino IDE 实测</td>
+<td align="center">⏳</td>
+<td>待执行</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="2-实施架构"><a href="#2-实施架构" class="headerlink" title="2. 实施架构"></a>2. 实施架构</h2><h3 id="2-1-修改前后对比"><a href="#2-1-修改前后对比" class="headerlink" title="2.1 修改前后对比"></a>2.1 修改前后对比</h3><p><strong>修改前</strong>:</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">Application (UDP)</span><br><span class="line">    ↓</span><br><span class="line">Arduino_10BASE_T1S_UDP (UDP API)</span><br><span class="line">    ↓</span><br><span class="line">liblwip (TCP/IP 栈, ~45KB)</span><br><span class="line">    ↓</span><br><span class="line">TC6_Arduino_10BASE_T1S (lwIP-bound)</span><br><span class="line">    ↓</span><br><span class="line">libtc6 (OA TC6 SPI 协议)</span><br><span class="line">    ↓</span><br><span class="line">LAN8650/1 (10BASE-T1S PHY)</span><br></pre></td></tr></table></figure>
+
+<p><strong>修改后</strong>:</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">Application (RCP/AVTP)</span><br><span class="line">    ↓</span><br><span class="line">Arduino_10BASE_T1S_RCP (统一入口)</span><br><span class="line">    ↓</span><br><span class="line">RCP_Client / RCP_Server (应用层状态机)</span><br><span class="line">    ↓</span><br><span class="line">RCP_Frame (AVTP 帧构建/解析, Open1722 backed)</span><br><span class="line">    ↓</span><br><span class="line">RCP_Transport (EtherType 0x22F0 适配)</span><br><span class="line">    ↓</span><br><span class="line">TC6_Arduino_10BASE_T1S (添加 0x22F0 路由, #ifdef 保护)</span><br><span class="line">    ↓</span><br><span class="line">libtc6 (复用, 不变)</span><br><span class="line">    ↓</span><br><span class="line">LAN8650/1 (10BASE-T1S PHY)</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-2-关键约束"><a href="#2-2-关键约束" class="headerlink" title="2.2 关键约束"></a>2.2 关键约束</h3><ol>
+<li><strong>lwIP 路径保留</strong>：<code>USE_AVTP_RCP=0</code>（默认）时所有改动不生效</li>
+<li><strong>Open1722 子集化</strong>：仅集成 NTSCF&#x2F;ACF 必要头文件，共 13 个 .h + 4 个 .c</li>
+<li><strong>Server 状态机简化</strong>：先实现 Undiscovered → Discovered → RunMode，跳过中间过渡状态</li>
+<li><strong>GPIO EP 简化</strong>：单引脚（LED_BUILTIN）作为测试 EP，寄存器映射遵循 Microchip GPIO 规范</li>
+</ol>
+<hr>
+<h2 id="3-Open1722-集成详情"><a href="#3-Open1722-集成详情" class="headerlink" title="3. Open1722 集成详情"></a>3. Open1722 集成详情</h2><h3 id="3-1-文件清单"><a href="#3-1-文件清单" class="headerlink" title="3.1 文件清单"></a>3.1 文件清单</h3><p>从 Open1722 拷贝的子集（<a href="https://github.com/COVESA/open1722">README</a> 已说明）：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">src/Open1722/</span><br><span class="line">├── README.md</span><br><span class="line">├── include/avtp/</span><br><span class="line">│   ├── Byteorder.h</span><br><span class="line">│   ├── CommonHeader.h</span><br><span class="line">│   ├── Defines.h</span><br><span class="line">│   ├── Utils.h</span><br><span class="line">│   └── acf/</span><br><span class="line">│       ├── Abb.h</span><br><span class="line">│       ├── AcfCommon.h</span><br><span class="line">│       ├── Gbb.h</span><br><span class="line">│       ├── Ntscf.h</span><br><span class="line">│       └── Tscf.h</span><br><span class="line">└── src/avtp/</span><br><span class="line">    ├── CommonHeader.c</span><br><span class="line">    ├── Utils.c</span><br><span class="line">    └── acf/</span><br><span class="line">        ├── Ntscf.c</span><br><span class="line">        └── Tscf.c</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-2-include-路径-patch"><a href="#3-2-include-路径-patch" class="headerlink" title="3.2 include 路径 patch"></a>3.2 include 路径 patch</h3><p>Open1722 头文件原本用 <code>#include &quot;avtp/...&quot;</code> 路径，但 Arduino IDE 默认把库的 <code>src/</code> 作为 include 根，不会自动包含 <code>src/Open1722/include/</code>。</p>
+<p>解决方案：用 PowerShell 批量替换为相对路径：</p>
+<figure class="highlight powershell"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 替换 avtp/ 前缀为相对路径</span></span><br><span class="line"><span class="built_in">Get-ChildItem</span> <span class="literal">-Recurse</span> <span class="literal">-Include</span> *.h,*.c | <span class="built_in">ForEach-Object</span> &#123;</span><br><span class="line">    <span class="variable">$c</span> = <span class="built_in">Get-Content</span> <span class="variable">$_</span>.FullName <span class="literal">-Raw</span></span><br><span class="line">    <span class="variable">$c</span> = <span class="variable">$c</span> <span class="operator">-replace</span> <span class="string">&#x27;&quot;avtp/Defines.h&quot;&#x27;</span>,     <span class="string">&#x27;&quot;Defines.h&quot;&#x27;</span></span><br><span class="line">    <span class="variable">$c</span> = <span class="variable">$c</span> <span class="operator">-replace</span> <span class="string">&#x27;&quot;avtp/Byteorder.h&quot;&#x27;</span>,   <span class="string">&#x27;&quot;Byteorder.h&quot;&#x27;</span></span><br><span class="line">    <span class="variable">$c</span> = <span class="variable">$c</span> <span class="operator">-replace</span> <span class="string">&#x27;&quot;avtp/Utils.h&quot;&#x27;</span>,       <span class="string">&#x27;&quot;Utils.h&quot;&#x27;</span></span><br><span class="line">    <span class="variable">$c</span> = <span class="variable">$c</span> <span class="operator">-replace</span> <span class="string">&#x27;&quot;avtp/CommonHeader.h&quot;&#x27;</span>,<span class="string">&#x27;&quot;../CommonHeader.h&quot;&#x27;</span>  <span class="comment"># for acf/*.h</span></span><br><span class="line">    <span class="built_in">Set-Content</span> <span class="literal">-Path</span> <span class="variable">$_</span>.FullName <span class="literal">-Value</span> <span class="variable">$c</span> <span class="literal">-NoNewline</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>Ntscf.h 和 Tscf.h 单独使用 <code>../CommonHeader.h</code>（向上引用）。</p>
+<h3 id="3-3-宏冲突修复"><a href="#3-3-宏冲突修复" class="headerlink" title="3.3 宏冲突修复"></a>3.3 宏冲突修复</h3><p><code>RCP_Defs.h</code> 早期用 <code>#define AVTP_ACF_TYPE_BYTE_BUS (0x0Du)</code>，但 Open1722 在 <code>AcfCommon.h</code> 把同名标识符定义为 enum：</p>
+<figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="comment">// AcfCommon.h (Open1722)</span></span><br><span class="line"><span class="keyword">typedef</span> <span class="keyword">enum</span> &#123;</span><br><span class="line">    AVTP_ACF_TYPE_BYTE_BUS = <span class="number">0x0D</span>,</span><br><span class="line">    ...</span><br><span class="line">&#125; Avtp_AcfMsgType_t;</span><br></pre></td></tr></table></figure>
+
+<p>宏替换会破坏 enum 定义。修复方案：使用 C++17 <code>inline constexpr</code> 替代宏：</p>
+<figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="comment">// RCP_Defs.h (修复后)</span></span><br><span class="line"><span class="keyword">inline</span> <span class="keyword">constexpr</span> <span class="type">uint8_t</span> AVTP_ACF_TYPE_BYTE_BUS_C = <span class="number">0x0D</span>;</span><br><span class="line"><span class="keyword">inline</span> <span class="keyword">constexpr</span> <span class="type">uint8_t</span> AVTP_SUBTYPE_NTSCF_C      = <span class="number">0x82</span>;</span><br></pre></td></tr></table></figure>
+
+<p><code>_C</code> 后缀避免命名冲突。</p>
+<hr>
+<h2 id="4-RCP-协议栈核心模块"><a href="#4-RCP-协议栈核心模块" class="headerlink" title="4. RCP 协议栈核心模块"></a>4. RCP 协议栈核心模块</h2><h3 id="4-1-RCP-Frame"><a href="#4-1-RCP-Frame" class="headerlink" title="4.1 RCP_Frame"></a>4.1 RCP_Frame</h3><p><strong>职责</strong>：封装 AVTP NTSCF + ACF 头部构建与解析。</p>
+<figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 关键 API</span></span><br><span class="line"><span class="function"><span class="type">static</span> FrameResult <span class="title">buildRequest</span><span class="params">(<span class="type">uint8_t</span> *out_buf, <span class="type">uint16_t</span> out_buf_size, <span class="type">uint16_t</span> *out_len,</span></span></span><br><span class="line"><span class="params"><span class="function">                                 <span class="type">uint64_t</span> stream_id, <span class="type">uint8_t</span> seq_num,</span></span></span><br><span class="line"><span class="params"><span class="function">                                 <span class="type">uint16_t</span> byte_bus_id, <span class="type">uint8_t</span> transaction_num,</span></span></span><br><span class="line"><span class="params"><span class="function">                                 <span class="type">bool</span> is_write, <span class="type">uint16_t</span> read_size,</span></span></span><br><span class="line"><span class="params"><span class="function">                                 <span class="type">const</span> <span class="type">uint8_t</span> *payload, <span class="type">uint16_t</span> payload_len)</span></span>;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">static</span> FrameResult <span class="title">buildAck</span><span class="params">(<span class="type">uint8_t</span> *out_buf, ...)</span></span>;            <span class="comment">// ACF_GBB evt=0xF</span></span><br><span class="line"><span class="function"><span class="type">static</span> FrameResult <span class="title">buildReadResponse</span><span class="params">(<span class="type">uint8_t</span> *out_buf, ...)</span></span>;   <span class="comment">// ACF_GBB evt=0x0 with data</span></span><br><span class="line"><span class="function"><span class="type">static</span> FrameResult <span class="title">buildWriteResponse</span><span class="params">(<span class="type">uint8_t</span> *out_buf, ...)</span></span>;  <span class="comment">// ACF_GBB evt=0x0 no data</span></span><br><span class="line"><span class="function"><span class="type">static</span> FrameResult <span class="title">buildErrorResponse</span><span class="params">(<span class="type">uint8_t</span> *out_buf, ...)</span></span>;  <span class="comment">// ACF_GBB err=1</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">static</span> FrameResult <span class="title">parse</span><span class="params">(<span class="type">const</span> <span class="type">uint8_t</span> *buf, <span class="type">uint16_t</span> buf_len, DecodedFrame &amp;out)</span></span>;</span><br></pre></td></tr></table></figure>
+
+<p><code>DecodedFrame</code> 包含解析后的所有字段：</p>
+<ul>
+<li><code>direction</code> (Request&#x2F;Ack&#x2F;Response&#x2F;Error)</li>
+<li><code>subtype</code>, <code>stream_id</code>, <code>sequence_num</code></li>
+<li><code>byte_bus_id</code>, <code>transaction_num</code>, <code>op</code>, <code>err</code>, <code>evt</code></li>
+<li><code>payload</code> (指针), <code>payload_len</code></li>
+</ul>
+<h3 id="4-2-RCP-Transaction"><a href="#4-2-RCP-Transaction" class="headerlink" title="4.2 RCP_Transaction"></a>4.2 RCP_Transaction</h3><p>简单的 256-bit bitmap 分配器：</p>
+<figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">RCP_Transaction</span> &#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="type">uint8_t</span> <span class="title">alloc</span><span class="params">()</span></span>;          <span class="comment">// returns 0..254, 0xFF on full</span></span><br><span class="line">    <span class="function"><span class="type">void</span> <span class="title">free</span><span class="params">(<span class="type">uint8_t</span> tnum)</span></span>;</span><br><span class="line">    <span class="function"><span class="type">bool</span> <span class="title">isAllocated</span><span class="params">(<span class="type">uint8_t</span> tnum)</span> <span class="type">const</span></span>;</span><br><span class="line">    <span class="function"><span class="type">void</span> <span class="title">reset</span><span class="params">()</span></span>;</span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">    <span class="type">uint8_t</span> _bitmap[<span class="number">32</span>];</span><br><span class="line">    <span class="type">uint8_t</span> _next_hint;       <span class="comment">// alloc() 起点 hint</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p><code>_next_hint</code> 循环扫描 bitmap 找空位，避免总是从 0 开始导致 transaction_num 冲突。</p>
+<h3 id="4-3-RCP-Transport"><a href="#4-3-RCP-Transport" class="headerlink" title="4.3 RCP_Transport"></a>4.3 RCP_Transport</h3><p>通过 TC6 发送&#x2F;接收 AVTP 帧的适配层：</p>
+<figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">RCP_Transport</span> &#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="type">bool</span> <span class="title">begin</span><span class="params">(TC6::TC6_Arduino_10BASE_T1S * tc6)</span></span>;</span><br><span class="line">    <span class="function"><span class="type">bool</span> <span class="title">sendAvtpFrame</span><span class="params">(<span class="type">const</span> <span class="type">uint8_t</span> *dst_mac, <span class="type">const</span> <span class="type">uint8_t</span> *frame, <span class="type">uint16_t</span> frame_len)</span></span>;</span><br><span class="line">    <span class="function"><span class="type">void</span> <span class="title">onAvtpFrame</span><span class="params">(AvtpFrameCallback cb, <span class="type">void</span> *user_ctx)</span></span>;</span><br><span class="line">    <span class="function"><span class="type">void</span> <span class="title">bindClient</span><span class="params">(RCP_Client *c)</span></span>;  <span class="comment">// 接收路由</span></span><br><span class="line">    <span class="function"><span class="type">void</span> <span class="title">bindServer</span><span class="params">(RCP_Server *s)</span></span>;</span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">    <span class="function"><span class="type">void</span> <span class="title">onRxAvtpFrame</span><span class="params">(<span class="type">const</span> <span class="type">uint8_t</span> *frame, <span class="type">uint16_t</span> frame_len)</span></span>;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p><code>sendAvtpFrame</code> 内部构造完整 Ethernet frame：</p>
+<ul>
+<li>DA (6B) + SA (6B) + EtherType&#x3D;0x22F0 (2B) + AVTP payload</li>
+</ul>
+<p>调用 <code>TC6_SendRawEthernetPacket</code> 直接写入 TC6 TX FIFO。</p>
+<p><code>onRxAvtpFrame</code> 由 <code>TC6_CB_OnRxEthernetPacket</code> 通过 <code>RCP_Transport_OnRxAvtpFrame</code> 全局 hook 触发（见 §5）。</p>
+<h3 id="4-4-RCP-Endpoint-基类"><a href="#4-4-RCP-Endpoint-基类" class="headerlink" title="4.4 RCP_Endpoint (基类)"></a>4.4 RCP_Endpoint (基类)</h3><figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">RCP_Endpoint</span> &#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="keyword">virtual</span> EP_ReadResult  <span class="title">read</span><span class="params">(<span class="type">uint32_t</span> reg_address, <span class="type">uint16_t</span> count)</span> </span>= <span class="number">0</span>;</span><br><span class="line">    <span class="function"><span class="keyword">virtual</span> EP_WriteResult <span class="title">write</span><span class="params">(<span class="type">uint32_t</span> reg_address, <span class="type">const</span> <span class="type">uint8_t</span> *data, <span class="type">uint16_t</span> len)</span> </span>= <span class="number">0</span>;</span><br><span class="line">    <span class="function"><span class="keyword">virtual</span> <span class="type">void</span> <span class="title">reset</span><span class="params">()</span> </span>&#123;&#125;</span><br><span class="line">    <span class="function"><span class="type">uint16_t</span> <span class="title">byteBusId</span><span class="params">()</span> <span class="type">const</span></span>;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>每个端点有唯一的 <code>byte_bus_id</code>，作为 Server 注册表中的查找键。</p>
+<h3 id="4-5-RCP-Endpoint-EP0"><a href="#4-5-RCP-Endpoint-EP0" class="headerlink" title="4.5 RCP_Endpoint_EP0"></a>4.5 RCP_Endpoint_EP0</h3><p>Server 自描述端点（OA RCP spec 标准）：</p>
+<table>
+<thead>
+<tr>
+<th>Reg</th>
+<th>字段</th>
+<th>类型</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>0x00</td>
+<td>vendor_id</td>
+<td>u32 R</td>
+</tr>
+<tr>
+<td>0x04</td>
+<td>product_id</td>
+<td>u32 R</td>
+</tr>
+<tr>
+<td>0x08</td>
+<td>version_major(u16) + version_minor(u16)</td>
+<td>R</td>
+</tr>
+<tr>
+<td>0x10</td>
+<td>server_state(u8) + max_streams(u8) + …</td>
+<td>RW</td>
+</tr>
+<tr>
+<td>0x14</td>
+<td>max_endpoints(u8) + stream_id_count(u8) + …</td>
+<td>R</td>
+</tr>
+<tr>
+<td>0x20..0x3F</td>
+<td>stream_id[0..3] (u64 each)</td>
+<td>R</td>
+</tr>
+</tbody></table>
+<p>EP0 包含 5 状态机：<code>Undiscovered → Discovered → HWConfigured → RcpConfigured → RunMode</code>。简化实现：仅支持 <code>Undiscovered/Discovered/RunMode</code>，中间状态通过 <code>RCP_Server::handleFrame</code> 显式处理。</p>
+<h3 id="4-6-RCP-Endpoint-GPIO"><a href="#4-6-RCP-Endpoint-GPIO" class="headerlink" title="4.6 RCP_Endpoint_GPIO"></a>4.6 RCP_Endpoint_GPIO</h3><p>简化版 GPIO 端点（参考 Microchip GPIO EP 设计）：</p>
+<table>
+<thead>
+<tr>
+<th>Reg</th>
+<th>字段</th>
+<th>访问</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>0x00</td>
+<td>DIR (1&#x3D;output)</td>
+<td>R&#x2F;W</td>
+</tr>
+<tr>
+<td>0x04</td>
+<td>INPUT (current pin level)</td>
+<td>R</td>
+</tr>
+<tr>
+<td>0x08</td>
+<td>OUTPUT</td>
+<td>R&#x2F;W</td>
+</tr>
+<tr>
+<td>0x0C</td>
+<td>SET (write-1-to-set)</td>
+<td>W</td>
+</tr>
+<tr>
+<td>0x10</td>
+<td>CLEAR (write-1-to-clear)</td>
+<td>W</td>
+</tr>
+<tr>
+<td>0x14</td>
+<td>TOGGLE (write-1-to-toggle)</td>
+<td>W</td>
+</tr>
+</tbody></table>
+<p><code>Wiring</code> 抽象允许调用者注入 <code>pinMode/digitalWrite/digitalRead</code> 函数指针，避免 EP 与具体硬件耦合。</p>
+<h3 id="4-7-RCP-Client"><a href="#4-7-RCP-Client" class="headerlink" title="4.7 RCP_Client"></a>4.7 RCP_Client</h3><p>请求队列 + 响应匹配状态机：</p>
+<figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="keyword">struct</span> <span class="title class_">PendingTxn</span> &#123;</span><br><span class="line">    <span class="type">bool</span>   in_use;</span><br><span class="line">    <span class="type">uint8_t</span> tnum;</span><br><span class="line">    State  state;            <span class="comment">// Idle/AwaitingAck/AwaitingResponse</span></span><br><span class="line">    <span class="type">uint32_t</span> start_ms;</span><br><span class="line">    <span class="type">uint32_t</span> timeout_ms;     <span class="comment">// 100ms default</span></span><br><span class="line">    <span class="type">bool</span>   is_write;</span><br><span class="line">    <span class="type">uint16_t</span> byte_bus_id;</span><br><span class="line">    <span class="type">uint16_t</span> read_size;</span><br><span class="line">    <span class="type">uint8_t</span>  data[<span class="number">256</span>];</span><br><span class="line">    <span class="type">uint16_t</span> data_len;</span><br><span class="line">    <span class="built_in">void</span> (*write_cb)(RequestResult, <span class="type">void</span> *);</span><br><span class="line">    <span class="built_in">void</span> (*read_cb)(RequestResult, <span class="type">const</span> <span class="type">uint8_t</span> *, <span class="type">uint16_t</span>, <span class="type">void</span> *);</span><br><span class="line">    <span class="type">void</span> * user_ctx;</span><br><span class="line">    <span class="type">uint64_t</span> stream_id;</span><br><span class="line">    <span class="type">uint8_t</span>  seq_num;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>最多 8 个并发事务。状态转换：</p>
+<ul>
+<li><code>Idle → AwaitingAck</code> (发送请求后)</li>
+<li><code>AwaitingAck → AwaitingResponse</code> (收到 ACK)</li>
+<li><code>AwaitingResponse → Done</code> (收到 Response 或 Error)</li>
+<li><code>任何状态 → Done</code> (超时)</li>
+</ul>
+<h3 id="4-8-RCP-Server"><a href="#4-8-RCP-Server" class="headerlink" title="4.8 RCP_Server"></a>4.8 RCP_Server</h3><p>请求路由 + 端点调度：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">TC6_CB_OnRxEthernetPacket</span><br><span class="line">    ↓ (EtherType 0x22F0)</span><br><span class="line">RCP_Transport_OnRxAvtpFrame</span><br><span class="line">    ↓</span><br><span class="line">RCP_Transport::onRxAvtpFrame</span><br><span class="line">    ↓</span><br><span class="line">RCP_Server::handleFrame</span><br><span class="line">    ├─ 检查 stream_id 在 accepted 列表</span><br><span class="line">    ├─ 查找 byte_bus_id 对应 EP</span><br><span class="line">    ├─ op=1 → ep-&gt;write(...) → ACK + WriteResponse</span><br><span class="line">    └─ op=0 → ep-&gt;read(...)  → ACK + ReadResponse</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="5-TC6-集成层修改"><a href="#5-TC6-集成层修改" class="headerlink" title="5. TC6 集成层修改"></a>5. TC6 集成层修改</h2><h3 id="5-1-改动范围"><a href="#5-1-改动范围" class="headerlink" title="5.1 改动范围"></a>5.1 改动范围</h3><p>仅修改 <code>src/microchip/TC6_Arduino_10BASE_T1S.{h,cpp}</code>，所有改动由 <code>#ifdef USE_AVTP_RCP</code> 包裹：</p>
+<p><strong><code>.h</code> 改动</strong>（1 处）：</p>
+<figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 新增 tc6Handle() 方法供 RCP_Transport 调用</span></span><br><span class="line"><span class="function">TC6_t * <span class="title">tc6Handle</span><span class="params">()</span> </span>&#123; <span class="keyword">return</span> _lw.tc.tc6; &#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong><code>.cpp</code> 改动</strong>（2 处）：</p>
+<figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="comment">// (1) FilterRxEthernetPacket 增加 0x22F0 分支</span></span><br><span class="line"><span class="keyword">case</span> <span class="number">0x22F0</span>:</span><br><span class="line">    <span class="comment">/* AVTP (IEEE 1722) - handled by RCP/AVTP transport layer, not lwIP. */</span></span><br><span class="line">    tcpStack = <span class="literal">false</span>;</span><br><span class="line">    <span class="keyword">break</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">// (2) TC6_CB_OnRxEthernetPacket 中增加 0x22F0 路由</span></span><br><span class="line"><span class="meta">#<span class="keyword">ifdef</span> USE_AVTP_RCP</span></span><br><span class="line"><span class="keyword">else</span> <span class="keyword">if</span> (ethType == <span class="number">0x22F0u</span>)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">struct</span> pbuf *avtp_pbuf = lw-&gt;tc.pbuf;</span><br><span class="line">    lw-&gt;tc.pbuf = <span class="literal">NULL</span>;</span><br><span class="line">    lw-&gt;tc.rxLen = <span class="number">0</span>;</span><br><span class="line">    lw-&gt;tc.rxInvalid = <span class="literal">false</span>;</span><br><span class="line">    <span class="keyword">if</span> (avtp_pbuf != <span class="literal">NULL</span> &amp;&amp; avtp_pbuf-&gt;len == avtp_pbuf-&gt;tot_len) &#123;</span><br><span class="line">        <span class="built_in">RCP_Transport_OnRxAvtpFrame</span>(<span class="built_in">static_cast</span>&lt;<span class="type">const</span> <span class="type">uint8_t</span> *&gt;(avtp_pbuf-&gt;payload),</span><br><span class="line">                                    (<span class="type">uint16_t</span>)avtp_pbuf-&gt;tot_len);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> (avtp_pbuf != <span class="literal">NULL</span>) &#123;</span><br><span class="line">        <span class="built_in">pbuf_free</span>(avtp_pbuf);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br></pre></td></tr></table></figure>
+
+<h3 id="5-2-默认行为兼容"><a href="#5-2-默认行为兼容" class="headerlink" title="5.2 默认行为兼容"></a>5.2 默认行为兼容</h3><p><code>USE_AVTP_RCP</code> 默认未定义，因此：</p>
+<ul>
+<li><code>FilterRxEthernetPacket</code> 中的 <code>case 0x22F0</code> 在编译时被丢弃（switch 没有此 case）</li>
+<li><code>TC6_CB_OnRxEthernetPacket</code> 中的 <code>else if</code> 分支被 <code>#ifdef</code> 完全排除</li>
+<li>所有 lwIP 路径代码完全不变</li>
+</ul>
+<p><strong>结论</strong>：现有 UDP&#x2F;IP 示例代码不会因本次改动出现任何编译&#x2F;行为变化。</p>
+<hr>
+<h2 id="6-Examples"><a href="#6-Examples" class="headerlink" title="6. Examples"></a>6. Examples</h2><h3 id="6-1-AVTP-NTSCF-Talker-AVTP-NTSCF-Listener"><a href="#6-1-AVTP-NTSCF-Talker-AVTP-NTSCF-Listener" class="headerlink" title="6.1 AVTP_NTSCF_Talker &#x2F; AVTP_NTSCF_Listener"></a>6.1 AVTP_NTSCF_Talker &#x2F; AVTP_NTSCF_Listener</h3><p><strong>目的</strong>：第一阶段 sanity check，确认 AVTP NTSCF 帧能在两块板之间正确收发。</p>
+<ul>
+<li>Talker: 每秒发送一个 4B counter 写入 EP GPIO</li>
+<li>Listener: 解析接收帧并打印 stream_id&#x2F;byte_bus_id&#x2F;payload</li>
+</ul>
+<p>测试 Wireshark 抓包：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">$ tshark -i &lt;interface&gt; -Y &quot;eth.proto == 0x22f0&quot;</span><br><span class="line">1722 subtype=0x82 stream_id=0xaabbccddeeff0011 ...</span><br></pre></td></tr></table></figure>
+
+<h3 id="6-2-RCP-Client-RCP-Server"><a href="#6-2-RCP-Client-RCP-Server" class="headerlink" title="6.2 RCP_Client &#x2F; RCP_Server"></a>6.2 RCP_Client &#x2F; RCP_Server</h3><p><strong>目的</strong>：第二&#x2F;三阶段完整功能测试。</p>
+<ul>
+<li>Client: 周期性读 EP0 前 16B (vendor&#x2F;product&#x2F;version)，写 GPIO EP OUTPUT[0]</li>
+<li>Server: 响应 Client 请求，控制 LED_BUILTIN</li>
+</ul>
+<p><strong>测试流程</strong>：</p>
+<ol>
+<li>Server 板上 LED 默认 OFF</li>
+<li>Client 写 GPIO EP@0x08 数据 0xFF → LED 亮</li>
+<li>Client 写 GPIO EP@0x08 数据 0x00 → LED 灭</li>
+<li>Client 读 EP0@0x00 前 16B → Serial 输出 vendor&#x2F;product&#x2F;version</li>
+</ol>
+<hr>
+<h2 id="7-已知问题与限制"><a href="#7-已知问题与限制" class="headerlink" title="7. 已知问题与限制"></a>7. 已知问题与限制</h2><h3 id="7-1-编译验证"><a href="#7-1-编译验证" class="headerlink" title="7.1 编译验证"></a>7.1 编译验证</h3><ul>
+<li>Open1722 子集 4 个 <code>.c</code> 文件已通过独立 <code>arm-none-eabi-gcc</code> 测试</li>
+<li><code>RCP_Frame.cpp</code> 已通过 <code>arm-none-eabi-g++.exe -std=c++17</code> 编译</li>
+<li><code>RCP_Endpoint_EP0.cpp</code> 编译通过</li>
+<li><code>RCP_Endpoint_GPIO.cpp</code> 依赖 Arduino.h，需 Arduino IDE 编译验证</li>
+</ul>
+<p><strong>手动编译限制</strong>：Arduino IDE 使用 <code>-nostdlib -D_XOPEN_SOURCE=700 -fno-builtin</code> 等专用 flag，通过 <code>includes.txt</code> 响应文件传入 <code>-I</code> 路径；手动模拟需要数十个 include 路径和一系列 newlib-nano 路径，非常繁琐。实际编译验证需 Arduino IDE 2.x 的 UNO R4 Minima 目标。</p>
+<h3 id="7-2-功能限制"><a href="#7-2-功能限制" class="headerlink" title="7.2 功能限制"></a>7.2 功能限制</h3><ol>
+<li><strong>不支持 RA&#x2F;Segment</strong>：读取超过 256B 的数据需要分片传输，本实现 saturate 到 256B</li>
+<li><strong>不支持 MDB</strong>：Multiple Data Burst 仅在 Microchip spec 中定义</li>
+<li><strong>不支持 composite request</strong>：复杂状态机（IDLE → START → WAIT → DONE）尚未实现</li>
+<li><strong>超时固定 100ms</strong>：RCP_Client 内部固定超时，未暴露配置接口</li>
+<li><strong>stream_id 单值</strong>：RCP_Server 当前只接受 1 个 stream_id（用于 unicast），多 stream 支持已写代码但未测试</li>
+<li><strong>PLCA 配置</strong>：默认 <code>nodeCount=2</code>，需要在两板固件中保持一致</li>
+</ol>
+<h3 id="7-3-待办"><a href="#7-3-待办" class="headerlink" title="7.3 待办"></a>7.3 待办</h3><ul>
+<li><input disabled="" type="checkbox"> Arduino IDE 编译验证（UNO R4 Minima 目标）</li>
+<li><input disabled="" type="checkbox"> Wireshark 抓包验证 NTSCF 帧格式</li>
+<li><input disabled="" type="checkbox"> Phase 1 跨板测试（两块 LAN8650&#x2F;1 click）</li>
+<li><input disabled="" type="checkbox"> Phase 2-3 GPIO + EP0 测试</li>
+<li><input disabled="" type="checkbox"> 性能分析：Flash&#x2F;RAM 占用统计</li>
+<li><input disabled="" type="checkbox"> 多事务并发测试</li>
+<li><input disabled="" type="checkbox"> 添加 TSCF 支持（待定）</li>
+<li><input disabled="" type="checkbox"> 完整 RCP 规范覆盖（取消请求、复合请求等）</li>
+</ul>
+<hr>
+<h2 id="8-与原计划的偏差"><a href="#8-与原计划的偏差" class="headerlink" title="8. 与原计划的偏差"></a>8. 与原计划的偏差</h2><h3 id="8-1-范围调整"><a href="#8-1-范围调整" class="headerlink" title="8.1 范围调整"></a>8.1 范围调整</h3><ul>
+<li>原计划包含 SPI&#x2F;I2C 端点实现，Phase 3 简化为仅 GPIO EP</li>
+<li>原计划包含 LED 状态机，Phase 3 简化为直接 pin 控制</li>
+<li>Server 5 状态机中只实现 <code>Undiscovered/Discovered/RunMode</code> 三个</li>
+</ul>
+<h3 id="8-2-实施细节调整"><a href="#8-2-实施细节调整" class="headerlink" title="8.2 实施细节调整"></a>8.2 实施细节调整</h3><ul>
+<li><code>RCP_Transport::sendAvtpFrame</code> 改用 <code>TC6_SendRawEthernetPacket</code>（绕过 lwIP）而非自定义 SPI</li>
+<li><code>RCP_Client::requestRead</code> 把 read_size 放在 ACF_ABB 字段和 payload[4..5] 双备份</li>
+<li>Server 默认 broadcast 响应（简化测试），unicast 需要扩展 <code>RCP_Transport::sendAvtpFrame</code> 携带目的 MAC 信息</li>
+</ul>
+<hr>
+<h2 id="9-总结"><a href="#9-总结" class="headerlink" title="9. 总结"></a>9. 总结</h2><p>Phase 0-3 代码全部完成，关键模块经过单元测试。剩余工作是 Arduino IDE 编译验证 + 硬件测试。</p>
+<p>预计下一步：</p>
+<ol>
+<li>用户执行 <code>Arduino IDE 2.x</code> 打开 <code>examples/AVTP_NTSCF_Talker</code> 和 <code>examples/AVTP_NTSCF_Listener</code></li>
+<li>在两块 UNO R4 Minima + LAN8651 Click 上刷入对应 sketch</li>
+<li>Wireshark 抓包 10BASE-T1S 总线验证 AVTP 帧格式</li>
+<li>修复编译&#x2F;运行暴露的 bug</li>
+<li>进入 Phase 2-3 完整功能测试</li>
+</ol>
+<p>详细开发计划见 <a href="RCP_Development_Plan.md">RCP_Development_Plan.md</a>。</p>
+<hr>
+<h2 id="10-相关文档"><a href="#10-相关文档" class="headerlink" title="10. 相关文档"></a>10. 相关文档</h2><table>
+<thead>
+<tr>
+<th>文档</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><a href="RCP_10BASE_T1S_Architecture_Analysis.md">RCP_10BASE_T1S_Architecture_Analysis.md</a></td>
+<td>架构分析 + 选型</td>
+</tr>
+<tr>
+<td><a href="../OA-RCP%E5%8D%8F%E8%AE%AE%E8%AF%A6%E8%A7%A3.md">OA-RCP协议详解.md</a></td>
+<td>OA RCP 协议基础</td>
+</tr>
+<tr>
+<td><a href="../Arduino_10BASE_T1S_Compilation_Architecture_Deep_Dive.md">Arduino_10BASE_T1S_Compilation_Architecture_Deep_Dive.md</a></td>
+<td>编译架构基础</td>
+</tr>
+<tr>
+<td><a href="../Arduino_IDE_Build_System_Internals.md">Arduino_IDE_Build_System_Internals.md</a></td>
+<td>构建机制深入</td>
+</tr>
+</tbody></table>
+<p>参考资源：</p>
+<ul>
+<li><a href="https://github.com/COVESA/open1722">Open1722 (COVESA)</a></li>
+<li><a href="https://github.com/MicrochipTech/oa-tc6-lib">oa-tc6-lib (Microchip)</a></li>
+<li><a href="https://openbroadcaster.org/standards/open-alliance/">OA RCP Spec</a></li>
+</ul>
+]]></content>
+      <categories>
+        <category>10BASE-T1S</category>
+      </categories>
+      <tags>
+        <tag>10BASE-T1S</tag>
+        <tag>嵌入式</tag>
+        <tag>RCP</tag>
+        <tag>LAN8650</tag>
+        <tag>LAN8660</tag>
+        <tag>AVTP</tag>
+        <tag>IEEE 1722</tag>
+        <tag>Open1722</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>RCP/AVTP 10BASE-T1S 二次开发架构分析</title>
+    <url>/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/RCP_10BASE_T1S_Architecture_Analysis/</url>
+    <content><![CDATA[<h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>基于 Microchip LAN8650&#x2F;LAN8651 + OA TC6 协议栈的现有 Arduino 10BASE-T1S 库（lwIP + UDP&#x2F;IP 架构），本文分析切换到 <strong>RCP（Remote Control Protocol）&#x2F;AVTP</strong> 协议栈的可行性、架构差异、所需移植修改的模块，以及如何利用 <code>oa-tc6-lib</code> 和 <code>Open1722</code> 开源库实现二次开发。</p>
+<span id="more"></span>
+
+<h2 id="一、现有架构回顾"><a href="#一、现有架构回顾" class="headerlink" title="一、现有架构回顾"></a>一、现有架构回顾</h2><h3 id="1-1-当前分层结构"><a href="#1-1-当前分层结构" class="headerlink" title="1.1 当前分层结构"></a>1.1 当前分层结构</h3><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">应用层 (Arduino Sketch)</span><br><span class="line">    │</span><br><span class="line">    ▼</span><br><span class="line">Arduino_10BASE_T1S_UDP (Arduino API 包装层)</span><br><span class="line">    │  ← lwIP udp_pcb，UDP Socket 抽象</span><br><span class="line">    ▼</span><br><span class="line">lwIP TCP/IP 协议栈 (~45KB Flash)</span><br><span class="line">    │  ← ARP, IP, ICMP, UDP, DHCP, DNS...</span><br><span class="line">    ▼</span><br><span class="line">TC6_Arduino_10BASE_T1S (MAC 封装层)</span><br><span class="line">    │  ← 将 Ethernet Frame 映射为 TC6 Data Chunk</span><br><span class="line">    ▼</span><br><span class="line">libtc6 (OA TC6 协议状态机, ~15KB Flash)</span><br><span class="line">    │  ← Data/Control Transaction, SPI 读写时序, CRC</span><br><span class="line">    ▼</span><br><span class="line">TC6_Io (SPI HAL 层)</span><br><span class="line">    │  ← SPI 数据收发 (TC6_CB_OnSpiTransaction)</span><br><span class="line">    ▼</span><br><span class="line">LAN8650/LAN8651 (MAC-PHY, SPI 接口)</span><br><span class="line">    │  ← 10BASE-T1S 物理层, PLCA 总线仲裁</span><br><span class="line">    ▼</span><br><span class="line">10BASE-T1S 总线 (单对线, 半双工)</span><br></pre></td></tr></table></figure>
+
+<h3 id="1-2-编译产物实测数据（已知）"><a href="#1-2-编译产物实测数据（已知）" class="headerlink" title="1.2 编译产物实测数据（已知）"></a>1.2 编译产物实测数据（已知）</h3><table>
+<thead>
+<tr>
+<th>模块</th>
+<th>Flash 占用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>lwIP</td>
+<td>~45KB</td>
+</tr>
+<tr>
+<td>libtc6</td>
+<td>~15KB</td>
+</tr>
+<tr>
+<td>库包装层</td>
+<td>~8KB</td>
+</tr>
+<tr>
+<td>Arduino Core</td>
+<td>~30KB</td>
+</tr>
+<tr>
+<td>FSP HAL</td>
+<td>~12KB</td>
+</tr>
+<tr>
+<td><strong>总计</strong></td>
+<td><strong>~110KB</strong>（剩余 130KB 给应用）</td>
+</tr>
+</tbody></table>
+<h3 id="1-3-现有库关键文件"><a href="#1-3-现有库关键文件" class="headerlink" title="1.3 现有库关键文件"></a>1.3 现有库关键文件</h3><table>
+<thead>
+<tr>
+<th>文件</th>
+<th>职责</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>src/Arduino_10BASE_T1S_UDP.cpp</code></td>
+<td>UDP Socket API 实现</td>
+</tr>
+<tr>
+<td><code>src/microchip/TC6_Arduino_10BASE_T1S.cpp</code></td>
+<td>TC6 + lwIP 绑定层</td>
+</tr>
+<tr>
+<td><code>src/microchip/TC6_Io.cpp</code></td>
+<td>SPI HAL 抽象</td>
+</tr>
+<tr>
+<td><code>src/lib/liblwip/</code></td>
+<td>lwIP 源码</td>
+</tr>
+<tr>
+<td><code>src/microchip/lib/libtc6/</code></td>
+<td>OA TC6 协议库</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="二、RCP-AVTP-协议栈本质分析"><a href="#二、RCP-AVTP-协议栈本质分析" class="headerlink" title="二、RCP&#x2F;AVTP 协议栈本质分析"></a>二、RCP&#x2F;AVTP 协议栈本质分析</h2><h3 id="2-1-RCP-与-AVTP-的关系"><a href="#2-1-RCP-与-AVTP-的关系" class="headerlink" title="2.1 RCP 与 AVTP 的关系"></a>2.1 RCP 与 AVTP 的关系</h3><p><strong>RCP（Remote Control Protocol）</strong> 构建在 <strong>IEEE 1722 AVTP</strong> 之上，是一个汽车专用扩展。理解这个关系至关重要：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">┌──────────────────────────────────┐</span><br><span class="line">│     RCP (OA Spec v0.4.7)         │  ← Remote Control Protocol</span><br><span class="line">│     ACF_ABB / ACF_GBB 格式        │     13种端点类型 (SPI/GPIO/I2C/ADC...)</span><br><span class="line">├──────────────────────────────────┤</span><br><span class="line">│   IEEE 1722 AVTP (EtherType=0x22F0) │  ← Layer 2 Transport Protocol</span><br><span class="line">│   NTSCF / TSCF 头部格式           │     音视频/控制时间同步</span><br><span class="line">├──────────────────────────────────┤</span><br><span class="line">│        Ethernet Layer 2            │  ← EtherType = 0x22F0 (无 IP!)</span><br><span class="line">└──────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<p><strong>关键点</strong>：RCP 完全工作在 <strong>Ethernet Layer 2</strong>，EtherType &#x3D; <code>0x22F0</code>，<strong>不需要 IP&#x2F;UDP 协议栈</strong>。</p>
+<h3 id="2-2-RCP-的核心价值：架构解耦"><a href="#2-2-RCP-的核心价值：架构解耦" class="headerlink" title="2.2 RCP 的核心价值：架构解耦"></a>2.2 RCP 的核心价值：架构解耦</h3><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">传统架构（现状）:</span><br><span class="line">┌─────────────┐     ┌─────────────┐</span><br><span class="line">│  应用逻辑    │     │  应用逻辑    │</span><br><span class="line">│  + 驱动     │     │  + 驱动     │</span><br><span class="line">└──────┬──────┘     └──────┬──────┘</span><br><span class="line">       │                   │</span><br><span class="line">    lwIP/IP            lwIP/IP</span><br><span class="line">       │                   │</span><br><span class="line">    LAN8650            LAN8650</span><br><span class="line"></span><br><span class="line">RCP 架构（目标）:</span><br><span class="line">┌──────────────────────────────────────────┐</span><br><span class="line">│   HPC / Central ECU (RC Client)           │</span><br><span class="line">│   应用逻辑 + 驱动 + RCP Client 栈         │</span><br><span class="line">└────────────────────┬─────────────────────┘</span><br><span class="line">                     │ 车载以太网 (RCP PDU)</span><br><span class="line">                     ▼</span><br><span class="line">       ┌────────────────────────────┐</span><br><span class="line">       │  Edge Node (RC Server)    │</span><br><span class="line">       │  LAN8650 + RCP Server     │</span><br><span class="line">       │  = 标准化&quot;哑&quot;设备          │</span><br><span class="line">       └────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<p>这正是用户提到的”基于底层 MACPHY 数字电路，做网络包处理”——MCU 只做 Ethernet Frame 的收发，所有协议解析和业务逻辑集中在远端。</p>
+<h3 id="2-3-AVTP-的两种传输头部"><a href="#2-3-AVTP-的两种传输头部" class="headerlink" title="2.3 AVTP 的两种传输头部"></a>2.3 AVTP 的两种传输头部</h3><p>Open1722 库支持两种 AVTP 传输格式，RCP 协议依赖它们：</p>
+<table>
+<thead>
+<tr>
+<th>头部类型</th>
+<th>用途</th>
+<th align="center">AVTP Timestamp</th>
+<th align="center">Stream ID</th>
+<th>适用场景</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>NTSCF</strong> (Non-TSCF)</td>
+<td>立即执行&#x2F;响应</td>
+<td align="center">无</td>
+<td align="center">64-bit</td>
+<td>标准请求、ACK、带时间戳的响应</td>
+</tr>
+<tr>
+<td><strong>TSCF</strong> (Time-SCF)</td>
+<td>定时执行</td>
+<td align="center">32-bit</td>
+<td align="center">64-bit</td>
+<td>定时请求（呈现时间控制）</td>
+</tr>
+</tbody></table>
+<p><strong>NTSCF 头部结构</strong>（12 字节）：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">Byte 0     : subtype (0x82) + sv + version</span><br><span class="line">Byte 1-7   : stream_id (64-bit)</span><br><span class="line">Byte 8-11  : ntscf_data_length + sequence_num</span><br></pre></td></tr></table></figure>
+
+<p><strong>ACF_GBB 消息头结构</strong>（16 字节，在 AVTP payload 中）：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">Byte 0-3   : ACF common (msg_type=0x0D, length)</span><br><span class="line">Byte 4-11  : message_timestamp (48-bit, gPTP 同步)</span><br><span class="line">Byte 12-15 : evt + transaction_num + op + err + byte_bus_id...</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-4-RCP-端点类型"><a href="#2-4-RCP-端点类型" class="headerlink" title="2.4 RCP 端点类型"></a>2.4 RCP 端点类型</h3><p>RCP 定义了 13 种端点类型，对应不同的外设：</p>
+<table>
+<thead>
+<tr>
+<th>EP 编号</th>
+<th>类型</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>EP0</td>
+<td>RC Server</td>
+<td>配置、状态、发现（必须实现）</td>
+</tr>
+<tr>
+<td>EP1</td>
+<td>唤醒控制</td>
+<td>休眠&#x2F;唤醒（可选）</td>
+</tr>
+<tr>
+<td>SPI</td>
+<td>SPI Controller</td>
+<td>远程访问 SPI 外设</td>
+</tr>
+<tr>
+<td>GPIO</td>
+<td>GPIO</td>
+<td>数字输入输出</td>
+</tr>
+<tr>
+<td>I²C</td>
+<td>I²C Controller</td>
+<td>I²C 总线访问</td>
+</tr>
+<tr>
+<td>UART</td>
+<td>UART</td>
+<td>串口通信</td>
+</tr>
+<tr>
+<td>ADC</td>
+<td>ADC</td>
+<td>模数转换读取</td>
+</tr>
+<tr>
+<td>CAN</td>
+<td>CAN Controller</td>
+<td>CAN 总线</td>
+</tr>
+<tr>
+<td>PWM_OUT&#x2F;IN</td>
+<td>PWM</td>
+<td>脉宽调制</td>
+</tr>
+<tr>
+<td>LIN</td>
+<td>LIN Commander</td>
+<td>LIN 总线</td>
+</tr>
+<tr>
+<td>MDIO</td>
+<td>MDIO</td>
+<td>PHY 管理</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="三、UDP-IP-vs-RCP-AVTP：核心对比"><a href="#三、UDP-IP-vs-RCP-AVTP：核心对比" class="headerlink" title="三、UDP&#x2F;IP vs RCP&#x2F;AVTP：核心对比"></a>三、UDP&#x2F;IP vs RCP&#x2F;AVTP：核心对比</h2><h3 id="3-1-协议栈复杂度"><a href="#3-1-协议栈复杂度" class="headerlink" title="3.1 协议栈复杂度"></a>3.1 协议栈复杂度</h3><table>
+<thead>
+<tr>
+<th>维度</th>
+<th align="center">UDP&#x2F;IP 方案（现有）</th>
+<th align="center">RCP&#x2F;AVTP 方案（目标）</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>协议层数</strong></td>
+<td align="center">5层 (App→UDP→IP→Eth→TC6)</td>
+<td align="center">3层 (App→AVTP→TC6)</td>
+</tr>
+<tr>
+<td><strong>最大 Flash 节省</strong></td>
+<td align="center">基准</td>
+<td align="center">~45KB（去掉 lwIP）</td>
+</tr>
+<tr>
+<td><strong>最大 RAM 节省</strong></td>
+<td align="center">基准</td>
+<td align="center">~15-20KB</td>
+</tr>
+<tr>
+<td><strong>EtherType</strong></td>
+<td align="center">0x0800 (IPv4)</td>
+<td align="center">0x22F0 (AVTP)</td>
+</tr>
+<tr>
+<td><strong>需要 IP 地址</strong></td>
+<td align="center">是</td>
+<td align="center">否（纯 MAC 寻址）</td>
+</tr>
+<tr>
+<td><strong>需要 ARP</strong></td>
+<td align="center">是</td>
+<td align="center">否</td>
+</tr>
+<tr>
+<td><strong>需要 DHCP</strong></td>
+<td align="center">是（通常）</td>
+<td align="center">否</td>
+</tr>
+<tr>
+<td><strong>网络发现</strong></td>
+<td align="center">ARP&#x2F;NDP</td>
+<td align="center">RCP 发现协议（EP0）</td>
+</tr>
+<tr>
+<td><strong>时间同步</strong></td>
+<td align="center">NTP（可选）</td>
+<td align="center">gPTP（可选，但 RCP 推荐）</td>
+</tr>
+<tr>
+<td><strong>路由支持</strong></td>
+<td align="center">是（IP 层）</td>
+<td align="center">否（纯广播&#x2F;单播 MAC）</td>
+</tr>
+</tbody></table>
+<h3 id="3-2-性能与资源"><a href="#3-2-性能与资源" class="headerlink" title="3.2 性能与资源"></a>3.2 性能与资源</h3><table>
+<thead>
+<tr>
+<th>指标</th>
+<th align="center">UDP&#x2F;IP</th>
+<th align="center">RCP&#x2F;AVTP</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>最大包长</strong></td>
+<td align="center">1472B (UDP)</td>
+<td align="center">受 MTU 限制，典型 1500B</td>
+</tr>
+<tr>
+<td><strong>协议开销</strong></td>
+<td align="center">IP(20)+UDP(8)&#x3D;28B</td>
+<td align="center">AVTP(12)+ACF(16~)≈28B+</td>
+</tr>
+<tr>
+<td><strong>网络发现延迟</strong></td>
+<td align="center">ARP ~1s</td>
+<td align="center">RCP 发现更快</td>
+</tr>
+<tr>
+<td><strong>确定性</strong></td>
+<td align="center">尽力而为</td>
+<td align="center">可通过 TSCF + gPTP 实现确定性</td>
+</tr>
+<tr>
+<td><strong>多节点访问</strong></td>
+<td align="center">Socket 绑定端口</td>
+<td align="center">byte_bus_id 端点寻址</td>
+</tr>
+</tbody></table>
+<h3 id="3-3-场景适配性评估"><a href="#3-3-场景适配性评估" class="headerlink" title="3.3 场景适配性评估"></a>3.3 场景适配性评估</h3><table>
+<thead>
+<tr>
+<th>场景</th>
+<th align="center">UDP&#x2F;IP</th>
+<th align="center">RCP&#x2F;AVTP</th>
+<th align="center">推荐</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>通用数据通信</td>
+<td align="center">✅</td>
+<td align="center">⚠️</td>
+<td align="center">UDP&#x2F;IP</td>
+</tr>
+<tr>
+<td>高速流媒体</td>
+<td align="center">⚠️</td>
+<td align="center">✅</td>
+<td align="center">AVTP</td>
+</tr>
+<tr>
+<td>远程外设控制（SPI&#x2F;GPIO&#x2F;I2C）</td>
+<td align="center">❌</td>
+<td align="center">✅</td>
+<td align="center">RCP</td>
+</tr>
+<tr>
+<td>低资源嵌入式节点</td>
+<td align="center">⚠️</td>
+<td align="center">✅</td>
+<td align="center">RCP</td>
+</tr>
+<tr>
+<td>需要路由的多子网</td>
+<td align="center">✅</td>
+<td align="center">❌</td>
+<td align="center">UDP&#x2F;IP</td>
+</tr>
+<tr>
+<td>汽车 ECU 远程控制</td>
+<td align="center">❌</td>
+<td align="center">✅</td>
+<td align="center">RCP</td>
+</tr>
+</tbody></table>
+<p><strong>结论</strong>：用户提到”基于底层 MACPHY 数字电路，做网络包处理”——这正是 RCP&#x2F;AVTP 的设计目标。去掉 lwIP 是合理的，节省 ~45KB Flash。</p>
+<hr>
+<h2 id="四、开源库嫁接方案"><a href="#四、开源库嫁接方案" class="headerlink" title="四、开源库嫁接方案"></a>四、开源库嫁接方案</h2><h3 id="4-1-库文件映射"><a href="#4-1-库文件映射" class="headerlink" title="4.1 库文件映射"></a>4.1 库文件映射</h3><p>现有库依赖两个开源项目，可以与 RCP&#x2F;AVTP 栈组合：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">开源库                    作用                保留?</span><br><span class="line">─────────────────────────────────────────────────────</span><br><span class="line">oa-tc6-lib (Microchip)   SPI + TC6 协议      ✅ 必须保留</span><br><span class="line">Open1722 (COVESA)        AVTP/ACF 编解码     ✅ 核心依赖</span><br><span class="line">lwIP                      TCP/IP 协议栈        ❌ 去掉 (可选)</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-2-Open1722-库关键模块"><a href="#4-2-Open1722-库关键模块" class="headerlink" title="4.2 Open1722 库关键模块"></a>4.2 Open1722 库关键模块</h3><p>Open1722 提供了完整的 IEEE 1722 实现，文件组织如下：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">Open1722/</span><br><span class="line">├── include/avtp/</span><br><span class="line">│   ├── Defines.h              ← 常量定义 (AVTP_QUADLET_SIZE=4)</span><br><span class="line">│   ├── CommonHeader.h         ← 通用 AVTP 头部解析 (subtype/ver)</span><br><span class="line">│   ├── Utils.h                ← 字段打包/解包工具</span><br><span class="line">│   ├── Udp.h                  ← AVTP over UDP (可选)</span><br><span class="line">│   ├── acf/</span><br><span class="line">│   │   ├── AcfCommon.h        ← ACF 通用头部 (AVTP_ACF_TYPE_BYTE_BUS=0x0D)</span><br><span class="line">│   │   ├── Gbb.h              ← ACF_GBB 格式 (RCP 核心)</span><br><span class="line">│   │   ├── Ntscf.h            ← NTSCF 头部 (RCP 必需)</span><br><span class="line">│   │   └── Tscf.h             ← TSCF 头部 (RCP 可选)</span><br><span class="line">│   ├── acf/custom/            ← 厂商自定义 ACF 类型</span><br><span class="line">│   ├── aaf/                   ← 音频格式 (AVTP Audio Format)</span><br><span class="line">│   ├── cvf/                   ← 视频格式 (Compressed Video Format)</span><br><span class="line">│   └── crf/                   ← 时钟参考格式 (Clock Reference Format)</span><br><span class="line">├── src/avtp/</span><br><span class="line">│   ├── CommonHeader.c         ← 通用头部实现</span><br><span class="line">│   ├── acf/</span><br><span class="line">│   │   ├── Ntscf.c           ← NTSCF 验证逻辑</span><br><span class="line">│   │   └── Tscf.c            ← TSCF 验证逻辑</span><br><span class="line">│   └── cvf/aaf/...           ← 音视频编解码</span><br><span class="line">└── unit/                      ← 单元测试</span><br></pre></td></tr></table></figure>
+
+<p><strong>关键发现</strong>：</p>
+<ul>
+<li><code>AVTP_ACF_TYPE_BYTE_BUS = 0x0D</code> 是 RCP 的 ACF 消息类型</li>
+<li><code>Avtp_Gbb_*</code> 函数族提供 ACF_GBB 格式的完整解析</li>
+<li><code>Avtp_Ntscf_*</code> 函数族提供 NTSCF 头部的完整解析</li>
+<li>全部是 <strong>header-only 内联函数</strong>，无需额外编译</li>
+</ul>
+<h3 id="4-3-RCP-消息构建示例"><a href="#4-3-RCP-消息构建示例" class="headerlink" title="4.3 RCP 消息构建示例"></a>4.3 RCP 消息构建示例</h3><p>基于 Open1722 + oa-tc6-lib，RCP 请求的构建流程：</p>
+<figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&quot;avtp/CommonHeader.h&quot;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&quot;avtp/acf/AcfCommon.h&quot;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&quot;avtp/acf/Gbb.h&quot;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&quot;avtp/acf/Ntscf.h&quot;</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">// RCP 帧缓冲 (Ethernet MTU = 1500B)</span></span><br><span class="line"><span class="type">uint8_t</span> rcp_frame[<span class="number">1500</span>];</span><br><span class="line"></span><br><span class="line"><span class="comment">// 1. 构建 NTSCF 头部 (12 bytes)</span></span><br><span class="line">Avtp_Ntscf_t* ntscf = (Avtp_Ntscf_t*)rcp_frame;</span><br><span class="line"><span class="built_in">Avtp_Ntscf_Init</span>(ntscf);</span><br><span class="line"><span class="built_in">Avtp_Ntscf_SetStreamId</span>(ntscf, <span class="number">0xAABBCCDDEEFF0011ULL</span>);  <span class="comment">// 64-bit stream ID</span></span><br><span class="line"><span class="built_in">Avtp_Ntscf_SetSequenceNum</span>(ntscf, seq++);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 2. 构建 ACF_GBB 消息 (16 bytes header + payload)</span></span><br><span class="line">Avtp_Gbb_t* gbb = (Avtp_Gbb_t*)(rcp_frame + AVTP_NTSCF_HEADER_LEN);</span><br><span class="line"><span class="built_in">Avtp_Gbb_Init</span>(gbb);</span><br><span class="line"><span class="built_in">Avtp_Gbb_SetByteBusId</span>(gbb, <span class="number">0x001</span>);   <span class="comment">// EP1 = SPI Controller</span></span><br><span class="line"><span class="built_in">Avtp_Gbb_SetTransactionNum</span>(gbb, <span class="number">0x5A</span>);  <span class="comment">// 事务号（用于匹配响应）</span></span><br><span class="line"><span class="built_in">Avtp_Gbb_SetOp</span>(gbb, <span class="literal">true</span>);            <span class="comment">// true=Write, false=Read</span></span><br><span class="line"><span class="built_in">Avtp_Gbb_SetMtv</span>(gbb, <span class="literal">false</span>);           <span class="comment">// 无 message_timestamp</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 3. 设置 payload (SPI 写操作示例)</span></span><br><span class="line"><span class="type">uint8_t</span>* payload = rcp_frame + AVTP_NTSCF_HEADER_LEN + AVTP_GBB_HEADER_LEN;</span><br><span class="line"><span class="type">uint16_t</span> payload_len = <span class="number">4</span>;  <span class="comment">// 4 bytes SPI data</span></span><br><span class="line"><span class="built_in">memcpy</span>(payload, spi_data, payload_len);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 4. 设置长度</span></span><br><span class="line"><span class="built_in">Avtp_Gbb_SetPayloadLen</span>(gbb, payload_len);</span><br><span class="line"><span class="type">uint16_t</span> total_len = AVTP_NTSCF_HEADER_LEN + AVTP_GBB_HEADER_LEN + payload_len;</span><br><span class="line"><span class="built_in">Avtp_Ntscf_SetNtscfDataLength</span>(ntscf, total_len);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 5. 添加 Ethernet 头部 (14B) 并通过 TC6 发送</span></span><br><span class="line"><span class="comment">// Ethernet DA(6B) + SA(6B) + EtherType(2B=0x22F0)</span></span><br><span class="line"><span class="comment">// ...</span></span><br><span class="line"><span class="comment">// TC6_SendRawEthernetPacket(tc6, rcp_frame, ETH_HEADER + total_len, ...);</span></span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="五、架构重新设计方案"><a href="#五、架构重新设计方案" class="headerlink" title="五、架构重新设计方案"></a>五、架构重新设计方案</h2><h3 id="5-1-目标架构"><a href="#5-1-目标架构" class="headerlink" title="5.1 目标架构"></a>5.1 目标架构</h3><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">┌─────────────────────────────────────────┐</span><br><span class="line">│         Arduino Sketch (应用层)           │</span><br><span class="line">│  RCP Client API / AVTP Talker/Listener   │</span><br><span class="line">├─────────────────────────────────────────┤</span><br><span class="line">│        RCP Client (新开发)                │  ← ~8KB</span><br><span class="line">│    ACF_ABB/ACF_GBB 消息编解码            │</span><br><span class="line">├─────────────────────────────────────────┤</span><br><span class="line">│      Open1722 AVTP 协议栈                 │  ← header-only, ~5KB</span><br><span class="line">│  NTSCF/TSCF 头部 + CommonHeader          │</span><br><span class="line">├─────────────────────────────────────────┤</span><br><span class="line">│     TC6_Arduino_10BASE_T1S (复用)         │  ← 复用现有代码</span><br><span class="line">│      Ethernet Frame ↔ TC6 Data Chunk      │</span><br><span class="line">├─────────────────────────────────────────┤</span><br><span class="line">│        libtc6 (oa-tc6-lib)              │  ← 必须保留</span><br><span class="line">│    SPI Transaction + OA TC6 状态机       │</span><br><span class="line">├─────────────────────────────────────────┤</span><br><span class="line">│    TC6_Io (SPI HAL 适配 RA4M1)           │  ← 修改 SPI 参数</span><br><span class="line">└─────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<p><strong>节省</strong>：去掉 lwIP (<del>45KB) + UDP 包装层 (</del>8KB) &#x3D; <strong>~53KB</strong></p>
+<h3 id="5-2-模块保留-修改-新增矩阵"><a href="#5-2-模块保留-修改-新增矩阵" class="headerlink" title="5.2 模块保留&#x2F;修改&#x2F;新增矩阵"></a>5.2 模块保留&#x2F;修改&#x2F;新增矩阵</h3><table>
+<thead>
+<tr>
+<th>模块</th>
+<th>动作</th>
+<th>原因</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>libtc6/</code></td>
+<td><strong>保留</strong></td>
+<td>TC6 协议状态机是 LAN8650 通信基础</td>
+</tr>
+<tr>
+<td><code>TC6_Io.cpp</code></td>
+<td><strong>修改</strong></td>
+<td>SPI 速率可能调整（TC6 最高 25MHz），但基本架构不变</td>
+</tr>
+<tr>
+<td><code>TC6_Arduino_10BASE_T1S.cpp</code></td>
+<td><strong>大幅修改</strong></td>
+<td>去掉 lwIP 绑定，换接 RCP&#x2F;AVTP 栈</td>
+</tr>
+<tr>
+<td><code>Arduino_10BASE_T1S_UDP.cpp</code></td>
+<td><strong>删除&#x2F;替换</strong></td>
+<td>替换为 RCP Client API</td>
+</tr>
+<tr>
+<td><code>lwIP/</code></td>
+<td><strong>删除&#x2F;禁用</strong></td>
+<td>不再需要，节省 ~45KB</td>
+</tr>
+<tr>
+<td><code>Open1722/</code></td>
+<td><strong>新增</strong></td>
+<td>从 <code>Open1722/include/avtp/</code> 引入</td>
+</tr>
+<tr>
+<td><code>RCP Client/</code></td>
+<td><strong>新增</strong></td>
+<td>RCP 协议状态机、消息编解码、端点管理</td>
+</tr>
+<tr>
+<td><code>AVTP Listener/</code></td>
+<td><strong>新增</strong></td>
+<td>接收 RCP 响应帧，路由到 RCP Client</td>
+</tr>
+</tbody></table>
+<h3 id="5-3-数据流对比"><a href="#5-3-数据流对比" class="headerlink" title="5.3 数据流对比"></a>5.3 数据流对比</h3><p><strong>发送路径</strong>（去掉 lwIP 后）：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">Arduino Sketch</span><br><span class="line">    │</span><br><span class="line">    │ RCP_Client_SendRequest(byte_bus_id, op, data, len)</span><br><span class="line">    ▼</span><br><span class="line">RCP Client 状态机</span><br><span class="line">    │ 分配 transaction_num，构建 ACF_GBB</span><br><span class="line">    ▼</span><br><span class="line">Open1722 AVTP 栈</span><br><span class="line">    │ 封装 NTSCF 头部，设置 stream_id</span><br><span class="line">    ▼</span><br><span class="line">Ethernet 帧 (EtherType=0x22F0)</span><br><span class="line">    │ DA + SA + 0x22F0 + NTSCF + ACF_GBB + payload</span><br><span class="line">    ▼</span><br><span class="line">TC6_Arduino_10BASE_T1S</span><br><span class="line">    │ 复用：填充 Ethernet 帧到 TC6 Frame Buffer</span><br><span class="line">    ▼</span><br><span class="line">libtc6 (oa-tc6-lib)</span><br><span class="line">    │ 复用：TC6_DataTx → SPI 控制序列</span><br><span class="line">    ▼</span><br><span class="line">TC6_Io (SPI HAL)</span><br><span class="line">    │ 复用：renesas_spi_transfer()</span><br><span class="line">    ▼</span><br><span class="line">LAN8650 MAC-PHY</span><br><span class="line">    │ 10BASE-T1S 总线传输 (PLCA 总线仲裁)</span><br><span class="line">    ▼</span><br><span class="line">远端 RC Server (Edge Node)</span><br></pre></td></tr></table></figure>
+
+<p><strong>接收路径</strong>：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">LAN8650 MAC-PHY</span><br><span class="line">    │ SPI IRQ 触发，从 TC6 RX FIFO 读取</span><br><span class="line">    ▼</span><br><span class="line">libtc6</span><br><span class="line">    │ TC6_DataRx → process_rx() → TC6_CB_OnRxEthernetSlice</span><br><span class="line">    ▼</span><br><span class="line">TC6_Arduino_10BASE_T1S</span><br><span class="line">    │ 接收完整 Ethernet 帧</span><br><span class="line">    ▼</span><br><span class="line">Open1722 AVTP 栈</span><br><span class="line">    │ Avtp_Ntscf_IsValid() → NTSCF 解析</span><br><span class="line">    │ 检查 subtype = 0x82</span><br><span class="line">    ▼</span><br><span class="line">RCP Client 状态机</span><br><span class="line">    │ 匹配 transaction_num</span><br><span class="line">    │ Avtp_Gbb_GetEvt() → 0xF(Ack)/0x0(Response)/0x1-8(Error)</span><br><span class="line">    │ Avtp_Gbb_GetPayloadLen() → 读回数据</span><br><span class="line">    ▼</span><br><span class="line">Arduino Sketch</span><br><span class="line">    │ RCP_Client_OnResponse(transaction_num, data, len)</span><br><span class="line">    ▼</span><br><span class="line">应用处理</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="六、移植修改详细计划"><a href="#六、移植修改详细计划" class="headerlink" title="六、移植修改详细计划"></a>六、移植修改详细计划</h2><h3 id="阶段-1：基础通信验证（保留-lwIP，逐步替换）"><a href="#阶段-1：基础通信验证（保留-lwIP，逐步替换）" class="headerlink" title="阶段 1：基础通信验证（保留 lwIP，逐步替换）"></a>阶段 1：基础通信验证（保留 lwIP，逐步替换）</h3><ol>
+<li><p><strong>引入 Open1722</strong></p>
+<ul>
+<li>将 <code>Open1722/include/avtp/</code> 复制到 <code>src/lib/open1722/include/</code></li>
+<li>验证编译：AVTP 头部解析（<code>Avtp_Ntscf_Init</code>, <code>Avtp_Gbb_Init</code>）</li>
+</ul>
+</li>
+<li><p><strong>创建 AVTP 帧收发测试</strong></p>
+<ul>
+<li>利用现有 <code>TC6_CB_OnRxEthernetPacket</code> 回调</li>
+<li>在 <code>TC6_Arduino_10BASE_T1S</code> 层添加 EtherType 过滤</li>
+<li>当 EtherType &#x3D; 0x22F0 时，走 AVTP 路径；否则走 lwIP 路径</li>
+</ul>
+</li>
+<li><p><strong>验证 LAN8650 对 0x22F0 帧的收发</strong></p>
+<ul>
+<li>LAN8650 硬件支持 EtherType &#x3D; 0x22F0（AVTP 标准）</li>
+<li>通过 <code>TC6Regs_Init</code> 配置 MAC 接收过滤器</li>
+</ul>
+</li>
+</ol>
+<h3 id="阶段-2：RCP-Client-实现"><a href="#阶段-2：RCP-Client-实现" class="headerlink" title="阶段 2：RCP Client 实现"></a>阶段 2：RCP Client 实现</h3><ol start="4">
+<li><p><strong>实现 RCP Client 状态机</strong></p>
+<ul>
+<li>状态：<code>Idle → Request_Sent → Awaiting_Response → Response_Rx</code></li>
+<li>transaction_num 分配器（8-bit，0-255）</li>
+<li>请求存储队列（支持多事务并发）</li>
+</ul>
+</li>
+<li><p><strong>实现 RCP 请求类型</strong></p>
+<ul>
+<li>标准请求（ACF_ABB）：写 SPI&#x2F;GPIO</li>
+<li>标准请求（ACF_ABB）：读 SPI&#x2F;GPIO</li>
+<li>ACK 响应处理（evt &#x3D; 0xF）</li>
+<li>数据响应处理（evt &#x3D; 0x0，op &#x3D; 0）</li>
+</ul>
+</li>
+<li><p><strong>gPTP 时间戳集成（可选）</strong></p>
+<ul>
+<li>LAN8650 内置 gPTP 硬件时间戳（通过 TC6 寄存器访问）</li>
+<li><code>TSC</code> (Transmit Timestamp Capture) 字段在 TC6 头部</li>
+</ul>
+</li>
+</ol>
+<h3 id="阶段-3：lwIP-逐步退出"><a href="#阶段-3：lwIP-逐步退出" class="headerlink" title="阶段 3：lwIP 逐步退出"></a>阶段 3：lwIP 逐步退出</h3><ol start="7">
+<li><p><strong>创建 RCP API 替代层</strong></p>
+<ul>
+<li><code>RCP_Client.begin()</code></li>
+<li><code>RCP_Client.writeRegister(byte_bus_id, reg_addr, value)</code></li>
+<li><code>RCP_Client.readRegister(byte_bus_id, reg_addr, callback)</code></li>
+<li><code>RCP_Client.setStreamId(uint64_t stream_id)</code></li>
+</ul>
+</li>
+<li><p><strong>替换 Arduino_10BASE_T1S_UDP</strong></p>
+<ul>
+<li>保留 <code>Arduino_10BASE_T1S</code> 主类接口风格</li>
+<li>将 <code>beginUDP(port)</code> 替换为 <code>beginRCP(stream_id)</code></li>
+<li>测试现有 sketch 示例的兼容迁移</li>
+</ul>
+</li>
+</ol>
+<h3 id="阶段-4：完整验证"><a href="#阶段-4：完整验证" class="headerlink" title="阶段 4：完整验证"></a>阶段 4：完整验证</h3><ol start="9">
+<li><p><strong>与远端 RC Server 通信验证</strong></p>
+<ul>
+<li>使用开源 RCP Server 实现（如有）或模拟 PC 端</li>
+<li>抓包验证：EtherType&#x3D;0x22F0，ACF_GBB 格式正确</li>
+</ul>
+</li>
+<li><p><strong>性能与资源测量</strong></p>
+<ul>
+<li>Flash&#x2F;RAM 占用对比（去掉 lwIP 前 vs 后）</li>
+<li>吞吐量测试（UDP pingpong vs RCP 请求响应延迟）</li>
+</ul>
+</li>
+</ol>
+<hr>
+<h2 id="七、关键风险与注意事项"><a href="#七、关键风险与注意事项" class="headerlink" title="七、关键风险与注意事项"></a>七、关键风险与注意事项</h2><h3 id="7-1-gPTP-时间同步"><a href="#7-1-gPTP-时间同步" class="headerlink" title="7.1 gPTP 时间同步"></a>7.1 gPTP 时间同步</h3><p>RCP 的复合请求（定时执行）和 TSCF 头部依赖 gPTP 同步：</p>
+<ul>
+<li><strong>需要</strong>：LAN8650 内置 gPTP 支持，或在 MCU 侧实现软件 gPTP</li>
+<li><strong>现状</strong>：现有库没有 gPTP 实现</li>
+<li><strong>建议</strong>：先从 NTSCF（无时间戳）开始，等通信稳定后再加 gPTP</li>
+</ul>
+<h3 id="7-2-RC-Server-端"><a href="#7-2-RC-Server-端" class="headerlink" title="7.2 RC Server 端"></a>7.2 RC Server 端</h3><p>RCP 是客户端-服务器协议，需要有对应的 <strong>RC Server</strong> 端点：</p>
+<ul>
+<li>如果目标是与现有设备通信：确认对端是否支持 RCP</li>
+<li>如果是自研 RC Server：需要独立实现（或使用 COVESA 社区参考实现）</li>
+<li><strong>注意</strong>：Open1722 库只提供 AVTP 层的编解码，不包含 RCP Server 实现</li>
+</ul>
+<h3 id="7-3-EtherType-配置"><a href="#7-3-EtherType-配置" class="headerlink" title="7.3 EtherType 配置"></a>7.3 EtherType 配置</h3><p>LAN8650 默认可能只接收特定 EtherType 的帧：</p>
+<ul>
+<li>需要通过 TC6 寄存器配置 MAC 接收过滤器</li>
+<li><code>TC6Regs_Init</code> 中的 <code>promiscuous</code> 参数控制是否开启混杂模式</li>
+</ul>
+<h3 id="7-4-PLCA-vs-CSMA-CD"><a href="#7-4-PLCA-vs-CSMA-CD" class="headerlink" title="7.4 PLCA vs CSMA&#x2F;CD"></a>7.4 PLCA vs CSMA&#x2F;CD</h3><p>10BASE-T1S 使用 PLCA（Physical Layer Collision Avoidance）作为总线仲裁机制：</p>
+<ul>
+<li>RCP 请求-响应模式天然适配 PLCA 的单节点发送特性</li>
+<li>与 lwIP 的广播&#x2F;多播场景不同，RCP 倾向于点对点事务</li>
+</ul>
+<h3 id="7-5-Flash-预算"><a href="#7-5-Flash-预算" class="headerlink" title="7.5 Flash 预算"></a>7.5 Flash 预算</h3><p>去掉 lwIP 后的预期 Flash 占用：</p>
+<table>
+<thead>
+<tr>
+<th>模块</th>
+<th>估算 Flash</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Arduino Core</td>
+<td>~30KB</td>
+</tr>
+<tr>
+<td>FSP HAL</td>
+<td>~12KB</td>
+</tr>
+<tr>
+<td>libtc6</td>
+<td>~15KB</td>
+</tr>
+<tr>
+<td>Open1722</td>
+<td>~5KB</td>
+</tr>
+<tr>
+<td>TC6 HAL 封装</td>
+<td>~5KB</td>
+</tr>
+<tr>
+<td>RCP Client</td>
+<td>~8KB</td>
+</tr>
+<tr>
+<td><strong>总计</strong></td>
+<td><strong>~75KB</strong>（节省 ~35KB）</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="八、总结"><a href="#八、总结" class="headerlink" title="八、总结"></a>八、总结</h2><h3 id="8-1-架构决策"><a href="#8-1-架构决策" class="headerlink" title="8.1 架构决策"></a>8.1 架构决策</h3><table>
+<thead>
+<tr>
+<th>决策点</th>
+<th>选择</th>
+<th>理由</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>协议栈</strong></td>
+<td>RCP&#x2F;AVTP Layer 2</td>
+<td>去掉 lwIP，节省 ~45KB，符合”网络包处理”定位</td>
+</tr>
+<tr>
+<td><strong>传输层</strong></td>
+<td>NTSCF（非时间同步）</td>
+<td>最简实现，先跑通再优化</td>
+</tr>
+<tr>
+<td><strong>消息格式</strong></td>
+<td>ACF_GBB</td>
+<td>兼容 ABB，支持 byte_bus_id 端点寻址</td>
+</tr>
+<tr>
+<td><strong>时间戳</strong></td>
+<td>暂不使用</td>
+<td>先跳过 gPTP 依赖</td>
+</tr>
+<tr>
+<td><strong>lwIP</strong></td>
+<td>条件移除</td>
+<td>提供条件编译开关，保留调试能力</td>
+</tr>
+</tbody></table>
+<h3 id="8-2-下一步行动"><a href="#8-2-下一步行动" class="headerlink" title="8.2 下一步行动"></a>8.2 下一步行动</h3><ol>
+<li><strong>立即执行</strong>：将 <code>Open1722/include/avtp/</code> 集成到项目 <code>src/lib/open1722/</code></li>
+<li><strong>第一个里程碑</strong>：实现 AVTP NTSCF 帧的收发解析，验证 EtherType &#x3D; 0x22F0 在 LAN8650 上正常工作</li>
+<li><strong>第二个里程碑</strong>：实现 RCP Client 状态机和 ACF_GBB 编解码</li>
+<li><strong>第三个里程碑</strong>：替换 <code>Arduino_10BASE_T1S_UDP</code>，保留 <code>Arduino_10BASE_T1S</code> 主类 API</li>
+</ol>
+<h3 id="8-3-参考资源"><a href="#8-3-参考资源" class="headerlink" title="8.3 参考资源"></a>8.3 参考资源</h3><ul>
+<li><a href="https://github.com/Microchip-MPLAB-Harmony/mc_oa_tc6">OA TC6 lib (Microchip, v3.1.6)</a></li>
+<li><a href="https://github.com/COVESA/open1722">Open1722 (COVESA, BSD-3-Clause)</a></li>
+<li><a href="https://openbroadcaster.org/standards/open-alliance/">OPEN Alliance RCP Specification v0.4.7 rev1</a></li>
+<li><a href="https://standards.ieee.org/ieee/1722/7024/">IEEE 1722-2025 Standard for Layer 2 Transport Protocol</a></li>
+</ul>
+<hr>
+<blockquote>
+<p>本文基于 Arduino 10BASE-T1S 项目现有上下文数据库、oa-tc6-lib v3.1.6 源码、Open1722 库源码、RCP 协议规范 v0.4.7 rev1 和 IEEE 1722-2025 标准综合分析。协议细节以官方规范为准。</p>
+</blockquote>
+]]></content>
+      <categories>
+        <category>技术笔记</category>
+        <category>车载网络</category>
+        <category>10BASE-T1S系列</category>
+      </categories>
+      <tags>
+        <tag>10BASE-T1S</tag>
+        <tag>RCP</tag>
+        <tag>AVTP</tag>
+        <tag>IEEE 1722</tag>
+        <tag>Open Alliance</tag>
+        <tag>嵌入式以太网</tag>
+      </tags>
+  </entry>
 </search>

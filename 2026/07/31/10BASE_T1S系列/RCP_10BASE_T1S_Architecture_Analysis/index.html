@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="前言基于 Microchip LAN8650&#x2F;LAN8651 + OA TC6 协议栈的现有 Arduino 10BASE-T1S 库（lwIP + UDP&#x2F;IP 架构），本文分析切换到 RCP（Remote Control Protocol）&#x2F;AVTP 协议栈的可行性、架构差异、所需移植修改的模块，以及如何利用 oa-tc6-lib 和 Open1722 开源库实现">
+<meta property="og:type" content="article">
+<meta property="og:title" content="RCP&#x2F;AVTP 10BASE-T1S 二次开发架构分析">
+<meta property="og:url" content="https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/RCP_10BASE_T1S_Architecture_Analysis/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="前言基于 Microchip LAN8650&#x2F;LAN8651 + OA TC6 协议栈的现有 Arduino 10BASE-T1S 库（lwIP + UDP&#x2F;IP 架构），本文分析切换到 RCP（Remote Control Protocol）&#x2F;AVTP 协议栈的可行性、架构差异、所需移植修改的模块，以及如何利用 oa-tc6-lib 和 Open1722 开源库实现">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-07-31T08:30:00.000Z">
+<meta property="article:modified_time" content="2026-08-03T03:05:08.685Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="10BASE-T1S">
+<meta property="article:tag" content="AVTP">
+<meta property="article:tag" content="IEEE 1722">
+<meta property="article:tag" content="Open Alliance">
+<meta property="article:tag" content="RCP">
+<meta property="article:tag" content="嵌入式以太网">
+<meta name="twitter:card" content="summary">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>RCP/AVTP 10BASE-T1S 二次开发架构分析</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+		<script type="text/x-mathjax-config">
+		  MathJax.Hub.Config({
+			tex2jax: {
+			  skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+			  inlineMath: [['$','$']]
+			}
+		  });
+		</script>
+		<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-MML-AM_CHTML' async></script>
+	
+<meta name="generator" content="Hexo 8.0.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="顶部" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="上一篇" href="/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/RCP_10BASE_T1S_Implementation_Log/"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="下一篇" href="/2026/07/31/10BASE-T1S-Code-Interfaces-Auxiliary-and-lwip/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="返回顶部" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="分享文章" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">上一篇</span>
+      <span id="i-next" class="info" style="display:none;">下一篇</span>
+      <span id="i-top" class="info" style="display:none;">返回顶部</span>
+      <span id="i-share" class="info" style="display:none;">分享文章</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/RCP_10BASE_T1S_Architecture_Analysis/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/RCP_10BASE_T1S_Architecture_Analysis/&text=RCP/AVTP 10BASE-T1S 二次开发架构分析"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/RCP_10BASE_T1S_Architecture_Analysis/&title=RCP/AVTP 10BASE-T1S 二次开发架构分析"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/RCP_10BASE_T1S_Architecture_Analysis/&is_video=false&description=RCP/AVTP 10BASE-T1S 二次开发架构分析"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=RCP/AVTP 10BASE-T1S 二次开发架构分析&body=Check out this article: https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/RCP_10BASE_T1S_Architecture_Analysis/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/RCP_10BASE_T1S_Architecture_Analysis/&title=RCP/AVTP 10BASE-T1S 二次开发架构分析"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/RCP_10BASE_T1S_Architecture_Analysis/&title=RCP/AVTP 10BASE-T1S 二次开发架构分析"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/RCP_10BASE_T1S_Architecture_Analysis/&title=RCP/AVTP 10BASE-T1S 二次开发架构分析"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/RCP_10BASE_T1S_Architecture_Analysis/&title=RCP/AVTP 10BASE-T1S 二次开发架构分析"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/RCP_10BASE_T1S_Architecture_Analysis/&name=RCP/AVTP 10BASE-T1S 二次开发架构分析&description=&lt;h2 id=&#34;前言&#34;&gt;&lt;a href=&#34;#前言&#34; class=&#34;headerlink&#34; title=&#34;前言&#34;&gt;&lt;/a&gt;前言&lt;/h2&gt;&lt;p&gt;基于 Microchip LAN8650&amp;#x2F;LAN8651 + OA TC6 协议栈的现有 Arduino 10BASE-T1S 库（lwIP + UDP&amp;#x2F;IP 架构），本文分析切换到 &lt;strong&gt;RCP（Remote Control Protocol）&amp;#x2F;AVTP&lt;/strong&gt; 协议栈的可行性、架构差异、所需移植修改的模块，以及如何利用 &lt;code&gt;oa-tc6-lib&lt;/code&gt; 和 &lt;code&gt;Open1722&lt;/code&gt; 开源库实现二次开发。&lt;/p&gt;"><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/RCP_10BASE_T1S_Architecture_Analysis/&t=RCP/AVTP 10BASE-T1S 二次开发架构分析"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%89%8D%E8%A8%80"><span class="toc-number">1.</span> <span class="toc-text">前言</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E7%8E%B0%E6%9C%89%E6%9E%B6%E6%9E%84%E5%9B%9E%E9%A1%BE"><span class="toc-number">2.</span> <span class="toc-text">一、现有架构回顾</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-%E5%BD%93%E5%89%8D%E5%88%86%E5%B1%82%E7%BB%93%E6%9E%84"><span class="toc-number">2.1.</span> <span class="toc-text">1.1 当前分层结构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-2-%E7%BC%96%E8%AF%91%E4%BA%A7%E7%89%A9%E5%AE%9E%E6%B5%8B%E6%95%B0%E6%8D%AE%EF%BC%88%E5%B7%B2%E7%9F%A5%EF%BC%89"><span class="toc-number">2.2.</span> <span class="toc-text">1.2 编译产物实测数据（已知）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-3-%E7%8E%B0%E6%9C%89%E5%BA%93%E5%85%B3%E9%94%AE%E6%96%87%E4%BB%B6"><span class="toc-number">2.3.</span> <span class="toc-text">1.3 现有库关键文件</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81RCP-AVTP-%E5%8D%8F%E8%AE%AE%E6%A0%88%E6%9C%AC%E8%B4%A8%E5%88%86%E6%9E%90"><span class="toc-number">3.</span> <span class="toc-text">二、RCP&#x2F;AVTP 协议栈本质分析</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-RCP-%E4%B8%8E-AVTP-%E7%9A%84%E5%85%B3%E7%B3%BB"><span class="toc-number">3.1.</span> <span class="toc-text">2.1 RCP 与 AVTP 的关系</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-RCP-%E7%9A%84%E6%A0%B8%E5%BF%83%E4%BB%B7%E5%80%BC%EF%BC%9A%E6%9E%B6%E6%9E%84%E8%A7%A3%E8%80%A6"><span class="toc-number">3.2.</span> <span class="toc-text">2.2 RCP 的核心价值：架构解耦</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-AVTP-%E7%9A%84%E4%B8%A4%E7%A7%8D%E4%BC%A0%E8%BE%93%E5%A4%B4%E9%83%A8"><span class="toc-number">3.3.</span> <span class="toc-text">2.3 AVTP 的两种传输头部</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-4-RCP-%E7%AB%AF%E7%82%B9%E7%B1%BB%E5%9E%8B"><span class="toc-number">3.4.</span> <span class="toc-text">2.4 RCP 端点类型</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81UDP-IP-vs-RCP-AVTP%EF%BC%9A%E6%A0%B8%E5%BF%83%E5%AF%B9%E6%AF%94"><span class="toc-number">4.</span> <span class="toc-text">三、UDP&#x2F;IP vs RCP&#x2F;AVTP：核心对比</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E5%8D%8F%E8%AE%AE%E6%A0%88%E5%A4%8D%E6%9D%82%E5%BA%A6"><span class="toc-number">4.1.</span> <span class="toc-text">3.1 协议栈复杂度</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E6%80%A7%E8%83%BD%E4%B8%8E%E8%B5%84%E6%BA%90"><span class="toc-number">4.2.</span> <span class="toc-text">3.2 性能与资源</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-%E5%9C%BA%E6%99%AF%E9%80%82%E9%85%8D%E6%80%A7%E8%AF%84%E4%BC%B0"><span class="toc-number">4.3.</span> <span class="toc-text">3.3 场景适配性评估</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E5%BC%80%E6%BA%90%E5%BA%93%E5%AB%81%E6%8E%A5%E6%96%B9%E6%A1%88"><span class="toc-number">5.</span> <span class="toc-text">四、开源库嫁接方案</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-%E5%BA%93%E6%96%87%E4%BB%B6%E6%98%A0%E5%B0%84"><span class="toc-number">5.1.</span> <span class="toc-text">4.1 库文件映射</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-Open1722-%E5%BA%93%E5%85%B3%E9%94%AE%E6%A8%A1%E5%9D%97"><span class="toc-number">5.2.</span> <span class="toc-text">4.2 Open1722 库关键模块</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-RCP-%E6%B6%88%E6%81%AF%E6%9E%84%E5%BB%BA%E7%A4%BA%E4%BE%8B"><span class="toc-number">5.3.</span> <span class="toc-text">4.3 RCP 消息构建示例</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%9E%B6%E6%9E%84%E9%87%8D%E6%96%B0%E8%AE%BE%E8%AE%A1%E6%96%B9%E6%A1%88"><span class="toc-number">6.</span> <span class="toc-text">五、架构重新设计方案</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E7%9B%AE%E6%A0%87%E6%9E%B6%E6%9E%84"><span class="toc-number">6.1.</span> <span class="toc-text">5.1 目标架构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E6%A8%A1%E5%9D%97%E4%BF%9D%E7%95%99-%E4%BF%AE%E6%94%B9-%E6%96%B0%E5%A2%9E%E7%9F%A9%E9%98%B5"><span class="toc-number">6.2.</span> <span class="toc-text">5.2 模块保留&#x2F;修改&#x2F;新增矩阵</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-%E6%95%B0%E6%8D%AE%E6%B5%81%E5%AF%B9%E6%AF%94"><span class="toc-number">6.3.</span> <span class="toc-text">5.3 数据流对比</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E7%A7%BB%E6%A4%8D%E4%BF%AE%E6%94%B9%E8%AF%A6%E7%BB%86%E8%AE%A1%E5%88%92"><span class="toc-number">7.</span> <span class="toc-text">六、移植修改详细计划</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%98%B6%E6%AE%B5-1%EF%BC%9A%E5%9F%BA%E7%A1%80%E9%80%9A%E4%BF%A1%E9%AA%8C%E8%AF%81%EF%BC%88%E4%BF%9D%E7%95%99-lwIP%EF%BC%8C%E9%80%90%E6%AD%A5%E6%9B%BF%E6%8D%A2%EF%BC%89"><span class="toc-number">7.1.</span> <span class="toc-text">阶段 1：基础通信验证（保留 lwIP，逐步替换）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%98%B6%E6%AE%B5-2%EF%BC%9ARCP-Client-%E5%AE%9E%E7%8E%B0"><span class="toc-number">7.2.</span> <span class="toc-text">阶段 2：RCP Client 实现</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%98%B6%E6%AE%B5-3%EF%BC%9AlwIP-%E9%80%90%E6%AD%A5%E9%80%80%E5%87%BA"><span class="toc-number">7.3.</span> <span class="toc-text">阶段 3：lwIP 逐步退出</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%98%B6%E6%AE%B5-4%EF%BC%9A%E5%AE%8C%E6%95%B4%E9%AA%8C%E8%AF%81"><span class="toc-number">7.4.</span> <span class="toc-text">阶段 4：完整验证</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%83%E3%80%81%E5%85%B3%E9%94%AE%E9%A3%8E%E9%99%A9%E4%B8%8E%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9"><span class="toc-number">8.</span> <span class="toc-text">七、关键风险与注意事项</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#7-1-gPTP-%E6%97%B6%E9%97%B4%E5%90%8C%E6%AD%A5"><span class="toc-number">8.1.</span> <span class="toc-text">7.1 gPTP 时间同步</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-2-RC-Server-%E7%AB%AF"><span class="toc-number">8.2.</span> <span class="toc-text">7.2 RC Server 端</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-3-EtherType-%E9%85%8D%E7%BD%AE"><span class="toc-number">8.3.</span> <span class="toc-text">7.3 EtherType 配置</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-4-PLCA-vs-CSMA-CD"><span class="toc-number">8.4.</span> <span class="toc-text">7.4 PLCA vs CSMA&#x2F;CD</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-5-Flash-%E9%A2%84%E7%AE%97"><span class="toc-number">8.5.</span> <span class="toc-text">7.5 Flash 预算</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AB%E3%80%81%E6%80%BB%E7%BB%93"><span class="toc-number">9.</span> <span class="toc-text">八、总结</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#8-1-%E6%9E%B6%E6%9E%84%E5%86%B3%E7%AD%96"><span class="toc-number">9.1.</span> <span class="toc-text">8.1 架构决策</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8-2-%E4%B8%8B%E4%B8%80%E6%AD%A5%E8%A1%8C%E5%8A%A8"><span class="toc-number">9.2.</span> <span class="toc-text">8.2 下一步行动</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8-3-%E5%8F%82%E8%80%83%E8%B5%84%E6%BA%90"><span class="toc-number">9.3.</span> <span class="toc-text">8.3 参考资源</span></a></li></ol></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        RCP/AVTP 10BASE-T1S 二次开发架构分析
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">cursorhu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2026-07-31T08:30:00.000Z" class="dt-published" itemprop="datePublished">2026-07-31</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fa-solid fa-archive"></i>
+        <a class="category-link" href="/categories/%E6%8A%80%E6%9C%AF%E7%AC%94%E8%AE%B0/">技术笔记</a> › <a class="category-link" href="/categories/%E6%8A%80%E6%9C%AF%E7%AC%94%E8%AE%B0/%E8%BD%A6%E8%BD%BD%E7%BD%91%E7%BB%9C/">车载网络</a> › <a class="category-link" href="/categories/%E6%8A%80%E6%9C%AF%E7%AC%94%E8%AE%B0/%E8%BD%A6%E8%BD%BD%E7%BD%91%E7%BB%9C/10BASE-T1S%E7%B3%BB%E5%88%97/">10BASE-T1S系列</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/10BASE-T1S/" rel="tag">10BASE-T1S</a>, <a class="p-category" href="/tags/AVTP/" rel="tag">AVTP</a>, <a class="p-category" href="/tags/IEEE-1722/" rel="tag">IEEE 1722</a>, <a class="p-category" href="/tags/Open-Alliance/" rel="tag">Open Alliance</a>, <a class="p-category" href="/tags/RCP/" rel="tag">RCP</a>, <a class="p-category" href="/tags/%E5%B5%8C%E5%85%A5%E5%BC%8F%E4%BB%A5%E5%A4%AA%E7%BD%91/" rel="tag">嵌入式以太网</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>基于 Microchip LAN8650&#x2F;LAN8651 + OA TC6 协议栈的现有 Arduino 10BASE-T1S 库（lwIP + UDP&#x2F;IP 架构），本文分析切换到 <strong>RCP（Remote Control Protocol）&#x2F;AVTP</strong> 协议栈的可行性、架构差异、所需移植修改的模块，以及如何利用 <code>oa-tc6-lib</code> 和 <code>Open1722</code> 开源库实现二次开发。</p>
+<span id="more"></span>
+
+<h2 id="一、现有架构回顾"><a href="#一、现有架构回顾" class="headerlink" title="一、现有架构回顾"></a>一、现有架构回顾</h2><h3 id="1-1-当前分层结构"><a href="#1-1-当前分层结构" class="headerlink" title="1.1 当前分层结构"></a>1.1 当前分层结构</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">应用层 (Arduino Sketch)</span><br><span class="line">    │</span><br><span class="line">    ▼</span><br><span class="line">Arduino_10BASE_T1S_UDP (Arduino API 包装层)</span><br><span class="line">    │  ← lwIP udp_pcb，UDP Socket 抽象</span><br><span class="line">    ▼</span><br><span class="line">lwIP TCP/IP 协议栈 (~45KB Flash)</span><br><span class="line">    │  ← ARP, IP, ICMP, UDP, DHCP, DNS...</span><br><span class="line">    ▼</span><br><span class="line">TC6_Arduino_10BASE_T1S (MAC 封装层)</span><br><span class="line">    │  ← 将 Ethernet Frame 映射为 TC6 Data Chunk</span><br><span class="line">    ▼</span><br><span class="line">libtc6 (OA TC6 协议状态机, ~15KB Flash)</span><br><span class="line">    │  ← Data/Control Transaction, SPI 读写时序, CRC</span><br><span class="line">    ▼</span><br><span class="line">TC6_Io (SPI HAL 层)</span><br><span class="line">    │  ← SPI 数据收发 (TC6_CB_OnSpiTransaction)</span><br><span class="line">    ▼</span><br><span class="line">LAN8650/LAN8651 (MAC-PHY, SPI 接口)</span><br><span class="line">    │  ← 10BASE-T1S 物理层, PLCA 总线仲裁</span><br><span class="line">    ▼</span><br><span class="line">10BASE-T1S 总线 (单对线, 半双工)</span><br></pre></td></tr></table></figure>
+
+<h3 id="1-2-编译产物实测数据（已知）"><a href="#1-2-编译产物实测数据（已知）" class="headerlink" title="1.2 编译产物实测数据（已知）"></a>1.2 编译产物实测数据（已知）</h3><table>
+<thead>
+<tr>
+<th>模块</th>
+<th>Flash 占用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>lwIP</td>
+<td>~45KB</td>
+</tr>
+<tr>
+<td>libtc6</td>
+<td>~15KB</td>
+</tr>
+<tr>
+<td>库包装层</td>
+<td>~8KB</td>
+</tr>
+<tr>
+<td>Arduino Core</td>
+<td>~30KB</td>
+</tr>
+<tr>
+<td>FSP HAL</td>
+<td>~12KB</td>
+</tr>
+<tr>
+<td><strong>总计</strong></td>
+<td><strong>~110KB</strong>（剩余 130KB 给应用）</td>
+</tr>
+</tbody></table>
+<h3 id="1-3-现有库关键文件"><a href="#1-3-现有库关键文件" class="headerlink" title="1.3 现有库关键文件"></a>1.3 现有库关键文件</h3><table>
+<thead>
+<tr>
+<th>文件</th>
+<th>职责</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>src/Arduino_10BASE_T1S_UDP.cpp</code></td>
+<td>UDP Socket API 实现</td>
+</tr>
+<tr>
+<td><code>src/microchip/TC6_Arduino_10BASE_T1S.cpp</code></td>
+<td>TC6 + lwIP 绑定层</td>
+</tr>
+<tr>
+<td><code>src/microchip/TC6_Io.cpp</code></td>
+<td>SPI HAL 抽象</td>
+</tr>
+<tr>
+<td><code>src/lib/liblwip/</code></td>
+<td>lwIP 源码</td>
+</tr>
+<tr>
+<td><code>src/microchip/lib/libtc6/</code></td>
+<td>OA TC6 协议库</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="二、RCP-AVTP-协议栈本质分析"><a href="#二、RCP-AVTP-协议栈本质分析" class="headerlink" title="二、RCP&#x2F;AVTP 协议栈本质分析"></a>二、RCP&#x2F;AVTP 协议栈本质分析</h2><h3 id="2-1-RCP-与-AVTP-的关系"><a href="#2-1-RCP-与-AVTP-的关系" class="headerlink" title="2.1 RCP 与 AVTP 的关系"></a>2.1 RCP 与 AVTP 的关系</h3><p><strong>RCP（Remote Control Protocol）</strong> 构建在 <strong>IEEE 1722 AVTP</strong> 之上，是一个汽车专用扩展。理解这个关系至关重要：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">┌──────────────────────────────────┐</span><br><span class="line">│     RCP (OA Spec v0.4.7)         │  ← Remote Control Protocol</span><br><span class="line">│     ACF_ABB / ACF_GBB 格式        │     13种端点类型 (SPI/GPIO/I2C/ADC...)</span><br><span class="line">├──────────────────────────────────┤</span><br><span class="line">│   IEEE 1722 AVTP (EtherType=0x22F0) │  ← Layer 2 Transport Protocol</span><br><span class="line">│   NTSCF / TSCF 头部格式           │     音视频/控制时间同步</span><br><span class="line">├──────────────────────────────────┤</span><br><span class="line">│        Ethernet Layer 2            │  ← EtherType = 0x22F0 (无 IP!)</span><br><span class="line">└──────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<p><strong>关键点</strong>：RCP 完全工作在 <strong>Ethernet Layer 2</strong>，EtherType &#x3D; <code>0x22F0</code>，<strong>不需要 IP&#x2F;UDP 协议栈</strong>。</p>
+<h3 id="2-2-RCP-的核心价值：架构解耦"><a href="#2-2-RCP-的核心价值：架构解耦" class="headerlink" title="2.2 RCP 的核心价值：架构解耦"></a>2.2 RCP 的核心价值：架构解耦</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">传统架构（现状）:</span><br><span class="line">┌─────────────┐     ┌─────────────┐</span><br><span class="line">│  应用逻辑    │     │  应用逻辑    │</span><br><span class="line">│  + 驱动     │     │  + 驱动     │</span><br><span class="line">└──────┬──────┘     └──────┬──────┘</span><br><span class="line">       │                   │</span><br><span class="line">    lwIP/IP            lwIP/IP</span><br><span class="line">       │                   │</span><br><span class="line">    LAN8650            LAN8650</span><br><span class="line"></span><br><span class="line">RCP 架构（目标）:</span><br><span class="line">┌──────────────────────────────────────────┐</span><br><span class="line">│   HPC / Central ECU (RC Client)           │</span><br><span class="line">│   应用逻辑 + 驱动 + RCP Client 栈         │</span><br><span class="line">└────────────────────┬─────────────────────┘</span><br><span class="line">                     │ 车载以太网 (RCP PDU)</span><br><span class="line">                     ▼</span><br><span class="line">       ┌────────────────────────────┐</span><br><span class="line">       │  Edge Node (RC Server)    │</span><br><span class="line">       │  LAN8650 + RCP Server     │</span><br><span class="line">       │  = 标准化&quot;哑&quot;设备          │</span><br><span class="line">       └────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<p>这正是用户提到的”基于底层 MACPHY 数字电路，做网络包处理”——MCU 只做 Ethernet Frame 的收发，所有协议解析和业务逻辑集中在远端。</p>
+<h3 id="2-3-AVTP-的两种传输头部"><a href="#2-3-AVTP-的两种传输头部" class="headerlink" title="2.3 AVTP 的两种传输头部"></a>2.3 AVTP 的两种传输头部</h3><p>Open1722 库支持两种 AVTP 传输格式，RCP 协议依赖它们：</p>
+<table>
+<thead>
+<tr>
+<th>头部类型</th>
+<th>用途</th>
+<th align="center">AVTP Timestamp</th>
+<th align="center">Stream ID</th>
+<th>适用场景</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>NTSCF</strong> (Non-TSCF)</td>
+<td>立即执行&#x2F;响应</td>
+<td align="center">无</td>
+<td align="center">64-bit</td>
+<td>标准请求、ACK、带时间戳的响应</td>
+</tr>
+<tr>
+<td><strong>TSCF</strong> (Time-SCF)</td>
+<td>定时执行</td>
+<td align="center">32-bit</td>
+<td align="center">64-bit</td>
+<td>定时请求（呈现时间控制）</td>
+</tr>
+</tbody></table>
+<p><strong>NTSCF 头部结构</strong>（12 字节）：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">Byte 0     : subtype (0x82) + sv + version</span><br><span class="line">Byte 1-7   : stream_id (64-bit)</span><br><span class="line">Byte 8-11  : ntscf_data_length + sequence_num</span><br></pre></td></tr></table></figure>
+
+<p><strong>ACF_GBB 消息头结构</strong>（16 字节，在 AVTP payload 中）：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">Byte 0-3   : ACF common (msg_type=0x0D, length)</span><br><span class="line">Byte 4-11  : message_timestamp (48-bit, gPTP 同步)</span><br><span class="line">Byte 12-15 : evt + transaction_num + op + err + byte_bus_id...</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-4-RCP-端点类型"><a href="#2-4-RCP-端点类型" class="headerlink" title="2.4 RCP 端点类型"></a>2.4 RCP 端点类型</h3><p>RCP 定义了 13 种端点类型，对应不同的外设：</p>
+<table>
+<thead>
+<tr>
+<th>EP 编号</th>
+<th>类型</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>EP0</td>
+<td>RC Server</td>
+<td>配置、状态、发现（必须实现）</td>
+</tr>
+<tr>
+<td>EP1</td>
+<td>唤醒控制</td>
+<td>休眠&#x2F;唤醒（可选）</td>
+</tr>
+<tr>
+<td>SPI</td>
+<td>SPI Controller</td>
+<td>远程访问 SPI 外设</td>
+</tr>
+<tr>
+<td>GPIO</td>
+<td>GPIO</td>
+<td>数字输入输出</td>
+</tr>
+<tr>
+<td>I²C</td>
+<td>I²C Controller</td>
+<td>I²C 总线访问</td>
+</tr>
+<tr>
+<td>UART</td>
+<td>UART</td>
+<td>串口通信</td>
+</tr>
+<tr>
+<td>ADC</td>
+<td>ADC</td>
+<td>模数转换读取</td>
+</tr>
+<tr>
+<td>CAN</td>
+<td>CAN Controller</td>
+<td>CAN 总线</td>
+</tr>
+<tr>
+<td>PWM_OUT&#x2F;IN</td>
+<td>PWM</td>
+<td>脉宽调制</td>
+</tr>
+<tr>
+<td>LIN</td>
+<td>LIN Commander</td>
+<td>LIN 总线</td>
+</tr>
+<tr>
+<td>MDIO</td>
+<td>MDIO</td>
+<td>PHY 管理</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="三、UDP-IP-vs-RCP-AVTP：核心对比"><a href="#三、UDP-IP-vs-RCP-AVTP：核心对比" class="headerlink" title="三、UDP&#x2F;IP vs RCP&#x2F;AVTP：核心对比"></a>三、UDP&#x2F;IP vs RCP&#x2F;AVTP：核心对比</h2><h3 id="3-1-协议栈复杂度"><a href="#3-1-协议栈复杂度" class="headerlink" title="3.1 协议栈复杂度"></a>3.1 协议栈复杂度</h3><table>
+<thead>
+<tr>
+<th>维度</th>
+<th align="center">UDP&#x2F;IP 方案（现有）</th>
+<th align="center">RCP&#x2F;AVTP 方案（目标）</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>协议层数</strong></td>
+<td align="center">5层 (App→UDP→IP→Eth→TC6)</td>
+<td align="center">3层 (App→AVTP→TC6)</td>
+</tr>
+<tr>
+<td><strong>最大 Flash 节省</strong></td>
+<td align="center">基准</td>
+<td align="center">~45KB（去掉 lwIP）</td>
+</tr>
+<tr>
+<td><strong>最大 RAM 节省</strong></td>
+<td align="center">基准</td>
+<td align="center">~15-20KB</td>
+</tr>
+<tr>
+<td><strong>EtherType</strong></td>
+<td align="center">0x0800 (IPv4)</td>
+<td align="center">0x22F0 (AVTP)</td>
+</tr>
+<tr>
+<td><strong>需要 IP 地址</strong></td>
+<td align="center">是</td>
+<td align="center">否（纯 MAC 寻址）</td>
+</tr>
+<tr>
+<td><strong>需要 ARP</strong></td>
+<td align="center">是</td>
+<td align="center">否</td>
+</tr>
+<tr>
+<td><strong>需要 DHCP</strong></td>
+<td align="center">是（通常）</td>
+<td align="center">否</td>
+</tr>
+<tr>
+<td><strong>网络发现</strong></td>
+<td align="center">ARP&#x2F;NDP</td>
+<td align="center">RCP 发现协议（EP0）</td>
+</tr>
+<tr>
+<td><strong>时间同步</strong></td>
+<td align="center">NTP（可选）</td>
+<td align="center">gPTP（可选，但 RCP 推荐）</td>
+</tr>
+<tr>
+<td><strong>路由支持</strong></td>
+<td align="center">是（IP 层）</td>
+<td align="center">否（纯广播&#x2F;单播 MAC）</td>
+</tr>
+</tbody></table>
+<h3 id="3-2-性能与资源"><a href="#3-2-性能与资源" class="headerlink" title="3.2 性能与资源"></a>3.2 性能与资源</h3><table>
+<thead>
+<tr>
+<th>指标</th>
+<th align="center">UDP&#x2F;IP</th>
+<th align="center">RCP&#x2F;AVTP</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>最大包长</strong></td>
+<td align="center">1472B (UDP)</td>
+<td align="center">受 MTU 限制，典型 1500B</td>
+</tr>
+<tr>
+<td><strong>协议开销</strong></td>
+<td align="center">IP(20)+UDP(8)&#x3D;28B</td>
+<td align="center">AVTP(12)+ACF(16~)≈28B+</td>
+</tr>
+<tr>
+<td><strong>网络发现延迟</strong></td>
+<td align="center">ARP ~1s</td>
+<td align="center">RCP 发现更快</td>
+</tr>
+<tr>
+<td><strong>确定性</strong></td>
+<td align="center">尽力而为</td>
+<td align="center">可通过 TSCF + gPTP 实现确定性</td>
+</tr>
+<tr>
+<td><strong>多节点访问</strong></td>
+<td align="center">Socket 绑定端口</td>
+<td align="center">byte_bus_id 端点寻址</td>
+</tr>
+</tbody></table>
+<h3 id="3-3-场景适配性评估"><a href="#3-3-场景适配性评估" class="headerlink" title="3.3 场景适配性评估"></a>3.3 场景适配性评估</h3><table>
+<thead>
+<tr>
+<th>场景</th>
+<th align="center">UDP&#x2F;IP</th>
+<th align="center">RCP&#x2F;AVTP</th>
+<th align="center">推荐</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>通用数据通信</td>
+<td align="center">✅</td>
+<td align="center">⚠️</td>
+<td align="center">UDP&#x2F;IP</td>
+</tr>
+<tr>
+<td>高速流媒体</td>
+<td align="center">⚠️</td>
+<td align="center">✅</td>
+<td align="center">AVTP</td>
+</tr>
+<tr>
+<td>远程外设控制（SPI&#x2F;GPIO&#x2F;I2C）</td>
+<td align="center">❌</td>
+<td align="center">✅</td>
+<td align="center">RCP</td>
+</tr>
+<tr>
+<td>低资源嵌入式节点</td>
+<td align="center">⚠️</td>
+<td align="center">✅</td>
+<td align="center">RCP</td>
+</tr>
+<tr>
+<td>需要路由的多子网</td>
+<td align="center">✅</td>
+<td align="center">❌</td>
+<td align="center">UDP&#x2F;IP</td>
+</tr>
+<tr>
+<td>汽车 ECU 远程控制</td>
+<td align="center">❌</td>
+<td align="center">✅</td>
+<td align="center">RCP</td>
+</tr>
+</tbody></table>
+<p><strong>结论</strong>：用户提到”基于底层 MACPHY 数字电路，做网络包处理”——这正是 RCP&#x2F;AVTP 的设计目标。去掉 lwIP 是合理的，节省 ~45KB Flash。</p>
+<hr>
+<h2 id="四、开源库嫁接方案"><a href="#四、开源库嫁接方案" class="headerlink" title="四、开源库嫁接方案"></a>四、开源库嫁接方案</h2><h3 id="4-1-库文件映射"><a href="#4-1-库文件映射" class="headerlink" title="4.1 库文件映射"></a>4.1 库文件映射</h3><p>现有库依赖两个开源项目，可以与 RCP&#x2F;AVTP 栈组合：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">开源库                    作用                保留?</span><br><span class="line">─────────────────────────────────────────────────────</span><br><span class="line">oa-tc6-lib (Microchip)   SPI + TC6 协议      ✅ 必须保留</span><br><span class="line">Open1722 (COVESA)        AVTP/ACF 编解码     ✅ 核心依赖</span><br><span class="line">lwIP                      TCP/IP 协议栈        ❌ 去掉 (可选)</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-2-Open1722-库关键模块"><a href="#4-2-Open1722-库关键模块" class="headerlink" title="4.2 Open1722 库关键模块"></a>4.2 Open1722 库关键模块</h3><p>Open1722 提供了完整的 IEEE 1722 实现，文件组织如下：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">Open1722/</span><br><span class="line">├── include/avtp/</span><br><span class="line">│   ├── Defines.h              ← 常量定义 (AVTP_QUADLET_SIZE=4)</span><br><span class="line">│   ├── CommonHeader.h         ← 通用 AVTP 头部解析 (subtype/ver)</span><br><span class="line">│   ├── Utils.h                ← 字段打包/解包工具</span><br><span class="line">│   ├── Udp.h                  ← AVTP over UDP (可选)</span><br><span class="line">│   ├── acf/</span><br><span class="line">│   │   ├── AcfCommon.h        ← ACF 通用头部 (AVTP_ACF_TYPE_BYTE_BUS=0x0D)</span><br><span class="line">│   │   ├── Gbb.h              ← ACF_GBB 格式 (RCP 核心)</span><br><span class="line">│   │   ├── Ntscf.h            ← NTSCF 头部 (RCP 必需)</span><br><span class="line">│   │   └── Tscf.h             ← TSCF 头部 (RCP 可选)</span><br><span class="line">│   ├── acf/custom/            ← 厂商自定义 ACF 类型</span><br><span class="line">│   ├── aaf/                   ← 音频格式 (AVTP Audio Format)</span><br><span class="line">│   ├── cvf/                   ← 视频格式 (Compressed Video Format)</span><br><span class="line">│   └── crf/                   ← 时钟参考格式 (Clock Reference Format)</span><br><span class="line">├── src/avtp/</span><br><span class="line">│   ├── CommonHeader.c         ← 通用头部实现</span><br><span class="line">│   ├── acf/</span><br><span class="line">│   │   ├── Ntscf.c           ← NTSCF 验证逻辑</span><br><span class="line">│   │   └── Tscf.c            ← TSCF 验证逻辑</span><br><span class="line">│   └── cvf/aaf/...           ← 音视频编解码</span><br><span class="line">└── unit/                      ← 单元测试</span><br></pre></td></tr></table></figure>
+
+<p><strong>关键发现</strong>：</p>
+<ul>
+<li><code>AVTP_ACF_TYPE_BYTE_BUS = 0x0D</code> 是 RCP 的 ACF 消息类型</li>
+<li><code>Avtp_Gbb_*</code> 函数族提供 ACF_GBB 格式的完整解析</li>
+<li><code>Avtp_Ntscf_*</code> 函数族提供 NTSCF 头部的完整解析</li>
+<li>全部是 <strong>header-only 内联函数</strong>，无需额外编译</li>
+</ul>
+<h3 id="4-3-RCP-消息构建示例"><a href="#4-3-RCP-消息构建示例" class="headerlink" title="4.3 RCP 消息构建示例"></a>4.3 RCP 消息构建示例</h3><p>基于 Open1722 + oa-tc6-lib，RCP 请求的构建流程：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&quot;avtp/CommonHeader.h&quot;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&quot;avtp/acf/AcfCommon.h&quot;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&quot;avtp/acf/Gbb.h&quot;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&quot;avtp/acf/Ntscf.h&quot;</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">// RCP 帧缓冲 (Ethernet MTU = 1500B)</span></span><br><span class="line"><span class="type">uint8_t</span> rcp_frame[<span class="number">1500</span>];</span><br><span class="line"></span><br><span class="line"><span class="comment">// 1. 构建 NTSCF 头部 (12 bytes)</span></span><br><span class="line">Avtp_Ntscf_t* ntscf = (Avtp_Ntscf_t*)rcp_frame;</span><br><span class="line"><span class="built_in">Avtp_Ntscf_Init</span>(ntscf);</span><br><span class="line"><span class="built_in">Avtp_Ntscf_SetStreamId</span>(ntscf, <span class="number">0xAABBCCDDEEFF0011ULL</span>);  <span class="comment">// 64-bit stream ID</span></span><br><span class="line"><span class="built_in">Avtp_Ntscf_SetSequenceNum</span>(ntscf, seq++);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 2. 构建 ACF_GBB 消息 (16 bytes header + payload)</span></span><br><span class="line">Avtp_Gbb_t* gbb = (Avtp_Gbb_t*)(rcp_frame + AVTP_NTSCF_HEADER_LEN);</span><br><span class="line"><span class="built_in">Avtp_Gbb_Init</span>(gbb);</span><br><span class="line"><span class="built_in">Avtp_Gbb_SetByteBusId</span>(gbb, <span class="number">0x001</span>);   <span class="comment">// EP1 = SPI Controller</span></span><br><span class="line"><span class="built_in">Avtp_Gbb_SetTransactionNum</span>(gbb, <span class="number">0x5A</span>);  <span class="comment">// 事务号（用于匹配响应）</span></span><br><span class="line"><span class="built_in">Avtp_Gbb_SetOp</span>(gbb, <span class="literal">true</span>);            <span class="comment">// true=Write, false=Read</span></span><br><span class="line"><span class="built_in">Avtp_Gbb_SetMtv</span>(gbb, <span class="literal">false</span>);           <span class="comment">// 无 message_timestamp</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 3. 设置 payload (SPI 写操作示例)</span></span><br><span class="line"><span class="type">uint8_t</span>* payload = rcp_frame + AVTP_NTSCF_HEADER_LEN + AVTP_GBB_HEADER_LEN;</span><br><span class="line"><span class="type">uint16_t</span> payload_len = <span class="number">4</span>;  <span class="comment">// 4 bytes SPI data</span></span><br><span class="line"><span class="built_in">memcpy</span>(payload, spi_data, payload_len);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 4. 设置长度</span></span><br><span class="line"><span class="built_in">Avtp_Gbb_SetPayloadLen</span>(gbb, payload_len);</span><br><span class="line"><span class="type">uint16_t</span> total_len = AVTP_NTSCF_HEADER_LEN + AVTP_GBB_HEADER_LEN + payload_len;</span><br><span class="line"><span class="built_in">Avtp_Ntscf_SetNtscfDataLength</span>(ntscf, total_len);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 5. 添加 Ethernet 头部 (14B) 并通过 TC6 发送</span></span><br><span class="line"><span class="comment">// Ethernet DA(6B) + SA(6B) + EtherType(2B=0x22F0)</span></span><br><span class="line"><span class="comment">// ...</span></span><br><span class="line"><span class="comment">// TC6_SendRawEthernetPacket(tc6, rcp_frame, ETH_HEADER + total_len, ...);</span></span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="五、架构重新设计方案"><a href="#五、架构重新设计方案" class="headerlink" title="五、架构重新设计方案"></a>五、架构重新设计方案</h2><h3 id="5-1-目标架构"><a href="#5-1-目标架构" class="headerlink" title="5.1 目标架构"></a>5.1 目标架构</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────┐</span><br><span class="line">│         Arduino Sketch (应用层)           │</span><br><span class="line">│  RCP Client API / AVTP Talker/Listener   │</span><br><span class="line">├─────────────────────────────────────────┤</span><br><span class="line">│        RCP Client (新开发)                │  ← ~8KB</span><br><span class="line">│    ACF_ABB/ACF_GBB 消息编解码            │</span><br><span class="line">├─────────────────────────────────────────┤</span><br><span class="line">│      Open1722 AVTP 协议栈                 │  ← header-only, ~5KB</span><br><span class="line">│  NTSCF/TSCF 头部 + CommonHeader          │</span><br><span class="line">├─────────────────────────────────────────┤</span><br><span class="line">│     TC6_Arduino_10BASE_T1S (复用)         │  ← 复用现有代码</span><br><span class="line">│      Ethernet Frame ↔ TC6 Data Chunk      │</span><br><span class="line">├─────────────────────────────────────────┤</span><br><span class="line">│        libtc6 (oa-tc6-lib)              │  ← 必须保留</span><br><span class="line">│    SPI Transaction + OA TC6 状态机       │</span><br><span class="line">├─────────────────────────────────────────┤</span><br><span class="line">│    TC6_Io (SPI HAL 适配 RA4M1)           │  ← 修改 SPI 参数</span><br><span class="line">└─────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<p><strong>节省</strong>：去掉 lwIP (<del>45KB) + UDP 包装层 (</del>8KB) &#x3D; <strong>~53KB</strong></p>
+<h3 id="5-2-模块保留-修改-新增矩阵"><a href="#5-2-模块保留-修改-新增矩阵" class="headerlink" title="5.2 模块保留&#x2F;修改&#x2F;新增矩阵"></a>5.2 模块保留&#x2F;修改&#x2F;新增矩阵</h3><table>
+<thead>
+<tr>
+<th>模块</th>
+<th>动作</th>
+<th>原因</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>libtc6/</code></td>
+<td><strong>保留</strong></td>
+<td>TC6 协议状态机是 LAN8650 通信基础</td>
+</tr>
+<tr>
+<td><code>TC6_Io.cpp</code></td>
+<td><strong>修改</strong></td>
+<td>SPI 速率可能调整（TC6 最高 25MHz），但基本架构不变</td>
+</tr>
+<tr>
+<td><code>TC6_Arduino_10BASE_T1S.cpp</code></td>
+<td><strong>大幅修改</strong></td>
+<td>去掉 lwIP 绑定，换接 RCP&#x2F;AVTP 栈</td>
+</tr>
+<tr>
+<td><code>Arduino_10BASE_T1S_UDP.cpp</code></td>
+<td><strong>删除&#x2F;替换</strong></td>
+<td>替换为 RCP Client API</td>
+</tr>
+<tr>
+<td><code>lwIP/</code></td>
+<td><strong>删除&#x2F;禁用</strong></td>
+<td>不再需要，节省 ~45KB</td>
+</tr>
+<tr>
+<td><code>Open1722/</code></td>
+<td><strong>新增</strong></td>
+<td>从 <code>Open1722/include/avtp/</code> 引入</td>
+</tr>
+<tr>
+<td><code>RCP Client/</code></td>
+<td><strong>新增</strong></td>
+<td>RCP 协议状态机、消息编解码、端点管理</td>
+</tr>
+<tr>
+<td><code>AVTP Listener/</code></td>
+<td><strong>新增</strong></td>
+<td>接收 RCP 响应帧，路由到 RCP Client</td>
+</tr>
+</tbody></table>
+<h3 id="5-3-数据流对比"><a href="#5-3-数据流对比" class="headerlink" title="5.3 数据流对比"></a>5.3 数据流对比</h3><p><strong>发送路径</strong>（去掉 lwIP 后）：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line">Arduino Sketch</span><br><span class="line">    │</span><br><span class="line">    │ RCP_Client_SendRequest(byte_bus_id, op, data, len)</span><br><span class="line">    ▼</span><br><span class="line">RCP Client 状态机</span><br><span class="line">    │ 分配 transaction_num，构建 ACF_GBB</span><br><span class="line">    ▼</span><br><span class="line">Open1722 AVTP 栈</span><br><span class="line">    │ 封装 NTSCF 头部，设置 stream_id</span><br><span class="line">    ▼</span><br><span class="line">Ethernet 帧 (EtherType=0x22F0)</span><br><span class="line">    │ DA + SA + 0x22F0 + NTSCF + ACF_GBB + payload</span><br><span class="line">    ▼</span><br><span class="line">TC6_Arduino_10BASE_T1S</span><br><span class="line">    │ 复用：填充 Ethernet 帧到 TC6 Frame Buffer</span><br><span class="line">    ▼</span><br><span class="line">libtc6 (oa-tc6-lib)</span><br><span class="line">    │ 复用：TC6_DataTx → SPI 控制序列</span><br><span class="line">    ▼</span><br><span class="line">TC6_Io (SPI HAL)</span><br><span class="line">    │ 复用：renesas_spi_transfer()</span><br><span class="line">    ▼</span><br><span class="line">LAN8650 MAC-PHY</span><br><span class="line">    │ 10BASE-T1S 总线传输 (PLCA 总线仲裁)</span><br><span class="line">    ▼</span><br><span class="line">远端 RC Server (Edge Node)</span><br></pre></td></tr></table></figure>
+
+<p><strong>接收路径</strong>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">LAN8650 MAC-PHY</span><br><span class="line">    │ SPI IRQ 触发，从 TC6 RX FIFO 读取</span><br><span class="line">    ▼</span><br><span class="line">libtc6</span><br><span class="line">    │ TC6_DataRx → process_rx() → TC6_CB_OnRxEthernetSlice</span><br><span class="line">    ▼</span><br><span class="line">TC6_Arduino_10BASE_T1S</span><br><span class="line">    │ 接收完整 Ethernet 帧</span><br><span class="line">    ▼</span><br><span class="line">Open1722 AVTP 栈</span><br><span class="line">    │ Avtp_Ntscf_IsValid() → NTSCF 解析</span><br><span class="line">    │ 检查 subtype = 0x82</span><br><span class="line">    ▼</span><br><span class="line">RCP Client 状态机</span><br><span class="line">    │ 匹配 transaction_num</span><br><span class="line">    │ Avtp_Gbb_GetEvt() → 0xF(Ack)/0x0(Response)/0x1-8(Error)</span><br><span class="line">    │ Avtp_Gbb_GetPayloadLen() → 读回数据</span><br><span class="line">    ▼</span><br><span class="line">Arduino Sketch</span><br><span class="line">    │ RCP_Client_OnResponse(transaction_num, data, len)</span><br><span class="line">    ▼</span><br><span class="line">应用处理</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="六、移植修改详细计划"><a href="#六、移植修改详细计划" class="headerlink" title="六、移植修改详细计划"></a>六、移植修改详细计划</h2><h3 id="阶段-1：基础通信验证（保留-lwIP，逐步替换）"><a href="#阶段-1：基础通信验证（保留-lwIP，逐步替换）" class="headerlink" title="阶段 1：基础通信验证（保留 lwIP，逐步替换）"></a>阶段 1：基础通信验证（保留 lwIP，逐步替换）</h3><ol>
+<li><p><strong>引入 Open1722</strong></p>
+<ul>
+<li>将 <code>Open1722/include/avtp/</code> 复制到 <code>src/lib/open1722/include/</code></li>
+<li>验证编译：AVTP 头部解析（<code>Avtp_Ntscf_Init</code>, <code>Avtp_Gbb_Init</code>）</li>
+</ul>
+</li>
+<li><p><strong>创建 AVTP 帧收发测试</strong></p>
+<ul>
+<li>利用现有 <code>TC6_CB_OnRxEthernetPacket</code> 回调</li>
+<li>在 <code>TC6_Arduino_10BASE_T1S</code> 层添加 EtherType 过滤</li>
+<li>当 EtherType &#x3D; 0x22F0 时，走 AVTP 路径；否则走 lwIP 路径</li>
+</ul>
+</li>
+<li><p><strong>验证 LAN8650 对 0x22F0 帧的收发</strong></p>
+<ul>
+<li>LAN8650 硬件支持 EtherType &#x3D; 0x22F0（AVTP 标准）</li>
+<li>通过 <code>TC6Regs_Init</code> 配置 MAC 接收过滤器</li>
+</ul>
+</li>
+</ol>
+<h3 id="阶段-2：RCP-Client-实现"><a href="#阶段-2：RCP-Client-实现" class="headerlink" title="阶段 2：RCP Client 实现"></a>阶段 2：RCP Client 实现</h3><ol start="4">
+<li><p><strong>实现 RCP Client 状态机</strong></p>
+<ul>
+<li>状态：<code>Idle → Request_Sent → Awaiting_Response → Response_Rx</code></li>
+<li>transaction_num 分配器（8-bit，0-255）</li>
+<li>请求存储队列（支持多事务并发）</li>
+</ul>
+</li>
+<li><p><strong>实现 RCP 请求类型</strong></p>
+<ul>
+<li>标准请求（ACF_ABB）：写 SPI&#x2F;GPIO</li>
+<li>标准请求（ACF_ABB）：读 SPI&#x2F;GPIO</li>
+<li>ACK 响应处理（evt &#x3D; 0xF）</li>
+<li>数据响应处理（evt &#x3D; 0x0，op &#x3D; 0）</li>
+</ul>
+</li>
+<li><p><strong>gPTP 时间戳集成（可选）</strong></p>
+<ul>
+<li>LAN8650 内置 gPTP 硬件时间戳（通过 TC6 寄存器访问）</li>
+<li><code>TSC</code> (Transmit Timestamp Capture) 字段在 TC6 头部</li>
+</ul>
+</li>
+</ol>
+<h3 id="阶段-3：lwIP-逐步退出"><a href="#阶段-3：lwIP-逐步退出" class="headerlink" title="阶段 3：lwIP 逐步退出"></a>阶段 3：lwIP 逐步退出</h3><ol start="7">
+<li><p><strong>创建 RCP API 替代层</strong></p>
+<ul>
+<li><code>RCP_Client.begin()</code></li>
+<li><code>RCP_Client.writeRegister(byte_bus_id, reg_addr, value)</code></li>
+<li><code>RCP_Client.readRegister(byte_bus_id, reg_addr, callback)</code></li>
+<li><code>RCP_Client.setStreamId(uint64_t stream_id)</code></li>
+</ul>
+</li>
+<li><p><strong>替换 Arduino_10BASE_T1S_UDP</strong></p>
+<ul>
+<li>保留 <code>Arduino_10BASE_T1S</code> 主类接口风格</li>
+<li>将 <code>beginUDP(port)</code> 替换为 <code>beginRCP(stream_id)</code></li>
+<li>测试现有 sketch 示例的兼容迁移</li>
+</ul>
+</li>
+</ol>
+<h3 id="阶段-4：完整验证"><a href="#阶段-4：完整验证" class="headerlink" title="阶段 4：完整验证"></a>阶段 4：完整验证</h3><ol start="9">
+<li><p><strong>与远端 RC Server 通信验证</strong></p>
+<ul>
+<li>使用开源 RCP Server 实现（如有）或模拟 PC 端</li>
+<li>抓包验证：EtherType&#x3D;0x22F0，ACF_GBB 格式正确</li>
+</ul>
+</li>
+<li><p><strong>性能与资源测量</strong></p>
+<ul>
+<li>Flash&#x2F;RAM 占用对比（去掉 lwIP 前 vs 后）</li>
+<li>吞吐量测试（UDP pingpong vs RCP 请求响应延迟）</li>
+</ul>
+</li>
+</ol>
+<hr>
+<h2 id="七、关键风险与注意事项"><a href="#七、关键风险与注意事项" class="headerlink" title="七、关键风险与注意事项"></a>七、关键风险与注意事项</h2><h3 id="7-1-gPTP-时间同步"><a href="#7-1-gPTP-时间同步" class="headerlink" title="7.1 gPTP 时间同步"></a>7.1 gPTP 时间同步</h3><p>RCP 的复合请求（定时执行）和 TSCF 头部依赖 gPTP 同步：</p>
+<ul>
+<li><strong>需要</strong>：LAN8650 内置 gPTP 支持，或在 MCU 侧实现软件 gPTP</li>
+<li><strong>现状</strong>：现有库没有 gPTP 实现</li>
+<li><strong>建议</strong>：先从 NTSCF（无时间戳）开始，等通信稳定后再加 gPTP</li>
+</ul>
+<h3 id="7-2-RC-Server-端"><a href="#7-2-RC-Server-端" class="headerlink" title="7.2 RC Server 端"></a>7.2 RC Server 端</h3><p>RCP 是客户端-服务器协议，需要有对应的 <strong>RC Server</strong> 端点：</p>
+<ul>
+<li>如果目标是与现有设备通信：确认对端是否支持 RCP</li>
+<li>如果是自研 RC Server：需要独立实现（或使用 COVESA 社区参考实现）</li>
+<li><strong>注意</strong>：Open1722 库只提供 AVTP 层的编解码，不包含 RCP Server 实现</li>
+</ul>
+<h3 id="7-3-EtherType-配置"><a href="#7-3-EtherType-配置" class="headerlink" title="7.3 EtherType 配置"></a>7.3 EtherType 配置</h3><p>LAN8650 默认可能只接收特定 EtherType 的帧：</p>
+<ul>
+<li>需要通过 TC6 寄存器配置 MAC 接收过滤器</li>
+<li><code>TC6Regs_Init</code> 中的 <code>promiscuous</code> 参数控制是否开启混杂模式</li>
+</ul>
+<h3 id="7-4-PLCA-vs-CSMA-CD"><a href="#7-4-PLCA-vs-CSMA-CD" class="headerlink" title="7.4 PLCA vs CSMA&#x2F;CD"></a>7.4 PLCA vs CSMA&#x2F;CD</h3><p>10BASE-T1S 使用 PLCA（Physical Layer Collision Avoidance）作为总线仲裁机制：</p>
+<ul>
+<li>RCP 请求-响应模式天然适配 PLCA 的单节点发送特性</li>
+<li>与 lwIP 的广播&#x2F;多播场景不同，RCP 倾向于点对点事务</li>
+</ul>
+<h3 id="7-5-Flash-预算"><a href="#7-5-Flash-预算" class="headerlink" title="7.5 Flash 预算"></a>7.5 Flash 预算</h3><p>去掉 lwIP 后的预期 Flash 占用：</p>
+<table>
+<thead>
+<tr>
+<th>模块</th>
+<th>估算 Flash</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Arduino Core</td>
+<td>~30KB</td>
+</tr>
+<tr>
+<td>FSP HAL</td>
+<td>~12KB</td>
+</tr>
+<tr>
+<td>libtc6</td>
+<td>~15KB</td>
+</tr>
+<tr>
+<td>Open1722</td>
+<td>~5KB</td>
+</tr>
+<tr>
+<td>TC6 HAL 封装</td>
+<td>~5KB</td>
+</tr>
+<tr>
+<td>RCP Client</td>
+<td>~8KB</td>
+</tr>
+<tr>
+<td><strong>总计</strong></td>
+<td><strong>~75KB</strong>（节省 ~35KB）</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="八、总结"><a href="#八、总结" class="headerlink" title="八、总结"></a>八、总结</h2><h3 id="8-1-架构决策"><a href="#8-1-架构决策" class="headerlink" title="8.1 架构决策"></a>8.1 架构决策</h3><table>
+<thead>
+<tr>
+<th>决策点</th>
+<th>选择</th>
+<th>理由</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>协议栈</strong></td>
+<td>RCP&#x2F;AVTP Layer 2</td>
+<td>去掉 lwIP，节省 ~45KB，符合”网络包处理”定位</td>
+</tr>
+<tr>
+<td><strong>传输层</strong></td>
+<td>NTSCF（非时间同步）</td>
+<td>最简实现，先跑通再优化</td>
+</tr>
+<tr>
+<td><strong>消息格式</strong></td>
+<td>ACF_GBB</td>
+<td>兼容 ABB，支持 byte_bus_id 端点寻址</td>
+</tr>
+<tr>
+<td><strong>时间戳</strong></td>
+<td>暂不使用</td>
+<td>先跳过 gPTP 依赖</td>
+</tr>
+<tr>
+<td><strong>lwIP</strong></td>
+<td>条件移除</td>
+<td>提供条件编译开关，保留调试能力</td>
+</tr>
+</tbody></table>
+<h3 id="8-2-下一步行动"><a href="#8-2-下一步行动" class="headerlink" title="8.2 下一步行动"></a>8.2 下一步行动</h3><ol>
+<li><strong>立即执行</strong>：将 <code>Open1722/include/avtp/</code> 集成到项目 <code>src/lib/open1722/</code></li>
+<li><strong>第一个里程碑</strong>：实现 AVTP NTSCF 帧的收发解析，验证 EtherType &#x3D; 0x22F0 在 LAN8650 上正常工作</li>
+<li><strong>第二个里程碑</strong>：实现 RCP Client 状态机和 ACF_GBB 编解码</li>
+<li><strong>第三个里程碑</strong>：替换 <code>Arduino_10BASE_T1S_UDP</code>，保留 <code>Arduino_10BASE_T1S</code> 主类 API</li>
+</ol>
+<h3 id="8-3-参考资源"><a href="#8-3-参考资源" class="headerlink" title="8.3 参考资源"></a>8.3 参考资源</h3><ul>
+<li><a target="_blank" rel="noopener" href="https://github.com/Microchip-MPLAB-Harmony/mc_oa_tc6">OA TC6 lib (Microchip, v3.1.6)</a></li>
+<li><a target="_blank" rel="noopener" href="https://github.com/COVESA/open1722">Open1722 (COVESA, BSD-3-Clause)</a></li>
+<li><a target="_blank" rel="noopener" href="https://openbroadcaster.org/standards/open-alliance/">OPEN Alliance RCP Specification v0.4.7 rev1</a></li>
+<li><a target="_blank" rel="noopener" href="https://standards.ieee.org/ieee/1722/7024/">IEEE 1722-2025 Standard for Layer 2 Transport Protocol</a></li>
+</ul>
+<hr>
+<blockquote>
+<p>本文基于 Arduino 10BASE-T1S 项目现有上下文数据库、oa-tc6-lib v3.1.6 源码、Open1722 库源码、RCP 协议规范 v0.4.7 rev1 和 IEEE 1722-2025 标准综合分析。协议细节以官方规范为准。</p>
+</blockquote>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">首页</a></li>
+        
+          <li><a href="/archives/">归档</a></li>
+        
+          <li><a href="/tags/">标签</a></li>
+        
+          <li><a href="/categories/">分类</a></li>
+        
+          <li><a href="/search/">搜索</a></li>
+        
+          <li><a href="/about/">关于</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%89%8D%E8%A8%80"><span class="toc-number">1.</span> <span class="toc-text">前言</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E7%8E%B0%E6%9C%89%E6%9E%B6%E6%9E%84%E5%9B%9E%E9%A1%BE"><span class="toc-number">2.</span> <span class="toc-text">一、现有架构回顾</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-%E5%BD%93%E5%89%8D%E5%88%86%E5%B1%82%E7%BB%93%E6%9E%84"><span class="toc-number">2.1.</span> <span class="toc-text">1.1 当前分层结构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-2-%E7%BC%96%E8%AF%91%E4%BA%A7%E7%89%A9%E5%AE%9E%E6%B5%8B%E6%95%B0%E6%8D%AE%EF%BC%88%E5%B7%B2%E7%9F%A5%EF%BC%89"><span class="toc-number">2.2.</span> <span class="toc-text">1.2 编译产物实测数据（已知）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-3-%E7%8E%B0%E6%9C%89%E5%BA%93%E5%85%B3%E9%94%AE%E6%96%87%E4%BB%B6"><span class="toc-number">2.3.</span> <span class="toc-text">1.3 现有库关键文件</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81RCP-AVTP-%E5%8D%8F%E8%AE%AE%E6%A0%88%E6%9C%AC%E8%B4%A8%E5%88%86%E6%9E%90"><span class="toc-number">3.</span> <span class="toc-text">二、RCP&#x2F;AVTP 协议栈本质分析</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-RCP-%E4%B8%8E-AVTP-%E7%9A%84%E5%85%B3%E7%B3%BB"><span class="toc-number">3.1.</span> <span class="toc-text">2.1 RCP 与 AVTP 的关系</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-RCP-%E7%9A%84%E6%A0%B8%E5%BF%83%E4%BB%B7%E5%80%BC%EF%BC%9A%E6%9E%B6%E6%9E%84%E8%A7%A3%E8%80%A6"><span class="toc-number">3.2.</span> <span class="toc-text">2.2 RCP 的核心价值：架构解耦</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-AVTP-%E7%9A%84%E4%B8%A4%E7%A7%8D%E4%BC%A0%E8%BE%93%E5%A4%B4%E9%83%A8"><span class="toc-number">3.3.</span> <span class="toc-text">2.3 AVTP 的两种传输头部</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-4-RCP-%E7%AB%AF%E7%82%B9%E7%B1%BB%E5%9E%8B"><span class="toc-number">3.4.</span> <span class="toc-text">2.4 RCP 端点类型</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81UDP-IP-vs-RCP-AVTP%EF%BC%9A%E6%A0%B8%E5%BF%83%E5%AF%B9%E6%AF%94"><span class="toc-number">4.</span> <span class="toc-text">三、UDP&#x2F;IP vs RCP&#x2F;AVTP：核心对比</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E5%8D%8F%E8%AE%AE%E6%A0%88%E5%A4%8D%E6%9D%82%E5%BA%A6"><span class="toc-number">4.1.</span> <span class="toc-text">3.1 协议栈复杂度</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E6%80%A7%E8%83%BD%E4%B8%8E%E8%B5%84%E6%BA%90"><span class="toc-number">4.2.</span> <span class="toc-text">3.2 性能与资源</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-%E5%9C%BA%E6%99%AF%E9%80%82%E9%85%8D%E6%80%A7%E8%AF%84%E4%BC%B0"><span class="toc-number">4.3.</span> <span class="toc-text">3.3 场景适配性评估</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E5%BC%80%E6%BA%90%E5%BA%93%E5%AB%81%E6%8E%A5%E6%96%B9%E6%A1%88"><span class="toc-number">5.</span> <span class="toc-text">四、开源库嫁接方案</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-%E5%BA%93%E6%96%87%E4%BB%B6%E6%98%A0%E5%B0%84"><span class="toc-number">5.1.</span> <span class="toc-text">4.1 库文件映射</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-Open1722-%E5%BA%93%E5%85%B3%E9%94%AE%E6%A8%A1%E5%9D%97"><span class="toc-number">5.2.</span> <span class="toc-text">4.2 Open1722 库关键模块</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-RCP-%E6%B6%88%E6%81%AF%E6%9E%84%E5%BB%BA%E7%A4%BA%E4%BE%8B"><span class="toc-number">5.3.</span> <span class="toc-text">4.3 RCP 消息构建示例</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%9E%B6%E6%9E%84%E9%87%8D%E6%96%B0%E8%AE%BE%E8%AE%A1%E6%96%B9%E6%A1%88"><span class="toc-number">6.</span> <span class="toc-text">五、架构重新设计方案</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E7%9B%AE%E6%A0%87%E6%9E%B6%E6%9E%84"><span class="toc-number">6.1.</span> <span class="toc-text">5.1 目标架构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E6%A8%A1%E5%9D%97%E4%BF%9D%E7%95%99-%E4%BF%AE%E6%94%B9-%E6%96%B0%E5%A2%9E%E7%9F%A9%E9%98%B5"><span class="toc-number">6.2.</span> <span class="toc-text">5.2 模块保留&#x2F;修改&#x2F;新增矩阵</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-%E6%95%B0%E6%8D%AE%E6%B5%81%E5%AF%B9%E6%AF%94"><span class="toc-number">6.3.</span> <span class="toc-text">5.3 数据流对比</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E7%A7%BB%E6%A4%8D%E4%BF%AE%E6%94%B9%E8%AF%A6%E7%BB%86%E8%AE%A1%E5%88%92"><span class="toc-number">7.</span> <span class="toc-text">六、移植修改详细计划</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%98%B6%E6%AE%B5-1%EF%BC%9A%E5%9F%BA%E7%A1%80%E9%80%9A%E4%BF%A1%E9%AA%8C%E8%AF%81%EF%BC%88%E4%BF%9D%E7%95%99-lwIP%EF%BC%8C%E9%80%90%E6%AD%A5%E6%9B%BF%E6%8D%A2%EF%BC%89"><span class="toc-number">7.1.</span> <span class="toc-text">阶段 1：基础通信验证（保留 lwIP，逐步替换）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%98%B6%E6%AE%B5-2%EF%BC%9ARCP-Client-%E5%AE%9E%E7%8E%B0"><span class="toc-number">7.2.</span> <span class="toc-text">阶段 2：RCP Client 实现</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%98%B6%E6%AE%B5-3%EF%BC%9AlwIP-%E9%80%90%E6%AD%A5%E9%80%80%E5%87%BA"><span class="toc-number">7.3.</span> <span class="toc-text">阶段 3：lwIP 逐步退出</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%98%B6%E6%AE%B5-4%EF%BC%9A%E5%AE%8C%E6%95%B4%E9%AA%8C%E8%AF%81"><span class="toc-number">7.4.</span> <span class="toc-text">阶段 4：完整验证</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%83%E3%80%81%E5%85%B3%E9%94%AE%E9%A3%8E%E9%99%A9%E4%B8%8E%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9"><span class="toc-number">8.</span> <span class="toc-text">七、关键风险与注意事项</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#7-1-gPTP-%E6%97%B6%E9%97%B4%E5%90%8C%E6%AD%A5"><span class="toc-number">8.1.</span> <span class="toc-text">7.1 gPTP 时间同步</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-2-RC-Server-%E7%AB%AF"><span class="toc-number">8.2.</span> <span class="toc-text">7.2 RC Server 端</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-3-EtherType-%E9%85%8D%E7%BD%AE"><span class="toc-number">8.3.</span> <span class="toc-text">7.3 EtherType 配置</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-4-PLCA-vs-CSMA-CD"><span class="toc-number">8.4.</span> <span class="toc-text">7.4 PLCA vs CSMA&#x2F;CD</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-5-Flash-%E9%A2%84%E7%AE%97"><span class="toc-number">8.5.</span> <span class="toc-text">7.5 Flash 预算</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AB%E3%80%81%E6%80%BB%E7%BB%93"><span class="toc-number">9.</span> <span class="toc-text">八、总结</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#8-1-%E6%9E%B6%E6%9E%84%E5%86%B3%E7%AD%96"><span class="toc-number">9.1.</span> <span class="toc-text">8.1 架构决策</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8-2-%E4%B8%8B%E4%B8%80%E6%AD%A5%E8%A1%8C%E5%8A%A8"><span class="toc-number">9.2.</span> <span class="toc-text">8.2 下一步行动</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8-3-%E5%8F%82%E8%80%83%E8%B5%84%E6%BA%90"><span class="toc-number">9.3.</span> <span class="toc-text">8.3 参考资源</span></a></li></ol></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/RCP_10BASE_T1S_Architecture_Analysis/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/RCP_10BASE_T1S_Architecture_Analysis/&text=RCP/AVTP 10BASE-T1S 二次开发架构分析"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/RCP_10BASE_T1S_Architecture_Analysis/&title=RCP/AVTP 10BASE-T1S 二次开发架构分析"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/RCP_10BASE_T1S_Architecture_Analysis/&is_video=false&description=RCP/AVTP 10BASE-T1S 二次开发架构分析"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=RCP/AVTP 10BASE-T1S 二次开发架构分析&body=Check out this article: https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/RCP_10BASE_T1S_Architecture_Analysis/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/RCP_10BASE_T1S_Architecture_Analysis/&title=RCP/AVTP 10BASE-T1S 二次开发架构分析"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/RCP_10BASE_T1S_Architecture_Analysis/&title=RCP/AVTP 10BASE-T1S 二次开发架构分析"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/RCP_10BASE_T1S_Architecture_Analysis/&title=RCP/AVTP 10BASE-T1S 二次开发架构分析"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/RCP_10BASE_T1S_Architecture_Analysis/&title=RCP/AVTP 10BASE-T1S 二次开发架构分析"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/RCP_10BASE_T1S_Architecture_Analysis/&name=RCP/AVTP 10BASE-T1S 二次开发架构分析&description=&lt;h2 id=&#34;前言&#34;&gt;&lt;a href=&#34;#前言&#34; class=&#34;headerlink&#34; title=&#34;前言&#34;&gt;&lt;/a&gt;前言&lt;/h2&gt;&lt;p&gt;基于 Microchip LAN8650&amp;#x2F;LAN8651 + OA TC6 协议栈的现有 Arduino 10BASE-T1S 库（lwIP + UDP&amp;#x2F;IP 架构），本文分析切换到 &lt;strong&gt;RCP（Remote Control Protocol）&amp;#x2F;AVTP&lt;/strong&gt; 协议栈的可行性、架构差异、所需移植修改的模块，以及如何利用 &lt;code&gt;oa-tc6-lib&lt;/code&gt; 和 &lt;code&gt;Open1722&lt;/code&gt; 开源库实现二次开发。&lt;/p&gt;"><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/RCP_10BASE_T1S_Architecture_Analysis/&t=RCP/AVTP 10BASE-T1S 二次开发架构分析"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> 菜单</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> 目录</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> 分享</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> 返回顶部</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2026
+    cursorhu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"复制到粘贴板！\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "复制成功！");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+<!-- Mermaid diagrams -->
+
+  <script type="text/javascript">
+  (function() {
+    var mermaidElements = document.querySelectorAll('.mermaid');
+    if (!mermaidElements.length) return;
+
+    var mermaidTheme = 'auto';
+    if (mermaidTheme === 'auto') {
+      var colorscheme = 'dark';
+      mermaidTheme = (colorscheme === 'dark' || colorscheme === 'classic') ? 'dark' : 'default';
+    }
+
+    function initMermaid() {
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: mermaidTheme,
+        logLevel: 'error',
+        securityLevel: 'loose',
+        flowchart: { curve: 'basis' },
+        gantt: { axisFormat: '%m/%d/%Y' },
+        sequence: { actorMargin: 50 }
+      });
+      mermaid.run({ nodes: mermaidElements });
+    }
+
+    var script = document.createElement('script');
+    
+    script.src = 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js';
+    
+    script.onload = initMermaid;
+    document.head.appendChild(script);
+  })();
+  </script>
+
+</body>
+</html>
