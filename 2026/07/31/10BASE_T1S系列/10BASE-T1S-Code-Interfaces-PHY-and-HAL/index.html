@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="系列导读本篇接续应用层 UDP Socket API，向下钻到 PHY 抽象层与硬件抽象层：  应用层 UDP Socket API — Arduino_10BASE_T1S_UDP、内部队列、错误码 PHY Interface 与 HAL 层（本篇）— 抽象类 Arduino_10BASE_T1S_PHY_Interface、具体类 TC6_Arduino_10BASE_T1S、SPI HAL">
+<meta property="og:type" content="article">
+<meta property="og:title" content="10BASE-T1S Arduino 代码接口深度解析（二）：PHY Interface 与 SPI HAL">
+<meta property="og:url" content="https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-PHY-and-HAL/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="系列导读本篇接续应用层 UDP Socket API，向下钻到 PHY 抽象层与硬件抽象层：  应用层 UDP Socket API — Arduino_10BASE_T1S_UDP、内部队列、错误码 PHY Interface 与 HAL 层（本篇）— 抽象类 Arduino_10BASE_T1S_PHY_Interface、具体类 TC6_Arduino_10BASE_T1S、SPI HAL">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-07-30T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-07-31T08:28:08.741Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="10BASE-T1S">
+<meta property="article:tag" content="Arduino">
+<meta property="article:tag" content="PHY Interface">
+<meta property="article:tag" content="SPI HAL">
+<meta property="article:tag" content="TC6_Io">
+<meta property="article:tag" content="中断">
+<meta name="twitter:card" content="summary">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>10BASE-T1S Arduino 代码接口深度解析（二）：PHY Interface 与 SPI HAL</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+		<script type="text/x-mathjax-config">
+		  MathJax.Hub.Config({
+			tex2jax: {
+			  skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+			  inlineMath: [['$','$']]
+			}
+		  });
+		</script>
+		<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-MML-AM_CHTML' async></script>
+	
+<meta name="generator" content="Hexo 8.0.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="顶部" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="上一篇" href="/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-Auxiliary-and-lwip/"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="下一篇" href="/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-UDP-API/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="返回顶部" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="分享文章" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">上一篇</span>
+      <span id="i-next" class="info" style="display:none;">下一篇</span>
+      <span id="i-top" class="info" style="display:none;">返回顶部</span>
+      <span id="i-share" class="info" style="display:none;">分享文章</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-PHY-and-HAL/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-PHY-and-HAL/&text=10BASE-T1S Arduino 代码接口深度解析（二）：PHY Interface 与 SPI HAL"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-PHY-and-HAL/&title=10BASE-T1S Arduino 代码接口深度解析（二）：PHY Interface 与 SPI HAL"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-PHY-and-HAL/&is_video=false&description=10BASE-T1S Arduino 代码接口深度解析（二）：PHY Interface 与 SPI HAL"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=10BASE-T1S Arduino 代码接口深度解析（二）：PHY Interface 与 SPI HAL&body=Check out this article: https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-PHY-and-HAL/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-PHY-and-HAL/&title=10BASE-T1S Arduino 代码接口深度解析（二）：PHY Interface 与 SPI HAL"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-PHY-and-HAL/&title=10BASE-T1S Arduino 代码接口深度解析（二）：PHY Interface 与 SPI HAL"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-PHY-and-HAL/&title=10BASE-T1S Arduino 代码接口深度解析（二）：PHY Interface 与 SPI HAL"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-PHY-and-HAL/&title=10BASE-T1S Arduino 代码接口深度解析（二）：PHY Interface 与 SPI HAL"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-PHY-and-HAL/&name=10BASE-T1S Arduino 代码接口深度解析（二）：PHY Interface 与 SPI HAL&description=&lt;h2 id=&#34;系列导读&#34;&gt;&lt;a href=&#34;#系列导读&#34; class=&#34;headerlink&#34; title=&#34;系列导读&#34;&gt;&lt;/a&gt;系列导读&lt;/h2&gt;&lt;p&gt;本篇接续&lt;a href=&#34;/2026/07/31/10BASE-T1S-Code-Interfaces-UDP-API/&#34;&gt;应用层 UDP Socket API&lt;/a&gt;，向下钻到 PHY 抽象层与硬件抽象层：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;&lt;a href=&#34;/2026/07/31/10BASE-T1S-Code-Interfaces-UDP-API/&#34;&gt;应用层 UDP Socket API&lt;/a&gt; — &lt;code&gt;Arduino_10BASE_T1S_UDP&lt;/code&gt;、内部队列、错误码&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;PHY Interface 与 HAL 层&lt;/strong&gt;（本篇）— 抽象类 &lt;code&gt;Arduino_10BASE_T1S_PHY_Interface&lt;/code&gt;、具体类 &lt;code&gt;TC6_Arduino_10BASE_T1S&lt;/code&gt;、SPI HAL &lt;code&gt;TC6_Io&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;/2026/07/31/10BASE-T1S-Code-Interfaces-libtc6-and-lwip/&#34;&gt;协议核心 libtc6 与 lwIP 集成&lt;/a&gt; — libtc6 的 C API、回调契约、lwIP netif 集成&lt;/li&gt;
+&lt;/ol&gt;
+&lt;h2 id=&#34;1-抽象基类：Arduino-10BASE-T1S-PHY-Interface&#34;&gt;&lt;a href=&#34;#1-抽象基类：Arduino-10BASE-T1S-PHY-Interface&#34; class=&#34;headerlink&#34; title=&#34;1. 抽象基类：Arduino_10BASE_T1S_PHY_Interface&#34;&gt;&lt;/a&gt;1. 抽象基类：&lt;code&gt;Arduino_10BASE_T1S_PHY_Interface&lt;/code&gt;&lt;/h2&gt;&lt;p&gt;文件位置：&lt;code&gt;src/Arduino_10BASE_T1S_PHY_Interface.h&lt;/code&gt;&lt;/p&gt;
+&lt;figure class=&#34;highlight cpp&#34;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&#34;gutter&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;3&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;4&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;5&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;6&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;7&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;8&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;9&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;10&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;11&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;12&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;13&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&#34;code&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;keyword&#34;&gt;class&lt;/span&gt; &lt;span class=&#34;title class_&#34;&gt;Arduino_10BASE_T1S_PHY_Interface&lt;/span&gt; &amp;#123;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;keyword&#34;&gt;public&lt;/span&gt;:&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;  &lt;span class=&#34;keyword&#34;&gt;virtual&lt;/span&gt; ~&lt;span class=&#34;built_in&#34;&gt;Arduino_10BASE_T1S_PHY_Interface&lt;/span&gt;() &amp;#123; &amp;#125;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;  &lt;span class=&#34;function&#34;&gt;&lt;span class=&#34;keyword&#34;&gt;virtual&lt;/span&gt; &lt;span class=&#34;type&#34;&gt;bool&lt;/span&gt; &lt;span class=&#34;title&#34;&gt;begin&lt;/span&gt;&lt;span class=&#34;params&#34;&gt;(IPAddress &lt;span class=&#34;type&#34;&gt;const&lt;/span&gt; ip_addr,&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;params&#34;&gt;&lt;span class=&#34;function&#34;&gt;                     IPAddress &lt;span class=&#34;type&#34;&gt;const&lt;/span&gt; network_mask,&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;params&#34;&gt;&lt;span class=&#34;function&#34;&gt;                     IPAddress &lt;span class=&#34;type&#34;&gt;const&lt;/span&gt; gateway,&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;params&#34;&gt;&lt;span class=&#34;function&#34;&gt;                     MacAddress &lt;span class=&#34;type&#34;&gt;const&lt;/span&gt; mac_addr,&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;params&#34;&gt;&lt;span class=&#34;function&#34;&gt;                     T1SPlcaSettings &lt;span class=&#34;type&#34;&gt;const&lt;/span&gt; t1s_plca_settings,&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;params&#34;&gt;&lt;span class=&#34;function&#34;&gt;                     T1SMacSettings &lt;span class=&#34;type&#34;&gt;const&lt;/span&gt; t1s_mac_settings)&lt;/span&gt; &lt;/span&gt;= &lt;span class=&#34;number&#34;&gt;0&lt;/span&gt;;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;  &lt;span class=&#34;function&#34;&gt;&lt;span class=&#34;keyword&#34;&gt;virtual&lt;/span&gt; &lt;span class=&#34;type&#34;&gt;void&lt;/span&gt; &lt;span class=&#34;title&#34;&gt;service&lt;/span&gt;&lt;span class=&#34;params&#34;&gt;()&lt;/span&gt; &lt;/span&gt;= &lt;span class=&#34;number&#34;&gt;0&lt;/span&gt;;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&amp;#125;;&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;
+
+&lt;h3 id=&#34;1-1-设计动机&#34;&gt;&lt;a href=&#34;#1-1-设计动机&#34; class=&#34;headerlink&#34; title=&#34;1.1 设计动机&#34;&gt;&lt;/a&gt;1.1 设计动机&lt;/h3&gt;&lt;p&gt;该抽象类是&lt;strong&gt;库作者&lt;/strong&gt;预留的”可替换 PHY 后端”接口。设计上让任何实现了该接口的类都能被 &lt;code&gt;Arduino_10BASE_T1S_UDP&lt;/code&gt; 无缝使用：&lt;/p&gt;
+&lt;figure class=&#34;highlight plaintext&#34;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&#34;gutter&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;3&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;4&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;5&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;6&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&#34;code&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;Arduino_10BASE_T1S_UDP  ──不直接持有 PHY 对象&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        │ 通过 Arduino_10BASE_T1S_PHY_Interface*&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        │ （但目前代码中是直接引用 TC6_Arduino_10BASE_T1S）&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        ▼&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;TC6_Arduino_10BASE_T1S  ◀── 当前唯一实现&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;
+
+&lt;p&gt;&lt;strong&gt;注意&lt;/strong&gt;：当前代码（v0.1.1）&lt;code&gt;Arduino_10BASE_T1S_UDP&lt;/code&gt; &lt;strong&gt;并未&lt;/strong&gt;通过 &lt;code&gt;Arduino_10BASE_T1S_PHY_Interface*&lt;/code&gt; 与 PHY 解耦——它通过全局变量 &lt;code&gt;t1s_phy&lt;/code&gt;（宏展开的对象名）和 &lt;code&gt;_lw.tc.tc6&lt;/code&gt;（TC6 实例指针）直接通信。该抽象类更多是面向&lt;strong&gt;未来扩展&lt;/strong&gt;或&lt;strong&gt;用户自行实现 PHY 时&lt;/strong&gt;的契约。&lt;/p&gt;"><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-PHY-and-HAL/&t=10BASE-T1S Arduino 代码接口深度解析（二）：PHY Interface 与 SPI HAL"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%B3%BB%E5%88%97%E5%AF%BC%E8%AF%BB"><span class="toc-number">1.</span> <span class="toc-text">系列导读</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E6%8A%BD%E8%B1%A1%E5%9F%BA%E7%B1%BB%EF%BC%9AArduino-10BASE-T1S-PHY-Interface"><span class="toc-number">2.</span> <span class="toc-text">1. 抽象基类：Arduino_10BASE_T1S_PHY_Interface</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-%E8%AE%BE%E8%AE%A1%E5%8A%A8%E6%9C%BA"><span class="toc-number">2.1.</span> <span class="toc-text">1.1 设计动机</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-2-%E7%BA%AF%E8%99%9A%E6%96%B9%E6%B3%95%E5%A5%91%E7%BA%A6"><span class="toc-number">2.2.</span> <span class="toc-text">1.2 纯虚方法契约</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#begin"><span class="toc-number">2.2.1.</span> <span class="toc-text">begin(...)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#service"><span class="toc-number">2.2.2.</span> <span class="toc-text">service()</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-3-%E7%A7%BB%E6%A4%8D%E5%88%B0%E7%AB%9E%E5%93%81%E8%8A%AF%E7%89%87%E6%97%B6%E7%9A%84%E6%9C%80%E5%B0%8F%E5%AE%9E%E7%8E%B0"><span class="toc-number">2.3.</span> <span class="toc-text">1.3 移植到竞品芯片时的最小实现</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-%E5%85%B7%E4%BD%93%E5%AE%9E%E7%8E%B0%EF%BC%9ATC6-TC6-Arduino-10BASE-T1S"><span class="toc-number">3.</span> <span class="toc-text">2. 具体实现：TC6::TC6_Arduino_10BASE_T1S</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E5%86%85%E9%83%A8%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84"><span class="toc-number">3.1.</span> <span class="toc-text">2.1 内部数据结构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-%E6%9E%84%E9%80%A0-%E6%9E%90%E6%9E%84"><span class="toc-number">3.2.</span> <span class="toc-text">2.2 构造 &#x2F; 析构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-begin-%E8%AF%A6%E8%A7%A3"><span class="toc-number">3.3.</span> <span class="toc-text">2.3 begin() 详解</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-4-service-%E8%AF%A6%E8%A7%A3"><span class="toc-number">3.4.</span> <span class="toc-text">2.4 service() 详解</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-5-PLCA-%E6%8E%A7%E5%88%B6"><span class="toc-number">3.5.</span> <span class="toc-text">2.5 PLCA 控制</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#getPlcaStatus-callback"><span class="toc-number">3.5.1.</span> <span class="toc-text">getPlcaStatus(callback)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#enablePlca"><span class="toc-number">3.5.2.</span> <span class="toc-text">enablePlca()</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#sendWouldBlock"><span class="toc-number">3.5.3.</span> <span class="toc-text">sendWouldBlock()</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-6-GPIO-%E8%BE%93%E5%87%BA%EF%BC%9AdigitalWrite-DIO-value"><span class="toc-number">3.6.</span> <span class="toc-text">2.6 GPIO 输出：digitalWrite(DIO, value)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-7-%E7%A7%81%E6%9C%89%E5%87%BD%E6%95%B0-digitalWrite-A0-A1"><span class="toc-number">3.7.</span> <span class="toc-text">2.7 私有函数 digitalWrite_A0&#x2F;A1</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-SPI-%E7%A1%AC%E4%BB%B6%E6%8A%BD%E8%B1%A1%E5%B1%82%EF%BC%9ATC6-TC6-Io"><span class="toc-number">4.</span> <span class="toc-text">3. SPI 硬件抽象层：TC6::TC6_Io</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E5%A4%B4%E6%96%87%E4%BB%B6"><span class="toc-number">4.1.</span> <span class="toc-text">3.1 头文件</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E6%9E%84%E9%80%A0%E4%B8%8E-SPI-%E8%AE%BE%E7%BD%AE%E5%B8%B8%E9%87%8F"><span class="toc-number">4.2.</span> <span class="toc-text">3.2 构造与 SPI 设置常量</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-begin-%E2%80%94-%E7%A1%AC%E4%BB%B6%E5%A4%8D%E4%BD%8D-SPI-%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="toc-number">4.3.</span> <span class="toc-text">3.3 begin() — 硬件复位 + SPI 初始化</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-4-%E4%B8%AD%E6%96%AD%E8%AE%A1%E6%95%B0%E4%B8%89%E6%80%81%E6%9C%BA"><span class="toc-number">4.4.</span> <span class="toc-text">3.4 中断计数三态机</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-5-spiTransaction"><span class="toc-number">4.5.</span> <span class="toc-text">3.5 spiTransaction()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-6-%E6%9B%BF%E6%8D%A2-SPI-HAL-%E7%9A%84%E6%9C%80%E5%B0%8F%E5%B7%A5%E4%BD%9C%E9%87%8F"><span class="toc-number">4.6.</span> <span class="toc-text">3.6 替换 SPI HAL 的最小工作量</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-%E5%A4%9A%E5%AE%9E%E4%BE%8B%E6%94%AF%E6%8C%81%E7%9A%84%E7%9C%9F%E5%AE%9E%E9%99%90%E5%88%B6"><span class="toc-number">5.</span> <span class="toc-text">4. 多实例支持的真实限制</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-%E9%94%99%E8%AF%AF%E6%81%A2%E5%A4%8D%E8%B7%AF%E5%BE%84"><span class="toc-number">6.</span> <span class="toc-text">5. 错误恢复路径</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6-%E8%B0%83%E8%AF%95%E6%8A%80%E5%B7%A7"><span class="toc-number">7.</span> <span class="toc-text">6. 调试技巧</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E9%80%9A%E8%BF%87-Serial-%E7%9C%8B-TC6-%E4%BA%8B%E4%BB%B6"><span class="toc-number">7.1.</span> <span class="toc-text">6.1 通过 Serial 看 TC6 事件</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E7%9B%91%E6%8E%A7-IRQ-%E8%A7%A6%E5%8F%91%E9%A2%91%E7%8E%87"><span class="toc-number">7.2.</span> <span class="toc-text">6.2 监控 IRQ 触发频率</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#7-%E5%B0%8F%E7%BB%93"><span class="toc-number">8.</span> <span class="toc-text">7. 小结</span></a></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        10BASE-T1S Arduino 代码接口深度解析（二）：PHY Interface 与 SPI HAL
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">cursorhu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2026-07-30T16:00:00.000Z" class="dt-published" itemprop="datePublished">2026-07-31</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fa-solid fa-archive"></i>
+        <a class="category-link" href="/categories/Ethernet/">Ethernet</a> › <a class="category-link" href="/categories/Ethernet/%E5%B5%8C%E5%85%A5%E5%BC%8F%E7%BD%91%E7%BB%9C/">嵌入式网络</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/10BASE-T1S/" rel="tag">10BASE-T1S</a>, <a class="p-category" href="/tags/Arduino/" rel="tag">Arduino</a>, <a class="p-category" href="/tags/PHY-Interface/" rel="tag">PHY Interface</a>, <a class="p-category" href="/tags/SPI-HAL/" rel="tag">SPI HAL</a>, <a class="p-category" href="/tags/TC6-Io/" rel="tag">TC6_Io</a>, <a class="p-category" href="/tags/%E4%B8%AD%E6%96%AD/" rel="tag">中断</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <h2 id="系列导读"><a href="#系列导读" class="headerlink" title="系列导读"></a>系列导读</h2><p>本篇接续<a href="/2026/07/31/10BASE-T1S-Code-Interfaces-UDP-API/">应用层 UDP Socket API</a>，向下钻到 PHY 抽象层与硬件抽象层：</p>
+<ol>
+<li><a href="/2026/07/31/10BASE-T1S-Code-Interfaces-UDP-API/">应用层 UDP Socket API</a> — <code>Arduino_10BASE_T1S_UDP</code>、内部队列、错误码</li>
+<li><strong>PHY Interface 与 HAL 层</strong>（本篇）— 抽象类 <code>Arduino_10BASE_T1S_PHY_Interface</code>、具体类 <code>TC6_Arduino_10BASE_T1S</code>、SPI HAL <code>TC6_Io</code></li>
+<li><a href="/2026/07/31/10BASE-T1S-Code-Interfaces-libtc6-and-lwip/">协议核心 libtc6 与 lwIP 集成</a> — libtc6 的 C API、回调契约、lwIP netif 集成</li>
+</ol>
+<h2 id="1-抽象基类：Arduino-10BASE-T1S-PHY-Interface"><a href="#1-抽象基类：Arduino-10BASE-T1S-PHY-Interface" class="headerlink" title="1. 抽象基类：Arduino_10BASE_T1S_PHY_Interface"></a>1. 抽象基类：<code>Arduino_10BASE_T1S_PHY_Interface</code></h2><p>文件位置：<code>src/Arduino_10BASE_T1S_PHY_Interface.h</code></p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">Arduino_10BASE_T1S_PHY_Interface</span> &#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">  <span class="keyword">virtual</span> ~<span class="built_in">Arduino_10BASE_T1S_PHY_Interface</span>() &#123; &#125;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">virtual</span> <span class="type">bool</span> <span class="title">begin</span><span class="params">(IPAddress <span class="type">const</span> ip_addr,</span></span></span><br><span class="line"><span class="params"><span class="function">                     IPAddress <span class="type">const</span> network_mask,</span></span></span><br><span class="line"><span class="params"><span class="function">                     IPAddress <span class="type">const</span> gateway,</span></span></span><br><span class="line"><span class="params"><span class="function">                     MacAddress <span class="type">const</span> mac_addr,</span></span></span><br><span class="line"><span class="params"><span class="function">                     T1SPlcaSettings <span class="type">const</span> t1s_plca_settings,</span></span></span><br><span class="line"><span class="params"><span class="function">                     T1SMacSettings <span class="type">const</span> t1s_mac_settings)</span> </span>= <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">virtual</span> <span class="type">void</span> <span class="title">service</span><span class="params">()</span> </span>= <span class="number">0</span>;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h3 id="1-1-设计动机"><a href="#1-1-设计动机" class="headerlink" title="1.1 设计动机"></a>1.1 设计动机</h3><p>该抽象类是<strong>库作者</strong>预留的”可替换 PHY 后端”接口。设计上让任何实现了该接口的类都能被 <code>Arduino_10BASE_T1S_UDP</code> 无缝使用：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">Arduino_10BASE_T1S_UDP  ──不直接持有 PHY 对象</span><br><span class="line">        │</span><br><span class="line">        │ 通过 Arduino_10BASE_T1S_PHY_Interface*</span><br><span class="line">        │ （但目前代码中是直接引用 TC6_Arduino_10BASE_T1S）</span><br><span class="line">        ▼</span><br><span class="line">TC6_Arduino_10BASE_T1S  ◀── 当前唯一实现</span><br></pre></td></tr></table></figure>
+
+<p><strong>注意</strong>：当前代码（v0.1.1）<code>Arduino_10BASE_T1S_UDP</code> <strong>并未</strong>通过 <code>Arduino_10BASE_T1S_PHY_Interface*</code> 与 PHY 解耦——它通过全局变量 <code>t1s_phy</code>（宏展开的对象名）和 <code>_lw.tc.tc6</code>（TC6 实例指针）直接通信。该抽象类更多是面向<strong>未来扩展</strong>或<strong>用户自行实现 PHY 时</strong>的契约。</p>
+<h3 id="1-2-纯虚方法契约"><a href="#1-2-纯虚方法契约" class="headerlink" title="1.2 纯虚方法契约"></a>1.2 纯虚方法契约</h3><h4 id="begin"><a href="#begin" class="headerlink" title="begin(...)"></a><code>begin(...)</code></h4><table>
+<thead>
+<tr>
+<th>参数</th>
+<th>含义</th>
+<th>约束</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>ip_addr</code></td>
+<td>本机 IPv4 地址</td>
+<td>必须与 <code>mac_addr</code> 在同一 L2 子网，否则 ARP 无法解析</td>
+</tr>
+<tr>
+<td><code>network_mask</code></td>
+<td>子网掩码</td>
+<td>标准 IPv4 格式</td>
+</tr>
+<tr>
+<td><code>gateway</code></td>
+<td>默认网关</td>
+<td>同子网或可达路由</td>
+</tr>
+<tr>
+<td><code>mac_addr</code></td>
+<td>6 字节 MAC 地址</td>
+<td>必须在硬件上唯一（推荐 <code>MacAddress::create_from_uid()</code>）</td>
+</tr>
+<tr>
+<td><code>t1s_plca_settings</code></td>
+<td>PLCA 节点配置</td>
+<td><code>T1SPlcaSettings</code> 类型，详见辅助类文档</td>
+</tr>
+<tr>
+<td><code>t1s_mac_settings</code></td>
+<td>MAC 行为配置</td>
+<td><code>T1SMacSettings</code> 类型</td>
+</tr>
+</tbody></table>
+<table>
+<thead>
+<tr>
+<th>返回</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>true</code></td>
+<td>PHY 已上电、寄存器已配置、<code>netif_add</code> 已完成</td>
+</tr>
+<tr>
+<td><code>false</code></td>
+<td>任一步骤失败（lwIP init、SPI、TC6 init、寄存器写入等）</td>
+</tr>
+</tbody></table>
+<h4 id="service"><a href="#service" class="headerlink" title="service()"></a><code>service()</code></h4><table>
+<thead>
+<tr>
+<th>项</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>返回</td>
+<td>void</td>
+</tr>
+<tr>
+<td>必须调用频率</td>
+<td><strong>越高越好</strong>（注释：<code>Must be called cyclic. The faster the better.</code>，见 <code>examples/UDP_Client/UDP_Client.ino:107</code>）</td>
+</tr>
+<tr>
+<td>内部职责</td>
+<td>1) <code>sys_check_timeouts()</code> — lwIP 定时器；2) 根据 IRQ 状态决定是否 <code>TC6_Service()</code>；3) <code>TC6Regs_CheckTimers()</code> — 寄存器超时监控</td>
+</tr>
+</tbody></table>
+<p><strong>关键观察</strong>：<code>service()</code> 不是异步通知机制——它是<strong>轮询</strong>。即使没有 IRQ，TC6 内部待发的 TX 数据（来自 lwIP 上层）也会被 service 驱动出去。</p>
+<h3 id="1-3-移植到竞品芯片时的最小实现"><a href="#1-3-移植到竞品芯片时的最小实现" class="headerlink" title="1.3 移植到竞品芯片时的最小实现"></a>1.3 移植到竞品芯片时的最小实现</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">MyCompetitorPHY</span> : <span class="keyword">public</span> Arduino_10BASE_T1S_PHY_Interface &#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">  <span class="built_in">MyCompetitorPHY</span>(MyIo&amp; io) : _io(io) &#123;&#125;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="type">bool</span> <span class="title">begin</span><span class="params">(IPAddress ip, IPAddress mask, IPAddress gw,</span></span></span><br><span class="line"><span class="params"><span class="function">             MacAddress mac, T1SPlcaSettings plca, T1SMacSettings ms)</span> <span class="keyword">override</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 1. 初始化 lwIP</span></span><br><span class="line">    <span class="comment">// 2. 初始化竞品 PHY（寄存器/中断）</span></span><br><span class="line">    <span class="comment">// 3. netif_add(netif, lwIpInit, ethernet_input)</span></span><br><span class="line">    <span class="comment">// 4. 配置 PLCA（如果竞品支持）</span></span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="type">void</span> <span class="title">service</span><span class="params">()</span> <span class="keyword">override</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 1. sys_check_timeouts()</span></span><br><span class="line">    <span class="comment">// 2. 处理中断或轮询 PHY 状态</span></span><br><span class="line">    <span class="comment">// 3. 收帧 -&gt; netif-&gt;input()，发帧 &lt;- netif-&gt;linkoutput()</span></span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">  MyIo&amp; _io;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h2 id="2-具体实现：TC6-TC6-Arduino-10BASE-T1S"><a href="#2-具体实现：TC6-TC6-Arduino-10BASE-T1S" class="headerlink" title="2. 具体实现：TC6::TC6_Arduino_10BASE_T1S"></a>2. 具体实现：<code>TC6::TC6_Arduino_10BASE_T1S</code></h2><p>文件位置：<code>src/microchip/TC6_Arduino_10BASE_T1S.h</code> &#x2F; <code>.cpp</code></p>
+<h3 id="2-1-内部数据结构"><a href="#2-1-内部数据结构" class="headerlink" title="2.1 内部数据结构"></a>2.1 内部数据结构</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// src/microchip/TC6_Arduino_10BASE_T1S.h:33-55</span></span><br><span class="line"><span class="function"><span class="keyword">typedef</span> <span class="title">void</span> <span class="params">(*TC6LwIP_On_PlcaStatus)</span><span class="params">(<span class="type">bool</span> success, <span class="type">bool</span> plcaStatus)</span></span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">typedef</span> <span class="keyword">struct</span> &#123;</span><br><span class="line">  TC6_t *tc6;</span><br><span class="line">  <span class="keyword">struct</span> <span class="title class_">pbuf</span> *pbuf;           <span class="comment">// 当前正在拼装的 RX 帧 pbuf</span></span><br><span class="line">  TC6LwIP_On_PlcaStatus pStatusCallback;</span><br><span class="line">  <span class="type">uint16_t</span> rxLen;</span><br><span class="line">  <span class="type">bool</span> rxInvalid;</span><br><span class="line">  <span class="type">bool</span> tc6NeedService;</span><br><span class="line">&#125; TC6Lib_t;</span><br><span class="line"></span><br><span class="line"><span class="keyword">typedef</span> <span class="keyword">struct</span> &#123;</span><br><span class="line">  <span class="type">char</span> ipAddr[<span class="number">16</span>];             <span class="comment">// 用于 lwip 配置的字符串形式</span></span><br><span class="line">  <span class="keyword">struct</span> <span class="title class_">netif</span> netint;</span><br><span class="line">  <span class="type">uint8_t</span> mac[<span class="number">6</span>];</span><br><span class="line">&#125; LwIp_t;</span><br><span class="line"></span><br><span class="line"><span class="keyword">typedef</span> <span class="keyword">struct</span> &#123;</span><br><span class="line">  TC6Lib_t tc;</span><br><span class="line">  LwIp_t ip;</span><br><span class="line">  TC6::TC6_Io * io;</span><br><span class="line">&#125; TC6LwIP_t;</span><br></pre></td></tr></table></figure>
+
+<p>三层结构：</p>
+<ul>
+<li><strong><code>TC6Lib_t</code></strong> — TC6 协议相关状态（实例指针、当前 pbuf、回调）</li>
+<li><strong><code>LwIp_t</code></strong> — lwIP 网络接口 + 字符串形式 IP（lwip_init 配置用）</li>
+<li><strong><code>TC6LwIP_t</code></strong> — 聚合根，把 TC6、lwIP、HAL 三个世界连起来</li>
+</ul>
+<h3 id="2-2-构造-析构"><a href="#2-2-构造-析构" class="headerlink" title="2.2 构造 &#x2F; 析构"></a>2.2 构造 &#x2F; 析构</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">TC6_Arduino_10BASE_T1S</span>(TC6_Io &amp; tc6_io);    <span class="comment">// :106</span></span><br><span class="line"><span class="keyword">virtual</span> ~<span class="built_in">TC6_Arduino_10BASE_T1S</span>();            <span class="comment">// :112</span></span><br></pre></td></tr></table></figure>
+
+<p>构造仅做一件事：<code>_lw.io = &amp;tc6_io</code>（保存 HAL 引用）。<strong>不会调用 begin()</strong>，这是用户责任。</p>
+<h3 id="2-3-begin-详解"><a href="#2-3-begin-详解" class="headerlink" title="2.3 begin() 详解"></a>2.3 <code>begin()</code> 详解</h3><p><code>src/microchip/TC6_Arduino_10BASE_T1S.cpp:121-195</code></p>
+<pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant App
+    participant PHY as TC6_Arduino_10BASE_T1S
+    participant lwIP
+    participant TC6 as libtc6
+    participant Regs as libtc6-regs
+
+    App-&gt;&gt;PHY: begin(ip, mask, gw, mac, plca, ms)
+    PHY-&gt;&gt;lwIP: lwip_init() [首次]
+    PHY-&gt;&gt;TC6: TC6_Init(&amp;_lw) [注册 instance]
+    PHY-&gt;&gt;TC6LwIP_instance_list: 添加节点
+    PHY-&gt;&gt;Regs: TC6Regs_Init(... enablePlca, nodeId, count, burstCount, burstTimer, promisc, txCt, rxCt)
+    loop 等待 init done
+        PHY-&gt;&gt;TC6: TC6_Service(tc6, true)
+    end
+    PHY-&gt;&gt;lwIP: ipaddr_aton() 转换 IP/Mask/GW 字符串
+    PHY-&gt;&gt;lwIP: netif_add(&amp;netint, ..., lwIpInit, ethernet_input)
+    PHY-&gt;&gt;lwIP: netif_set_link_up()
+    PHY-&gt;&gt;PHY: _t1s_plca_settings = ...
+    PHY--&gt;&gt;App: true
+</pre>
+
+<p><strong>注意点</strong>：</p>
+<ol>
+<li><strong>lwip_init 静态保护</strong>（<code>:129-134</code>）：<code>static bool is_lwip_init = false;</code> 防止重复初始化。这是库的”安全护栏”，但意味着<strong>一个进程只能有一个 PHY 实例</strong>。</li>
+<li><strong>TC6 instance 列表</strong>（<code>:145-152</code>）：维护全局链表 <code>tc6_lwip_instance_list_head</code>，让回调（无 <code>this</code> 上下文）能反向找到 <code>TC6LwIP_t</code>。当前默认 <code>TC6_MAX_INSTANCES=1</code>，但代码留了多实例扩展点。</li>
+<li><strong>TC6Regs_Init 失败处理</strong>（<code>:155-166</code>）：返回 false 时<strong>不清理 TC6_Init</strong>，会留下泄漏的 <code>tc6_t</code>。<strong>已知问题</strong>（v0.1.1）。</li>
+<li><strong><code>while(!TC6Regs_GetInitDone)</code> 同步阻塞</strong>（<code>:169-170</code>）：期间通过 <code>TC6_Service(pInst, true)</code> 轮询驱动。<code>true</code> 表示”force service”——不依赖 IRQ 状态。这是初始化阶段必需的，因为寄存器写入的响应需要 SPI 完成。</li>
+<li><strong>IP 字符串转换</strong>（<code>:173-183</code>）：用 <code>ip_addr.toString()</code> 转字符串再 <code>ipaddr_aton()</code> 回 <code>ip4_addr_t</code>。绕了一道，原因是 <code>netif_add()</code> 的参数类型是 <code>ip_addr_t*</code>（联合体，IPv4&#x2F;IPv6 共用），而 <code>IPAddress</code> 是 IPv4-only 4 字节。<strong>轻微性能浪费</strong>（每次初始化多两次字符串转换）。</li>
+</ol>
+<h3 id="2-4-service-详解"><a href="#2-4-service-详解" class="headerlink" title="2.4 service() 详解"></a>2.4 <code>service()</code> 详解</h3><p><code>src/microchip/TC6_Arduino_10BASE_T1S.cpp:205-222</code></p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">void</span> <span class="title">TC6_Arduino_10BASE_T1S::service</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="built_in">sys_check_timeouts</span>();                       <span class="comment">// (1) lwIP 定时器</span></span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (_tc6_io.<span class="built_in">isInterruptActive</span>())            <span class="comment">// (2) IRQ 触发的 service</span></span><br><span class="line">  &#123;</span><br><span class="line">    <span class="keyword">if</span> (<span class="built_in">TC6_Service</span>(_lw.tc.tc6, <span class="literal">false</span>))       <span class="comment">//     false = 非强制（依赖 IRQ）</span></span><br><span class="line">      _tc6_io.<span class="built_in">releaseInterrupt</span>();</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">else</span> <span class="keyword">if</span> (_lw.tc.tc6NeedService)             <span class="comment">// (3) 协议栈主动要求 service</span></span><br><span class="line">  &#123;</span><br><span class="line">    _lw.tc.tc6NeedService = <span class="literal">false</span>;</span><br><span class="line">    <span class="built_in">TC6_Service</span>(_lw.tc.tc6, <span class="literal">true</span>);            <span class="comment">//     true = 强制（处理 TX）</span></span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="built_in">TC6Regs_CheckTimers</span>();                      <span class="comment">// (4) 寄存器超时监控</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>条件分支（2）的语义</strong>：</p>
+<ul>
+<li><code>_tc6_io.isInterruptActive()</code> 通过 <code>_int_in != _int_out</code> 判断是否有未消费的中断（基于 ISR 计数）</li>
+<li><code>TC6_Service(..., false)</code> 的第二个参数是”IRQ 引脚电平”——<code>false</code> 表示 IRQ 仍 active（让 libtc6 知道可以期望 RX 数据）</li>
+<li>如果 libtc6 在一次 service 中完成了所有 pending 工作，返回 <code>true</code>——此时 IRQ pin 应已回到 HIGH，调用 <code>releaseInterrupt()</code> 把 <code>_int_out</code> 推平</li>
+</ul>
+<p><strong>条件分支（3）</strong>：<code>TC6_CB_OnNeedService()</code> 回调会被 libtc6 用来通知”我有事要做但不需要等 IRQ”（典型场景：TX 队列有待发数据）。置位 <code>tc6NeedService</code>，让主循环 <code>service()</code> 知道要调用一次 TC6_Service。</p>
+<p><strong><code>TC6Regs_CheckTimers()</code></strong>：处理内部寄存器超时重试，例如异步写入未确认的回读检查。</p>
+<h3 id="2-5-PLCA-控制"><a href="#2-5-PLCA-控制" class="headerlink" title="2.5 PLCA 控制"></a>2.5 PLCA 控制</h3><h4 id="getPlcaStatus-callback"><a href="#getPlcaStatus-callback" class="headerlink" title="getPlcaStatus(callback)"></a><code>getPlcaStatus(callback)</code></h4><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// :224</span></span><br><span class="line"><span class="function"><span class="type">bool</span> <span class="title">getPlcaStatus</span><span class="params">(TC6LwIP_On_PlcaStatus on_plca_status)</span></span>;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>发起一次异步寄存器读：<code>TC6_ReadRegister(tc6, 0x0004CA03, true, OnPlcaStatus, &amp;_lw)</code></li>
+<li>寄存器地址 <code>0x0004CA03</code> 是 LAN8651 的 <code>PLCA_status_register</code></li>
+<li><code>secure=true</code> 启用 secure mode（normal + 反转数据双重校验）—— PLCA 状态读取涉及链路健康，开销值得</li>
+<li>回调 <code>OnPlcaStatus</code>（<code>:82-97</code>）检查 bit[15]：<code>status = (0u != ((1u &lt;&lt; 15) &amp; value))</code></li>
+<li>返回 <code>false</code> 仅当 TC6_ReadRegister 内部 enqueue 失败（队列满）</li>
+</ul>
+<p><strong>典型用法</strong>（来自 UDP_Server）：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">unsigned</span> <span class="type">long</span> prev = <span class="number">0</span>;</span><br><span class="line"><span class="keyword">if</span> (<span class="built_in">millis</span>() - prev &gt; <span class="number">1000</span>) &#123;</span><br><span class="line">  prev = <span class="built_in">millis</span>();</span><br><span class="line">  <span class="keyword">if</span> (!t1s_phy.<span class="built_in">getPlcaStatus</span>(OnPlcaStatus))</span><br><span class="line">    Serial.<span class="built_in">println</span>(<span class="string">&quot;getPlcaStatus(...) failed&quot;</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">static</span> <span class="type">void</span> <span class="title">OnPlcaStatus</span><span class="params">(<span class="type">bool</span> success, <span class="type">bool</span> plcaStatus)</span> </span>&#123;</span><br><span class="line">  <span class="keyword">if</span> (!success) &#123;</span><br><span class="line">    Serial.<span class="built_in">println</span>(<span class="string">&quot;PLCA status register read failed&quot;</span>);</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">if</span> (plcaStatus) Serial.<span class="built_in">println</span>(<span class="string">&quot;PLCA Mode active&quot;</span>);</span><br><span class="line">  <span class="keyword">else</span> &#123;</span><br><span class="line">    Serial.<span class="built_in">println</span>(<span class="string">&quot;CSMA/CD fallback&quot;</span>);</span><br><span class="line">    t1s_phy.<span class="built_in">enablePlca</span>();   <span class="comment">// 自动恢复</span></span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="enablePlca"><a href="#enablePlca" class="headerlink" title="enablePlca()"></a><code>enablePlca()</code></h4><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// :230</span></span><br><span class="line"><span class="function"><span class="type">bool</span> <span class="title">enablePlca</span><span class="params">()</span> </span>&#123;</span><br><span class="line">  <span class="keyword">return</span> <span class="built_in">TC6Regs_SetPlca</span>(_lw.tc.tc6, <span class="literal">true</span>,</span><br><span class="line">                         _t1s_plca_settings.<span class="built_in">nodeId</span>(),</span><br><span class="line">                         _t1s_plca_settings.<span class="built_in">nodeCount</span>());</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>写入 <code>PLCA_CONTROL_0</code> 重新使能 PLCA</li>
+<li>复用 <code>begin()</code> 时缓存的 <code>_t1s_plca_settings</code>（<strong>注意</strong>：这是构造时的副本，运行中修改 <code>t1s_plca_settings</code> 对象不会影响）</li>
+<li>Burst 计数和定时器不被重新应用（仅恢复 enable + ID&#x2F;Count）</li>
+</ul>
+<h4 id="sendWouldBlock"><a href="#sendWouldBlock" class="headerlink" title="sendWouldBlock()"></a><code>sendWouldBlock()</code></h4><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// :235</span></span><br><span class="line"><span class="function"><span class="type">bool</span> <span class="title">sendWouldBlock</span><span class="params">()</span> </span>&#123;</span><br><span class="line">  TC6_RawTxSegment *dummy;</span><br><span class="line">  <span class="keyword">return</span> <span class="number">0u</span> == <span class="built_in">TC6_GetRawSegments</span>(_lw.tc.tc6, &amp;dummy);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>查询 TC6 TX segment 队列是否有空闲 slot</li>
+<li><strong>不被 Arduino UDP 类使用</strong>——UDP 在 <code>endPacket()</code> 阻塞式入队，超出 segment 容量时 <code>udp_sendto</code> 返回错</li>
+<li>该方法是为将来实现非阻塞发送 API 准备的钩子</li>
+</ul>
+<h3 id="2-6-GPIO-输出：digitalWrite-DIO-value"><a href="#2-6-GPIO-输出：digitalWrite-DIO-value" class="headerlink" title="2.6 GPIO 输出：digitalWrite(DIO, value)"></a>2.6 GPIO 输出：<code>digitalWrite(DIO, value)</code></h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// :197</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">digitalWrite</span><span class="params">(DIO <span class="type">const</span> dio, <span class="type">bool</span> <span class="type">const</span> value)</span></span>;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><code>DIO::A0</code> &#x2F; <code>DIO::A1</code> 对应 LAN8651 的两个 GPIO 引脚</li>
+<li>首次调用时通过 <code>TC6Regs_EnableDio_A0/A1</code> 把寄存器 PADCTRL 配置为输出</li>
+<li>后续通过 <code>TC6Regs_ToggleDio_A0/A1</code> 翻转（库实现是 toggle，所以保存本地静态状态来决定要不要翻转）</li>
+<li><strong>注意</strong>：这是<strong>芯片 GPIO</strong>，不是 Arduino 引脚——是 LAN8651 自身的两个多功能 pin</li>
+</ul>
+<p><strong>示例用途</strong>：<code>examples/tools/Control-DIOx/Control-DIOx.ino</code> 通过这两个 GPIO 控制 PoDL（Power over Data Line）sink 的电源开关。</p>
+<h3 id="2-7-私有函数-digitalWrite-A0-A1"><a href="#2-7-私有函数-digitalWrite-A0-A1" class="headerlink" title="2.7 私有函数 digitalWrite_A0/A1"></a>2.7 私有函数 <code>digitalWrite_A0/A1</code></h3><p><code>src/microchip/TC6_Arduino_10BASE_T1S.cpp:244-276</code></p>
+<p>实现细节：</p>
+<ul>
+<li><code>static bool is_dio_a0_enabled</code> —— 避免重复调用 <code>TC6Regs_EnableDio_A0</code>（带 cached state）</li>
+<li><code>static bool dio_a0_val</code> —— 避免重复 toggle（toggle 实现）</li>
+</ul>
+<p><strong>注意</strong>：因为 <code>static bool</code>，<strong>多实例 PHY 会共享这些状态</strong>——这是库的隐式假设。</p>
+<h2 id="3-SPI-硬件抽象层：TC6-TC6-Io"><a href="#3-SPI-硬件抽象层：TC6-TC6-Io" class="headerlink" title="3. SPI 硬件抽象层：TC6::TC6_Io"></a>3. SPI 硬件抽象层：<code>TC6::TC6_Io</code></h2><p>文件位置：<code>src/microchip/TC6_Io.h</code> &#x2F; <code>.cpp</code></p>
+<h3 id="3-1-头文件"><a href="#3-1-头文件" class="headerlink" title="3.1 头文件"></a>3.1 头文件</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// src/microchip/TC6_Io.h:30-62</span></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">TC6_Io</span> &#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">  <span class="type">static</span> <span class="type">size_t</span> <span class="keyword">constexpr</span> MAC_SIZE = <span class="number">6</span>;</span><br><span class="line">  <span class="type">static</span> <span class="type">uint8_t</span> <span class="keyword">constexpr</span> FALLBACK_MAC[MAC_SIZE] = &#123; <span class="number">0x00</span>, <span class="number">0x80</span>, <span class="number">0xC2</span>, <span class="number">0x00</span>, <span class="number">0x01</span>, <span class="number">0xCC</span> &#125;;</span><br><span class="line"></span><br><span class="line">  <span class="built_in">TC6_Io</span>(HardwareSPI &amp; spi, <span class="type">int</span> <span class="type">const</span> cs_pin, <span class="type">int</span> <span class="type">const</span> reset_pin, <span class="type">int</span> <span class="type">const</span> irq_pin);</span><br><span class="line">  <span class="function"><span class="keyword">virtual</span> <span class="type">bool</span> <span class="title">begin</span><span class="params">()</span></span>;</span><br><span class="line">  <span class="function"><span class="type">void</span> <span class="title">onInterrupt</span><span class="params">()</span></span>;</span><br><span class="line">  <span class="function"><span class="type">bool</span> <span class="title">isInterruptActive</span><span class="params">()</span></span>;</span><br><span class="line">  <span class="function"><span class="type">void</span> <span class="title">releaseInterrupt</span><span class="params">()</span></span>;</span><br><span class="line">  <span class="function"><span class="type">bool</span> <span class="title">spiTransaction</span><span class="params">(<span class="type">uint8_t</span> <span class="type">const</span> *pTx, <span class="type">uint8_t</span> *pRx, <span class="type">uint16_t</span> <span class="type">const</span> len)</span></span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">  HardwareSPI &amp; _spi;</span><br><span class="line">  <span class="type">int</span> <span class="type">const</span> _cs_pin;</span><br><span class="line">  <span class="type">int</span> <span class="type">const</span> _reset_pin;</span><br><span class="line">  <span class="type">int</span> <span class="type">const</span> _irq_pin;</span><br><span class="line">  <span class="keyword">volatile</span> <span class="type">uint8_t</span> _int_in;</span><br><span class="line">  <span class="keyword">volatile</span> <span class="type">uint8_t</span> _int_out;</span><br><span class="line">  <span class="keyword">volatile</span> <span class="type">uint8_t</span> _int_reported;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-2-构造与-SPI-设置常量"><a href="#3-2-构造与-SPI-设置常量" class="headerlink" title="3.2 构造与 SPI 设置常量"></a>3.2 构造与 SPI 设置常量</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// src/microchip/TC6_Io.cpp:28</span></span><br><span class="line"><span class="type">static</span> SPISettings <span class="type">const</span> LAN865x_SPI_SETTING&#123;<span class="number">24</span> * <span class="number">1000</span> * <span class="number">1000UL</span>, MSBFIRST, SPI_MODE0&#125;;</span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>值</th>
+<th>依据</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>时钟</td>
+<td>24 MHz</td>
+<td>LAN8651 datasheet max 25 MHz，留 4% 余量</td>
+</tr>
+<tr>
+<td>位序</td>
+<td>MSB First</td>
+<td>OA TC6 规范</td>
+</tr>
+<tr>
+<td>模式</td>
+<td>Mode 0 (CPOL&#x3D;0, CPHA&#x3D;0)</td>
+<td>LAN8651 SPI 规格</td>
+</tr>
+</tbody></table>
+<h3 id="3-3-begin-—-硬件复位-SPI-初始化"><a href="#3-3-begin-—-硬件复位-SPI-初始化" class="headerlink" title="3.3 begin() — 硬件复位 + SPI 初始化"></a>3.3 <code>begin()</code> — 硬件复位 + SPI 初始化</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// src/microchip/TC6_Io.cpp:55</span></span><br><span class="line"><span class="function"><span class="type">bool</span> <span class="title">TC6_Io::begin</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="built_in">digitalWrite</span>(_cs_pin, HIGH);   <span class="built_in">pinMode</span>(_cs_pin, OUTPUT);   <span class="comment">// (1) CS 默认高</span></span><br><span class="line">  <span class="built_in">pinMode</span>(_reset_pin, OUTPUT);</span><br><span class="line">  <span class="built_in">digitalWrite</span>(_reset_pin, LOW);  <span class="built_in">delay</span>(<span class="number">100</span>);                 <span class="comment">// (2) 100ms 复位</span></span><br><span class="line">  <span class="built_in">digitalWrite</span>(_reset_pin, HIGH); <span class="built_in">delay</span>(<span class="number">100</span>);                 <span class="comment">// (3) 100ms 恢复</span></span><br><span class="line">  _spi.<span class="built_in">begin</span>();                                              <span class="comment">// (4) 初始化 SPI 外设</span></span><br><span class="line">  <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>时序来源</strong>：LAN8651 datasheet 规定的复位保持 &#x2F; 恢复时间最少各几 ms，库用 100ms 是非常保守的值（很多 reset 文档建议 ≥10ms 即可）。</p>
+<p><strong>约束</strong>：</p>
+<ol>
+<li><strong>必须在 <code>t1s_phy.begin()</code> 之前调用</strong>，因为后者会立即通过 SPI 读芯片 ID</li>
+<li>多次调用 <code>begin()</code> 会反复复位 LAN8651——不破坏，但会让 link 短暂中断</li>
+<li>返回值固定 <code>true</code>，<strong>不检查</strong> SPI 是否成功（<code>_spi.begin()</code> 在 Arduino SPI 库中通常也只是 <code>pinMode(MOSI/MISO/SCK, ...)</code>）</li>
+</ol>
+<h3 id="3-4-中断计数三态机"><a href="#3-4-中断计数三态机" class="headerlink" title="3.4 中断计数三态机"></a>3.4 中断计数三态机</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// src/microchip/TC6_Io.cpp:71-86</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">TC6_Io::onInterrupt</span><span class="params">()</span>           </span>&#123; _int_in++; &#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">bool</span> <span class="title">TC6_Io::isInterruptActive</span><span class="params">()</span> </span>&#123;</span><br><span class="line">  _int_reported = _int_in;</span><br><span class="line">  <span class="keyword">return</span> (_int_reported != _int_out);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">TC6_Io::releaseInterrupt</span><span class="params">()</span> </span>&#123;</span><br><span class="line">  <span class="keyword">if</span> (<span class="built_in">digitalRead</span>(_irq_pin) == HIGH) _int_out = _int_reported;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>三计数器设计意图</strong>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">                  ISR              service()                service() done</span><br><span class="line">                  ───              ──────────                ──────────────</span><br><span class="line">_int_in           _int_in++        读 _int_in 到 _int_reported</span><br><span class="line">_int_reported                       比较 _int_reported != _int_out</span><br><span class="line">_int_out                                                  推平到 _int_reported</span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>状态</th>
+<th><code>_int_in</code></th>
+<th><code>_int_out</code></th>
+<th><code>_int_reported</code></th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>初始</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>无中断</td>
+</tr>
+<tr>
+<td>ISR 触发 1 次</td>
+<td>1</td>
+<td>0</td>
+<td>0</td>
+<td>有未消费中断</td>
+</tr>
+<tr>
+<td>service 进入</td>
+<td>1</td>
+<td>0</td>
+<td>1</td>
+<td>识别到 1 次未消费</td>
+</tr>
+<tr>
+<td>service 完成（IRQ 已 HIGH）</td>
+<td>1</td>
+<td>1</td>
+<td>1</td>
+<td>推平</td>
+</tr>
+<tr>
+<td>ISR 再触发</td>
+<td>2</td>
+<td>1</td>
+<td>1</td>
+<td>又有 1 次未消费</td>
+</tr>
+</tbody></table>
+<p><strong>8-bit 计数器溢出</strong>：理论可记录 255 次未消费中断，但 <code>isInterruptActive</code> 的 <code>(_int_reported != _int_out)</code> 在两个计数器相等时返回 false——<strong>如果 ISR 比 service 快 256 次</strong>，<code>_int_in</code> 溢出回到 <code>_int_out</code>，会<strong>误判</strong>为无中断。这在 24MHz SPI + 64-byte chunk（每帧约 21μs）的速率下不太可能（要在 service 一次完成前产生 256 次 IRQ），但极端情况需注意。</p>
+<p><strong><code>volatile</code> 的必要性</strong>：<code>_int_in</code> 在 ISR 中改写，主循环读，没有 <code>volatile</code> 编译器可能优化掉读。</p>
+<p><strong><code>releaseInterrupt</code> 的 IRQ 电平检查</strong>：只有当 <code>IRQ_PIN == HIGH</code>（实际引脚已回到 inactive）才推平 <code>_int_out</code>。这是<strong>边沿触发的正确语义</strong>——避免在 libtc6 完成 service 后、IRQ 引脚尚未回到 HIGH 之前错误地”消费”中断。</p>
+<h3 id="3-5-spiTransaction"><a href="#3-5-spiTransaction" class="headerlink" title="3.5 spiTransaction()"></a>3.5 <code>spiTransaction()</code></h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// src/microchip/TC6_Io.cpp:88</span></span><br><span class="line"><span class="function"><span class="type">bool</span> <span class="title">TC6_Io::spiTransaction</span><span class="params">(<span class="type">uint8_t</span> <span class="type">const</span> *pTx, <span class="type">uint8_t</span> *pRx, <span class="type">uint16_t</span> <span class="type">const</span> len)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="built_in">digitalWrite</span>(_cs_pin, LOW);</span><br><span class="line">  _spi.<span class="built_in">beginTransaction</span>(LAN865x_SPI_SETTING);</span><br><span class="line">  <span class="built_in">memcpy</span>(pRx, pTx, len);           <span class="comment">// (1) 把 TX 数据预拷贝到 RX 缓冲</span></span><br><span class="line">  _spi.<span class="built_in">transfer</span>(pRx, len);         <span class="comment">// (2) in-place 全双工传输</span></span><br><span class="line">  _spi.<span class="built_in">endTransaction</span>();</span><br><span class="line">  <span class="built_in">digitalWrite</span>(_cs_pin, HIGH);</span><br><span class="line">  <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>性能取舍</strong>（<code>:93-94</code>）：</p>
+<ul>
+<li>Arduino SPI 库的 <code>transfer(buf, len)</code> 是 in-place 的（一边发送 buf 内容，一边把收到的字节覆盖回 buf）</li>
+<li>如果 TX 和 RX 是不同的缓冲，需要先 <code>memcpy(pRx, pTx, len)</code> 把 TX 拷贝到 RX 缓冲</li>
+<li>64-byte chunk：<code>memcpy</code> 用时约 0.5-1μs，相比 SPI 传输本身（24MHz × 64 字节 ≈ 21μs）占比 &lt; 5%</li>
+<li><strong>优点</strong>：避免分配单独的 RX 缓冲，节省 RAM（每次可省 64 字节）</li>
+</ul>
+<p><strong>返回值的固化</strong>：<code>return true</code>——不检查 SPI 是否真的成功（Arduino SPI 库对失败的反馈很弱，主要是靠后续 TC6_Service 解析出的 footer 错误位来发现 SPI 问题）。</p>
+<h3 id="3-6-替换-SPI-HAL-的最小工作量"><a href="#3-6-替换-SPI-HAL-的最小工作量" class="headerlink" title="3.6 替换 SPI HAL 的最小工作量"></a>3.6 替换 SPI HAL 的最小工作量</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">MyCompetitorIo</span> &#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">  <span class="built_in">MyCompetitorIo</span>(<span class="comment">/* 平台 SPI 设备/引脚 */</span>);</span><br><span class="line">  <span class="function"><span class="type">bool</span> <span class="title">begin</span><span class="params">()</span></span>;           <span class="comment">// 平台 SPI 初始化 + 硬件复位</span></span><br><span class="line">  <span class="function"><span class="type">void</span> <span class="title">onInterrupt</span><span class="params">()</span></span>;     <span class="comment">// 从平台 ISR 调用</span></span><br><span class="line">  <span class="function"><span class="type">bool</span> <span class="title">isInterruptActive</span><span class="params">()</span></span>;</span><br><span class="line">  <span class="function"><span class="type">void</span> <span class="title">releaseInterrupt</span><span class="params">()</span></span>;</span><br><span class="line">  <span class="function"><span class="type">bool</span> <span class="title">spiTransaction</span><span class="params">(<span class="type">uint8_t</span> <span class="type">const</span>* tx, <span class="type">uint8_t</span>* rx, <span class="type">uint16_t</span> len)</span></span>;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>只要这 5 个方法的语义保持一致，<code>TC6_Arduino_10BASE_T1S</code> 可以传入 <code>MyCompetitorIo&amp;</code>（前提：也改 <code>TC6_Arduino_10BASE_T1S</code> 的类型签名，或把它改成 template）。当前是直接 <code>TC6_Io &amp;</code>，<strong>强类型耦合</strong>。</p>
+<h2 id="4-多实例支持的真实限制"><a href="#4-多实例支持的真实限制" class="headerlink" title="4. 多实例支持的真实限制"></a>4. 多实例支持的真实限制</h2><p>虽然 libtc6 支持 <code>TC6_MAX_INSTANCES</code> 个实例（当前配置 1），但 Arduino 封装层有几个隐式约束：</p>
+<table>
+<thead>
+<tr>
+<th>约束</th>
+<th>位置</th>
+<th>影响</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>static bool is_lwip_init</code></td>
+<td><code>TC6_Arduino_10BASE_T1S.cpp:129</code></td>
+<td>全局 lwip_init 保护，<strong>禁止两个 PHY 实例</strong></td>
+</tr>
+<tr>
+<td><code>static bool is_dio_a0_enabled</code></td>
+<td><code>TC6_Arduino_10BASE_T1S.cpp:246</code></td>
+<td>DIO 状态共享，多实例会冲突</td>
+</tr>
+<tr>
+<td><code>static TC6ListNode * tc6_lwip_instance_list_head</code></td>
+<td><code>TC6_Arduino_10BASE_T1S.cpp:46</code></td>
+<td>全局链表，理论支持多实例</td>
+</tr>
+<tr>
+<td><code>Arduino_10BASE_T1S_PHY_TC6</code> 宏产生固定名 <code>t1s_io</code> &#x2F; <code>t1s_phy</code></td>
+<td><code>Arduino_10BASE_T1S.h:61-63</code></td>
+<td>同一个 sketch 只能展开一次</td>
+</tr>
+</tbody></table>
+<p><strong>结论</strong>：当前库<strong>是单 PHY 实例设计</strong>，多实例需要绕过宏、用 <code>new</code> 动态分配对象。</p>
+<h2 id="5-错误恢复路径"><a href="#5-错误恢复路径" class="headerlink" title="5. 错误恢复路径"></a>5. 错误恢复路径</h2><pre class="mermaid">
+graph TD
+    A["TC6_Service 返回错误"] --&gt; B{"TC6Error 类型"}
+    B --&gt;|NoHardware| C["TC6Regs_Reinit"]
+    B --&gt;|BadChecksum| C
+    B --&gt;|UnexpectedCtrl| C
+    B --&gt;|BadTxData| C
+    B --&gt;|SyncLost| C
+    B --&gt;|SpiError| C
+    B --&gt;|UnexpectedSv| D["日志+继续（数据错）"]
+    B --&gt;|UnexpectedDvEv| D
+    B --&gt;|ControlTxFail| D
+    B --&gt;|Succeeded| E["忽略"]
+    C --&gt; F["重新初始化全部寄存器"]
+    F --&gt; G["PLCA 恢复"]
+    F --&gt; H["MAC 配置恢复"]
+</pre>
+
+<p><code>TC6Regs_Reinit()</code> 在多个错误场景被调用（<code>src/microchip/TC6_Arduino_10BASE_T1S.cpp:495-544</code>）。它会重新下发 <code>TC6_MEMMAP[]</code>、重新配置 PLCA。<strong>注意</strong>：Reinit 不会重置 lwIP 状态，IP&#x2F;ARP 表保持——所以重连后网络可达性立即恢复。</p>
+<h2 id="6-调试技巧"><a href="#6-调试技巧" class="headerlink" title="6. 调试技巧"></a>6. 调试技巧</h2><h3 id="6-1-通过-Serial-看-TC6-事件"><a href="#6-1-通过-Serial-看-TC6-事件" class="headerlink" title="6.1 通过 Serial 看 TC6 事件"></a>6.1 通过 Serial 看 TC6 事件</h3><p>库中 <code>TC6_CB_OnError</code> 和 <code>TC6Regs_CB_OnEvent</code> 当前<strong>默认不打日志</strong>（<code>#define PRINT(...)</code> 空定义，<code>:493</code>）。要在调试中看：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 在 sketch 顶部</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PRINT(...) Serial.printf(__VA_ARGS__)</span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;Arduino_10BASE_T1S.h&gt;</span></span></span><br><span class="line"><span class="comment">// ... 但这不会生效，因为 PRINT 在 TC6_Arduino_10BASE_T1S.cpp 里 define</span></span><br></pre></td></tr></table></figure>
+
+<p>更彻底的方法：直接修改 <code>src/microchip/TC6_Arduino_10BASE_T1S.cpp</code> 的 <code>#define PRINT(...)</code> 改为 <code>Serial.printf(...)</code>，然后用 <code>arduino-cli compile</code> 重新构建。</p>
+<h3 id="6-2-监控-IRQ-触发频率"><a href="#6-2-监控-IRQ-触发频率" class="headerlink" title="6.2 监控 IRQ 触发频率"></a>6.2 监控 IRQ 触发频率</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 在 loop() 中加</span></span><br><span class="line"><span class="type">static</span> <span class="type">uint32_t</span> prev = <span class="number">0</span>;</span><br><span class="line"><span class="type">uint32_t</span> cur = <span class="built_in">millis</span>();</span><br><span class="line"><span class="keyword">if</span> (cur - prev &gt; <span class="number">1000</span>) &#123;</span><br><span class="line">  prev = cur;</span><br><span class="line">  Serial.<span class="built_in">print</span>(<span class="string">&quot;int/sec est: &quot;</span>);</span><br><span class="line">  <span class="comment">// 需要把 _int_in 暴露成 public，或者加 getIntCount() 方法</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>当前 <code>TC6_Io</code> 没有暴露 <code>_int_in</code>——调试时要临时改成 public。</p>
+<h2 id="7-小结"><a href="#7-小结" class="headerlink" title="7. 小结"></a>7. 小结</h2><p><code>Arduino_10BASE_T1S_PHY_Interface</code> 是抽象契约，目前<strong>只有一个实现</strong> <code>TC6_Arduino_10BASE_T1S</code>。它依赖：</p>
+<ol>
+<li><strong><code>TC6_Io</code></strong>：5 个方法的 SPI HAL，包括一个三计数器中断状态机</li>
+<li><strong>libtc6</strong> 的 <code>TC6_*</code> C API（详见下一篇）</li>
+<li><strong>lwIP</strong> 的 netif 机制（也详见下一篇）</li>
+</ol>
+<p><code>service()</code> 是整个栈的心跳，调用频率直接决定：</p>
+<ul>
+<li>lwIP ARP 表老化是否及时</li>
+<li>TX credit 用尽后恢复的延迟</li>
+<li>PLCA 状态监控的粒度</li>
+</ul>
+<p>下一篇进入最底层：libtc6 的 C API 完整清单 + lwIP netif 集成的回调契约。</p>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">首页</a></li>
+        
+          <li><a href="/archives/">归档</a></li>
+        
+          <li><a href="/tags/">标签</a></li>
+        
+          <li><a href="/categories/">分类</a></li>
+        
+          <li><a href="/search/">搜索</a></li>
+        
+          <li><a href="/about/">关于</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%B3%BB%E5%88%97%E5%AF%BC%E8%AF%BB"><span class="toc-number">1.</span> <span class="toc-text">系列导读</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E6%8A%BD%E8%B1%A1%E5%9F%BA%E7%B1%BB%EF%BC%9AArduino-10BASE-T1S-PHY-Interface"><span class="toc-number">2.</span> <span class="toc-text">1. 抽象基类：Arduino_10BASE_T1S_PHY_Interface</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-%E8%AE%BE%E8%AE%A1%E5%8A%A8%E6%9C%BA"><span class="toc-number">2.1.</span> <span class="toc-text">1.1 设计动机</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-2-%E7%BA%AF%E8%99%9A%E6%96%B9%E6%B3%95%E5%A5%91%E7%BA%A6"><span class="toc-number">2.2.</span> <span class="toc-text">1.2 纯虚方法契约</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#begin"><span class="toc-number">2.2.1.</span> <span class="toc-text">begin(...)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#service"><span class="toc-number">2.2.2.</span> <span class="toc-text">service()</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-3-%E7%A7%BB%E6%A4%8D%E5%88%B0%E7%AB%9E%E5%93%81%E8%8A%AF%E7%89%87%E6%97%B6%E7%9A%84%E6%9C%80%E5%B0%8F%E5%AE%9E%E7%8E%B0"><span class="toc-number">2.3.</span> <span class="toc-text">1.3 移植到竞品芯片时的最小实现</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-%E5%85%B7%E4%BD%93%E5%AE%9E%E7%8E%B0%EF%BC%9ATC6-TC6-Arduino-10BASE-T1S"><span class="toc-number">3.</span> <span class="toc-text">2. 具体实现：TC6::TC6_Arduino_10BASE_T1S</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E5%86%85%E9%83%A8%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84"><span class="toc-number">3.1.</span> <span class="toc-text">2.1 内部数据结构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-%E6%9E%84%E9%80%A0-%E6%9E%90%E6%9E%84"><span class="toc-number">3.2.</span> <span class="toc-text">2.2 构造 &#x2F; 析构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-begin-%E8%AF%A6%E8%A7%A3"><span class="toc-number">3.3.</span> <span class="toc-text">2.3 begin() 详解</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-4-service-%E8%AF%A6%E8%A7%A3"><span class="toc-number">3.4.</span> <span class="toc-text">2.4 service() 详解</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-5-PLCA-%E6%8E%A7%E5%88%B6"><span class="toc-number">3.5.</span> <span class="toc-text">2.5 PLCA 控制</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#getPlcaStatus-callback"><span class="toc-number">3.5.1.</span> <span class="toc-text">getPlcaStatus(callback)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#enablePlca"><span class="toc-number">3.5.2.</span> <span class="toc-text">enablePlca()</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#sendWouldBlock"><span class="toc-number">3.5.3.</span> <span class="toc-text">sendWouldBlock()</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-6-GPIO-%E8%BE%93%E5%87%BA%EF%BC%9AdigitalWrite-DIO-value"><span class="toc-number">3.6.</span> <span class="toc-text">2.6 GPIO 输出：digitalWrite(DIO, value)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-7-%E7%A7%81%E6%9C%89%E5%87%BD%E6%95%B0-digitalWrite-A0-A1"><span class="toc-number">3.7.</span> <span class="toc-text">2.7 私有函数 digitalWrite_A0&#x2F;A1</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-SPI-%E7%A1%AC%E4%BB%B6%E6%8A%BD%E8%B1%A1%E5%B1%82%EF%BC%9ATC6-TC6-Io"><span class="toc-number">4.</span> <span class="toc-text">3. SPI 硬件抽象层：TC6::TC6_Io</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E5%A4%B4%E6%96%87%E4%BB%B6"><span class="toc-number">4.1.</span> <span class="toc-text">3.1 头文件</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E6%9E%84%E9%80%A0%E4%B8%8E-SPI-%E8%AE%BE%E7%BD%AE%E5%B8%B8%E9%87%8F"><span class="toc-number">4.2.</span> <span class="toc-text">3.2 构造与 SPI 设置常量</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-begin-%E2%80%94-%E7%A1%AC%E4%BB%B6%E5%A4%8D%E4%BD%8D-SPI-%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="toc-number">4.3.</span> <span class="toc-text">3.3 begin() — 硬件复位 + SPI 初始化</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-4-%E4%B8%AD%E6%96%AD%E8%AE%A1%E6%95%B0%E4%B8%89%E6%80%81%E6%9C%BA"><span class="toc-number">4.4.</span> <span class="toc-text">3.4 中断计数三态机</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-5-spiTransaction"><span class="toc-number">4.5.</span> <span class="toc-text">3.5 spiTransaction()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-6-%E6%9B%BF%E6%8D%A2-SPI-HAL-%E7%9A%84%E6%9C%80%E5%B0%8F%E5%B7%A5%E4%BD%9C%E9%87%8F"><span class="toc-number">4.6.</span> <span class="toc-text">3.6 替换 SPI HAL 的最小工作量</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-%E5%A4%9A%E5%AE%9E%E4%BE%8B%E6%94%AF%E6%8C%81%E7%9A%84%E7%9C%9F%E5%AE%9E%E9%99%90%E5%88%B6"><span class="toc-number">5.</span> <span class="toc-text">4. 多实例支持的真实限制</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-%E9%94%99%E8%AF%AF%E6%81%A2%E5%A4%8D%E8%B7%AF%E5%BE%84"><span class="toc-number">6.</span> <span class="toc-text">5. 错误恢复路径</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6-%E8%B0%83%E8%AF%95%E6%8A%80%E5%B7%A7"><span class="toc-number">7.</span> <span class="toc-text">6. 调试技巧</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E9%80%9A%E8%BF%87-Serial-%E7%9C%8B-TC6-%E4%BA%8B%E4%BB%B6"><span class="toc-number">7.1.</span> <span class="toc-text">6.1 通过 Serial 看 TC6 事件</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E7%9B%91%E6%8E%A7-IRQ-%E8%A7%A6%E5%8F%91%E9%A2%91%E7%8E%87"><span class="toc-number">7.2.</span> <span class="toc-text">6.2 监控 IRQ 触发频率</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#7-%E5%B0%8F%E7%BB%93"><span class="toc-number">8.</span> <span class="toc-text">7. 小结</span></a></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-PHY-and-HAL/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-PHY-and-HAL/&text=10BASE-T1S Arduino 代码接口深度解析（二）：PHY Interface 与 SPI HAL"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-PHY-and-HAL/&title=10BASE-T1S Arduino 代码接口深度解析（二）：PHY Interface 与 SPI HAL"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-PHY-and-HAL/&is_video=false&description=10BASE-T1S Arduino 代码接口深度解析（二）：PHY Interface 与 SPI HAL"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=10BASE-T1S Arduino 代码接口深度解析（二）：PHY Interface 与 SPI HAL&body=Check out this article: https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-PHY-and-HAL/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-PHY-and-HAL/&title=10BASE-T1S Arduino 代码接口深度解析（二）：PHY Interface 与 SPI HAL"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-PHY-and-HAL/&title=10BASE-T1S Arduino 代码接口深度解析（二）：PHY Interface 与 SPI HAL"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-PHY-and-HAL/&title=10BASE-T1S Arduino 代码接口深度解析（二）：PHY Interface 与 SPI HAL"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-PHY-and-HAL/&title=10BASE-T1S Arduino 代码接口深度解析（二）：PHY Interface 与 SPI HAL"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-PHY-and-HAL/&name=10BASE-T1S Arduino 代码接口深度解析（二）：PHY Interface 与 SPI HAL&description=&lt;h2 id=&#34;系列导读&#34;&gt;&lt;a href=&#34;#系列导读&#34; class=&#34;headerlink&#34; title=&#34;系列导读&#34;&gt;&lt;/a&gt;系列导读&lt;/h2&gt;&lt;p&gt;本篇接续&lt;a href=&#34;/2026/07/31/10BASE-T1S-Code-Interfaces-UDP-API/&#34;&gt;应用层 UDP Socket API&lt;/a&gt;，向下钻到 PHY 抽象层与硬件抽象层：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;&lt;a href=&#34;/2026/07/31/10BASE-T1S-Code-Interfaces-UDP-API/&#34;&gt;应用层 UDP Socket API&lt;/a&gt; — &lt;code&gt;Arduino_10BASE_T1S_UDP&lt;/code&gt;、内部队列、错误码&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;PHY Interface 与 HAL 层&lt;/strong&gt;（本篇）— 抽象类 &lt;code&gt;Arduino_10BASE_T1S_PHY_Interface&lt;/code&gt;、具体类 &lt;code&gt;TC6_Arduino_10BASE_T1S&lt;/code&gt;、SPI HAL &lt;code&gt;TC6_Io&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;/2026/07/31/10BASE-T1S-Code-Interfaces-libtc6-and-lwip/&#34;&gt;协议核心 libtc6 与 lwIP 集成&lt;/a&gt; — libtc6 的 C API、回调契约、lwIP netif 集成&lt;/li&gt;
+&lt;/ol&gt;
+&lt;h2 id=&#34;1-抽象基类：Arduino-10BASE-T1S-PHY-Interface&#34;&gt;&lt;a href=&#34;#1-抽象基类：Arduino-10BASE-T1S-PHY-Interface&#34; class=&#34;headerlink&#34; title=&#34;1. 抽象基类：Arduino_10BASE_T1S_PHY_Interface&#34;&gt;&lt;/a&gt;1. 抽象基类：&lt;code&gt;Arduino_10BASE_T1S_PHY_Interface&lt;/code&gt;&lt;/h2&gt;&lt;p&gt;文件位置：&lt;code&gt;src/Arduino_10BASE_T1S_PHY_Interface.h&lt;/code&gt;&lt;/p&gt;
+&lt;figure class=&#34;highlight cpp&#34;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&#34;gutter&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;3&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;4&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;5&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;6&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;7&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;8&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;9&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;10&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;11&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;12&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;13&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&#34;code&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;keyword&#34;&gt;class&lt;/span&gt; &lt;span class=&#34;title class_&#34;&gt;Arduino_10BASE_T1S_PHY_Interface&lt;/span&gt; &amp;#123;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;keyword&#34;&gt;public&lt;/span&gt;:&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;  &lt;span class=&#34;keyword&#34;&gt;virtual&lt;/span&gt; ~&lt;span class=&#34;built_in&#34;&gt;Arduino_10BASE_T1S_PHY_Interface&lt;/span&gt;() &amp;#123; &amp;#125;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;  &lt;span class=&#34;function&#34;&gt;&lt;span class=&#34;keyword&#34;&gt;virtual&lt;/span&gt; &lt;span class=&#34;type&#34;&gt;bool&lt;/span&gt; &lt;span class=&#34;title&#34;&gt;begin&lt;/span&gt;&lt;span class=&#34;params&#34;&gt;(IPAddress &lt;span class=&#34;type&#34;&gt;const&lt;/span&gt; ip_addr,&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;params&#34;&gt;&lt;span class=&#34;function&#34;&gt;                     IPAddress &lt;span class=&#34;type&#34;&gt;const&lt;/span&gt; network_mask,&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;params&#34;&gt;&lt;span class=&#34;function&#34;&gt;                     IPAddress &lt;span class=&#34;type&#34;&gt;const&lt;/span&gt; gateway,&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;params&#34;&gt;&lt;span class=&#34;function&#34;&gt;                     MacAddress &lt;span class=&#34;type&#34;&gt;const&lt;/span&gt; mac_addr,&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;params&#34;&gt;&lt;span class=&#34;function&#34;&gt;                     T1SPlcaSettings &lt;span class=&#34;type&#34;&gt;const&lt;/span&gt; t1s_plca_settings,&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;params&#34;&gt;&lt;span class=&#34;function&#34;&gt;                     T1SMacSettings &lt;span class=&#34;type&#34;&gt;const&lt;/span&gt; t1s_mac_settings)&lt;/span&gt; &lt;/span&gt;= &lt;span class=&#34;number&#34;&gt;0&lt;/span&gt;;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;  &lt;span class=&#34;function&#34;&gt;&lt;span class=&#34;keyword&#34;&gt;virtual&lt;/span&gt; &lt;span class=&#34;type&#34;&gt;void&lt;/span&gt; &lt;span class=&#34;title&#34;&gt;service&lt;/span&gt;&lt;span class=&#34;params&#34;&gt;()&lt;/span&gt; &lt;/span&gt;= &lt;span class=&#34;number&#34;&gt;0&lt;/span&gt;;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&amp;#125;;&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;
+
+&lt;h3 id=&#34;1-1-设计动机&#34;&gt;&lt;a href=&#34;#1-1-设计动机&#34; class=&#34;headerlink&#34; title=&#34;1.1 设计动机&#34;&gt;&lt;/a&gt;1.1 设计动机&lt;/h3&gt;&lt;p&gt;该抽象类是&lt;strong&gt;库作者&lt;/strong&gt;预留的”可替换 PHY 后端”接口。设计上让任何实现了该接口的类都能被 &lt;code&gt;Arduino_10BASE_T1S_UDP&lt;/code&gt; 无缝使用：&lt;/p&gt;
+&lt;figure class=&#34;highlight plaintext&#34;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&#34;gutter&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;3&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;4&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;5&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;6&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&#34;code&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;Arduino_10BASE_T1S_UDP  ──不直接持有 PHY 对象&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        │&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        │ 通过 Arduino_10BASE_T1S_PHY_Interface*&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        │ （但目前代码中是直接引用 TC6_Arduino_10BASE_T1S）&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;        ▼&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;TC6_Arduino_10BASE_T1S  ◀── 当前唯一实现&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;
+
+&lt;p&gt;&lt;strong&gt;注意&lt;/strong&gt;：当前代码（v0.1.1）&lt;code&gt;Arduino_10BASE_T1S_UDP&lt;/code&gt; &lt;strong&gt;并未&lt;/strong&gt;通过 &lt;code&gt;Arduino_10BASE_T1S_PHY_Interface*&lt;/code&gt; 与 PHY 解耦——它通过全局变量 &lt;code&gt;t1s_phy&lt;/code&gt;（宏展开的对象名）和 &lt;code&gt;_lw.tc.tc6&lt;/code&gt;（TC6 实例指针）直接通信。该抽象类更多是面向&lt;strong&gt;未来扩展&lt;/strong&gt;或&lt;strong&gt;用户自行实现 PHY 时&lt;/strong&gt;的契约。&lt;/p&gt;"><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-PHY-and-HAL/&t=10BASE-T1S Arduino 代码接口深度解析（二）：PHY Interface 与 SPI HAL"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> 菜单</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> 目录</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> 分享</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> 返回顶部</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2026
+    cursorhu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"复制到粘贴板！\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "复制成功！");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+<!-- Mermaid diagrams -->
+
+  <script type="text/javascript">
+  (function() {
+    var mermaidElements = document.querySelectorAll('.mermaid');
+    if (!mermaidElements.length) return;
+
+    var mermaidTheme = 'auto';
+    if (mermaidTheme === 'auto') {
+      var colorscheme = 'dark';
+      mermaidTheme = (colorscheme === 'dark' || colorscheme === 'classic') ? 'dark' : 'default';
+    }
+
+    function initMermaid() {
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: mermaidTheme,
+        logLevel: 'error',
+        securityLevel: 'loose',
+        flowchart: { curve: 'basis' },
+        gantt: { axisFormat: '%m/%d/%Y' },
+        sequence: { actorMargin: 50 }
+      });
+      mermaid.run({ nodes: mermaidElements });
+    }
+
+    var script = document.createElement('script');
+    
+    script.src = 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js';
+    
+    script.onload = initMermaid;
+    document.head.appendChild(script);
+  })();
+  </script>
+
+</body>
+</html>

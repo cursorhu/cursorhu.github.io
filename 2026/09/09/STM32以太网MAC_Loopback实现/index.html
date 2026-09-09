@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="以太网 MAC Loopback 的实现 – STM32为例前言在 STM32 以太网调试中，经常会遇到”设备接收不到数据”或者”设备发出的数据对端设备收不到”之类的问题。遇到这类问题，首先要做的是定位问题发生的部位，这样可以指明下一步调试的方向，缩小分析的范围。 以下图为例：设备 A 和设备 B 通过以太网通信，现发现设备 B 无法接收设备 A 发送的消息，问题可能出现在以下几个地方：  应用层">
+<meta property="og:type" content="article">
+<meta property="og:title" content="以太网 MAC Loopback 的实现 -- STM32为例">
+<meta property="og:url" content="https://cursorhu.github.io/2026/09/09/STM32%E4%BB%A5%E5%A4%AA%E7%BD%91MAC_Loopback%E5%AE%9E%E7%8E%B0/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="以太网 MAC Loopback 的实现 – STM32为例前言在 STM32 以太网调试中，经常会遇到”设备接收不到数据”或者”设备发出的数据对端设备收不到”之类的问题。遇到这类问题，首先要做的是定位问题发生的部位，这样可以指明下一步调试的方向，缩小分析的范围。 以下图为例：设备 A 和设备 B 通过以太网通信，现发现设备 B 无法接收设备 A 发送的消息，问题可能出现在以下几个地方：  应用层">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://shequ.stmicroelectronics.cn/data/attachment/forum/202207/29/155834u72f2y71zo04922a.png">
+<meta property="og:image" content="https://shequ.stmicroelectronics.cn/data/attachment/forum/202207/29/155834gnspj5xsgmv8gxjk.png">
+<meta property="article:published_time" content="2026-09-09T07:35:00.000Z">
+<meta property="article:modified_time" content="2026-09-09T07:39:35.972Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="MAC">
+<meta property="article:tag" content="STM32">
+<meta property="article:tag" content="以太网">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://shequ.stmicroelectronics.cn/data/attachment/forum/202207/29/155834u72f2y71zo04922a.png">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>以太网 MAC Loopback 的实现 -- STM32为例</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+		<script type="text/x-mathjax-config">
+		  MathJax.Hub.Config({
+			tex2jax: {
+			  skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+			  inlineMath: [['$','$']]
+			}
+		  });
+		</script>
+		<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-MML-AM_CHTML' async></script>
+	
+<meta name="generator" content="Hexo 8.0.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="顶部" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        
+        <li><a class="icon" aria-label="下一篇" href="/2026/09/09/%E4%BB%A5%E5%A4%AA%E7%BD%91MAC-PHY%E7%AE%80%E4%BB%8B/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="返回顶部" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="分享文章" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">上一篇</span>
+      <span id="i-next" class="info" style="display:none;">下一篇</span>
+      <span id="i-top" class="info" style="display:none;">返回顶部</span>
+      <span id="i-share" class="info" style="display:none;">分享文章</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/09/09/STM32%E4%BB%A5%E5%A4%AA%E7%BD%91MAC_Loopback%E5%AE%9E%E7%8E%B0/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/09/09/STM32%E4%BB%A5%E5%A4%AA%E7%BD%91MAC_Loopback%E5%AE%9E%E7%8E%B0/&text=以太网 MAC Loopback 的实现 -- STM32为例"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/09/09/STM32%E4%BB%A5%E5%A4%AA%E7%BD%91MAC_Loopback%E5%AE%9E%E7%8E%B0/&title=以太网 MAC Loopback 的实现 -- STM32为例"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/09/09/STM32%E4%BB%A5%E5%A4%AA%E7%BD%91MAC_Loopback%E5%AE%9E%E7%8E%B0/&is_video=false&description=以太网 MAC Loopback 的实现 -- STM32为例"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=以太网 MAC Loopback 的实现 -- STM32为例&body=Check out this article: https://cursorhu.github.io/2026/09/09/STM32%E4%BB%A5%E5%A4%AA%E7%BD%91MAC_Loopback%E5%AE%9E%E7%8E%B0/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/09/09/STM32%E4%BB%A5%E5%A4%AA%E7%BD%91MAC_Loopback%E5%AE%9E%E7%8E%B0/&title=以太网 MAC Loopback 的实现 -- STM32为例"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/09/09/STM32%E4%BB%A5%E5%A4%AA%E7%BD%91MAC_Loopback%E5%AE%9E%E7%8E%B0/&title=以太网 MAC Loopback 的实现 -- STM32为例"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/09/09/STM32%E4%BB%A5%E5%A4%AA%E7%BD%91MAC_Loopback%E5%AE%9E%E7%8E%B0/&title=以太网 MAC Loopback 的实现 -- STM32为例"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/09/09/STM32%E4%BB%A5%E5%A4%AA%E7%BD%91MAC_Loopback%E5%AE%9E%E7%8E%B0/&title=以太网 MAC Loopback 的实现 -- STM32为例"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/09/09/STM32%E4%BB%A5%E5%A4%AA%E7%BD%91MAC_Loopback%E5%AE%9E%E7%8E%B0/&name=以太网 MAC Loopback 的实现 -- STM32为例&description=&lt;h1 id=&#34;以太网-MAC-Loopback-的实现-–-STM32为例&#34;&gt;&lt;a href=&#34;#以太网-MAC-Loopback-的实现-–-STM32为例&#34; class=&#34;headerlink&#34; title=&#34;以太网 MAC Loopback 的实现 – STM32为例&#34;&gt;&lt;/a&gt;以太网 MAC Loopback 的实现 – STM32为例&lt;/h1&gt;&lt;h2 id=&#34;前言&#34;&gt;&lt;a href=&#34;#前言&#34; class=&#34;headerlink&#34; title=&#34;前言&#34;&gt;&lt;/a&gt;前言&lt;/h2&gt;&lt;p&gt;在 STM32 以太网调试中，经常会遇到”设备接收不到数据”或者”设备发出的数据对端设备收不到”之类的问题。遇到这类问题，首先要做的是&lt;strong&gt;定位问题发生的部位&lt;/strong&gt;，这样可以指明下一步调试的方向，缩小分析的范围。&lt;/p&gt;
+&lt;p&gt;以下图为例：设备 A 和设备 B 通过以太网通信，现发现设备 B 无法接收设备 A 发送的消息，问题可能出现在以下几个地方：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;&lt;strong&gt;应用层或协议栈出错&lt;/strong&gt; — 数据根本没有到达 STM32 以太网外设。调试时在以太网输出函数 &lt;code&gt;low_level_output&lt;/code&gt; 中打个断点即可检查。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;STM32 以太网 MAC 出现问题&lt;/strong&gt; — 没有把数据发送出去。可以通过 STM32 以太网的 MAC loopback 功能来检查 MAC 的收发是否正常。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;MAC 和外部 PHY 之间的通信出现问题&lt;/strong&gt; — 可以通过 PHY 提供的 loopback 功能来检查。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;设备 A 端收发正常，问题在线路或设备 B&lt;/strong&gt; — 可以在网口接线上做网线交叉（将 RJ-45 接口中 TX+ 与 RX+ 连接，TX- 与 RX- 连接）来检查。&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;&lt;img src=&#34;https://shequ.stmicroelectronics.cn/data/attachment/forum/202207/29/155834u72f2y71zo04922a.png&#34; alt=&#34;img&#34;&gt;&lt;/p&gt;
+&lt;p&gt;本文将主要介绍 &lt;strong&gt;STM32 MAC loopback&lt;/strong&gt; 方法。&lt;/p&gt;
+&lt;h2 id=&#34;MAC-Loopback-模式&#34;&gt;&lt;a href=&#34;#MAC-Loopback-模式&#34; class=&#34;headerlink&#34; title=&#34;MAC Loopback 模式&#34;&gt;&lt;/a&gt;MAC Loopback 模式&lt;/h2&gt;&lt;p&gt;&lt;img src=&#34;https://shequ.stmicroelectronics.cn/data/attachment/forum/202207/29/155834gnspj5xsgmv8gxjk.png&#34; alt=&#34;img&#34;&gt;&lt;/p&gt;
+&lt;h3 id=&#34;使能方法&#34;&gt;&lt;a href=&#34;#使能方法&#34; class=&#34;headerlink&#34; title=&#34;使能方法&#34;&gt;&lt;/a&gt;使能方法&lt;/h3&gt;"><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/09/09/STM32%E4%BB%A5%E5%A4%AA%E7%BD%91MAC_Loopback%E5%AE%9E%E7%8E%B0/&t=以太网 MAC Loopback 的实现 -- STM32为例"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E4%BB%A5%E5%A4%AA%E7%BD%91-MAC-Loopback-%E7%9A%84%E5%AE%9E%E7%8E%B0-%E2%80%93-STM32%E4%B8%BA%E4%BE%8B"><span class="toc-number">1.</span> <span class="toc-text">以太网 MAC Loopback 的实现 – STM32为例</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%89%8D%E8%A8%80"><span class="toc-number">1.1.</span> <span class="toc-text">前言</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#MAC-Loopback-%E6%A8%A1%E5%BC%8F"><span class="toc-number">1.2.</span> <span class="toc-text">MAC Loopback 模式</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BD%BF%E8%83%BD%E6%96%B9%E6%B3%95"><span class="toc-number">1.2.1.</span> <span class="toc-text">使能方法</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%AD%A3%E7%A1%AE%E6%8E%A5%E6%94%B6-Loopback-%E6%95%B0%E6%8D%AE%E7%9A%84%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9"><span class="toc-number">1.2.2.</span> <span class="toc-text">正确接收 Loopback 数据的注意事项</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#1-PHY-%E5%88%9D%E5%A7%8B%E5%8C%96%E4%B8%8D%E5%8F%AF%E7%9C%81%E7%95%A5"><span class="toc-number">1.2.2.1.</span> <span class="toc-text">1. PHY 初始化不可省略</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-MAC-%E5%9C%B0%E5%9D%80%E8%BF%87%E6%BB%A4"><span class="toc-number">1.2.2.2.</span> <span class="toc-text">2. MAC 地址过滤</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-Cache-%E5%92%8C-RAM-%E5%8C%BA%E5%9F%9F%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9"><span class="toc-number">1.2.2.3.</span> <span class="toc-text">3. Cache 和 RAM 区域注意事项</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BE%8B%E7%A8%8B%E8%AF%B4%E6%98%8E"><span class="toc-number">1.3.</span> <span class="toc-text">例程说明</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%A4%E7%A7%8D%E5%B7%A5%E4%BD%9C%E6%A8%A1%E5%BC%8F"><span class="toc-number">1.3.1.</span> <span class="toc-text">两种工作模式</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BE%8B%E7%A8%8B%E9%85%8D%E7%BD%AE"><span class="toc-number">1.4.</span> <span class="toc-text">例程配置</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E8%AE%BE%E7%BD%AE%E7%9B%AE%E6%A0%87-MAC-%E5%9C%B0%E5%9D%80%EF%BC%88dst-addr%EF%BC%89"><span class="toc-number">1.4.1.</span> <span class="toc-text">1. 设置目标 MAC 地址（dst_addr）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-%E5%AE%9A%E4%B9%89%E5%B8%A7%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B%EF%BC%88frame-type%EF%BC%89"><span class="toc-number">1.4.2.</span> <span class="toc-text">2. 定义帧数据类型（frame_type）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-%E5%88%9D%E5%A7%8B%E5%8C%96%E8%A6%81%E5%8F%91%E9%80%81%E7%9A%84%E6%95%B0%E6%8D%AE-Buffer"><span class="toc-number">1.4.3.</span> <span class="toc-text">3. 初始化要发送的数据 Buffer</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-%E5%AE%8F%E9%85%8D%E7%BD%AE"><span class="toc-number">1.4.4.</span> <span class="toc-text">4. 宏配置</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%BF%90%E8%A1%8C%E6%95%88%E6%9E%9C"><span class="toc-number">1.4.5.</span> <span class="toc-text">运行效果</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%B0%8F%E7%BB%93"><span class="toc-number">1.5.</span> <span class="toc-text">小结</span></a></li></ol></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        以太网 MAC Loopback 的实现 -- STM32为例
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">cursorhu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2026-09-09T07:35:00.000Z" class="dt-published" itemprop="datePublished">2026-09-09</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fa-solid fa-archive"></i>
+        <a class="category-link" href="/categories/%E5%B5%8C%E5%85%A5%E5%BC%8F/">嵌入式</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/MAC/" rel="tag">MAC</a>, <a class="p-category" href="/tags/STM32/" rel="tag">STM32</a>, <a class="p-category" href="/tags/%E4%BB%A5%E5%A4%AA%E7%BD%91/" rel="tag">以太网</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <h1 id="以太网-MAC-Loopback-的实现-–-STM32为例"><a href="#以太网-MAC-Loopback-的实现-–-STM32为例" class="headerlink" title="以太网 MAC Loopback 的实现 – STM32为例"></a>以太网 MAC Loopback 的实现 – STM32为例</h1><h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>在 STM32 以太网调试中，经常会遇到”设备接收不到数据”或者”设备发出的数据对端设备收不到”之类的问题。遇到这类问题，首先要做的是<strong>定位问题发生的部位</strong>，这样可以指明下一步调试的方向，缩小分析的范围。</p>
+<p>以下图为例：设备 A 和设备 B 通过以太网通信，现发现设备 B 无法接收设备 A 发送的消息，问题可能出现在以下几个地方：</p>
+<ol>
+<li><strong>应用层或协议栈出错</strong> — 数据根本没有到达 STM32 以太网外设。调试时在以太网输出函数 <code>low_level_output</code> 中打个断点即可检查。</li>
+<li><strong>STM32 以太网 MAC 出现问题</strong> — 没有把数据发送出去。可以通过 STM32 以太网的 MAC loopback 功能来检查 MAC 的收发是否正常。</li>
+<li><strong>MAC 和外部 PHY 之间的通信出现问题</strong> — 可以通过 PHY 提供的 loopback 功能来检查。</li>
+<li><strong>设备 A 端收发正常，问题在线路或设备 B</strong> — 可以在网口接线上做网线交叉（将 RJ-45 接口中 TX+ 与 RX+ 连接，TX- 与 RX- 连接）来检查。</li>
+</ol>
+<p><img src="https://shequ.stmicroelectronics.cn/data/attachment/forum/202207/29/155834u72f2y71zo04922a.png" alt="img"></p>
+<p>本文将主要介绍 <strong>STM32 MAC loopback</strong> 方法。</p>
+<h2 id="MAC-Loopback-模式"><a href="#MAC-Loopback-模式" class="headerlink" title="MAC Loopback 模式"></a>MAC Loopback 模式</h2><p><img src="https://shequ.stmicroelectronics.cn/data/attachment/forum/202207/29/155834gnspj5xsgmv8gxjk.png" alt="img"></p>
+<h3 id="使能方法"><a href="#使能方法" class="headerlink" title="使能方法"></a>使能方法</h3><p>MAC loopback 模式的使能很简单：将 <code>ETH_MACCR</code> 寄存器的 <strong>LM 位置位</strong> 即可。</p>
+<p>MAC loopback 模式使能后，MAC 发送的数据帧通过 MII 接口发送给外部 PHY 的同时，也发送到 MAC 接收端。</p>
+<blockquote>
+<p><strong>注意</strong>：STM32 MAC loopback 模式<strong>只支持在 MII 接口下工作</strong>。</p>
+</blockquote>
+<h3 id="正确接收-Loopback-数据的注意事项"><a href="#正确接收-Loopback-数据的注意事项" class="headerlink" title="正确接收 Loopback 数据的注意事项"></a>正确接收 Loopback 数据的注意事项</h3><p>使能 loopback 后，要正确接收到 loopback 数据，还需要注意以下几点：</p>
+<h4 id="1-PHY-初始化不可省略"><a href="#1-PHY-初始化不可省略" class="headerlink" title="1. PHY 初始化不可省略"></a>1. PHY 初始化不可省略</h4><p>MAC loopback 模式下，MII 接口的接收时钟（RX_CLK）和发送时钟（TX_CLK）还需要外部 PHY 来提供，所以 <strong>PHY 的初始化不能省</strong>。</p>
+<h4 id="2-MAC-地址过滤"><a href="#2-MAC-地址过滤" class="headerlink" title="2. MAC 地址过滤"></a>2. MAC 地址过滤</h4><p>以太网帧中的<strong>目标 MAC 地址</strong>应该和<strong>源 MAC 地址一致</strong>，或者设定为广播地址（<code>FF:FF:FF:FF:FF:FF</code>），否则 MAC 默认会过滤接收到的数据。也可以将 <code>ETH_MACFFR</code> 寄存器的 <strong>RA 位置位</strong>（Receive All），以接收所有的以太网帧。</p>
+<h4 id="3-Cache-和-RAM-区域注意事项"><a href="#3-Cache-和-RAM-区域注意事项" class="headerlink" title="3. Cache 和 RAM 区域注意事项"></a>3. Cache 和 RAM 区域注意事项</h4><p>对于 <strong>F7、H7</strong> 这类带有 Cache 的 MCU 型号，需要注意接收&#x2F;发送描述符和接收&#x2F;发送 Buffer 的地址以及 Cache 属性：</p>
+<ul>
+<li>这部分存放在 SRAM 的数据，CPU 和以太网 DMA 都会去读写</li>
+<li>如果使能 Cache（回写），<strong>可能会出现数据不一致的情况</strong></li>
+<li><strong>也不能</strong>将数据定义在 STM32F769 的 <strong>DTCM RAM</strong> 区域</li>
+</ul>
+<h2 id="例程说明"><a href="#例程说明" class="headerlink" title="例程说明"></a>例程说明</h2><p>本文基于 <strong>STM32F769I-EVAL</strong> 开发板提供了一个以太网外设测试工程。工程中没有用到 TCP&#x2F;IP 协议栈，只通过 STM32F7 的 HAL 驱动层实现了以太网 MAC 层的数据收发，同时也实现了 MAC loopback 的功能。</p>
+<p>这个测试工程的目的是：<strong>检测 STM32 以太网外设的配置是否正确、工作是否正常</strong>。</p>
+<h3 id="两种工作模式"><a href="#两种工作模式" class="headerlink" title="两种工作模式"></a>两种工作模式</h3><p>例程提供两种工作模式：</p>
+<table>
+<thead>
+<tr>
+<th>模式</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>正常模式</strong></td>
+<td>可以正常与另一个设备（PC 或其他开发板）通信，发送和接收以太网帧。用户可以发送自定义的以太网帧数据，程序会自动构建以太网帧并发送。因为没有实现 TCP&#x2F;IP 协议，如果想发送 IP 包或 TCP&#x2F;UDP 包，需要自己按照包格式构建好数据。</td>
+</tr>
+<tr>
+<td><strong>MAC Loopback 模式</strong></td>
+<td>STM32F769I-EVAL 板子发送的数据被直接送回到 MII 接口的接收端。如果此时网口还连接到另一个设备，该设备也可以接收到数据。</td>
+</tr>
+</tbody></table>
+<h2 id="例程配置"><a href="#例程配置" class="headerlink" title="例程配置"></a>例程配置</h2><p>打开例程后，需要做以下配置：</p>
+<h3 id="1-设置目标-MAC-地址（dst-addr）"><a href="#1-设置目标-MAC-地址（dst-addr）" class="headerlink" title="1. 设置目标 MAC 地址（dst_addr）"></a>1. 设置目标 MAC 地址（dst_addr）</h3><ul>
+<li>如果发送广播：<code>dst_addr</code> 设置为 <code>FF:FF:FF:FF:FF:FF</code></li>
+<li>如果在 MAC loopback 模式下：<code>dst_addr</code> 设置成和 <code>src_addr</code> 一样</li>
+</ul>
+<h3 id="2-定义帧数据类型（frame-type）"><a href="#2-定义帧数据类型（frame-type）" class="headerlink" title="2. 定义帧数据类型（frame_type）"></a>2. 定义帧数据类型（frame_type）</h3><p>可以发送自定义的帧数据类型，或者使用通用的预先定义好的帧数据类型。例如：</p>
+<ul>
+<li>发送 IPv4 数据：<code>frame_type = 0x0800</code></li>
+<li>自定义类型：使用未被分配的数值。在本 demo 中，使用的是 <code>0x0601</code></li>
+</ul>
+<h3 id="3-初始化要发送的数据-Buffer"><a href="#3-初始化要发送的数据-Buffer" class="headerlink" title="3. 初始化要发送的数据 Buffer"></a>3. 初始化要发送的数据 Buffer</h3><p>要发送的数据保存在 <code>teststring</code> 数组中。注意：这个数组里只保存<strong>应用层要发送的数据</strong>，即以太网帧格式的数据段，<strong>不包括</strong>目标&#x2F;源 MAC 地址、以太网帧数据类型和 CRC 校验码。</p>
+<h3 id="4-宏配置"><a href="#4-宏配置" class="headerlink" title="4. 宏配置"></a>4. 宏配置</h3><p>在 <code>main.h</code> 中：</p>
+<ul>
+<li><strong>使能 MAC loopback</strong>：定义 <code>MAC_LOOPBACK_ENABLE</code> 宏</li>
+<li><strong>不使能 MAC loopback</strong>：注释掉 <code>MAC_LOOPBACK_ENABLE</code> 宏</li>
+</ul>
+<p>修改好以上参数后，重新编译烧录后运行。</p>
+<h3 id="运行效果"><a href="#运行效果" class="headerlink" title="运行效果"></a>运行效果</h3><p>每次按下 <strong>USER 按键</strong>，触发一次数据发送。接收到的数据保存在 <code>rxbuffer</code>，同时板子上的 <strong>LD1 灯</strong>会改变一次状态。</p>
+<h2 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h2><p>MAC loopback 是定位以太网问题的重要工具。在排除”应用层&#x2F;协议栈 → MAC 发送 → MAC 与 PHY 通信 → 线路&#x2F;对端设备”这条链路时，MAC loopback 可以快速验证 MAC 本身的收发功能是否正常。结合 PHY loopback 和网线交叉测试，可以逐段定位问题所在，大幅提高调试效率。</p>
+<blockquote>
+<p><strong>完整版例程请查看 ST 社区原帖附件</strong>：<a target="_blank" rel="noopener" href="https://shequ.stmicroelectronics.cn/thread-636029-1-1.html">https://shequ.stmicroelectronics.cn/thread-636029-1-1.html</a></p>
+</blockquote>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">首页</a></li>
+        
+          <li><a href="/archives/">归档</a></li>
+        
+          <li><a href="/tags/">标签</a></li>
+        
+          <li><a href="/categories/">分类</a></li>
+        
+          <li><a href="/search/">搜索</a></li>
+        
+          <li><a href="/about/">关于</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E4%BB%A5%E5%A4%AA%E7%BD%91-MAC-Loopback-%E7%9A%84%E5%AE%9E%E7%8E%B0-%E2%80%93-STM32%E4%B8%BA%E4%BE%8B"><span class="toc-number">1.</span> <span class="toc-text">以太网 MAC Loopback 的实现 – STM32为例</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%89%8D%E8%A8%80"><span class="toc-number">1.1.</span> <span class="toc-text">前言</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#MAC-Loopback-%E6%A8%A1%E5%BC%8F"><span class="toc-number">1.2.</span> <span class="toc-text">MAC Loopback 模式</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BD%BF%E8%83%BD%E6%96%B9%E6%B3%95"><span class="toc-number">1.2.1.</span> <span class="toc-text">使能方法</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%AD%A3%E7%A1%AE%E6%8E%A5%E6%94%B6-Loopback-%E6%95%B0%E6%8D%AE%E7%9A%84%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9"><span class="toc-number">1.2.2.</span> <span class="toc-text">正确接收 Loopback 数据的注意事项</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#1-PHY-%E5%88%9D%E5%A7%8B%E5%8C%96%E4%B8%8D%E5%8F%AF%E7%9C%81%E7%95%A5"><span class="toc-number">1.2.2.1.</span> <span class="toc-text">1. PHY 初始化不可省略</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-MAC-%E5%9C%B0%E5%9D%80%E8%BF%87%E6%BB%A4"><span class="toc-number">1.2.2.2.</span> <span class="toc-text">2. MAC 地址过滤</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-Cache-%E5%92%8C-RAM-%E5%8C%BA%E5%9F%9F%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9"><span class="toc-number">1.2.2.3.</span> <span class="toc-text">3. Cache 和 RAM 区域注意事项</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BE%8B%E7%A8%8B%E8%AF%B4%E6%98%8E"><span class="toc-number">1.3.</span> <span class="toc-text">例程说明</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%A4%E7%A7%8D%E5%B7%A5%E4%BD%9C%E6%A8%A1%E5%BC%8F"><span class="toc-number">1.3.1.</span> <span class="toc-text">两种工作模式</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BE%8B%E7%A8%8B%E9%85%8D%E7%BD%AE"><span class="toc-number">1.4.</span> <span class="toc-text">例程配置</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E8%AE%BE%E7%BD%AE%E7%9B%AE%E6%A0%87-MAC-%E5%9C%B0%E5%9D%80%EF%BC%88dst-addr%EF%BC%89"><span class="toc-number">1.4.1.</span> <span class="toc-text">1. 设置目标 MAC 地址（dst_addr）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-%E5%AE%9A%E4%B9%89%E5%B8%A7%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B%EF%BC%88frame-type%EF%BC%89"><span class="toc-number">1.4.2.</span> <span class="toc-text">2. 定义帧数据类型（frame_type）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-%E5%88%9D%E5%A7%8B%E5%8C%96%E8%A6%81%E5%8F%91%E9%80%81%E7%9A%84%E6%95%B0%E6%8D%AE-Buffer"><span class="toc-number">1.4.3.</span> <span class="toc-text">3. 初始化要发送的数据 Buffer</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-%E5%AE%8F%E9%85%8D%E7%BD%AE"><span class="toc-number">1.4.4.</span> <span class="toc-text">4. 宏配置</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%BF%90%E8%A1%8C%E6%95%88%E6%9E%9C"><span class="toc-number">1.4.5.</span> <span class="toc-text">运行效果</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%B0%8F%E7%BB%93"><span class="toc-number">1.5.</span> <span class="toc-text">小结</span></a></li></ol></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/09/09/STM32%E4%BB%A5%E5%A4%AA%E7%BD%91MAC_Loopback%E5%AE%9E%E7%8E%B0/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/09/09/STM32%E4%BB%A5%E5%A4%AA%E7%BD%91MAC_Loopback%E5%AE%9E%E7%8E%B0/&text=以太网 MAC Loopback 的实现 -- STM32为例"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/09/09/STM32%E4%BB%A5%E5%A4%AA%E7%BD%91MAC_Loopback%E5%AE%9E%E7%8E%B0/&title=以太网 MAC Loopback 的实现 -- STM32为例"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/09/09/STM32%E4%BB%A5%E5%A4%AA%E7%BD%91MAC_Loopback%E5%AE%9E%E7%8E%B0/&is_video=false&description=以太网 MAC Loopback 的实现 -- STM32为例"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=以太网 MAC Loopback 的实现 -- STM32为例&body=Check out this article: https://cursorhu.github.io/2026/09/09/STM32%E4%BB%A5%E5%A4%AA%E7%BD%91MAC_Loopback%E5%AE%9E%E7%8E%B0/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/09/09/STM32%E4%BB%A5%E5%A4%AA%E7%BD%91MAC_Loopback%E5%AE%9E%E7%8E%B0/&title=以太网 MAC Loopback 的实现 -- STM32为例"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/09/09/STM32%E4%BB%A5%E5%A4%AA%E7%BD%91MAC_Loopback%E5%AE%9E%E7%8E%B0/&title=以太网 MAC Loopback 的实现 -- STM32为例"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/09/09/STM32%E4%BB%A5%E5%A4%AA%E7%BD%91MAC_Loopback%E5%AE%9E%E7%8E%B0/&title=以太网 MAC Loopback 的实现 -- STM32为例"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/09/09/STM32%E4%BB%A5%E5%A4%AA%E7%BD%91MAC_Loopback%E5%AE%9E%E7%8E%B0/&title=以太网 MAC Loopback 的实现 -- STM32为例"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/09/09/STM32%E4%BB%A5%E5%A4%AA%E7%BD%91MAC_Loopback%E5%AE%9E%E7%8E%B0/&name=以太网 MAC Loopback 的实现 -- STM32为例&description=&lt;h1 id=&#34;以太网-MAC-Loopback-的实现-–-STM32为例&#34;&gt;&lt;a href=&#34;#以太网-MAC-Loopback-的实现-–-STM32为例&#34; class=&#34;headerlink&#34; title=&#34;以太网 MAC Loopback 的实现 – STM32为例&#34;&gt;&lt;/a&gt;以太网 MAC Loopback 的实现 – STM32为例&lt;/h1&gt;&lt;h2 id=&#34;前言&#34;&gt;&lt;a href=&#34;#前言&#34; class=&#34;headerlink&#34; title=&#34;前言&#34;&gt;&lt;/a&gt;前言&lt;/h2&gt;&lt;p&gt;在 STM32 以太网调试中，经常会遇到”设备接收不到数据”或者”设备发出的数据对端设备收不到”之类的问题。遇到这类问题，首先要做的是&lt;strong&gt;定位问题发生的部位&lt;/strong&gt;，这样可以指明下一步调试的方向，缩小分析的范围。&lt;/p&gt;
+&lt;p&gt;以下图为例：设备 A 和设备 B 通过以太网通信，现发现设备 B 无法接收设备 A 发送的消息，问题可能出现在以下几个地方：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;&lt;strong&gt;应用层或协议栈出错&lt;/strong&gt; — 数据根本没有到达 STM32 以太网外设。调试时在以太网输出函数 &lt;code&gt;low_level_output&lt;/code&gt; 中打个断点即可检查。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;STM32 以太网 MAC 出现问题&lt;/strong&gt; — 没有把数据发送出去。可以通过 STM32 以太网的 MAC loopback 功能来检查 MAC 的收发是否正常。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;MAC 和外部 PHY 之间的通信出现问题&lt;/strong&gt; — 可以通过 PHY 提供的 loopback 功能来检查。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;设备 A 端收发正常，问题在线路或设备 B&lt;/strong&gt; — 可以在网口接线上做网线交叉（将 RJ-45 接口中 TX+ 与 RX+ 连接，TX- 与 RX- 连接）来检查。&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;&lt;img src=&#34;https://shequ.stmicroelectronics.cn/data/attachment/forum/202207/29/155834u72f2y71zo04922a.png&#34; alt=&#34;img&#34;&gt;&lt;/p&gt;
+&lt;p&gt;本文将主要介绍 &lt;strong&gt;STM32 MAC loopback&lt;/strong&gt; 方法。&lt;/p&gt;
+&lt;h2 id=&#34;MAC-Loopback-模式&#34;&gt;&lt;a href=&#34;#MAC-Loopback-模式&#34; class=&#34;headerlink&#34; title=&#34;MAC Loopback 模式&#34;&gt;&lt;/a&gt;MAC Loopback 模式&lt;/h2&gt;&lt;p&gt;&lt;img src=&#34;https://shequ.stmicroelectronics.cn/data/attachment/forum/202207/29/155834gnspj5xsgmv8gxjk.png&#34; alt=&#34;img&#34;&gt;&lt;/p&gt;
+&lt;h3 id=&#34;使能方法&#34;&gt;&lt;a href=&#34;#使能方法&#34; class=&#34;headerlink&#34; title=&#34;使能方法&#34;&gt;&lt;/a&gt;使能方法&lt;/h3&gt;"><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/09/09/STM32%E4%BB%A5%E5%A4%AA%E7%BD%91MAC_Loopback%E5%AE%9E%E7%8E%B0/&t=以太网 MAC Loopback 的实现 -- STM32为例"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> 菜单</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> 目录</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> 分享</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> 返回顶部</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2026
+    cursorhu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"复制到粘贴板！\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "复制成功！");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+<!-- Mermaid diagrams -->
+
+  <script type="text/javascript">
+  (function() {
+    var mermaidElements = document.querySelectorAll('.mermaid');
+    if (!mermaidElements.length) return;
+
+    var mermaidTheme = 'auto';
+    if (mermaidTheme === 'auto') {
+      var colorscheme = 'dark';
+      mermaidTheme = (colorscheme === 'dark' || colorscheme === 'classic') ? 'dark' : 'default';
+    }
+
+    function initMermaid() {
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: mermaidTheme,
+        logLevel: 'error',
+        securityLevel: 'loose',
+        flowchart: { curve: 'basis' },
+        gantt: { axisFormat: '%m/%d/%Y' },
+        sequence: { actorMargin: 50 }
+      });
+      mermaid.run({ nodes: mermaidElements });
+    }
+
+    var script = document.createElement('script');
+    
+    script.src = 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js';
+    
+    script.onload = initMermaid;
+    document.head.appendChild(script);
+  })();
+  </script>
+
+</body>
+</html>

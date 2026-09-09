@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="前言Ibex 是由 lowRISC 维护的开源 32 位 RISC-V CPU 核，采用 SystemVerilog 编写，具有高度可配置性，广泛应用于嵌入式控制领域。本文整理了基于 Ibex 核开发固件的相关开源项目与编译开发环境信息，为固件开发者提供参考。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Ibex RISC-V 固件开源项目与开发环境指南">
+<meta property="og:url" content="https://cursorhu.github.io/2026/08/06/Ibex-RISC-V-Firmware-Development-Resources/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="前言Ibex 是由 lowRISC 维护的开源 32 位 RISC-V CPU 核，采用 SystemVerilog 编写，具有高度可配置性，广泛应用于嵌入式控制领域。本文整理了基于 Ibex 核开发固件的相关开源项目与编译开发环境信息，为固件开发者提供参考。">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-08-06T07:30:00.000Z">
+<meta property="article:modified_time" content="2026-08-12T02:39:10.270Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="Ibex">
+<meta property="article:tag" content="RISC-V">
+<meta property="article:tag" content="固件开发">
+<meta property="article:tag" content="嵌入式开发">
+<meta name="twitter:card" content="summary">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>Ibex RISC-V 固件开源项目与开发环境指南</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+		<script type="text/x-mathjax-config">
+		  MathJax.Hub.Config({
+			tex2jax: {
+			  skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+			  inlineMath: [['$','$']]
+			}
+		  });
+		</script>
+		<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-MML-AM_CHTML' async></script>
+	
+<meta name="generator" content="Hexo 8.0.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="顶部" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="上一篇" href="/2026/08/13/Clash%20Verge%E9%92%88%E5%AF%B9%E7%89%B9%E5%AE%9A%E5%BA%94%E7%94%A8%E4%B8%8D%E4%BD%BF%E7%94%A8%E4%BB%A3%E7%90%86%EF%BC%88%E5%A6%82OneDrive%20Outlook%EF%BC%89/"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="下一篇" href="/2026/08/04/%E5%9B%BA%E4%BB%B6%E5%BC%80%E5%8F%91%20-%20%E5%90%AF%E5%8A%A8%E6%96%B9%E5%BC%8FXIP%E5%92%8CRISCV%E5%AE%9E%E4%BE%8B/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="返回顶部" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="分享文章" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">上一篇</span>
+      <span id="i-next" class="info" style="display:none;">下一篇</span>
+      <span id="i-top" class="info" style="display:none;">返回顶部</span>
+      <span id="i-share" class="info" style="display:none;">分享文章</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/08/06/Ibex-RISC-V-Firmware-Development-Resources/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/08/06/Ibex-RISC-V-Firmware-Development-Resources/&text=Ibex RISC-V 固件开源项目与开发环境指南"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/08/06/Ibex-RISC-V-Firmware-Development-Resources/&title=Ibex RISC-V 固件开源项目与开发环境指南"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/08/06/Ibex-RISC-V-Firmware-Development-Resources/&is_video=false&description=Ibex RISC-V 固件开源项目与开发环境指南"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=Ibex RISC-V 固件开源项目与开发环境指南&body=Check out this article: https://cursorhu.github.io/2026/08/06/Ibex-RISC-V-Firmware-Development-Resources/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/08/06/Ibex-RISC-V-Firmware-Development-Resources/&title=Ibex RISC-V 固件开源项目与开发环境指南"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/08/06/Ibex-RISC-V-Firmware-Development-Resources/&title=Ibex RISC-V 固件开源项目与开发环境指南"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/08/06/Ibex-RISC-V-Firmware-Development-Resources/&title=Ibex RISC-V 固件开源项目与开发环境指南"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/08/06/Ibex-RISC-V-Firmware-Development-Resources/&title=Ibex RISC-V 固件开源项目与开发环境指南"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/08/06/Ibex-RISC-V-Firmware-Development-Resources/&name=Ibex RISC-V 固件开源项目与开发环境指南&description=&lt;h2 id=&#34;前言&#34;&gt;&lt;a href=&#34;#前言&#34; class=&#34;headerlink&#34; title=&#34;前言&#34;&gt;&lt;/a&gt;前言&lt;/h2&gt;&lt;p&gt;&lt;a href=&#34;https://github.com/lowRISC/ibex/&#34;&gt;Ibex&lt;/a&gt; 是由 lowRISC 维护的开源 32 位 RISC-V CPU 核，采用 SystemVerilog 编写，具有高度可配置性，广泛应用于嵌入式控制领域。本文整理了基于 Ibex 核开发固件的相关开源项目与编译开发环境信息，为固件开发者提供参考。&lt;/p&gt;"><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/08/06/Ibex-RISC-V-Firmware-Development-Resources/&t=Ibex RISC-V 固件开源项目与开发环境指南"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%89%8D%E8%A8%80"><span class="toc-number">1.</span> <span class="toc-text">前言</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81Ibex-%E6%A0%B8%E5%BF%83%E7%89%B9%E6%80%A7"><span class="toc-number">2.</span> <span class="toc-text">一、Ibex 核心特性</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E5%BC%80%E6%BA%90%E5%9B%BA%E4%BB%B6%E9%A1%B9%E7%9B%AE"><span class="toc-number">3.</span> <span class="toc-text">二、开源固件项目</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-Simple-System%EF%BC%88%E5%AE%98%E6%96%B9%E7%A4%BA%E4%BE%8B%EF%BC%89"><span class="toc-number">3.1.</span> <span class="toc-text">2.1 Simple System（官方示例）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-Ibex-Demo-System"><span class="toc-number">3.2.</span> <span class="toc-text">2.2 Ibex Demo System</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-Ibex-Demo-System-Labs"><span class="toc-number">3.3.</span> <span class="toc-text">2.3 Ibex Demo System Labs</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-4-Rust-%E5%9B%BA%E4%BB%B6%E6%94%AF%E6%8C%81"><span class="toc-number">3.4.</span> <span class="toc-text">2.4 Rust 固件支持</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E7%BC%96%E8%AF%91%E5%BC%80%E5%8F%91%E7%8E%AF%E5%A2%83"><span class="toc-number">4.</span> <span class="toc-text">三、编译开发环境</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-RISC-V-GNU-Toolchain"><span class="toc-number">4.1.</span> <span class="toc-text">3.1 RISC-V GNU Toolchain</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-FuseSoC-%E6%9E%84%E5%BB%BA%E7%B3%BB%E7%BB%9F"><span class="toc-number">4.2.</span> <span class="toc-text">3.2 FuseSoC 构建系统</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-Verilator-%E4%BB%BF%E7%9C%9F%E5%99%A8"><span class="toc-number">4.3.</span> <span class="toc-text">3.3 Verilator 仿真器</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-4-QEMU-%E6%A8%A1%E6%8B%9F%E5%99%A8"><span class="toc-number">4.4.</span> <span class="toc-text">3.4 QEMU 模拟器</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-5-OpenOCD-GDB-%E8%B0%83%E8%AF%95"><span class="toc-number">4.5.</span> <span class="toc-text">3.5 OpenOCD + GDB 调试</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E5%BC%80%E5%8F%91%E6%B5%81%E7%A8%8B%E7%A4%BA%E4%BE%8B"><span class="toc-number">5.</span> <span class="toc-text">四、开发流程示例</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-%E4%BB%BF%E7%9C%9F%E6%B5%81%E7%A8%8B"><span class="toc-number">5.1.</span> <span class="toc-text">4.1 仿真流程</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-FPGA-%E9%83%A8%E7%BD%B2%E6%B5%81%E7%A8%8B"><span class="toc-number">5.2.</span> <span class="toc-text">4.2 FPGA 部署流程</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E5%9B%BA%E4%BB%B6%E7%BC%96%E8%AF%91%E5%8F%82%E6%95%B0"><span class="toc-number">6.</span> <span class="toc-text">五、固件编译参数</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="toc-number">7.</span> <span class="toc-text">六、参考资料</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%83%E3%80%81%E6%80%BB%E7%BB%93"><span class="toc-number">8.</span> <span class="toc-text">七、总结</span></a></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        Ibex RISC-V 固件开源项目与开发环境指南
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">cursorhu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2026-08-06T07:30:00.000Z" class="dt-published" itemprop="datePublished">2026-08-06</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fa-solid fa-archive"></i>
+        <a class="category-link" href="/categories/RISC-V/">RISC-V</a> › <a class="category-link" href="/categories/RISC-V/%E5%B5%8C%E5%85%A5%E5%BC%8F%E7%B3%BB%E7%BB%9F/">嵌入式系统</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/Ibex/" rel="tag">Ibex</a>, <a class="p-category" href="/tags/RISC-V/" rel="tag">RISC-V</a>, <a class="p-category" href="/tags/%E5%9B%BA%E4%BB%B6%E5%BC%80%E5%8F%91/" rel="tag">固件开发</a>, <a class="p-category" href="/tags/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%BC%80%E5%8F%91/" rel="tag">嵌入式开发</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p><a target="_blank" rel="noopener" href="https://github.com/lowRISC/ibex/">Ibex</a> 是由 lowRISC 维护的开源 32 位 RISC-V CPU 核，采用 SystemVerilog 编写，具有高度可配置性，广泛应用于嵌入式控制领域。本文整理了基于 Ibex 核开发固件的相关开源项目与编译开发环境信息，为固件开发者提供参考。</p>
+<span id="more"></span>
+
+<h2 id="一、Ibex-核心特性"><a href="#一、Ibex-核心特性" class="headerlink" title="一、Ibex 核心特性"></a>一、Ibex 核心特性</h2><p>Ibex 是一款生产级开源 RISC-V 处理器核，主要特性包括：</p>
+<table>
+<thead>
+<tr>
+<th>特性</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>架构</td>
+<td>32 位 RISC-V (RV32I&#x2F;E)</td>
+</tr>
+<tr>
+<td>ISA 扩展</td>
+<td>M（乘除法）、C（压缩指令）、B（位操作）</td>
+</tr>
+<tr>
+<td>流水线</td>
+<td>2 级或 3 级流水线可选</td>
+</tr>
+<tr>
+<td>调试支持</td>
+<td>RISC-V Debug Spec</td>
+</tr>
+<tr>
+<td>内存保护</td>
+<td>PMP (Physical Memory Protection)</td>
+</tr>
+<tr>
+<td>应用场景</td>
+<td>嵌入式控制、IoT、OpenTitan 项目</td>
+</tr>
+</tbody></table>
+<h2 id="二、开源固件项目"><a href="#二、开源固件项目" class="headerlink" title="二、开源固件项目"></a>二、开源固件项目</h2><h3 id="2-1-Simple-System（官方示例）"><a href="#2-1-Simple-System（官方示例）" class="headerlink" title="2.1 Simple System（官方示例）"></a>2.1 Simple System（官方示例）</h3><p><strong>仓库地址</strong>: <a target="_blank" rel="noopener" href="https://github.com/lowRISC/ibex/tree/master/examples/simple_system">lowRISC&#x2F;ibex - examples&#x2F;simple_system</a></p>
+<p>Simple System 是 Ibex 官方提供的最小系统示例，集成在 Ibex 仓库中，专门用于仿真验证。</p>
+<p><strong>系统组件</strong>：</p>
+<ul>
+<li>Ibex Core</li>
+<li>单端口存储（指令与数据共用）</li>
+<li>UART 外设（ASCII 输出）</li>
+<li>定时器外设（支持中断）</li>
+<li>仿真终止控制外设</li>
+</ul>
+<p><strong>软件示例</strong>：</p>
+<ul>
+<li><code>hello_test</code> - Hello World 示例</li>
+<li><code>benchmarks</code> - 性能基准测试（Coremark 等）</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 编译 Hello World 示例</span></span><br><span class="line">make -C examples/sw/simple_system/hello_test</span><br><span class="line"></span><br><span class="line"><span class="comment"># 运行仿真</span></span><br><span class="line">./build/lowrisc_ibex_ibex_simple_system_0/sim-verilator/Vibex_simple_system \</span><br><span class="line">    -t --meminit=ram,examples/sw/simple_system/hello_test/hello_test.elf</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-2-Ibex-Demo-System"><a href="#2-2-Ibex-Demo-System" class="headerlink" title="2.2 Ibex Demo System"></a>2.2 Ibex Demo System</h3><p><strong>仓库地址</strong>: <a target="_blank" rel="noopener" href="https://github.com/lowrisc/ibex-demo-system">lowrisc&#x2F;ibex-demo-system</a></p>
+<p>Ibex Demo System 是功能更完整的 SoC 参考设计，支持 FPGA 部署和真实硬件调试。</p>
+<p><strong>系统组件</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>外设</th>
+<th>功能说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>UART</td>
+<td>串口通信</td>
+</tr>
+<tr>
+<td>GPIO</td>
+<td>通用输入输出</td>
+</tr>
+<tr>
+<td>PWM</td>
+<td>脉宽调制</td>
+</tr>
+<tr>
+<td>Timer</td>
+<td>定时器</td>
+</tr>
+<tr>
+<td>SPI</td>
+<td>串行外设接口</td>
+</tr>
+<tr>
+<td>Debug Module</td>
+<td>RISC-V 调试规范接口</td>
+</tr>
+</tbody></table>
+<p><strong>支持的 FPGA 开发板</strong>：</p>
+<ul>
+<li>Digilent Arty A7-35T（主力支持）</li>
+<li>Digilent Arty A7-50T</li>
+<li>Digilent Nexys A7-100T</li>
+<li>NewAE Sonata</li>
+<li>RealDigital Blackboard &#x2F; Boolean</li>
+<li>NewAE CW305-A100 &#x2F; CW312T-XC7A35</li>
+</ul>
+<p><strong>软件架构</strong>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">sw/</span><br><span class="line">├── demo/           # 演示应用程序（C 语言）</span><br><span class="line">├── common/        # 公共驱动与链接脚本</span><br><span class="line">└── rust/          # Rust 语言支持</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-3-Ibex-Demo-System-Labs"><a href="#2-3-Ibex-Demo-System-Labs" class="headerlink" title="2.3 Ibex Demo System Labs"></a>2.3 Ibex Demo System Labs</h3><p><strong>仓库地址</strong>: <a target="_blank" rel="noopener" href="https://github.com/lowRISC/ibex-demo-system-labs">lowRISC&#x2F;ibex-demo-system-labs</a></p>
+<p>官方提供的配套实验教程，适合学习 Ibex 系统开发和 FPGA 实践。</p>
+<p><strong>实验列表</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>Lab</th>
+<th>内容</th>
+<th>技能点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Lab 1</td>
+<td>FPGA 编程与外设交互</td>
+<td>硬件部署、UART 通信</td>
+</tr>
+<tr>
+<td>Lab 2</td>
+<td>Verilator 仿真与波形调试</td>
+<td>GTKWave、硬件修改</td>
+</tr>
+<tr>
+<td>Lab 3</td>
+<td>SPI LCD 显示屏驱动</td>
+<td>SPI 协议、外设驱动</td>
+</tr>
+<tr>
+<td>Lab 4</td>
+<td>自定义指令扩展</td>
+<td>RISC-V ISA 扩展</td>
+</tr>
+</tbody></table>
+<h3 id="2-4-Rust-固件支持"><a href="#2-4-Rust-固件支持" class="headerlink" title="2.4 Rust 固件支持"></a>2.4 Rust 固件支持</h3><p>Ibex Demo System 提供了实验性的 Rust 软件栈：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 位置: sw/rust/</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 示例应用</span></span><br><span class="line">demo/</span><br><span class="line">├── hello_world/   <span class="comment"># Hello World</span></span><br><span class="line">└── led/          <span class="comment"># LED 控制</span></span><br></pre></td></tr></table></figure>
+
+<p>Rust 开发者可使用 Cargo 构建工具链：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">cargo build --bin led</span><br><span class="line">cargo run --bin hello_world</span><br></pre></td></tr></table></figure>
+
+<h2 id="三、编译开发环境"><a href="#三、编译开发环境" class="headerlink" title="三、编译开发环境"></a>三、编译开发环境</h2><h3 id="3-1-RISC-V-GNU-Toolchain"><a href="#3-1-RISC-V-GNU-Toolchain" class="headerlink" title="3.1 RISC-V GNU Toolchain"></a>3.1 RISC-V GNU Toolchain</h3><p><strong>推荐使用</strong>：<a target="_blank" rel="noopener" href="https://github.com/riscv-collab/riscv-gnu-toolchain">riscv-collab&#x2F;riscv-gnu-toolchain</a></p>
+<p>Ibex 采用 <code>rv32imc</code> 架构（32 位，含 M、C 扩展），需要专用的交叉编译工具链。</p>
+<p><strong>预编译版本下载</strong>：</p>
+<p>从 GitHub releases 下载适合 Ubuntu 24.04 的工具链：</p>
+<table>
+<thead>
+<tr>
+<th>文件名</th>
+<th>架构</th>
+<th>C 库</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>riscv32-elf-ubuntu-24.04-gcc.tar.xz</code></td>
+<td>RV32</td>
+<td>newlib</td>
+</tr>
+<tr>
+<td><code>riscv32-glibc-ubuntu-24.04-gcc.tar.xz</code></td>
+<td>RV32</td>
+<td>glibc</td>
+</tr>
+</tbody></table>
+<p><strong>工具链安装</strong>：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 解压到 /opt 目录</span></span><br><span class="line"><span class="built_in">sudo</span> tar -xf riscv32-elf-ubuntu-24.04-gcc.tar.xz -C /opt</span><br><span class="line"></span><br><span class="line"><span class="comment"># 配置环境变量</span></span><br><span class="line"><span class="built_in">export</span> PATH=/opt/riscv32/bin:<span class="variable">$PATH</span></span><br><span class="line"><span class="built_in">export</span> RISCV=/opt/riscv32</span><br><span class="line"></span><br><span class="line"><span class="comment"># 验证安装</span></span><br><span class="line">riscv32-unknown-elf-gcc --version</span><br></pre></td></tr></table></figure>
+
+<p><strong>从源码编译</strong>：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">git <span class="built_in">clone</span> --recursive https://github.com/riscv-collab/riscv-gnu-toolchain</span><br><span class="line"><span class="built_in">cd</span> riscv-gnu-toolchain</span><br><span class="line"></span><br><span class="line"><span class="comment"># 配置为 RV32IMC 架构</span></span><br><span class="line">./configure --prefix=<span class="variable">$RISCV</span> --with-arch=rv32imc --with-abi=ilp32</span><br><span class="line"></span><br><span class="line"><span class="comment"># 编译（首次需要约 6-8 GB 磁盘空间）</span></span><br><span class="line">make -j$(<span class="built_in">nproc</span>)</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-2-FuseSoC-构建系统"><a href="#3-2-FuseSoC-构建系统" class="headerlink" title="3.2 FuseSoC 构建系统"></a>3.2 FuseSoC 构建系统</h3><p><strong>地址</strong>: <a target="_blank" rel="noopener" href="https://github.com/olofk/fusesoc">FuseSoC</a></p>
+<p>FuseSoC 是 FPGA&#x2F;ASIC 设计的包管理和构建工具，Ibex 项目广泛使用。</p>
+<p><strong>FuseSoC 核心概念</strong>：</p>
+<ul>
+<li><code>core</code> 文件：描述 IP 核的 RTL 文件、参数、依赖</li>
+<li><code>cores-root</code>：核心库搜索路径</li>
+<li><code>run</code>：执行构建&#x2F;仿真</li>
+</ul>
+<p><strong>Ibex 命名配置</strong>：</p>
+<p>Ibex 提供预定义的配置方案，通过 <code>util/ibex_config.py</code> 脚本管理：</p>
+<table>
+<thead>
+<tr>
+<th>配置名</th>
+<th>特性</th>
+<th>适用场景</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>small</code></td>
+<td>RV32IMC, 2级流水线</td>
+<td>资源受限</td>
+</tr>
+<tr>
+<td><code>opentitan</code></td>
+<td>RV32IMC + 安全特性</td>
+<td>OpenTitan 项目</td>
+</tr>
+<tr>
+<td><code>maxperf</code></td>
+<td>RV32IMC, 3级流水线</td>
+<td>最高性能</td>
+</tr>
+</tbody></table>
+<p><strong>构建示例</strong>：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 使用 small 配置构建仿真</span></span><br><span class="line">fusesoc --cores-root=. run --target=sim --setup --build \</span><br><span class="line">    lowrisc:ibex:ibex_simple_system \</span><br><span class="line">    $(./util/ibex_config.py small fusesoc_opts)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 使用 maxperf-pmp-bmfull 配置</span></span><br><span class="line">fusesoc --cores-root=. run --target=sim --setup --build \</span><br><span class="line">    lowrisc:ibex:ibex_simple_system \</span><br><span class="line">    $(./util/ibex_config.py maxperf-pmp-bmfull fusesoc_opts)</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-3-Verilator-仿真器"><a href="#3-3-Verilator-仿真器" class="headerlink" title="3.3 Verilator 仿真器"></a>3.3 Verilator 仿真器</h3><p><strong>地址</strong>: <a target="_blank" rel="noopener" href="https://github.com/verilator/verilator">verilator&#x2F;verilator</a></p>
+<p>Verilator 是开源的 SystemVerilog 仿真器，性能优异，适合 Ibex RTL 仿真。</p>
+<p><strong>安装</strong>：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Ubuntu/Debian</span></span><br><span class="line"><span class="built_in">sudo</span> apt-get install verilator</span><br><span class="line"></span><br><span class="line"><span class="comment"># 或从源码编译（获取最新版本）</span></span><br><span class="line">git <span class="built_in">clone</span> https://github.com/verilator/verilator</span><br><span class="line"><span class="built_in">cd</span> verilator</span><br><span class="line">git checkout v5.022</span><br><span class="line">autoconf</span><br><span class="line">./configure</span><br><span class="line">make -j$(<span class="built_in">nproc</span>)</span><br><span class="line"><span class="built_in">sudo</span> make install</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-4-QEMU-模拟器"><a href="#3-4-QEMU-模拟器" class="headerlink" title="3.4 QEMU 模拟器"></a>3.4 QEMU 模拟器</h3><p>QEMU 原生支持 Ibex CPU 模型，可用于快速固件验证：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 运行 Ibex 固件（RV32IMC）</span></span><br><span class="line">qemu-system-riscv32 \</span><br><span class="line">    -nographic \</span><br><span class="line">    -machine lowrisc-ibex \</span><br><span class="line">    -kernel firmware.elf</span><br></pre></td></tr></table></figure>
+
+<p><strong>Ibex CPU 模型特性</strong>：</p>
+<ul>
+<li>MISA: RV32IMCU</li>
+<li>Priv Spec: 1.12</li>
+<li>支持 PMP</li>
+<li>不支持 MMU（Nommu）</li>
+</ul>
+<h3 id="3-5-OpenOCD-GDB-调试"><a href="#3-5-OpenOCD-GDB-调试" class="headerlink" title="3.5 OpenOCD + GDB 调试"></a>3.5 OpenOCD + GDB 调试</h3><p><strong>OpenOCD</strong> 支持 RISC-V Debug Spec，可用于片上调试：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 连接 OpenOCD</span></span><br><span class="line">openocd -f interface/ftdi/digilent-hs2.cfg \</span><br><span class="line">        -f target/riscv.cfg</span><br><span class="line"></span><br><span class="line"><span class="comment"># GDB 连接调试</span></span><br><span class="line">riscv32-unknown-elf-gdb firmware.elf</span><br><span class="line">(gdb) target remote localhost:3333</span><br></pre></td></tr></table></figure>
+
+<h2 id="四、开发流程示例"><a href="#四、开发流程示例" class="headerlink" title="四、开发流程示例"></a>四、开发流程示例</h2><h3 id="4-1-仿真流程"><a href="#4-1-仿真流程" class="headerlink" title="4.1 仿真流程"></a>4.1 仿真流程</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────┐</span><br><span class="line">│                    Ibex 固件开发流程                          │</span><br><span class="line">├─────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                             │</span><br><span class="line">│  1. 编写固件 (C/汇编)                                         │</span><br><span class="line">│     └── examples/sw/simple_system/hello_test/main.c          │</span><br><span class="line">│                                                             │</span><br><span class="line">│  2. 编译固件                                                 │</span><br><span class="line">│     └── make -C examples/sw/simple_system/hello_test         │</span><br><span class="line">│                                                             │</span><br><span class="line">│  3. 构建仿真器                                              │</span><br><span class="line">│     └── fusesoc --cores-root=. run --target=sim ...         │</span><br><span class="line">│                                                             │</span><br><span class="line">│  4. 运行仿真                                                 │</span><br><span class="line">│     └── ./build/.../Vibex_simple_system -t --meminit=...   │</span><br><span class="line">│                                                             │</span><br><span class="line">│  5. 调试（如需要）                                           │</span><br><span class="line">│     └── GDB + OpenOCD 或 GTKWave 查看波形                     │</span><br><span class="line">│                                                             │</span><br><span class="line">└─────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-2-FPGA-部署流程"><a href="#4-2-FPGA-部署流程" class="headerlink" title="4.2 FPGA 部署流程"></a>4.2 FPGA 部署流程</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 1. 构建 FPGA bitstream</span></span><br><span class="line">fusesoc --cores-root=. run --target=synth --build lowrisc:ibex:demo_system</span><br><span class="line"></span><br><span class="line"><span class="comment"># 2. 编程 FPGA</span></span><br><span class="line">fusesoc --cores-root=. run --target=synth --run lowrisc:ibex:demo_system</span><br><span class="line"></span><br><span class="line"><span class="comment"># 或使用 OpenFPGALoader（更快）</span></span><br><span class="line">openFPGALoader -b arty_a7-35t build/lowrisc_ibex_demo_system_0/fpga/...</span><br><span class="line"></span><br><span class="line"><span class="comment"># 3. 加载固件</span></span><br><span class="line">util/load_demo_system.sh sw/demo/hello_world/hello_world.elf</span><br><span class="line"></span><br><span class="line"><span class="comment"># 4. 调试</span></span><br><span class="line">openocd &amp; </span><br><span class="line">riscv32-unknown-elf-gdb sw/demo/hello_world/hello_world.elf</span><br><span class="line">(gdb) target remote localhost:3333</span><br></pre></td></tr></table></figure>
+
+<h2 id="五、固件编译参数"><a href="#五、固件编译参数" class="headerlink" title="五、固件编译参数"></a>五、固件编译参数</h2><p>Ibex 固件编译使用 freestanding 模式，需要注意以下 GCC 选项：</p>
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>-nostdlib</code></td>
+<td>不链接标准库</td>
+</tr>
+<tr>
+<td><code>-nostartfiles</code></td>
+<td>不使用标准启动文件</td>
+</tr>
+<tr>
+<td><code>-ffreestanding</code></td>
+<td>freestanding 编译环境</td>
+</tr>
+<tr>
+<td><code>-march=rv32imc</code></td>
+<td>目标 ISA</td>
+</tr>
+<tr>
+<td><code>-mabi=ilp32</code></td>
+<td>32 位整数 ABI</td>
+</tr>
+</tbody></table>
+<p><strong>典型编译命令</strong>：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">riscv32-unknown-elf-gcc \</span><br><span class="line">    -nostartfiles \</span><br><span class="line">    -nostdlib \</span><br><span class="line">    -ffreestanding \</span><br><span class="line">    -march=rv32imc \</span><br><span class="line">    -mabi=ilp32 \</span><br><span class="line">    -I../common/include \</span><br><span class="line">    -c main.c -o main.o</span><br><span class="line"></span><br><span class="line">riscv32-unknown-elf-gcc \</span><br><span class="line">    -T ../common/link.ld \</span><br><span class="line">    -nostartfiles \</span><br><span class="line">    -nostdlib \</span><br><span class="line">    -ffreestanding \</span><br><span class="line">    -march=rv32imc \</span><br><span class="line">    -mabi=ilp32 \</span><br><span class="line">    main.o -o firmware.elf</span><br></pre></td></tr></table></figure>
+
+<h2 id="六、参考资料"><a href="#六、参考资料" class="headerlink" title="六、参考资料"></a>六、参考资料</h2><table>
+<thead>
+<tr>
+<th>资源</th>
+<th>链接</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Ibex 官方仓库</td>
+<td><a target="_blank" rel="noopener" href="https://github.com/lowRISC/ibex">https://github.com/lowRISC/ibex</a></td>
+</tr>
+<tr>
+<td>Ibex Demo System</td>
+<td><a target="_blank" rel="noopener" href="https://github.com/lowrisc/ibex-demo-system">https://github.com/lowrisc/ibex-demo-system</a></td>
+</tr>
+<tr>
+<td>Ibex Demo System Labs</td>
+<td><a target="_blank" rel="noopener" href="https://github.com/lowRISC/ibex-demo-system-labs">https://github.com/lowRISC/ibex-demo-system-labs</a></td>
+</tr>
+<tr>
+<td>Ibex 官方文档</td>
+<td><a target="_blank" rel="noopener" href="https://ibex-core.readthedocs.io/">https://ibex-core.readthedocs.io</a></td>
+</tr>
+<tr>
+<td>RISC-V GNU Toolchain</td>
+<td><a target="_blank" rel="noopener" href="https://github.com/riscv-collab/riscv-gnu-toolchain">https://github.com/riscv-collab/riscv-gnu-toolchain</a></td>
+</tr>
+<tr>
+<td>FuseSoC</td>
+<td><a target="_blank" rel="noopener" href="https://github.com/olofk/fusesoc">https://github.com/olofk/fusesoc</a></td>
+</tr>
+<tr>
+<td>Verilator</td>
+<td><a target="_blank" rel="noopener" href="https://verilator.github.io/">https://verilator.github.io</a></td>
+</tr>
+<tr>
+<td>OpenTitan 项目</td>
+<td><a target="_blank" rel="noopener" href="https://github.com/lowRISC/opentitan">https://github.com/lowRISC/opentitan</a></td>
+</tr>
+<tr>
+<td>PULP RISC-V Debug</td>
+<td><a target="_blank" rel="noopener" href="https://github.com/pulp-platform/riscv-dbg">https://github.com/pulp-platform/riscv-dbg</a></td>
+</tr>
+</tbody></table>
+<h2 id="七、总结"><a href="#七、总结" class="headerlink" title="七、总结"></a>七、总结</h2><p>本文整理了基于 Ibex RISC-V 核开发固件的主要资源：</p>
+<ol>
+<li><strong>Simple System</strong>：适合快速验证固件功能的轻量级仿真环境</li>
+<li><strong>Ibex Demo System</strong>：完整的 SoC 参考设计，支持 FPGA 部署</li>
+<li><strong>Demo System Labs</strong>：配套学习教程，适合入门实践</li>
+<li><strong>Rust 支持</strong>：实验性的 Rust 嵌入式开发栈</li>
+</ol>
+<p>开发环境主要依赖 RISC-V GNU Toolchain + FuseSoC + Verilator，三者配合可完成从固件开发到 RTL 仿真的完整流程。如需硬件调试，可使用 OpenOCD + GDB 通过 JTAG 接口进行片上调试。</p>
+<hr>
+<p><em>本文整理于 2026 年 8 月，如链接失效请访问对应仓库获取最新信息。</em></p>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">首页</a></li>
+        
+          <li><a href="/archives/">归档</a></li>
+        
+          <li><a href="/tags/">标签</a></li>
+        
+          <li><a href="/categories/">分类</a></li>
+        
+          <li><a href="/search/">搜索</a></li>
+        
+          <li><a href="/about/">关于</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%89%8D%E8%A8%80"><span class="toc-number">1.</span> <span class="toc-text">前言</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81Ibex-%E6%A0%B8%E5%BF%83%E7%89%B9%E6%80%A7"><span class="toc-number">2.</span> <span class="toc-text">一、Ibex 核心特性</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E5%BC%80%E6%BA%90%E5%9B%BA%E4%BB%B6%E9%A1%B9%E7%9B%AE"><span class="toc-number">3.</span> <span class="toc-text">二、开源固件项目</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-Simple-System%EF%BC%88%E5%AE%98%E6%96%B9%E7%A4%BA%E4%BE%8B%EF%BC%89"><span class="toc-number">3.1.</span> <span class="toc-text">2.1 Simple System（官方示例）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-Ibex-Demo-System"><span class="toc-number">3.2.</span> <span class="toc-text">2.2 Ibex Demo System</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-Ibex-Demo-System-Labs"><span class="toc-number">3.3.</span> <span class="toc-text">2.3 Ibex Demo System Labs</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-4-Rust-%E5%9B%BA%E4%BB%B6%E6%94%AF%E6%8C%81"><span class="toc-number">3.4.</span> <span class="toc-text">2.4 Rust 固件支持</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E7%BC%96%E8%AF%91%E5%BC%80%E5%8F%91%E7%8E%AF%E5%A2%83"><span class="toc-number">4.</span> <span class="toc-text">三、编译开发环境</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-RISC-V-GNU-Toolchain"><span class="toc-number">4.1.</span> <span class="toc-text">3.1 RISC-V GNU Toolchain</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-FuseSoC-%E6%9E%84%E5%BB%BA%E7%B3%BB%E7%BB%9F"><span class="toc-number">4.2.</span> <span class="toc-text">3.2 FuseSoC 构建系统</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-Verilator-%E4%BB%BF%E7%9C%9F%E5%99%A8"><span class="toc-number">4.3.</span> <span class="toc-text">3.3 Verilator 仿真器</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-4-QEMU-%E6%A8%A1%E6%8B%9F%E5%99%A8"><span class="toc-number">4.4.</span> <span class="toc-text">3.4 QEMU 模拟器</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-5-OpenOCD-GDB-%E8%B0%83%E8%AF%95"><span class="toc-number">4.5.</span> <span class="toc-text">3.5 OpenOCD + GDB 调试</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E5%BC%80%E5%8F%91%E6%B5%81%E7%A8%8B%E7%A4%BA%E4%BE%8B"><span class="toc-number">5.</span> <span class="toc-text">四、开发流程示例</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-%E4%BB%BF%E7%9C%9F%E6%B5%81%E7%A8%8B"><span class="toc-number">5.1.</span> <span class="toc-text">4.1 仿真流程</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-FPGA-%E9%83%A8%E7%BD%B2%E6%B5%81%E7%A8%8B"><span class="toc-number">5.2.</span> <span class="toc-text">4.2 FPGA 部署流程</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E5%9B%BA%E4%BB%B6%E7%BC%96%E8%AF%91%E5%8F%82%E6%95%B0"><span class="toc-number">6.</span> <span class="toc-text">五、固件编译参数</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="toc-number">7.</span> <span class="toc-text">六、参考资料</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%83%E3%80%81%E6%80%BB%E7%BB%93"><span class="toc-number">8.</span> <span class="toc-text">七、总结</span></a></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/08/06/Ibex-RISC-V-Firmware-Development-Resources/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/08/06/Ibex-RISC-V-Firmware-Development-Resources/&text=Ibex RISC-V 固件开源项目与开发环境指南"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/08/06/Ibex-RISC-V-Firmware-Development-Resources/&title=Ibex RISC-V 固件开源项目与开发环境指南"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/08/06/Ibex-RISC-V-Firmware-Development-Resources/&is_video=false&description=Ibex RISC-V 固件开源项目与开发环境指南"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=Ibex RISC-V 固件开源项目与开发环境指南&body=Check out this article: https://cursorhu.github.io/2026/08/06/Ibex-RISC-V-Firmware-Development-Resources/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/08/06/Ibex-RISC-V-Firmware-Development-Resources/&title=Ibex RISC-V 固件开源项目与开发环境指南"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/08/06/Ibex-RISC-V-Firmware-Development-Resources/&title=Ibex RISC-V 固件开源项目与开发环境指南"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/08/06/Ibex-RISC-V-Firmware-Development-Resources/&title=Ibex RISC-V 固件开源项目与开发环境指南"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/08/06/Ibex-RISC-V-Firmware-Development-Resources/&title=Ibex RISC-V 固件开源项目与开发环境指南"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/08/06/Ibex-RISC-V-Firmware-Development-Resources/&name=Ibex RISC-V 固件开源项目与开发环境指南&description=&lt;h2 id=&#34;前言&#34;&gt;&lt;a href=&#34;#前言&#34; class=&#34;headerlink&#34; title=&#34;前言&#34;&gt;&lt;/a&gt;前言&lt;/h2&gt;&lt;p&gt;&lt;a href=&#34;https://github.com/lowRISC/ibex/&#34;&gt;Ibex&lt;/a&gt; 是由 lowRISC 维护的开源 32 位 RISC-V CPU 核，采用 SystemVerilog 编写，具有高度可配置性，广泛应用于嵌入式控制领域。本文整理了基于 Ibex 核开发固件的相关开源项目与编译开发环境信息，为固件开发者提供参考。&lt;/p&gt;"><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/08/06/Ibex-RISC-V-Firmware-Development-Resources/&t=Ibex RISC-V 固件开源项目与开发环境指南"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> 菜单</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> 目录</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> 分享</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> 返回顶部</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2026
+    cursorhu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"复制到粘贴板！\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "复制成功！");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+<!-- Mermaid diagrams -->
+
+  <script type="text/javascript">
+  (function() {
+    var mermaidElements = document.querySelectorAll('.mermaid');
+    if (!mermaidElements.length) return;
+
+    var mermaidTheme = 'auto';
+    if (mermaidTheme === 'auto') {
+      var colorscheme = 'dark';
+      mermaidTheme = (colorscheme === 'dark' || colorscheme === 'classic') ? 'dark' : 'default';
+    }
+
+    function initMermaid() {
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: mermaidTheme,
+        logLevel: 'error',
+        securityLevel: 'loose',
+        flowchart: { curve: 'basis' },
+        gantt: { axisFormat: '%m/%d/%Y' },
+        sequence: { actorMargin: 50 }
+      });
+      mermaid.run({ nodes: mermaidElements });
+    }
+
+    var script = document.createElement('script');
+    
+    script.src = 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js';
+    
+    script.onload = initMermaid;
+    document.head.appendChild(script);
+  })();
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="系列导读架构概览 与 协议栈深度分析 已经从分层和数据流的角度描述了整库。本系列三篇从代码接口视角，把每一层的函数、类、回调、配置项逐一拆解：  应用层 UDP Socket API（本篇）— Arduino_10BASE_T1S_UDP 完整 API、UdpRxPacket 内部类、生命周期&#x2F;资源模型 PHY Interface 与 HAL 层 — 抽象类 Arduino_10BASE">
+<meta property="og:type" content="article">
+<meta property="og:title" content="10BASE-T1S Arduino 代码接口深度解析（一）：应用层 UDP Socket API">
+<meta property="og:url" content="https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-UDP-API/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="系列导读架构概览 与 协议栈深度分析 已经从分层和数据流的角度描述了整库。本系列三篇从代码接口视角，把每一层的函数、类、回调、配置项逐一拆解：  应用层 UDP Socket API（本篇）— Arduino_10BASE_T1S_UDP 完整 API、UdpRxPacket 内部类、生命周期&#x2F;资源模型 PHY Interface 与 HAL 层 — 抽象类 Arduino_10BASE">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-07-30T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-07-31T08:28:08.741Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="10BASE-T1S">
+<meta property="article:tag" content="API 参考">
+<meta property="article:tag" content="Arduino">
+<meta property="article:tag" content="Socket">
+<meta property="article:tag" content="UDP">
+<meta property="article:tag" content="lwIP">
+<meta property="article:tag" content="代码接口">
+<meta name="twitter:card" content="summary">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>10BASE-T1S Arduino 代码接口深度解析（一）：应用层 UDP Socket API</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+		<script type="text/x-mathjax-config">
+		  MathJax.Hub.Config({
+			tex2jax: {
+			  skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+			  inlineMath: [['$','$']]
+			}
+		  });
+		</script>
+		<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-MML-AM_CHTML' async></script>
+	
+<meta name="generator" content="Hexo 8.0.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="顶部" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="上一篇" href="/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-PHY-and-HAL/"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="下一篇" href="/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-libtc6-and-lwip/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="返回顶部" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="分享文章" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">上一篇</span>
+      <span id="i-next" class="info" style="display:none;">下一篇</span>
+      <span id="i-top" class="info" style="display:none;">返回顶部</span>
+      <span id="i-share" class="info" style="display:none;">分享文章</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-UDP-API/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-UDP-API/&text=10BASE-T1S Arduino 代码接口深度解析（一）：应用层 UDP Socket API"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-UDP-API/&title=10BASE-T1S Arduino 代码接口深度解析（一）：应用层 UDP Socket API"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-UDP-API/&is_video=false&description=10BASE-T1S Arduino 代码接口深度解析（一）：应用层 UDP Socket API"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=10BASE-T1S Arduino 代码接口深度解析（一）：应用层 UDP Socket API&body=Check out this article: https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-UDP-API/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-UDP-API/&title=10BASE-T1S Arduino 代码接口深度解析（一）：应用层 UDP Socket API"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-UDP-API/&title=10BASE-T1S Arduino 代码接口深度解析（一）：应用层 UDP Socket API"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-UDP-API/&title=10BASE-T1S Arduino 代码接口深度解析（一）：应用层 UDP Socket API"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-UDP-API/&title=10BASE-T1S Arduino 代码接口深度解析（一）：应用层 UDP Socket API"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-UDP-API/&name=10BASE-T1S Arduino 代码接口深度解析（一）：应用层 UDP Socket API&description=&lt;h2 id=&#34;系列导读&#34;&gt;&lt;a href=&#34;#系列导读&#34; class=&#34;headerlink&#34; title=&#34;系列导读&#34;&gt;&lt;/a&gt;系列导读&lt;/h2&gt;&lt;p&gt;&lt;a href=&#34;/2026/06/04/10BASE-T1S-Arduino-Architecture-Overview/&#34;&gt;架构概览&lt;/a&gt; 与 &lt;a href=&#34;/2026/06/04/10BASE-T1S-Protocol-Stack-Deep-Dive/&#34;&gt;协议栈深度分析&lt;/a&gt; 已经从分层和数据流的角度描述了整库。本系列三篇从代码接口视角，把每一层的函数、类、回调、配置项逐一拆解：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;&lt;strong&gt;应用层 UDP Socket API&lt;/strong&gt;（本篇）— &lt;code&gt;Arduino_10BASE_T1S_UDP&lt;/code&gt; 完整 API、&lt;code&gt;UdpRxPacket&lt;/code&gt; 内部类、生命周期&amp;#x2F;资源模型&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;/2026/07/31/10BASE-T1S-Code-Interfaces-PHY-and-HAL/&#34;&gt;PHY Interface 与 HAL 层&lt;/a&gt; — 抽象类 &lt;code&gt;Arduino_10BASE_T1S_PHY_Interface&lt;/code&gt;、具体类 &lt;code&gt;TC6_Arduino_10BASE_T1S&lt;/code&gt;、SPI HAL &lt;code&gt;TC6_Io&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;/2026/07/31/10BASE-T1S-Code-Interfaces-libtc6-and-lwip/&#34;&gt;协议核心 libtc6 与 lwIP 集成&lt;/a&gt; — libtc6 的 C API 清单、回调契约、lwIP netif 集成、队列实现&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;目标读者：在移植、定制、调试本库或竞品实现时需要逐函数查阅接口契约的工程师。&lt;/p&gt;
+&lt;h2 id=&#34;1-入口宏：Arduino-10BASE-T1S-PHY-TC6&#34;&gt;&lt;a href=&#34;#1-入口宏：Arduino-10BASE-T1S-PHY-TC6&#34; class=&#34;headerlink&#34; title=&#34;1. 入口宏：Arduino_10BASE_T1S_PHY_TC6&#34;&gt;&lt;/a&gt;1. 入口宏：&lt;code&gt;Arduino_10BASE_T1S_PHY_TC6&lt;/code&gt;&lt;/h2&gt;&lt;figure class=&#34;highlight cpp&#34;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&#34;gutter&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;3&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&#34;code&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;meta&#34;&gt;#&lt;span class=&#34;keyword&#34;&gt;define&lt;/span&gt; Arduino_10BASE_T1S_PHY_TC6(__SPI, __CS_PIN, __RESET_PIN, __IRQ_PIN) \&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;meta&#34;&gt;  TC6::TC6_Io t1s_io(__SPI, __CS_PIN, __RESET_PIN, __IRQ_PIN);              \&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;meta&#34;&gt;  TC6::TC6_Arduino_10BASE_T1S t1s_phy(t1s_io);&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;
+
+&lt;p&gt;文件位置：&lt;code&gt;src/Arduino_10BASE_T1S.h:61-63&lt;/code&gt;&lt;/p&gt;
+&lt;h3 id=&#34;1-1-语义&#34;&gt;&lt;a href=&#34;#1-1-语义&#34; class=&#34;headerlink&#34; title=&#34;1.1 语义&#34;&gt;&lt;/a&gt;1.1 语义&lt;/h3&gt;&lt;p&gt;这是一个&lt;strong&gt;对象生成宏&lt;/strong&gt;，不是函数。展开后在调用点声明两个全局对象：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;TC6::TC6_Io t1s_io&lt;/code&gt; — SPI &amp;#x2F; CS &amp;#x2F; RESET &amp;#x2F; IRQ 的硬件抽象封装&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;TC6::TC6_Arduino_10BASE_T1S t1s_phy&lt;/code&gt; — 持有 &lt;code&gt;t1s_io&lt;/code&gt; 引用、对上提供 &lt;code&gt;Arduino_10BASE_T1S_PHY_Interface&lt;/code&gt; 接口的 PHY 类&lt;/li&gt;
+&lt;/ul&gt;"><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-UDP-API/&t=10BASE-T1S Arduino 代码接口深度解析（一）：应用层 UDP Socket API"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%B3%BB%E5%88%97%E5%AF%BC%E8%AF%BB"><span class="toc-number">1.</span> <span class="toc-text">系列导读</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E5%85%A5%E5%8F%A3%E5%AE%8F%EF%BC%9AArduino-10BASE-T1S-PHY-TC6"><span class="toc-number">2.</span> <span class="toc-text">1. 入口宏：Arduino_10BASE_T1S_PHY_TC6</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-%E8%AF%AD%E4%B9%89"><span class="toc-number">2.1.</span> <span class="toc-text">1.1 语义</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-2-%E5%8F%82%E6%95%B0%E7%BA%A6%E5%AE%9A"><span class="toc-number">2.2.</span> <span class="toc-text">1.2 参数约定</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-3-%E8%B0%83%E7%94%A8%E7%BA%A6%E6%9D%9F"><span class="toc-number">2.3.</span> <span class="toc-text">1.3 调用约束</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-4-%E5%AE%8C%E6%95%B4%E5%88%9D%E5%A7%8B%E5%8C%96%E8%B0%83%E7%94%A8%E5%BA%8F%E5%88%97"><span class="toc-number">2.4.</span> <span class="toc-text">1.4 完整初始化调用序列</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-UDP-Socket-%E7%B1%BB%EF%BC%9AArduino-10BASE-T1S-UDP"><span class="toc-number">3.</span> <span class="toc-text">2. UDP Socket 类：Arduino_10BASE_T1S_UDP</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E7%B1%BB%E7%BB%A7%E6%89%BF"><span class="toc-number">3.1.</span> <span class="toc-text">2.1 类继承</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-%E6%9E%84%E9%80%A0-%E6%9E%90%E6%9E%84"><span class="toc-number">3.2.</span> <span class="toc-text">2.2 构造 &#x2F; 析构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F%EF%BC%9Abegin-stop"><span class="toc-number">3.3.</span> <span class="toc-text">2.3 生命周期：begin &#x2F; stop</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#begin-uint16-t-port"><span class="toc-number">3.3.1.</span> <span class="toc-text">begin(uint16_t port)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#stop"><span class="toc-number">3.3.2.</span> <span class="toc-text">stop()</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%B3%A8%E6%84%8F%EF%BC%9A%E6%9C%AA%E5%AE%9E%E7%8E%B0%E7%9A%84-beginPacket-const-char-host-%E9%87%8D%E8%BD%BD"><span class="toc-number">3.3.3.</span> <span class="toc-text">注意：未实现的 beginPacket(const char* host, ...) 重载</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-4-%E5%8F%91%E9%80%81%EF%BC%9AbeginPacket-write-endPacket"><span class="toc-number">3.4.</span> <span class="toc-text">2.4 发送：beginPacket &#x2F; write &#x2F; endPacket</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%8F%91%E9%80%81%E7%8A%B6%E6%80%81%E6%9C%BA"><span class="toc-number">3.4.1.</span> <span class="toc-text">发送状态机</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%90%84%E6%96%B9%E6%B3%95%E7%BB%86%E8%8A%82"><span class="toc-number">3.4.2.</span> <span class="toc-text">各方法细节</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%85%B8%E5%9E%8B%E9%99%B7%E9%98%B1"><span class="toc-number">3.4.3.</span> <span class="toc-text">典型陷阱</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-5-%E6%8E%A5%E6%94%B6%EF%BC%9AparsePacket-available-read-peek-flush"><span class="toc-number">3.5.</span> <span class="toc-text">2.5 接收：parsePacket &#x2F; available &#x2F; read &#x2F; peek &#x2F; flush</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%86%85%E9%83%A8%E9%98%9F%E5%88%97%E6%A8%A1%E5%9E%8B"><span class="toc-number">3.5.1.</span> <span class="toc-text">内部队列模型</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#parsePacket"><span class="toc-number">3.5.2.</span> <span class="toc-text">parsePacket()</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#available-read-peek"><span class="toc-number">3.5.3.</span> <span class="toc-text">available() &#x2F; read() &#x2F; peek()</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#flush"><span class="toc-number">3.5.4.</span> <span class="toc-text">flush()</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%8E%A5%E6%94%B6%E7%BC%93%E5%86%B2%E4%B8%8A%E9%99%90"><span class="toc-number">3.5.5.</span> <span class="toc-text">接收缓冲上限</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-6-%E5%86%85%E9%83%A8%E7%B1%BB-UdpRxPacket"><span class="toc-number">3.6.</span> <span class="toc-text">2.6 内部类 UdpRxPacket</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-7-%E5%86%85%E9%83%A8%E5%9B%9E%E8%B0%83-onUdpRawRecv"><span class="toc-number">3.7.</span> <span class="toc-text">2.7 内部回调 onUdpRawRecv</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%B7%B2%E7%9F%A5%E9%99%90%E5%88%B6"><span class="toc-number">3.7.1.</span> <span class="toc-text">已知限制</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-8-%E7%BC%93%E5%86%B2%E5%8C%BA-%E5%86%85%E5%AD%98%E5%8D%A0%E7%94%A8"><span class="toc-number">3.8.</span> <span class="toc-text">2.8 缓冲区 &#x2F; 内存占用</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-9-%E5%AE%8C%E6%95%B4%E7%9A%84-UDP-API-%E9%80%9F%E6%9F%A5%E8%A1%A8"><span class="toc-number">3.9.</span> <span class="toc-text">2.9 完整的 UDP API 速查表</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-%E4%B8%8E-Arduino-%E6%A0%87%E5%87%86-UDP-%E7%9A%84%E5%B7%AE%E5%BC%82"><span class="toc-number">4.</span> <span class="toc-text">3. 与 Arduino 标准 UDP 的差异</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-%E9%94%99%E8%AF%AF%E6%8E%92%E6%9F%A5%E9%80%9F%E6%9F%A5%E8%A1%A8"><span class="toc-number">5.</span> <span class="toc-text">4. 错误排查速查表</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-%E5%B0%8F%E7%BB%93"><span class="toc-number">6.</span> <span class="toc-text">5. 小结</span></a></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        10BASE-T1S Arduino 代码接口深度解析（一）：应用层 UDP Socket API
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">cursorhu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2026-07-30T16:00:00.000Z" class="dt-published" itemprop="datePublished">2026-07-31</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fa-solid fa-archive"></i>
+        <a class="category-link" href="/categories/Ethernet/">Ethernet</a> › <a class="category-link" href="/categories/Ethernet/%E5%B5%8C%E5%85%A5%E5%BC%8F%E7%BD%91%E7%BB%9C/">嵌入式网络</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/10BASE-T1S/" rel="tag">10BASE-T1S</a>, <a class="p-category" href="/tags/API-%E5%8F%82%E8%80%83/" rel="tag">API 参考</a>, <a class="p-category" href="/tags/Arduino/" rel="tag">Arduino</a>, <a class="p-category" href="/tags/Socket/" rel="tag">Socket</a>, <a class="p-category" href="/tags/UDP/" rel="tag">UDP</a>, <a class="p-category" href="/tags/lwIP/" rel="tag">lwIP</a>, <a class="p-category" href="/tags/%E4%BB%A3%E7%A0%81%E6%8E%A5%E5%8F%A3/" rel="tag">代码接口</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <h2 id="系列导读"><a href="#系列导读" class="headerlink" title="系列导读"></a>系列导读</h2><p><a href="/2026/06/04/10BASE-T1S-Arduino-Architecture-Overview/">架构概览</a> 与 <a href="/2026/06/04/10BASE-T1S-Protocol-Stack-Deep-Dive/">协议栈深度分析</a> 已经从分层和数据流的角度描述了整库。本系列三篇从代码接口视角，把每一层的函数、类、回调、配置项逐一拆解：</p>
+<ol>
+<li><strong>应用层 UDP Socket API</strong>（本篇）— <code>Arduino_10BASE_T1S_UDP</code> 完整 API、<code>UdpRxPacket</code> 内部类、生命周期&#x2F;资源模型</li>
+<li><a href="/2026/07/31/10BASE-T1S-Code-Interfaces-PHY-and-HAL/">PHY Interface 与 HAL 层</a> — 抽象类 <code>Arduino_10BASE_T1S_PHY_Interface</code>、具体类 <code>TC6_Arduino_10BASE_T1S</code>、SPI HAL <code>TC6_Io</code></li>
+<li><a href="/2026/07/31/10BASE-T1S-Code-Interfaces-libtc6-and-lwip/">协议核心 libtc6 与 lwIP 集成</a> — libtc6 的 C API 清单、回调契约、lwIP netif 集成、队列实现</li>
+</ol>
+<p>目标读者：在移植、定制、调试本库或竞品实现时需要逐函数查阅接口契约的工程师。</p>
+<h2 id="1-入口宏：Arduino-10BASE-T1S-PHY-TC6"><a href="#1-入口宏：Arduino-10BASE-T1S-PHY-TC6" class="headerlink" title="1. 入口宏：Arduino_10BASE_T1S_PHY_TC6"></a>1. 入口宏：<code>Arduino_10BASE_T1S_PHY_TC6</code></h2><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">define</span> Arduino_10BASE_T1S_PHY_TC6(__SPI, __CS_PIN, __RESET_PIN, __IRQ_PIN) \</span></span><br><span class="line"><span class="meta">  TC6::TC6_Io t1s_io(__SPI, __CS_PIN, __RESET_PIN, __IRQ_PIN);              \</span></span><br><span class="line"><span class="meta">  TC6::TC6_Arduino_10BASE_T1S t1s_phy(t1s_io);</span></span><br></pre></td></tr></table></figure>
+
+<p>文件位置：<code>src/Arduino_10BASE_T1S.h:61-63</code></p>
+<h3 id="1-1-语义"><a href="#1-1-语义" class="headerlink" title="1.1 语义"></a>1.1 语义</h3><p>这是一个<strong>对象生成宏</strong>，不是函数。展开后在调用点声明两个全局对象：</p>
+<ul>
+<li><code>TC6::TC6_Io t1s_io</code> — SPI &#x2F; CS &#x2F; RESET &#x2F; IRQ 的硬件抽象封装</li>
+<li><code>TC6::TC6_Arduino_10BASE_T1S t1s_phy</code> — 持有 <code>t1s_io</code> 引用、对上提供 <code>Arduino_10BASE_T1S_PHY_Interface</code> 接口的 PHY 类</li>
+</ul>
+<h3 id="1-2-参数约定"><a href="#1-2-参数约定" class="headerlink" title="1.2 参数约定"></a>1.2 参数约定</h3><table>
+<thead>
+<tr>
+<th>参数</th>
+<th>类型</th>
+<th>取值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>__SPI</code></td>
+<td><code>HardwareSPI &amp;</code></td>
+<td><code>SPI</code> &#x2F; <code>SPI1</code></td>
+<td>Arduino SPI 设备引用，UNO R4 &#x2F; SAMD 默认 <code>SPI</code>；Portenta C33 &#x2F; GIGA 使用 <code>SPI1</code></td>
+</tr>
+<tr>
+<td><code>__CS_PIN</code></td>
+<td><code>int</code></td>
+<td>引脚号</td>
+<td>片选，低电平有效，必须能作为 OUTPUT</td>
+</tr>
+<tr>
+<td><code>__RESET_PIN</code></td>
+<td><code>int</code></td>
+<td>引脚号</td>
+<td>硬件复位线，低电平有效</td>
+</tr>
+<tr>
+<td><code>__IRQ_PIN</code></td>
+<td><code>int</code></td>
+<td>引脚号</td>
+<td>MAC-PHY 中断请求，<strong>低电平下降沿触发</strong>，必须能 INPUT_PULLUP</td>
+</tr>
+</tbody></table>
+<h3 id="1-3-调用约束"><a href="#1-3-调用约束" class="headerlink" title="1.3 调用约束"></a>1.3 调用约束</h3><ol>
+<li><strong>必须在文件作用域调用</strong>，不能放进函数体内——展开后的两个对象是 <code>static</code> 链接的全局对象</li>
+<li><strong>板卡引脚默认宏</strong> (<code>src/Arduino_10BASE_T1S.h:34-55</code>)：<ul>
+<li>UNO form factor（含 SAMD、UNO R4、GIGA、AVR UNO WiFi Rev2）：<code>CS=9, RESET=6, IRQ=2</code></li>
+<li>Portenta H7（含 M7&#x2F;M4 核，MID carrier）：通过 <code>pinDefinitions.h</code> 把 PH_6&#x2F;PH_15&#x2F;PC_7 转换为引脚号</li>
+<li>Portenta C33：<code>CS=25, RESET=6, IRQ=2</code></li>
+<li>未识别板卡：三个常量都为 <code>-1</code>，并产生 <code># warning &quot;No pins defined for your board&quot;</code></li>
+</ul>
+</li>
+<li>同一个 sketch 中<strong>只能调用一次</strong>（重复展开会得到同名的全局对象 <code>t1s_io</code> &#x2F; <code>t1s_phy</code>，编译报重复定义）</li>
+</ol>
+<h3 id="1-4-完整初始化调用序列"><a href="#1-4-完整初始化调用序列" class="headerlink" title="1.4 完整初始化调用序列"></a>1.4 完整初始化调用序列</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;Arduino_10BASE_T1S.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;SPI.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 1. 宏展开，生成全局对象</span></span><br><span class="line"><span class="meta">#<span class="keyword">if</span> defined(ARDUINO_GIGA) || defined(ARDUINO_PORTENTA_C33)</span></span><br><span class="line">  <span class="built_in">Arduino_10BASE_T1S_PHY_TC6</span>(SPI1, CS_PIN, RESET_PIN, IRQ_PIN);</span><br><span class="line"><span class="meta">#<span class="keyword">else</span></span></span><br><span class="line">  <span class="built_in">Arduino_10BASE_T1S_PHY_TC6</span>(SPI, CS_PIN, RESET_PIN, IRQ_PIN);</span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">Arduino_10BASE_T1S_UDP udp_client;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">setup</span><span class="params">()</span> </span>&#123;</span><br><span class="line">  Serial.<span class="built_in">begin</span>(<span class="number">115200</span>);</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 2. 中断脚配置：INPUT_PULLUP + FALLING</span></span><br><span class="line">  <span class="built_in">pinMode</span>(IRQ_PIN, INPUT_PULLUP);</span><br><span class="line">  <span class="built_in">attachInterrupt</span>(<span class="built_in">digitalPinToInterrupt</span>(IRQ_PIN),</span><br><span class="line">                  []() &#123; t1s_io.<span class="built_in">onInterrupt</span>(); &#125;,</span><br><span class="line">                  FALLING);</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 3. SPI + 硬件复位</span></span><br><span class="line">  t1s_io.<span class="built_in">begin</span>();    <span class="comment">// 100ms LOW + 100ms HIGH 复位</span></span><br><span class="line"></span><br><span class="line">  <span class="comment">// 4. PHY 初始化：lwip_init + TC6_Init + 32 条寄存器初始化 + netif_add</span></span><br><span class="line">  MacAddress <span class="type">const</span> mac = MacAddress::<span class="built_in">create_from_uid</span>();</span><br><span class="line">  t1s_phy.<span class="built_in">begin</span>(ip_addr, network_mask, gateway,</span><br><span class="line">                mac, t1s_plca_settings, t1s_default_mac_settings);</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 5. UDP socket 绑定本地端口</span></span><br><span class="line">  udp_client.<span class="built_in">begin</span>(UDP_CLIENT_PORT);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">loop</span><span class="params">()</span> </span>&#123;</span><br><span class="line">  <span class="comment">// 6. 协议栈心跳，必须高频调用</span></span><br><span class="line">  t1s_phy.<span class="built_in">service</span>();</span><br><span class="line">  <span class="comment">// ... 应用 UDP 收发逻辑</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="2-UDP-Socket-类：Arduino-10BASE-T1S-UDP"><a href="#2-UDP-Socket-类：Arduino-10BASE-T1S-UDP" class="headerlink" title="2. UDP Socket 类：Arduino_10BASE_T1S_UDP"></a>2. UDP Socket 类：<code>Arduino_10BASE_T1S_UDP</code></h2><p>文件位置：<code>src/Arduino_10BASE_T1S_UDP.h</code> &#x2F; <code>src/Arduino_10BASE_T1S_UDP.cpp</code></p>
+<h3 id="2-1-类继承"><a href="#2-1-类继承" class="headerlink" title="2.1 类继承"></a>2.1 类继承</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">Arduino_10BASE_T1S_UDP</span> : <span class="keyword">public</span> UDP  <span class="comment">// Arduino 核心库 api/Udp.h</span></span><br></pre></td></tr></table></figure>
+
+<p>继承自 Arduino 标准 <code>UDP</code> 基类（<code>#include &lt;Udp.h&gt;</code>），因此可直接用于 <code>WiFiUDP</code> 风格的现有 Arduino 例程（例如 <code>EthernetUDP</code> 移植过来的代码），只要替换类型名即可。</p>
+<h3 id="2-2-构造-析构"><a href="#2-2-构造-析构" class="headerlink" title="2.2 构造 &#x2F; 析构"></a>2.2 构造 &#x2F; 析构</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">Arduino_10BASE_T1S_UDP</span>();           <span class="comment">// src/Arduino_10BASE_T1S_UDP.cpp:27</span></span><br><span class="line"><span class="keyword">virtual</span> ~<span class="built_in">Arduino_10BASE_T1S_UDP</span>();  <span class="comment">// src/Arduino_10BASE_T1S_UDP.cpp:36</span></span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>方法</th>
+<th>行为</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>默认构造</td>
+<td>初始化所有成员为 0&#x2F;NULL&#x2F;空。<strong>不会</strong>自动调用 <code>begin()</code>，也<strong>不会</strong>调用 <code>lwip_init()</code></td>
+</tr>
+<tr>
+<td>析构</td>
+<td>调用 <code>stop()</code> 释放 udp_pcb 资源</td>
+</tr>
+</tbody></table>
+<p><strong>重要约束</strong>：<code>begin()</code> 之前 <code>_udp_pcb == nullptr</code>，所有发送方法都会返回失败码（0 或 -1）。</p>
+<h3 id="2-3-生命周期：begin-stop"><a href="#2-3-生命周期：begin-stop" class="headerlink" title="2.3 生命周期：begin &#x2F; stop"></a>2.3 生命周期：<code>begin</code> &#x2F; <code>stop</code></h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">virtual</span> <span class="type">uint8_t</span> <span class="title">begin</span><span class="params">(<span class="type">uint16_t</span> port)</span> <span class="keyword">override</span></span>;   <span class="comment">// src/Arduino_10BASE_T1S_UDP.cpp:45</span></span><br><span class="line"><span class="function"><span class="keyword">virtual</span> <span class="type">void</span> <span class="title">stop</span><span class="params">()</span> <span class="keyword">override</span></span>;                    <span class="comment">// src/Arduino_10BASE_T1S_UDP.cpp:62</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="begin-uint16-t-port"><a href="#begin-uint16-t-port" class="headerlink" title="begin(uint16_t port)"></a><code>begin(uint16_t port)</code></h4><table>
+<thead>
+<tr>
+<th>项</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>入参</td>
+<td><code>port</code> — 本地监听端口</td>
+</tr>
+<tr>
+<td>返回</td>
+<td><code>1</code> 成功 &#x2F; <code>0</code> 失败（<code>udp_bind</code> 出错时）</td>
+</tr>
+<tr>
+<td>实现要点</td>
+<td>1) 若 <code>_udp_pcb == nullptr</code> 则调用 <code>udp_new()</code> 分配 PCB；2) <code>udp_bind(_udp_pcb, IP_ADDR_ANY, port)</code>；3) <code>udp_recv(_udp_pcb, lwIp_udp_raw_recv, this)</code> 注册接收回调（<code>this</code> 作为 <code>arg</code>）</td>
+</tr>
+<tr>
+<td>失败场景</td>
+<td><code>udp_bind</code> 返回非 <code>ERR_OK</code>（lwIP 内部错误、内存不足）</td>
+</tr>
+<tr>
+<td><strong>不调副作用</strong></td>
+<td>不调用 <code>netif_set_default()</code> &#x2F; <code>netif_set_link_up()</code>——这些由 <code>TC6_Arduino_10BASE_T1S::begin()</code> 完成</td>
+</tr>
+<tr>
+<td>可重入性</td>
+<td>同一个对象可重复 <code>begin()</code>，但需要在中间 <code>stop()</code>，否则旧的 PCB 不会被释放</td>
+</tr>
+</tbody></table>
+<h4 id="stop"><a href="#stop" class="headerlink" title="stop()"></a><code>stop()</code></h4><table>
+<thead>
+<tr>
+<th>项</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>返回</td>
+<td>void</td>
+</tr>
+<tr>
+<td>实现要点</td>
+<td>若 <code>_udp_pcb != nullptr</code>：<code>udp_disconnect()</code> + <code>udp_remove()</code> + <code>_udp_pcb = nullptr</code></td>
+</tr>
+<tr>
+<td><strong>析构器自动调用</strong></td>
+<td>析构函数会调用 <code>stop()</code>，所以动态分配的对象泄漏 PCB 的风险低</td>
+</tr>
+</tbody></table>
+<h4 id="注意：未实现的-beginPacket-const-char-host-重载"><a href="#注意：未实现的-beginPacket-const-char-host-重载" class="headerlink" title="注意：未实现的 beginPacket(const char* host, ...) 重载"></a>注意：未实现的 <code>beginPacket(const char* host, ...)</code> 重载</h4><p><code>beginPacket(const char *host, uint16_t port)</code> 仍然存在但<strong>永远返回 0</strong>（<code>src/Arduino_10BASE_T1S_UDP.cpp:86-90</code>），注释 <code>/* TODO */</code> 表明 DNS 解析未集成。<strong>当前不能用域名发包</strong>，必须用 <code>IPAddress</code> 重载。</p>
+<h3 id="2-4-发送：beginPacket-write-endPacket"><a href="#2-4-发送：beginPacket-write-endPacket" class="headerlink" title="2.4 发送：beginPacket &#x2F; write &#x2F; endPacket"></a>2.4 发送：<code>beginPacket</code> &#x2F; <code>write</code> &#x2F; <code>endPacket</code></h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">virtual</span> <span class="type">int</span> <span class="title">beginPacket</span><span class="params">(IPAddress ip, <span class="type">uint16_t</span> port)</span> <span class="keyword">override</span></span>;  <span class="comment">// :72</span></span><br><span class="line"><span class="function"><span class="keyword">virtual</span> <span class="type">int</span> <span class="title">endPacket</span><span class="params">()</span> <span class="keyword">override</span></span>;                                <span class="comment">// :92</span></span><br><span class="line"><span class="function"><span class="keyword">virtual</span> <span class="type">size_t</span> <span class="title">write</span><span class="params">(<span class="type">uint8_t</span> data)</span> <span class="keyword">override</span></span>;                    <span class="comment">// :125</span></span><br><span class="line"><span class="function"><span class="keyword">virtual</span> <span class="type">size_t</span> <span class="title">write</span><span class="params">(<span class="type">const</span> <span class="type">uint8_t</span> * buffer, <span class="type">size_t</span> size)</span> <span class="keyword">override</span></span>; <span class="comment">// :131</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="发送状态机"><a href="#发送状态机" class="headerlink" title="发送状态机"></a>发送状态机</h4><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">[未初始化]</span><br><span class="line">   │ begin(port)</span><br><span class="line">   ▼</span><br><span class="line">[READY] ←──┐</span><br><span class="line">   │       │</span><br><span class="line">   │ beginPacket(ip, port)  ◀── 每次只能有一个 packet 在构建</span><br><span class="line">   ▼       │</span><br><span class="line">[BUILDING]──┘</span><br><span class="line">   │ write(...) 任意次</span><br><span class="line">   ▼</span><br><span class="line">   │ endPacket()</span><br><span class="line">   ▼</span><br><span class="line">   │ udp_sendto() ─── 失败返回 -1</span><br><span class="line">   ▼</span><br><span class="line">[READY]</span><br></pre></td></tr></table></figure>
+
+<h4 id="各方法细节"><a href="#各方法细节" class="headerlink" title="各方法细节"></a>各方法细节</h4><p><strong><code>beginPacket(IPAddress ip, uint16_t port)</code></strong></p>
+<ul>
+<li>仅记录目标 IP&#x2F;port 到 <code>_send_to_ip</code> &#x2F; <code>_send_to_port</code></li>
+<li><strong><code>_tx_data.clear()</code></strong>：清空内部 std::vector（<code>src/Arduino_10BASE_T1S_UDP.cpp:81</code>），<strong>不会</strong>丢弃正在传输的包——<code>endPacket()</code> 之前不可能开始第二个包</li>
+<li>返回 <code>1</code> &#x2F; <code>0</code>（仅检查 <code>_udp_pcb != nullptr</code>）</li>
+</ul>
+<p><strong><code>write(uint8_t data)</code> &#x2F; <code>write(const uint8_t* buf, size_t size)</code></strong></p>
+<ul>
+<li>写入内部 <code>_tx_data</code>（<code>std::vector&lt;uint8_t&gt;</code>），无网络 IO</li>
+<li>单字节版固定返回 1；批量版返回 <code>size</code>（不做边界检查——<code>endPacket</code> 时如果分配 pbuf 失败才报 -1）</li>
+</ul>
+<p><strong><code>endPacket()</code></strong></p>
+<ul>
+<li>分配 <code>pbuf</code> (PBUF_TRANSPORT, PBUF_RAM)</li>
+<li><code>pbuf_take()</code> 拷贝 <code>_tx_data</code> 到 pbuf payload</li>
+<li><strong><code>_tx_data.clear()</code> 之后</strong>才调用 <code>udp_sendto()</code>，所以失败重发时需要重新 <code>beginPacket</code></li>
+<li>返回值约定混乱（<strong>实际行为，非 API 契约</strong>）：<ul>
+<li><code>1</code> — 成功</li>
+<li><code>0</code> — <code>_udp_pcb == nullptr</code>（初始化失败）</li>
+<li><code>-1</code> — <code>pbuf_take</code> 或 <code>udp_sendto</code> 失败</li>
+</ul>
+</li>
+<li>注意 <code>pbuf_free(p)</code> 总是会被调用</li>
+</ul>
+<h4 id="典型陷阱"><a href="#典型陷阱" class="headerlink" title="典型陷阱"></a>典型陷阱</h4><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">udp_client.<span class="built_in">beginPacket</span>(server_ip, <span class="number">8888</span>);</span><br><span class="line">udp_client.<span class="built_in">write</span>(<span class="string">&quot;hello&quot;</span>, <span class="number">5</span>);</span><br><span class="line"><span class="type">int</span> rc = udp_client.<span class="built_in">endPacket</span>();</span><br><span class="line"><span class="keyword">if</span> (rc != <span class="number">1</span>) &#123;</span><br><span class="line">  <span class="comment">// rc 可能是 0 也可能是 -1，必须同时处理</span></span><br><span class="line">  <span class="comment">// 失败后 _tx_data 已经被清空，不能重试，需重新 beginPacket + write</span></span><br><span class="line">  udp_client.<span class="built_in">beginPacket</span>(server_ip, <span class="number">8888</span>);  <span class="comment">// 必须重新开始</span></span><br><span class="line">  udp_client.<span class="built_in">write</span>(<span class="string">&quot;hello&quot;</span>, <span class="number">5</span>);</span><br><span class="line">  udp_client.<span class="built_in">endPacket</span>();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-5-接收：parsePacket-available-read-peek-flush"><a href="#2-5-接收：parsePacket-available-read-peek-flush" class="headerlink" title="2.5 接收：parsePacket &#x2F; available &#x2F; read &#x2F; peek &#x2F; flush"></a>2.5 接收：<code>parsePacket</code> &#x2F; <code>available</code> &#x2F; <code>read</code> &#x2F; <code>peek</code> &#x2F; <code>flush</code></h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">virtual</span> <span class="type">int</span> <span class="title">parsePacket</span><span class="params">()</span> <span class="keyword">override</span></span>;   <span class="comment">// :137</span></span><br><span class="line"><span class="function"><span class="keyword">virtual</span> <span class="type">int</span> <span class="title">available</span><span class="params">()</span> <span class="keyword">override</span></span>;     <span class="comment">// :158</span></span><br><span class="line"><span class="function"><span class="keyword">virtual</span> <span class="type">int</span> <span class="title">read</span><span class="params">()</span> <span class="keyword">override</span></span>;          <span class="comment">// :166</span></span><br><span class="line"><span class="function"><span class="keyword">virtual</span> <span class="type">int</span> <span class="title">read</span><span class="params">(<span class="type">unsigned</span> <span class="type">char</span>* buffer, <span class="type">size_t</span> len)</span> <span class="keyword">override</span></span>;  <span class="comment">// :174</span></span><br><span class="line"><span class="function"><span class="keyword">virtual</span> <span class="type">int</span> <span class="title">read</span><span class="params">(<span class="type">char</span>* buffer, <span class="type">size_t</span> len)</span> <span class="keyword">override</span></span>;          <span class="comment">// :182</span></span><br><span class="line"><span class="function"><span class="keyword">virtual</span> <span class="type">int</span> <span class="title">peek</span><span class="params">()</span> <span class="keyword">override</span></span>;          <span class="comment">// :190</span></span><br><span class="line"><span class="function"><span class="keyword">virtual</span> <span class="type">void</span> <span class="title">flush</span><span class="params">()</span> <span class="keyword">override</span></span>;        <span class="comment">// :198</span></span><br><span class="line"><span class="function"><span class="keyword">virtual</span> IPAddress <span class="title">remoteIP</span><span class="params">()</span> <span class="keyword">override</span></span>;<span class="comment">// :205</span></span><br><span class="line"><span class="function"><span class="keyword">virtual</span> <span class="type">uint16_t</span> <span class="title">remotePort</span><span class="params">()</span> <span class="keyword">override</span></span>;<span class="comment">// :213</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="内部队列模型"><a href="#内部队列模型" class="headerlink" title="内部队列模型"></a>内部队列模型</h4><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">lwIP UDP RX 回调 (lwIp_udp_raw_recv)</span><br><span class="line">   │ _rx_pkt_list.push_back(...)</span><br><span class="line">   ▼</span><br><span class="line">std::list&lt;UdpRxPacket::SharedPtr&gt;  _rx_pkt_list   // 默认上限 10 个包</span><br><span class="line">   │ parsePacket() → pop_front()</span><br><span class="line">   ▼</span><br><span class="line">UdpRxPacket::SharedPtr  _rx_pkt                    // 当前正在消费的包</span><br><span class="line">   │ read()/peek()/flush()</span><br><span class="line">   ▼</span><br><span class="line">std::deque&lt;uint8_t&gt;     _rx_data  (内部)</span><br></pre></td></tr></table></figure>
+
+<h4 id="parsePacket"><a href="#parsePacket" class="headerlink" title="parsePacket()"></a><code>parsePacket()</code></h4><ul>
+<li>从 <code>_rx_pkt_list</code> 头部弹出一个包，存到 <code>_rx_pkt</code></li>
+<li>返回包的总长度 <code>totalSize()</code>；若列表空则 <code>_rx_pkt.reset()</code> 并返回 0</li>
+<li><strong>注意</strong>：连续调用 <code>parsePacket()</code> 多次而中间不 <code>read()/flush()</code> 会<strong>丢弃中间的包</strong>（每次都把队首移到 <code>_rx_pkt</code>）</li>
+</ul>
+<h4 id="available-read-peek"><a href="#available-read-peek" class="headerlink" title="available() &#x2F; read() &#x2F; peek()"></a><code>available()</code> &#x2F; <code>read()</code> &#x2F; <code>peek()</code></h4><ul>
+<li>都代理到 <code>_rx_pkt</code> 内部的 <code>std::deque&lt;uint8_t&gt;</code> 操作</li>
+<li>若 <code>_rx_pkt == nullptr</code>（没 <code>parsePacket</code> 过、或刚 <code>flush()</code> 过），返回 -1 &#x2F; 0</li>
+</ul>
+<h4 id="flush"><a href="#flush" class="headerlink" title="flush()"></a><code>flush()</code></h4><ul>
+<li>释放 <code>_rx_pkt</code>（<code>_rx_pkt.reset()</code>），等同于”放弃当前包剩余数据”</li>
+<li><strong>不是</strong>网络层 flush（UDP 没有 buffered TX flush 语义）</li>
+<li><code>_rx_pkt_list</code> 中的排队包<strong>不受影响</strong></li>
+</ul>
+<h4 id="接收缓冲上限"><a href="#接收缓冲上限" class="headerlink" title="接收缓冲上限"></a>接收缓冲上限</h4><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> _rx_pkt_list_size = <span class="number">10</span>;  <span class="comment">// src/Arduino_10BASE_T1S_UDP.h:239</span></span><br></pre></td></tr></table></figure>
+
+<p><code>onUdpRawRecv</code> 收到新包时如果 <code>_rx_pkt_list.size() &gt; _rx_pkt_list_size</code>（<strong>注意是 <code>&gt;</code> 不是 <code>&gt;=</code></strong>），就丢弃最老的包。可通过 <code>bufferSize(int size)</code> 调整（<code>src/Arduino_10BASE_T1S_UDP.h:227-229</code>）。</p>
+<p><strong>反直觉的边界行为</strong>：<code>bufferSize(N)</code> 实际允许 <code>N</code> 个包，第 <code>N+1</code> 个到达时才丢第 1 个。</p>
+<h3 id="2-6-内部类-UdpRxPacket"><a href="#2-6-内部类-UdpRxPacket" class="headerlink" title="2.6 内部类 UdpRxPacket"></a>2.6 内部类 <code>UdpRxPacket</code></h3><p><code>src/Arduino_10BASE_T1S_UDP.h:241-300</code></p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">UdpRxPacket</span> &#123;</span><br><span class="line">  IPAddress <span class="type">const</span> _remote_ip;</span><br><span class="line">  <span class="type">uint16_t</span> <span class="type">const</span> _remote_port;</span><br><span class="line">  <span class="type">size_t</span> <span class="type">const</span> _rx_data_len;</span><br><span class="line">  std::deque&lt;<span class="type">uint8_t</span>&gt; _rx_data;</span><br><span class="line">  <span class="keyword">typedef</span> std::shared_ptr&lt;UdpRxPacket&gt; SharedPtr;</span><br><span class="line">  ...</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>字段&#x2F;方法</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>构造</td>
+<td>用 <code>std::deque(p_data, p_data + data_len)</code> 把 lwIP pbuf payload <strong>拷贝</strong>到自己的 deque</td>
+</tr>
+<tr>
+<td><code>remoteIP()</code> &#x2F; <code>remotePort()</code></td>
+<td><strong>用 <code>const</code></strong> 修饰，但 <code>remoteIP()</code> 返回值 IPAddress 不是引用，可以安全缓存</td>
+</tr>
+<tr>
+<td><code>totalSize()</code></td>
+<td>返回构造时的原始长度，不会因 read 减少</td>
+</tr>
+<tr>
+<td><code>available()</code></td>
+<td>返回 deque 中剩余字节数</td>
+</tr>
+<tr>
+<td><code>read()</code> &#x2F; <code>read(buf, len)</code> &#x2F; <code>peek()</code></td>
+<td>deque 的对应操作，行为同 Arduino 标准 UDP</td>
+</tr>
+</tbody></table>
+<p><strong>关键实现选择</strong>：<code>_rx_data_len</code> 与 <code>deque.size()</code> 可能不一致（前者是接收时的原始长度，后者是未读长度）。<code>totalSize()</code> 返回原始长度。</p>
+<p><strong>生命周期</strong>：<code>SharedPtr</code> 通过 <code>std::shared_ptr</code> 管理。<code>_rx_pkt_list</code> 持有一份引用（队列中排队），<code>_rx_pkt</code> 持有一份引用（当前包）。两者都释放后，对象析构。</p>
+<h3 id="2-7-内部回调-onUdpRawRecv"><a href="#2-7-内部回调-onUdpRawRecv" class="headerlink" title="2.7 内部回调 onUdpRawRecv"></a>2.7 内部回调 <code>onUdpRawRecv</code></h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">void</span> <span class="title">onUdpRawRecv</span><span class="params">(<span class="keyword">struct</span> udp_pcb *pcb, <span class="keyword">struct</span> pbuf *p,</span></span></span><br><span class="line"><span class="params"><span class="function">                  <span class="type">const</span> <span class="type">ip_addr_t</span> *addr, <span class="type">uint16_t</span> port)</span></span>;  <span class="comment">// :221</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>调用来源</strong>：lwIP 的 <code>udp_recv()</code> 回调 <code>lwIp_udp_raw_recv</code>（<code>src/Arduino_10BASE_T1S_UDP.cpp:252-256</code>）转发 <code>arg</code> 中的 <code>this</code> 指针到此方法。</p>
+<p><strong>处理流程</strong>：</p>
+<ol>
+<li>从 <code>ip_addr_t</code> 提取 IPv4 四元组（<code>ip4_addr1..4</code>），构造 <code>IPAddress</code></li>
+<li><code>std::make_shared&lt;UdpRxPacket&gt;(remote_ip, remote_port, p-&gt;payload, p-&gt;len)</code> — <strong>只取 pbuf 第一段</strong>（<code>p-&gt;len</code>，不是 <code>p-&gt;tot_len</code>），这意味着如果 UDP 数据跨越多个 pbuf 段，<strong>只有第一段被拷贝</strong></li>
+<li>队列溢出保护（<code>bufferSize</code> 控制）</li>
+<li><strong><code>pbuf_free(p)</code></strong> — 释放 lwIP pbuf（已经从第一段 payload 拷出到 deque）</li>
+</ol>
+<h4 id="已知限制"><a href="#已知限制" class="headerlink" title="已知限制"></a>已知限制</h4><ul>
+<li><strong>pbuf 分段丢失</strong>：UDP packet 跨多个 pbuf 时，只有第一段进入应用。如果实际抓包看到 <code>p-&gt;tot_len &gt; p-&gt;len</code>，那部分数据被静默丢弃。</li>
+<li><strong>没有 TOS&#x2F;TTL 设置</strong>：走 lwIP 默认值。</li>
+<li><strong>没有广播过滤</strong>：<code>FilterRxEthernetPacket</code> 在 PHY 层只放过 IPv4 (0x0800) 和 ARP (0x0806)，不区分单播&#x2F;广播。</li>
+</ul>
+<h3 id="2-8-缓冲区-内存占用"><a href="#2-8-缓冲区-内存占用" class="headerlink" title="2.8 缓冲区 &#x2F; 内存占用"></a>2.8 缓冲区 &#x2F; 内存占用</h3><p><code>Arduino_10BASE_T1S_UDP</code> 实例本身不大：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">struct</span> <span class="title class_">udp_pcb</span> *   _udp_pcb;      <span class="comment">// lwIP 控制块，编译时决定大小</span></span><br><span class="line">IPAddress          _send_to_ip;   <span class="comment">// 4 字节</span></span><br><span class="line"><span class="type">uint16_t</span>           _send_to_port; <span class="comment">// 2 字节</span></span><br><span class="line">std::vector&lt;<span class="type">uint8_t</span>&gt; _tx_data;    <span class="comment">// 当前 packet 的发送缓冲，动态增长</span></span><br><span class="line"><span class="type">int</span> _rx_pkt_list_size = <span class="number">10</span>;       <span class="comment">// 4 字节</span></span><br><span class="line">std::list&lt;UdpRxPacket::SharedPtr&gt; _rx_pkt_list;  <span class="comment">// 10 个 node + heap</span></span><br><span class="line">UdpRxPacket::SharedPtr _rx_pkt;   <span class="comment">// 当前包</span></span><br></pre></td></tr></table></figure>
+
+<p><code>_tx_data</code> 在每次 <code>endPacket()</code> 后被 <code>clear()</code>，但<strong>容量不释放</strong>（<code>std::vector::clear()</code> 不缩容）。多次 <code>beginPacket + write</code> 后保留最大发送长度对应的容量。</p>
+<p><code>UdpRxPacket</code> 内部 <code>std::deque&lt;uint8_t&gt;</code> 用小块分配，与 1536 字节 MTU 对应，单包占用 ~1.5KB + deque 节点开销。10 个排队包最大占用 ~15KB RAM。</p>
+<h3 id="2-9-完整的-UDP-API-速查表"><a href="#2-9-完整的-UDP-API-速查表" class="headerlink" title="2.9 完整的 UDP API 速查表"></a>2.9 完整的 UDP API 速查表</h3><table>
+<thead>
+<tr>
+<th>方法</th>
+<th>返回</th>
+<th>失败时</th>
+<th>备注</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>Arduino_10BASE_T1S_UDP()</code></td>
+<td>—</td>
+<td>—</td>
+<td>必须先 <code>begin()</code></td>
+</tr>
+<tr>
+<td><code>~Arduino_10BASE_T1S_UDP()</code></td>
+<td>—</td>
+<td>—</td>
+<td>自动 <code>stop()</code></td>
+</tr>
+<tr>
+<td><code>begin(port)</code></td>
+<td><code>uint8_t</code></td>
+<td><code>0</code></td>
+<td>唯一入口</td>
+</tr>
+<tr>
+<td><code>stop()</code></td>
+<td><code>void</code></td>
+<td>—</td>
+<td>析构器已调</td>
+</tr>
+<tr>
+<td><code>beginPacket(IPAddress, port)</code></td>
+<td><code>int</code></td>
+<td><code>0</code></td>
+<td>仅 <code>_udp_pcb == nullptr</code> 时失败</td>
+</tr>
+<tr>
+<td><code>beginPacket(const char*, port)</code></td>
+<td><code>int</code></td>
+<td><strong><code>0 永远</code></strong></td>
+<td>DNS 未实现</td>
+</tr>
+<tr>
+<td><code>write(uint8_t)</code></td>
+<td><code>size_t</code></td>
+<td><code>1</code>（无错）</td>
+<td></td>
+</tr>
+<tr>
+<td><code>write(buf, size)</code></td>
+<td><code>size_t</code></td>
+<td><code>size</code>（无错）</td>
+<td></td>
+</tr>
+<tr>
+<td><code>endPacket()</code></td>
+<td><code>int</code></td>
+<td><code>0</code> 或 <code>-1</code></td>
+<td>见 2.4 陷阱</td>
+</tr>
+<tr>
+<td><code>parsePacket()</code></td>
+<td><code>int</code></td>
+<td><code>0</code>（无包）</td>
+<td>返回包总长度</td>
+</tr>
+<tr>
+<td><code>available()</code></td>
+<td><code>int</code></td>
+<td><code>0</code></td>
+<td>当前包剩余字节</td>
+</tr>
+<tr>
+<td><code>read()</code></td>
+<td><code>int</code></td>
+<td><code>-1</code></td>
+<td>无当前包时</td>
+</tr>
+<tr>
+<td><code>read(buf, len)</code></td>
+<td><code>int</code></td>
+<td><code>-1</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>peek()</code></td>
+<td><code>int</code></td>
+<td><code>-1</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>flush()</code></td>
+<td><code>void</code></td>
+<td>—</td>
+<td><strong>只释放当前包</strong>，不刷队列</td>
+</tr>
+<tr>
+<td><code>remoteIP()</code></td>
+<td><code>IPAddress</code></td>
+<td><code>IPAddress()</code> 默认值</td>
+<td></td>
+</tr>
+<tr>
+<td><code>remotePort()</code></td>
+<td><code>uint16_t</code></td>
+<td><code>0</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>onUdpRawRecv(...)</code></td>
+<td><code>void</code></td>
+<td>—</td>
+<td><strong>私有回调</strong>，用户不调</td>
+</tr>
+<tr>
+<td><code>bufferSize(int)</code></td>
+<td><code>void</code></td>
+<td>—</td>
+<td>设队列上限，默认 10</td>
+</tr>
+</tbody></table>
+<h2 id="3-与-Arduino-标准-UDP-的差异"><a href="#3-与-Arduino-标准-UDP-的差异" class="headerlink" title="3. 与 Arduino 标准 UDP 的差异"></a>3. 与 Arduino 标准 UDP 的差异</h2><table>
+<thead>
+<tr>
+<th>特性</th>
+<th>Arduino <code>UDP</code>（Ethernet&#x2F;WiFi 库基类）</th>
+<th><code>Arduino_10BASE_T1S_UDP</code></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>绑定方式</td>
+<td><code>begin(port)</code> 即可</td>
+<td>需 <code>t1s_phy.begin(...)</code> 已初始化 lwIP</td>
+</tr>
+<tr>
+<td>远程端口 &#x2F; IP 上下文</td>
+<td>每个 UDP 实例有”远程”概念（<code>connect()</code> 后）</td>
+<td>每个包独立记录，<code>remoteIP()/remotePort()</code> 仅对当前 <code>_rx_pkt</code> 有效</td>
+</tr>
+<tr>
+<td>多个远端</td>
+<td>单连接模型</td>
+<td><code>remoteIP()</code> 在 <code>parsePacket()</code> 之后才确定，可服务多个远端</td>
+</tr>
+<tr>
+<td>异步发送</td>
+<td>部分实现支持</td>
+<td><code>endPacket()</code> 同步等 lwIP 入队（不是等发送完成）</td>
+</tr>
+<tr>
+<td>广播</td>
+<td>基类支持</td>
+<td>支持（lwIP 默认开 broadcast）</td>
+</tr>
+<tr>
+<td>多实例</td>
+<td>一般支持</td>
+<td>单 PHY 下只能有一个 udp_pcb 绑定同一 port，绑不同 port 可多实例</td>
+</tr>
+</tbody></table>
+<h2 id="4-错误排查速查表"><a href="#4-错误排查速查表" class="headerlink" title="4. 错误排查速查表"></a>4. 错误排查速查表</h2><table>
+<thead>
+<tr>
+<th>现象</th>
+<th>可能原因</th>
+<th>验证方法</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>begin()</code> 返回 0</td>
+<td>lwIP 未初始化（<code>t1s_phy.begin()</code> 失败&#x2F;未调）</td>
+<td>检查 <code>Serial.println(ip_addr)</code> 之前的输出</td>
+</tr>
+<tr>
+<td><code>endPacket()</code> 持续返回 -1</td>
+<td>ARP 未解析（目标 IP 不在同一子网）</td>
+<td><code>ping</code> 目标 IP，看 ARP 表</td>
+</tr>
+<tr>
+<td><code>parsePacket()</code> 永远返回 0</td>
+<td>接收缓冲区满（<code>bufferSize(10)</code> 但 10 个包都没读）</td>
+<td>临时调大 <code>bufferSize</code>；检查 <code>flush()</code> 逻辑</td>
+</tr>
+<tr>
+<td><code>read()</code> 返回 -1</td>
+<td>已 <code>flush()</code> 或未 <code>parsePacket()</code></td>
+<td>增加调试打印</td>
+</tr>
+<tr>
+<td>数据只读到前 N 字节</td>
+<td>pbuf 分段未拷贝（lwIP 大包跨 segment）</td>
+<td>抓包确认 MTU&#x2F;包长</td>
+</tr>
+</tbody></table>
+<h2 id="5-小结"><a href="#5-小结" class="headerlink" title="5. 小结"></a>5. 小结</h2><p><code>Arduino_10BASE_T1S_UDP</code> 看似是简单的 Arduino UDP 封装，但有几个值得移植&#x2F;调试时关注的实现细节：</p>
+<ol>
+<li><strong>失败返回值不一致</strong>：<code>endPacket()</code> 既返回 <code>0</code> 也返回 <code>-1</code>，调用方必须同时处理</li>
+<li><strong><code>flush()</code> 不刷队列</strong>：很多人误以为是 Arduino 通用 <code>Stream::flush()</code> 语义</li>
+<li><strong>pbuf 跨段静默丢失</strong>：<code>onUdpRawRecv</code> 只取 <code>p-&gt;len</code>，对 <code>tot_len &gt; len</code> 的包截断</li>
+<li><strong>DNS 缺失</strong>：域名版本 <code>beginPacket</code> 永远失败</li>
+<li><strong>缓冲区按容量不释放</strong>：<code>std::vector _tx_data</code> 保留峰值容量</li>
+</ol>
+<p>下一篇进入 PHY Interface 与 HAL 层：<code>Arduino_10BASE_T1S_PHY_Interface</code> 抽象、<code>TC6_Arduino_10BASE_T1S</code> 实现、<code>TC6_Io</code> SPI HAL 的逐函数拆解。</p>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">首页</a></li>
+        
+          <li><a href="/archives/">归档</a></li>
+        
+          <li><a href="/tags/">标签</a></li>
+        
+          <li><a href="/categories/">分类</a></li>
+        
+          <li><a href="/search/">搜索</a></li>
+        
+          <li><a href="/about/">关于</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%B3%BB%E5%88%97%E5%AF%BC%E8%AF%BB"><span class="toc-number">1.</span> <span class="toc-text">系列导读</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E5%85%A5%E5%8F%A3%E5%AE%8F%EF%BC%9AArduino-10BASE-T1S-PHY-TC6"><span class="toc-number">2.</span> <span class="toc-text">1. 入口宏：Arduino_10BASE_T1S_PHY_TC6</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-%E8%AF%AD%E4%B9%89"><span class="toc-number">2.1.</span> <span class="toc-text">1.1 语义</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-2-%E5%8F%82%E6%95%B0%E7%BA%A6%E5%AE%9A"><span class="toc-number">2.2.</span> <span class="toc-text">1.2 参数约定</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-3-%E8%B0%83%E7%94%A8%E7%BA%A6%E6%9D%9F"><span class="toc-number">2.3.</span> <span class="toc-text">1.3 调用约束</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-4-%E5%AE%8C%E6%95%B4%E5%88%9D%E5%A7%8B%E5%8C%96%E8%B0%83%E7%94%A8%E5%BA%8F%E5%88%97"><span class="toc-number">2.4.</span> <span class="toc-text">1.4 完整初始化调用序列</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-UDP-Socket-%E7%B1%BB%EF%BC%9AArduino-10BASE-T1S-UDP"><span class="toc-number">3.</span> <span class="toc-text">2. UDP Socket 类：Arduino_10BASE_T1S_UDP</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E7%B1%BB%E7%BB%A7%E6%89%BF"><span class="toc-number">3.1.</span> <span class="toc-text">2.1 类继承</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-%E6%9E%84%E9%80%A0-%E6%9E%90%E6%9E%84"><span class="toc-number">3.2.</span> <span class="toc-text">2.2 构造 &#x2F; 析构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F%EF%BC%9Abegin-stop"><span class="toc-number">3.3.</span> <span class="toc-text">2.3 生命周期：begin &#x2F; stop</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#begin-uint16-t-port"><span class="toc-number">3.3.1.</span> <span class="toc-text">begin(uint16_t port)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#stop"><span class="toc-number">3.3.2.</span> <span class="toc-text">stop()</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%B3%A8%E6%84%8F%EF%BC%9A%E6%9C%AA%E5%AE%9E%E7%8E%B0%E7%9A%84-beginPacket-const-char-host-%E9%87%8D%E8%BD%BD"><span class="toc-number">3.3.3.</span> <span class="toc-text">注意：未实现的 beginPacket(const char* host, ...) 重载</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-4-%E5%8F%91%E9%80%81%EF%BC%9AbeginPacket-write-endPacket"><span class="toc-number">3.4.</span> <span class="toc-text">2.4 发送：beginPacket &#x2F; write &#x2F; endPacket</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%8F%91%E9%80%81%E7%8A%B6%E6%80%81%E6%9C%BA"><span class="toc-number">3.4.1.</span> <span class="toc-text">发送状态机</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%90%84%E6%96%B9%E6%B3%95%E7%BB%86%E8%8A%82"><span class="toc-number">3.4.2.</span> <span class="toc-text">各方法细节</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%85%B8%E5%9E%8B%E9%99%B7%E9%98%B1"><span class="toc-number">3.4.3.</span> <span class="toc-text">典型陷阱</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-5-%E6%8E%A5%E6%94%B6%EF%BC%9AparsePacket-available-read-peek-flush"><span class="toc-number">3.5.</span> <span class="toc-text">2.5 接收：parsePacket &#x2F; available &#x2F; read &#x2F; peek &#x2F; flush</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%86%85%E9%83%A8%E9%98%9F%E5%88%97%E6%A8%A1%E5%9E%8B"><span class="toc-number">3.5.1.</span> <span class="toc-text">内部队列模型</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#parsePacket"><span class="toc-number">3.5.2.</span> <span class="toc-text">parsePacket()</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#available-read-peek"><span class="toc-number">3.5.3.</span> <span class="toc-text">available() &#x2F; read() &#x2F; peek()</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#flush"><span class="toc-number">3.5.4.</span> <span class="toc-text">flush()</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%8E%A5%E6%94%B6%E7%BC%93%E5%86%B2%E4%B8%8A%E9%99%90"><span class="toc-number">3.5.5.</span> <span class="toc-text">接收缓冲上限</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-6-%E5%86%85%E9%83%A8%E7%B1%BB-UdpRxPacket"><span class="toc-number">3.6.</span> <span class="toc-text">2.6 内部类 UdpRxPacket</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-7-%E5%86%85%E9%83%A8%E5%9B%9E%E8%B0%83-onUdpRawRecv"><span class="toc-number">3.7.</span> <span class="toc-text">2.7 内部回调 onUdpRawRecv</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%B7%B2%E7%9F%A5%E9%99%90%E5%88%B6"><span class="toc-number">3.7.1.</span> <span class="toc-text">已知限制</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-8-%E7%BC%93%E5%86%B2%E5%8C%BA-%E5%86%85%E5%AD%98%E5%8D%A0%E7%94%A8"><span class="toc-number">3.8.</span> <span class="toc-text">2.8 缓冲区 &#x2F; 内存占用</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-9-%E5%AE%8C%E6%95%B4%E7%9A%84-UDP-API-%E9%80%9F%E6%9F%A5%E8%A1%A8"><span class="toc-number">3.9.</span> <span class="toc-text">2.9 完整的 UDP API 速查表</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-%E4%B8%8E-Arduino-%E6%A0%87%E5%87%86-UDP-%E7%9A%84%E5%B7%AE%E5%BC%82"><span class="toc-number">4.</span> <span class="toc-text">3. 与 Arduino 标准 UDP 的差异</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-%E9%94%99%E8%AF%AF%E6%8E%92%E6%9F%A5%E9%80%9F%E6%9F%A5%E8%A1%A8"><span class="toc-number">5.</span> <span class="toc-text">4. 错误排查速查表</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-%E5%B0%8F%E7%BB%93"><span class="toc-number">6.</span> <span class="toc-text">5. 小结</span></a></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-UDP-API/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-UDP-API/&text=10BASE-T1S Arduino 代码接口深度解析（一）：应用层 UDP Socket API"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-UDP-API/&title=10BASE-T1S Arduino 代码接口深度解析（一）：应用层 UDP Socket API"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-UDP-API/&is_video=false&description=10BASE-T1S Arduino 代码接口深度解析（一）：应用层 UDP Socket API"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=10BASE-T1S Arduino 代码接口深度解析（一）：应用层 UDP Socket API&body=Check out this article: https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-UDP-API/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-UDP-API/&title=10BASE-T1S Arduino 代码接口深度解析（一）：应用层 UDP Socket API"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-UDP-API/&title=10BASE-T1S Arduino 代码接口深度解析（一）：应用层 UDP Socket API"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-UDP-API/&title=10BASE-T1S Arduino 代码接口深度解析（一）：应用层 UDP Socket API"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-UDP-API/&title=10BASE-T1S Arduino 代码接口深度解析（一）：应用层 UDP Socket API"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-UDP-API/&name=10BASE-T1S Arduino 代码接口深度解析（一）：应用层 UDP Socket API&description=&lt;h2 id=&#34;系列导读&#34;&gt;&lt;a href=&#34;#系列导读&#34; class=&#34;headerlink&#34; title=&#34;系列导读&#34;&gt;&lt;/a&gt;系列导读&lt;/h2&gt;&lt;p&gt;&lt;a href=&#34;/2026/06/04/10BASE-T1S-Arduino-Architecture-Overview/&#34;&gt;架构概览&lt;/a&gt; 与 &lt;a href=&#34;/2026/06/04/10BASE-T1S-Protocol-Stack-Deep-Dive/&#34;&gt;协议栈深度分析&lt;/a&gt; 已经从分层和数据流的角度描述了整库。本系列三篇从代码接口视角，把每一层的函数、类、回调、配置项逐一拆解：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;&lt;strong&gt;应用层 UDP Socket API&lt;/strong&gt;（本篇）— &lt;code&gt;Arduino_10BASE_T1S_UDP&lt;/code&gt; 完整 API、&lt;code&gt;UdpRxPacket&lt;/code&gt; 内部类、生命周期&amp;#x2F;资源模型&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;/2026/07/31/10BASE-T1S-Code-Interfaces-PHY-and-HAL/&#34;&gt;PHY Interface 与 HAL 层&lt;/a&gt; — 抽象类 &lt;code&gt;Arduino_10BASE_T1S_PHY_Interface&lt;/code&gt;、具体类 &lt;code&gt;TC6_Arduino_10BASE_T1S&lt;/code&gt;、SPI HAL &lt;code&gt;TC6_Io&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;/2026/07/31/10BASE-T1S-Code-Interfaces-libtc6-and-lwip/&#34;&gt;协议核心 libtc6 与 lwIP 集成&lt;/a&gt; — libtc6 的 C API 清单、回调契约、lwIP netif 集成、队列实现&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;目标读者：在移植、定制、调试本库或竞品实现时需要逐函数查阅接口契约的工程师。&lt;/p&gt;
+&lt;h2 id=&#34;1-入口宏：Arduino-10BASE-T1S-PHY-TC6&#34;&gt;&lt;a href=&#34;#1-入口宏：Arduino-10BASE-T1S-PHY-TC6&#34; class=&#34;headerlink&#34; title=&#34;1. 入口宏：Arduino_10BASE_T1S_PHY_TC6&#34;&gt;&lt;/a&gt;1. 入口宏：&lt;code&gt;Arduino_10BASE_T1S_PHY_TC6&lt;/code&gt;&lt;/h2&gt;&lt;figure class=&#34;highlight cpp&#34;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&#34;gutter&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;3&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&#34;code&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;meta&#34;&gt;#&lt;span class=&#34;keyword&#34;&gt;define&lt;/span&gt; Arduino_10BASE_T1S_PHY_TC6(__SPI, __CS_PIN, __RESET_PIN, __IRQ_PIN) \&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;meta&#34;&gt;  TC6::TC6_Io t1s_io(__SPI, __CS_PIN, __RESET_PIN, __IRQ_PIN);              \&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;meta&#34;&gt;  TC6::TC6_Arduino_10BASE_T1S t1s_phy(t1s_io);&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;
+
+&lt;p&gt;文件位置：&lt;code&gt;src/Arduino_10BASE_T1S.h:61-63&lt;/code&gt;&lt;/p&gt;
+&lt;h3 id=&#34;1-1-语义&#34;&gt;&lt;a href=&#34;#1-1-语义&#34; class=&#34;headerlink&#34; title=&#34;1.1 语义&#34;&gt;&lt;/a&gt;1.1 语义&lt;/h3&gt;&lt;p&gt;这是一个&lt;strong&gt;对象生成宏&lt;/strong&gt;，不是函数。展开后在调用点声明两个全局对象：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;TC6::TC6_Io t1s_io&lt;/code&gt; — SPI &amp;#x2F; CS &amp;#x2F; RESET &amp;#x2F; IRQ 的硬件抽象封装&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;TC6::TC6_Arduino_10BASE_T1S t1s_phy&lt;/code&gt; — 持有 &lt;code&gt;t1s_io&lt;/code&gt; 引用、对上提供 &lt;code&gt;Arduino_10BASE_T1S_PHY_Interface&lt;/code&gt; 接口的 PHY 类&lt;/li&gt;
+&lt;/ul&gt;"><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-UDP-API/&t=10BASE-T1S Arduino 代码接口深度解析（一）：应用层 UDP Socket API"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> 菜单</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> 目录</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> 分享</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> 返回顶部</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2026
+    cursorhu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"复制到粘贴板！\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "复制成功！");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+<!-- Mermaid diagrams -->
+
+  <script type="text/javascript">
+  (function() {
+    var mermaidElements = document.querySelectorAll('.mermaid');
+    if (!mermaidElements.length) return;
+
+    var mermaidTheme = 'auto';
+    if (mermaidTheme === 'auto') {
+      var colorscheme = 'dark';
+      mermaidTheme = (colorscheme === 'dark' || colorscheme === 'classic') ? 'dark' : 'default';
+    }
+
+    function initMermaid() {
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: mermaidTheme,
+        logLevel: 'error',
+        securityLevel: 'loose',
+        flowchart: { curve: 'basis' },
+        gantt: { axisFormat: '%m/%d/%Y' },
+        sequence: { actorMargin: 50 }
+      });
+      mermaid.run({ nodes: mermaidElements });
+    }
+
+    var script = document.createElement('script');
+    
+    script.src = 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js';
+    
+    script.onload = initMermaid;
+    document.head.appendChild(script);
+  })();
+  </script>
+
+</body>
+</html>

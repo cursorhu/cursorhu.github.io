@@ -1,0 +1,1554 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="系列导读本系列最后一篇深入到最底层——协议核心 libtc6 的 C API 和 lwIP 集成层：  应用层 UDP Socket API PHY Interface 与 HAL 层 libtc6 协议核心与 lwIP 集成（本篇）  目标：让读者在不读 libtc6 源码的情况下，能正确实现新的回调、能替换 tc6-regs.cpp 的寄存器表、能复用到非 Arduino 的 lwIP 平台。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="10BASE-T1S Arduino 代码接口深度解析（三）：libtc6 协议核心与 lwIP 集成">
+<meta property="og:url" content="https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-libtc6-and-lwip/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="系列导读本系列最后一篇深入到最底层——协议核心 libtc6 的 C API 和 lwIP 集成层：  应用层 UDP Socket API PHY Interface 与 HAL 层 libtc6 协议核心与 lwIP 集成（本篇）  目标：让读者在不读 libtc6 源码的情况下，能正确实现新的回调、能替换 tc6-regs.cpp 的寄存器表、能复用到非 Arduino 的 lwIP 平台。">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-07-30T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-07-31T08:28:08.737Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="10BASE-T1S">
+<meta property="article:tag" content="C API">
+<meta property="article:tag" content="libtc6">
+<meta property="article:tag" content="lwIP">
+<meta property="article:tag" content="netif">
+<meta property="article:tag" content="回调">
+<meta property="article:tag" content="队列">
+<meta name="twitter:card" content="summary">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>10BASE-T1S Arduino 代码接口深度解析（三）：libtc6 协议核心与 lwIP 集成</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+		<script type="text/x-mathjax-config">
+		  MathJax.Hub.Config({
+			tex2jax: {
+			  skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+			  inlineMath: [['$','$']]
+			}
+		  });
+		</script>
+		<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-MML-AM_CHTML' async></script>
+	
+<meta name="generator" content="Hexo 8.0.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="顶部" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="上一篇" href="/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-UDP-API/"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="下一篇" href="/2026/07/30/10BASE_T1S%E7%B3%BB%E5%88%97/OA-RCP%E5%8D%8F%E8%AE%AE%E8%AF%A6%E8%A7%A3/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="返回顶部" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="分享文章" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">上一篇</span>
+      <span id="i-next" class="info" style="display:none;">下一篇</span>
+      <span id="i-top" class="info" style="display:none;">返回顶部</span>
+      <span id="i-share" class="info" style="display:none;">分享文章</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-libtc6-and-lwip/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-libtc6-and-lwip/&text=10BASE-T1S Arduino 代码接口深度解析（三）：libtc6 协议核心与 lwIP 集成"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-libtc6-and-lwip/&title=10BASE-T1S Arduino 代码接口深度解析（三）：libtc6 协议核心与 lwIP 集成"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-libtc6-and-lwip/&is_video=false&description=10BASE-T1S Arduino 代码接口深度解析（三）：libtc6 协议核心与 lwIP 集成"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=10BASE-T1S Arduino 代码接口深度解析（三）：libtc6 协议核心与 lwIP 集成&body=Check out this article: https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-libtc6-and-lwip/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-libtc6-and-lwip/&title=10BASE-T1S Arduino 代码接口深度解析（三）：libtc6 协议核心与 lwIP 集成"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-libtc6-and-lwip/&title=10BASE-T1S Arduino 代码接口深度解析（三）：libtc6 协议核心与 lwIP 集成"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-libtc6-and-lwip/&title=10BASE-T1S Arduino 代码接口深度解析（三）：libtc6 协议核心与 lwIP 集成"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-libtc6-and-lwip/&title=10BASE-T1S Arduino 代码接口深度解析（三）：libtc6 协议核心与 lwIP 集成"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-libtc6-and-lwip/&name=10BASE-T1S Arduino 代码接口深度解析（三）：libtc6 协议核心与 lwIP 集成&description=&lt;h2 id=&#34;系列导读&#34;&gt;&lt;a href=&#34;#系列导读&#34; class=&#34;headerlink&#34; title=&#34;系列导读&#34;&gt;&lt;/a&gt;系列导读&lt;/h2&gt;&lt;p&gt;本系列最后一篇深入到最底层——协议核心 libtc6 的 C API 和 lwIP 集成层：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;&lt;a href=&#34;/2026/07/31/10BASE-T1S-Code-Interfaces-UDP-API/&#34;&gt;应用层 UDP Socket API&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;/2026/07/31/10BASE-T1S-Code-Interfaces-PHY-and-HAL/&#34;&gt;PHY Interface 与 HAL 层&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;libtc6 协议核心与 lwIP 集成&lt;/strong&gt;（本篇）&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;目标：让读者在不读 libtc6 源码的情况下，能正确实现新的回调、能替换 &lt;code&gt;tc6-regs.cpp&lt;/code&gt; 的寄存器表、能复用到非 Arduino 的 lwIP 平台。&lt;/p&gt;
+&lt;h2 id=&#34;1-libtc6-版本与配置&#34;&gt;&lt;a href=&#34;#1-libtc6-版本与配置&#34; class=&#34;headerlink&#34; title=&#34;1. libtc6 版本与配置&#34;&gt;&lt;/a&gt;1. libtc6 版本与配置&lt;/h2&gt;&lt;h3 id=&#34;1-1-版本&#34;&gt;&lt;a href=&#34;#1-1-版本&#34; class=&#34;headerlink&#34; title=&#34;1.1 版本&#34;&gt;&lt;/a&gt;1.1 版本&lt;/h3&gt;&lt;figure class=&#34;highlight c&#34;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&#34;gutter&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;3&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;4&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;5&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&#34;code&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;comment&#34;&gt;// src/microchip/lib/libtc6/inc/tc6.h:55-58&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;meta&#34;&gt;#&lt;span class=&#34;keyword&#34;&gt;define&lt;/span&gt; TC6_LIB_VER_MAJOR  (3U)&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;meta&#34;&gt;#&lt;span class=&#34;keyword&#34;&gt;define&lt;/span&gt; TC6_LIB_VER_MINOR  (1U)&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;meta&#34;&gt;#&lt;span class=&#34;keyword&#34;&gt;define&lt;/span&gt; TC6_LIB_VER_BUGFIX (3U)&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;meta&#34;&gt;#&lt;span class=&#34;keyword&#34;&gt;define&lt;/span&gt; TC6_LIB_VER_STRING &lt;span class=&#34;string&#34;&gt;&amp;quot;V3.1.3&amp;quot;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;
+
+&lt;h3 id=&#34;1-2-编译时配置（tc6-conf-h）&#34;&gt;&lt;a href=&#34;#1-2-编译时配置（tc6-conf-h）&#34; class=&#34;headerlink&#34; title=&#34;1.2 编译时配置（tc6-conf.h）&#34;&gt;&lt;/a&gt;1.2 编译时配置（&lt;code&gt;tc6-conf.h&lt;/code&gt;）&lt;/h3&gt;&lt;p&gt;&lt;code&gt;src/microchip/lib/libtc6/cfg-example/tc6-conf.h&lt;/code&gt;&lt;/p&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;宏&lt;/th&gt;
+&lt;th&gt;默认值&lt;/th&gt;
+&lt;th&gt;含义&lt;/th&gt;
+&lt;th&gt;调小影响&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;TC6_MAX_INSTANCES&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;1&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;多 PHY 实例数&lt;/td&gt;
+&lt;td&gt;仅影响 RAM（每实例队列）&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;TC6_HEADER_SIZE&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;4&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;OA TC6 帧头&amp;#x2F;尾大小（规范固定）&lt;/td&gt;
+&lt;td&gt;&lt;strong&gt;不可改&lt;/strong&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;TC6_CHUNK_SIZE&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;64&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;每个 SPI chunk 的 payload 字节数&lt;/td&gt;
+&lt;td&gt;32 也合法，但要 &lt;code&gt;TC6_TX_ETH_MAX_SEGMENTS&lt;/code&gt; 翻倍&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;TC6_CHUNK_BUF_SIZE&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;TC6_CHUNK_SIZE + TC6_HEADER_SIZE&lt;/code&gt; &amp;#x3D; 68&lt;/td&gt;
+&lt;td&gt;单 chunk 的总 SPI 传输长度&lt;/td&gt;
+&lt;td&gt;派生值&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;REG_OP_ARRAY_SIZE&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;4&lt;/code&gt;（必须是 2^n）&lt;/td&gt;
+&lt;td&gt;寄存器操作队列容量&lt;/td&gt;
+&lt;td&gt;改小可省 RAM，但频繁读写会丢请求&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;TC6_CHUNKS_XACT&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;31&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;单次 SPI 突发最大 chunk 数&lt;/td&gt;
+&lt;td&gt;改小降低单次中断延迟&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;TC6_CONCAT_THRESHOLD&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;1024&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;超过此大小的帧会跨多个 SPI 突发&lt;/td&gt;
+&lt;td&gt;一般不改&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;SPI_FULL_BUFFERS&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;1&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;全 MOSI&amp;#x2F;MISO 缓冲对的数量&lt;/td&gt;
+&lt;td&gt;影响 SPI 流水深度&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;TC6_TX_ETH_QSIZE&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;4&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;待发以太网帧队列&lt;/td&gt;
+&lt;td&gt;改小增加丢帧概率&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;TC6_TX_ETH_MAX_SEGMENTS&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;8&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;单帧最多 pbuf 段数&lt;/td&gt;
+&lt;td&gt;与 lwIP pbuf 配置相关&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;TC6_MAX_CNTRL_VARS&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;1&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;同时挂起的寄存器访问数&lt;/td&gt;
+&lt;td&gt;改大会增加队列大小&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;&lt;/table&gt;"><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-libtc6-and-lwip/&t=10BASE-T1S Arduino 代码接口深度解析（三）：libtc6 协议核心与 lwIP 集成"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%B3%BB%E5%88%97%E5%AF%BC%E8%AF%BB"><span class="toc-number">1.</span> <span class="toc-text">系列导读</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-libtc6-%E7%89%88%E6%9C%AC%E4%B8%8E%E9%85%8D%E7%BD%AE"><span class="toc-number">2.</span> <span class="toc-text">1. libtc6 版本与配置</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-%E7%89%88%E6%9C%AC"><span class="toc-number">2.1.</span> <span class="toc-text">1.1 版本</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-2-%E7%BC%96%E8%AF%91%E6%97%B6%E9%85%8D%E7%BD%AE%EF%BC%88tc6-conf-h%EF%BC%89"><span class="toc-number">2.2.</span> <span class="toc-text">1.2 编译时配置（tc6-conf.h）</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%B4%BE%E7%94%9F%E5%AE%8F%EF%BC%88tc6-queue-h%EF%BC%89"><span class="toc-number">2.2.1.</span> <span class="toc-text">派生宏（tc6-queue.h）</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-3-%E5%B9%B3%E5%8F%B0%E6%96%AD%E8%A8%80"><span class="toc-number">2.3.</span> <span class="toc-text">1.3 平台断言</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-libtc6-%E5%85%AC%E5%BC%80%E7%B1%BB%E5%9E%8B"><span class="toc-number">3.</span> <span class="toc-text">2. libtc6 公开类型</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E4%B8%8D%E9%80%8F%E6%98%8E%E7%BB%93%E6%9E%84%E4%BD%93-TC6-t"><span class="toc-number">3.1.</span> <span class="toc-text">2.1 不透明结构体 TC6_t</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-%E9%94%99%E8%AF%AF%E6%9E%9A%E4%B8%BE-TC6-Error-t"><span class="toc-number">3.2.</span> <span class="toc-text">2.2 错误枚举 TC6_Error_t</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-%E5%AF%84%E5%AD%98%E5%99%A8%E6%93%8D%E4%BD%9C%E6%8F%8F%E8%BF%B0"><span class="toc-number">3.3.</span> <span class="toc-text">2.3 寄存器操作描述</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-4-%E5%8F%91%E9%80%81%E6%AE%B5%E6%8F%8F%E8%BF%B0"><span class="toc-number">3.4.</span> <span class="toc-text">2.4 发送段描述</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-5-%E5%9B%9E%E8%B0%83%E5%87%BD%E6%95%B0%E7%B1%BB%E5%9E%8B"><span class="toc-number">3.5.</span> <span class="toc-text">2.5 回调函数类型</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-libtc6-%E5%BF%85%E5%AE%9E%E7%8E%B0-API%EF%BC%88integrator-API%EF%BC%89"><span class="toc-number">4.</span> <span class="toc-text">3. libtc6 必实现 API（integrator API）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E5%AE%9E%E4%BE%8B%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F"><span class="toc-number">4.1.</span> <span class="toc-text">3.1 实例生命周期</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E4%B8%BB%E5%BE%AA%E7%8E%AF%E5%BF%83%E8%B7%B3"><span class="toc-number">4.2.</span> <span class="toc-text">3.2 主循环心跳</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-%E6%95%B0%E6%8D%AE%E9%80%9A%E8%B7%AF%E5%BC%80%E5%85%B3"><span class="toc-number">4.3.</span> <span class="toc-text">3.3 数据通路开关</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-4-%E5%8F%91%E9%80%81%E5%8E%9F%E5%A7%8B%E4%BB%A5%E5%A4%AA%E7%BD%91%E5%B8%A7"><span class="toc-number">4.4.</span> <span class="toc-text">3.4 发送原始以太网帧</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-5-%E5%AF%84%E5%AD%98%E5%99%A8%E8%AE%BF%E9%97%AE"><span class="toc-number">4.5.</span> <span class="toc-text">3.5 寄存器访问</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-6-%E7%8A%B6%E6%80%81%E6%9F%A5%E8%AF%A2"><span class="toc-number">4.6.</span> <span class="toc-text">3.6 状态查询</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-7-SPI-%E5%AE%8C%E6%88%90%E9%80%9A%E7%9F%A5%EF%BC%88%E5%BC%82%E6%AD%A5%E6%94%AF%E6%8C%81%EF%BC%89"><span class="toc-number">4.7.</span> <span class="toc-text">3.7 SPI 完成通知（异步支持）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-8-%E6%89%A9%E5%B1%95%E7%8A%B6%E6%80%81%E6%8E%A7%E5%88%B6"><span class="toc-number">4.8.</span> <span class="toc-text">3.8 扩展状态控制</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-9-%E9%94%99%E8%AF%AF%E7%A0%81%E5%88%B0%E6%81%A2%E5%A4%8D%E5%8A%A8%E4%BD%9C%E7%9A%84%E6%98%A0%E5%B0%84"><span class="toc-number">4.9.</span> <span class="toc-text">3.9 错误码到恢复动作的映射</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-libtc6-%E5%BF%85%E5%AE%9E%E7%8E%B0%E5%9B%9E%E8%B0%83%EF%BC%88integrator-%E5%BF%85%E9%A1%BB%E6%8F%90%E4%BE%9B%EF%BC%89"><span class="toc-number">5.</span> <span class="toc-text">4. libtc6 必实现回调（integrator 必须提供）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-TC6-CB-OnSpiTransaction"><span class="toc-number">5.1.</span> <span class="toc-text">4.1 TC6_CB_OnSpiTransaction</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-TC6-CB-OnRxEthernetSlice"><span class="toc-number">5.2.</span> <span class="toc-text">4.2 TC6_CB_OnRxEthernetSlice</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-TC6-CB-OnRxEthernetPacket"><span class="toc-number">5.3.</span> <span class="toc-text">4.3 TC6_CB_OnRxEthernetPacket</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-4-TC6-CB-OnNeedService"><span class="toc-number">5.4.</span> <span class="toc-text">4.4 TC6_CB_OnNeedService</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-5-TC6-CB-OnError"><span class="toc-number">5.5.</span> <span class="toc-text">4.5 TC6_CB_OnError</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-6-TC6-CB-OnExtendedStatus"><span class="toc-number">5.6.</span> <span class="toc-text">4.6 TC6_CB_OnExtendedStatus</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-%E9%98%9F%E5%88%97%E5%AE%9E%E7%8E%B0%EF%BC%9Atc6-queue-h"><span class="toc-number">6.</span> <span class="toc-text">5. 队列实现：tc6-queue.h</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E4%B8%89%E4%B8%AA%E9%98%9F%E5%88%97"><span class="toc-number">6.1.</span> <span class="toc-text">5.1 三个队列</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E9%80%9A%E7%94%A8-API%EF%BC%88%E6%AF%8F%E9%98%9F%E5%88%97%EF%BC%89"><span class="toc-number">6.2.</span> <span class="toc-text">5.2 通用 API（每队列）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-7-%E9%98%B6%E6%AE%B5-regop-queue-%E7%9A%84%E7%8A%B6%E6%80%81%E6%9C%BA"><span class="toc-number">6.3.</span> <span class="toc-text">5.3 7 阶段 regop_queue 的状态机</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-4-%E5%86%85%E5%AD%98%E5%B8%83%E5%B1%80%E7%A4%BA%E4%BE%8B%EF%BC%88regop-queue-%E6%A7%BD%E4%BD%8D%EF%BC%89"><span class="toc-number">6.4.</span> <span class="toc-text">5.4 内存布局示例（regop_queue 槽位）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6-tc6-regs-%E5%AF%84%E5%AD%98%E5%99%A8%E5%B1%82"><span class="toc-number">7.</span> <span class="toc-text">6. tc6-regs 寄存器层</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-API-%E6%B8%85%E5%8D%95"><span class="toc-number">7.1.</span> <span class="toc-text">6.1 API 清单</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E5%BF%85%E5%AE%9E%E7%8E%B0%E5%9B%9E%E8%B0%83"><span class="toc-number">7.2.</span> <span class="toc-text">6.2 必实现回调</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E4%BA%8B%E4%BB%B6%E6%9E%9A%E4%B8%BE-TC6Regs-Event-t"><span class="toc-number">7.3.</span> <span class="toc-text">6.3 事件枚举 TC6Regs_Event_t</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-4-LAN865x-%E5%AF%84%E5%AD%98%E5%99%A8%E5%88%9D%E5%A7%8B%E5%8C%96%E8%A1%A8"><span class="toc-number">7.4.</span> <span class="toc-text">6.4 LAN865x 寄存器初始化表</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-5-%E8%8A%AF%E7%89%87-ID-%E6%A0%A1%E9%AA%8C"><span class="toc-number">7.5.</span> <span class="toc-text">6.5 芯片 ID 校验</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-6-MAC-%E5%9C%B0%E5%9D%80%E5%86%99%E5%85%A5%E9%A1%BA%E5%BA%8F"><span class="toc-number">7.6.</span> <span class="toc-text">6.6 MAC 地址写入顺序</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#7-lwIP-%E9%9B%86%E6%88%90%E5%B1%82"><span class="toc-number">8.</span> <span class="toc-text">7. lwIP 集成层</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#7-1-%E5%85%B3%E9%94%AE%E6%96%87%E4%BB%B6"><span class="toc-number">8.1.</span> <span class="toc-text">7.1 关键文件</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-2-netif-%E4%B8%89%E4%B8%AA%E5%9B%9E%E8%B0%83"><span class="toc-number">8.2.</span> <span class="toc-text">7.2 netif 三个回调</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#lwIpInit-struct-netif-netif-%E2%80%94%E2%80%94-%E5%88%9D%E5%A7%8B%E5%8C%96%E5%9B%9E%E8%B0%83"><span class="toc-number">8.2.1.</span> <span class="toc-text">lwIpInit(struct netif *netif) —— 初始化回调</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#lwIpOut-struct-netif-netif-struct-pbuf-p-%E2%80%94%E2%80%94-%E5%8F%91%E9%80%81%E5%9B%9E%E8%B0%83"><span class="toc-number">8.2.2.</span> <span class="toc-text">lwIpOut(struct netif *netif, struct pbuf *p) —— 发送回调</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#etharp-input-%E2%80%94%E2%80%94-RX-%E5%85%A5%E5%8F%A3"><span class="toc-number">8.2.3.</span> <span class="toc-text">etharp_input —— RX 入口</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-3-%E5%91%BD%E5%90%8D%E7%A9%BA%E9%97%B4%E5%86%B2%E7%AA%81%E7%9A%84%E5%A4%84%E7%90%86"><span class="toc-number">8.3.</span> <span class="toc-text">7.3 命名空间冲突的处理</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-4-sys-now-%E7%9A%84%E5%AE%9E%E7%8E%B0"><span class="toc-number">8.4.</span> <span class="toc-text">7.4 sys_now() 的实现</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-5-lwIP-%E5%86%85%E5%AD%98%E9%85%8D%E7%BD%AE%EF%BC%88lwipopts-h-%E5%85%B3%E9%94%AE%E9%A1%B9%EF%BC%89"><span class="toc-number">8.5.</span> <span class="toc-text">7.5 lwIP 内存配置（lwipopts.h 关键项）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#8-%E7%A7%BB%E6%A4%8D%E5%88%B0%E9%9D%9E-Arduino-%E5%B9%B3%E5%8F%B0"><span class="toc-number">9.</span> <span class="toc-text">8. 移植到非 Arduino 平台</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#8-1-%E5%BF%85%E5%AE%9E%E7%8E%B0%E7%9A%84%E5%9B%9E%E8%B0%83"><span class="toc-number">9.1.</span> <span class="toc-text">8.1 必实现的回调</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8-2-%E5%BF%85%E5%AE%9E%E7%8E%B0%E7%9A%84-lwIP-%E6%A1%A5%E6%8E%A5"><span class="toc-number">9.2.</span> <span class="toc-text">8.2 必实现的 lwIP 桥接</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8-3-%E5%BF%85%E9%A1%BB%E5%91%A8%E6%9C%9F%E6%80%A7%E8%B0%83%E7%94%A8"><span class="toc-number">9.3.</span> <span class="toc-text">8.3 必须周期性调用</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8-4-%E6%9B%BF%E6%8D%A2-tc6-regs-cpp"><span class="toc-number">9.4.</span> <span class="toc-text">8.4 替换 tc6-regs.cpp</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#9-%E9%94%99%E8%AF%AF%E6%81%A2%E5%A4%8D%E6%B5%81%E7%A8%8B%E5%9B%BE"><span class="toc-number">10.</span> <span class="toc-text">9. 错误恢复流程图</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#10-%E8%B0%83%E8%AF%95%E6%97%A5%E5%BF%97%E4%B8%8E%E5%8F%AF%E8%A7%82%E6%B5%8B%E6%80%A7"><span class="toc-number">11.</span> <span class="toc-text">10. 调试日志与可观测性</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#10-1-%E5%90%AF%E7%94%A8-libtc6-%E9%94%99%E8%AF%AF%E6%89%93%E5%8D%B0"><span class="toc-number">11.1.</span> <span class="toc-text">10.1 启用 libtc6 错误打印</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#10-2-%E7%94%A8-Wireshark-%E9%AA%8C%E8%AF%81%E6%95%B0%E6%8D%AE%E9%80%9A%E8%B7%AF"><span class="toc-number">11.2.</span> <span class="toc-text">10.2 用 Wireshark 验证数据通路</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#10-3-%E6%B7%BB%E5%8A%A0-RX-TX-%E8%AE%A1%E6%95%B0%E5%99%A8"><span class="toc-number">11.3.</span> <span class="toc-text">10.3 添加 RX&#x2F;TX 计数器</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#11-%E5%B0%8F%E7%BB%93"><span class="toc-number">12.</span> <span class="toc-text">11. 小结</span></a></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        10BASE-T1S Arduino 代码接口深度解析（三）：libtc6 协议核心与 lwIP 集成
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">cursorhu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2026-07-30T16:00:00.000Z" class="dt-published" itemprop="datePublished">2026-07-31</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fa-solid fa-archive"></i>
+        <a class="category-link" href="/categories/Ethernet/">Ethernet</a> › <a class="category-link" href="/categories/Ethernet/%E5%B5%8C%E5%85%A5%E5%BC%8F%E7%BD%91%E7%BB%9C/">嵌入式网络</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/10BASE-T1S/" rel="tag">10BASE-T1S</a>, <a class="p-category" href="/tags/C-API/" rel="tag">C API</a>, <a class="p-category" href="/tags/libtc6/" rel="tag">libtc6</a>, <a class="p-category" href="/tags/lwIP/" rel="tag">lwIP</a>, <a class="p-category" href="/tags/netif/" rel="tag">netif</a>, <a class="p-category" href="/tags/%E5%9B%9E%E8%B0%83/" rel="tag">回调</a>, <a class="p-category" href="/tags/%E9%98%9F%E5%88%97/" rel="tag">队列</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <h2 id="系列导读"><a href="#系列导读" class="headerlink" title="系列导读"></a>系列导读</h2><p>本系列最后一篇深入到最底层——协议核心 libtc6 的 C API 和 lwIP 集成层：</p>
+<ol>
+<li><a href="/2026/07/31/10BASE-T1S-Code-Interfaces-UDP-API/">应用层 UDP Socket API</a></li>
+<li><a href="/2026/07/31/10BASE-T1S-Code-Interfaces-PHY-and-HAL/">PHY Interface 与 HAL 层</a></li>
+<li><strong>libtc6 协议核心与 lwIP 集成</strong>（本篇）</li>
+</ol>
+<p>目标：让读者在不读 libtc6 源码的情况下，能正确实现新的回调、能替换 <code>tc6-regs.cpp</code> 的寄存器表、能复用到非 Arduino 的 lwIP 平台。</p>
+<h2 id="1-libtc6-版本与配置"><a href="#1-libtc6-版本与配置" class="headerlink" title="1. libtc6 版本与配置"></a>1. libtc6 版本与配置</h2><h3 id="1-1-版本"><a href="#1-1-版本" class="headerlink" title="1.1 版本"></a>1.1 版本</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// src/microchip/lib/libtc6/inc/tc6.h:55-58</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> TC6_LIB_VER_MAJOR  (3U)</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> TC6_LIB_VER_MINOR  (1U)</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> TC6_LIB_VER_BUGFIX (3U)</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> TC6_LIB_VER_STRING <span class="string">&quot;V3.1.3&quot;</span></span></span><br></pre></td></tr></table></figure>
+
+<h3 id="1-2-编译时配置（tc6-conf-h）"><a href="#1-2-编译时配置（tc6-conf-h）" class="headerlink" title="1.2 编译时配置（tc6-conf.h）"></a>1.2 编译时配置（<code>tc6-conf.h</code>）</h3><p><code>src/microchip/lib/libtc6/cfg-example/tc6-conf.h</code></p>
+<table>
+<thead>
+<tr>
+<th>宏</th>
+<th>默认值</th>
+<th>含义</th>
+<th>调小影响</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>TC6_MAX_INSTANCES</code></td>
+<td><code>1</code></td>
+<td>多 PHY 实例数</td>
+<td>仅影响 RAM（每实例队列）</td>
+</tr>
+<tr>
+<td><code>TC6_HEADER_SIZE</code></td>
+<td><code>4</code></td>
+<td>OA TC6 帧头&#x2F;尾大小（规范固定）</td>
+<td><strong>不可改</strong></td>
+</tr>
+<tr>
+<td><code>TC6_CHUNK_SIZE</code></td>
+<td><code>64</code></td>
+<td>每个 SPI chunk 的 payload 字节数</td>
+<td>32 也合法，但要 <code>TC6_TX_ETH_MAX_SEGMENTS</code> 翻倍</td>
+</tr>
+<tr>
+<td><code>TC6_CHUNK_BUF_SIZE</code></td>
+<td><code>TC6_CHUNK_SIZE + TC6_HEADER_SIZE</code> &#x3D; 68</td>
+<td>单 chunk 的总 SPI 传输长度</td>
+<td>派生值</td>
+</tr>
+<tr>
+<td><code>REG_OP_ARRAY_SIZE</code></td>
+<td><code>4</code>（必须是 2^n）</td>
+<td>寄存器操作队列容量</td>
+<td>改小可省 RAM，但频繁读写会丢请求</td>
+</tr>
+<tr>
+<td><code>TC6_CHUNKS_XACT</code></td>
+<td><code>31</code></td>
+<td>单次 SPI 突发最大 chunk 数</td>
+<td>改小降低单次中断延迟</td>
+</tr>
+<tr>
+<td><code>TC6_CONCAT_THRESHOLD</code></td>
+<td><code>1024</code></td>
+<td>超过此大小的帧会跨多个 SPI 突发</td>
+<td>一般不改</td>
+</tr>
+<tr>
+<td><code>SPI_FULL_BUFFERS</code></td>
+<td><code>1</code></td>
+<td>全 MOSI&#x2F;MISO 缓冲对的数量</td>
+<td>影响 SPI 流水深度</td>
+</tr>
+<tr>
+<td><code>TC6_TX_ETH_QSIZE</code></td>
+<td><code>4</code></td>
+<td>待发以太网帧队列</td>
+<td>改小增加丢帧概率</td>
+</tr>
+<tr>
+<td><code>TC6_TX_ETH_MAX_SEGMENTS</code></td>
+<td><code>8</code></td>
+<td>单帧最多 pbuf 段数</td>
+<td>与 lwIP pbuf 配置相关</td>
+</tr>
+<tr>
+<td><code>TC6_MAX_CNTRL_VARS</code></td>
+<td><code>1</code></td>
+<td>同时挂起的寄存器访问数</td>
+<td>改大会增加队列大小</td>
+</tr>
+</tbody></table>
+<h4 id="派生宏（tc6-queue-h）"><a href="#派生宏（tc6-queue-h）" class="headerlink" title="派生宏（tc6-queue.h）"></a>派生宏（<code>tc6-queue.h</code>）</h4><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">define</span> TC6_CNTRL_BUF_SIZE  ((2u + (TC6_MAX_CNTRL_VARS * 2u)) * 4u)  <span class="comment">// = 12</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> TC6_SPI_BUF_SIZE    (TC6_CHUNKS_XACT * TC6_CHUNK_BUF_SIZE)   <span class="comment">// = 2108</span></span></span><br></pre></td></tr></table></figure>
+
+<p><strong>RAM 占用估算（默认配置）</strong>：</p>
+<ul>
+<li>寄存器操作队列：<code>REG_OP_ARRAY_SIZE * sizeof(register_operation)</code> ≈ 4 × ~24B &#x3D; 96B</li>
+<li>SPI 缓冲：<code>SPI_FULL_BUFFERS * sizeof(qspibuf)</code> ≈ 1 × (2108+2108+4) ≈ 4.2KB</li>
+<li>TX 帧队列：<code>TC6_TX_ETH_QSIZE * sizeof(qtxeth)</code> ≈ 4 × ~80B &#x3D; 320B</li>
+<li>每实例约 4.6KB RAM</li>
+</ul>
+<h3 id="1-3-平台断言"><a href="#1-3-平台断言" class="headerlink" title="1.3 平台断言"></a>1.3 平台断言</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">ifndef</span> TC6_ASSERT</span></span><br><span class="line"><span class="meta">#<span class="keyword">ifdef</span> DEBUG</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> TC6_ASSERT(condition)   __conditional_software_breakpoint(condition)</span></span><br><span class="line"><span class="meta">#<span class="keyword">else</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> TC6_ASSERT(condition)</span></span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br></pre></td></tr></table></figure>
+
+<p>DEBUG 模式下挂断点，Release 模式下空——可以替换成 <code>assert()</code> 或自定义打印。</p>
+<h2 id="2-libtc6-公开类型"><a href="#2-libtc6-公开类型" class="headerlink" title="2. libtc6 公开类型"></a>2. libtc6 公开类型</h2><h3 id="2-1-不透明结构体-TC6-t"><a href="#2-1-不透明结构体-TC6-t" class="headerlink" title="2.1 不透明结构体 TC6_t"></a>2.1 不透明结构体 <code>TC6_t</code></h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// src/microchip/lib/libtc6/inc/tc6.h:60-61</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">TC6_t</span>;</span></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> <span class="title">TC6_t</span> <span class="title">TC6_t</span>;</span></span><br></pre></td></tr></table></figure>
+
+<p>所有 API 都通过 <code>TC6_t*</code> 操作，调用方不应解引用。这是 libtc6 内部的 <code>struct TC6_t</code>（<code>tc6.cpp</code>），包含：</p>
+<ul>
+<li><code>eth_q</code> — 待发以太网帧队列</li>
+<li><code>qSpi</code> — SPI 全双工缓冲队列</li>
+<li><code>regop_q</code> — 寄存器操作 7 阶段队列</li>
+<li><code>currentOp</code> — 当前 SPI 操作类型</li>
+<li><code>seq_num</code> — chunk 序列号（0&#x2F;1 交替）</li>
+<li><code>txc</code> &#x2F; <code>rca</code> — TX credit &#x2F; RX chunk available</li>
+<li><code>enableData</code> &#x2F; <code>synced</code> &#x2F; <code>eth_started</code> — 状态标志</li>
+</ul>
+<h3 id="2-2-错误枚举-TC6-Error-t"><a href="#2-2-错误枚举-TC6-Error-t" class="headerlink" title="2.2 错误枚举 TC6_Error_t"></a>2.2 错误枚举 <code>TC6_Error_t</code></h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// tc6.h:63-75</span></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">enum</span> &#123;</span></span><br><span class="line">    TC6Error_Succeeded,         <span class="comment">// 成功</span></span><br><span class="line">    TC6Error_NoHardware,        <span class="comment">// MISO 数据全 1，表明无硬件</span></span><br><span class="line">    TC6Error_UnexpectedSv,      <span class="comment">// 异常 Start Valid 标志</span></span><br><span class="line">    TC6Error_UnexpectedDvEv,    <span class="comment">// 异常 Data/End Valid 标志</span></span><br><span class="line">    TC6Error_BadChecksum,       <span class="comment">// Footer 校验错</span></span><br><span class="line">    TC6Error_UnexpectedCtrl,    <span class="comment">// 收到非预期的控制包</span></span><br><span class="line">    TC6Error_BadTxData,         <span class="comment">// Header Bad 标志</span></span><br><span class="line">    TC6Error_SyncLost,          <span class="comment">// Sync 标志丢失</span></span><br><span class="line">    TC6Error_SpiError,          <span class="comment">// SPI 传输失败</span></span><br><span class="line">    TC6Error_ControlTxFail,     <span class="comment">// 控制传输失败</span></span><br><span class="line">&#125; TC6_Error_t;</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-3-寄存器操作描述"><a href="#2-3-寄存器操作描述" class="headerlink" title="2.3 寄存器操作描述"></a>2.3 寄存器操作描述</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// tc6.h:107-122</span></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">enum</span> &#123;</span></span><br><span class="line">    MemOp_Write = <span class="number">0</span>,</span><br><span class="line">    MemOp_ReadModifyWrite = <span class="number">1</span>,</span><br><span class="line">    MemOp_Read = <span class="number">2</span></span><br><span class="line">&#125; MemoryOp_t;</span><br><span class="line"></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> &#123;</span></span><br><span class="line">    <span class="type">uint32_t</span> address;</span><br><span class="line">    <span class="type">uint32_t</span> value;</span><br><span class="line">    <span class="type">uint32_t</span> mask;        <span class="comment">// 仅 ReadModifyWrite 用</span></span><br><span class="line">    MemoryOp_t op;</span><br><span class="line">    <span class="type">bool</span> secure;          <span class="comment">// true = 启用 secure mode（normal + 反转）</span></span><br><span class="line">&#125; MemoryMap_t;</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-4-发送段描述"><a href="#2-4-发送段描述" class="headerlink" title="2.4 发送段描述"></a>2.4 发送段描述</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// tc6.h:77-81</span></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> &#123;</span></span><br><span class="line">    <span class="type">const</span> <span class="type">uint8_t</span> *pEth;   <span class="comment">// 段数据指针（无需拷贝，libtc6 用到 SpiBufferDone 才释放）</span></span><br><span class="line">    <span class="type">uint16_t</span> segLen;       <span class="comment">// 段字节数</span></span><br><span class="line">&#125; TC6_RawTxSegment;</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-5-回调函数类型"><a href="#2-5-回调函数类型" class="headerlink" title="2.5 回调函数类型"></a>2.5 回调函数类型</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// tc6.h:92, 105</span></span><br><span class="line"><span class="keyword">typedef</span> <span class="title function_">void</span> <span class="params">(*TC6_RawTxCallback_t)</span><span class="params">(TC6_t *pInst, <span class="type">const</span> <span class="type">uint8_t</span> *pTx, <span class="type">uint16_t</span> len,</span></span><br><span class="line"><span class="params">                                   <span class="type">void</span> *pTag, <span class="type">void</span> *pGlobalTag)</span>;</span><br><span class="line"><span class="keyword">typedef</span> <span class="title function_">void</span> <span class="params">(*TC6_RegCallback_t)</span><span class="params">(TC6_t *pInst, <span class="type">bool</span> success, <span class="type">uint32_t</span> addr,</span></span><br><span class="line"><span class="params">                                  <span class="type">uint32_t</span> value, <span class="type">void</span> *pTag, <span class="type">void</span> *pGlobalTag)</span>;</span><br></pre></td></tr></table></figure>
+
+<p>两个回调的语义相似：</p>
+<ul>
+<li><code>pInst</code> — TC6 实例指针（多实例时区分用）</li>
+<li><code>pTag</code> — 调用 API 时传入的 tag（per-request）</li>
+<li><code>pGlobalTag</code> — <code>TC6_Init</code> 时传入的全局 tag（per-instance）</li>
+</ul>
+<h2 id="3-libtc6-必实现-API（integrator-API）"><a href="#3-libtc6-必实现-API（integrator-API）" class="headerlink" title="3. libtc6 必实现 API（integrator API）"></a>3. libtc6 必实现 API（integrator API）</h2><h3 id="3-1-实例生命周期"><a href="#3-1-实例生命周期" class="headerlink" title="3.1 实例生命周期"></a>3.1 实例生命周期</h3><table>
+<thead>
+<tr>
+<th>API</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>TC6_t *TC6_Init(void *pGlobalTag)</code></td>
+<td>创建 TC6 实例，返回不透明指针；失败返回 NULL</td>
+</tr>
+<tr>
+<td><code>void TC6_Destroy(TC6_t *pInst)</code></td>
+<td>销毁实例，释放内部所有队列</td>
+</tr>
+<tr>
+<td><code>void TC6_Reset(TC6_t *pInst)</code></td>
+<td>仅重置状态机&#x2F;队列，不动 PHY 寄存器</td>
+</tr>
+</tbody></table>
+<h3 id="3-2-主循环心跳"><a href="#3-2-主循环心跳" class="headerlink" title="3.2 主循环心跳"></a>3.2 主循环心跳</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">bool</span> <span class="title function_">TC6_Service</span><span class="params">(TC6_t *pInst, <span class="type">bool</span> interruptLevel)</span>;</span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>pInst</code></td>
+<td>TC6 实例</td>
+</tr>
+<tr>
+<td><code>interruptLevel</code></td>
+<td><strong>IRQ 引脚电平</strong>：<br><code>false</code> &#x3D; IRQ active（IRQ 触发）<br><code>true</code> &#x3D; IRQ inactive</td>
+</tr>
+</tbody></table>
+<table>
+<thead>
+<tr>
+<th>返回</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>true</code></td>
+<td>所有 pending 工作完成（可释放 IRQ）</td>
+</tr>
+<tr>
+<td><code>false</code></td>
+<td>仍有待处理，但当前无法继续（需等 SPI 完成或下次 IRQ）</td>
+</tr>
+</tbody></table>
+<p><strong>调用时机</strong>（两者之一即可）：</p>
+<ol>
+<li><code>TC6_CB_OnNeedService()</code> 被回调时（任务上下文）</li>
+<li>物理 IRQ 触发时（中断上下文外，必须 defer 到任务）</li>
+</ol>
+<p><strong>当前实现</strong>（<code>TC6_Arduino_10BASE_T1S::service()</code>）：</p>
+<ul>
+<li>中断路径（<code>_int_in != _int_out</code>）：<code>TC6_Service(tc6, false)</code></li>
+<li>非中断路径（<code>tc6NeedService</code> 标志）：<code>TC6_Service(tc6, true)</code></li>
+</ul>
+<h3 id="3-3-数据通路开关"><a href="#3-3-数据通路开关" class="headerlink" title="3.3 数据通路开关"></a>3.3 数据通路开关</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> <span class="title function_">TC6_EnableData</span><span class="params">(TC6_t *pInst, <span class="type">bool</span> enable)</span>;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><code>enable=true</code>：允许数据帧收发（控制帧仍可用）</li>
+<li><code>enable=false</code>：仅允许控制帧（用于初始化阶段）</li>
+</ul>
+<p><strong>当前用法</strong>：库内部不在 <code>begin()</code> 后显式调用，但 tc6-regs.cpp 完成全部初始化后会通过 <code>NETWORK_CONTROL = 0x0C</code> 隐式启用数据通路。</p>
+<h3 id="3-4-发送原始以太网帧"><a href="#3-4-发送原始以太网帧" class="headerlink" title="3.4 发送原始以太网帧"></a>3.4 发送原始以太网帧</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">bool</span> <span class="title function_">TC6_SendRawEthernetPacket</span><span class="params">(TC6_t *pInst, <span class="type">const</span> <span class="type">uint8_t</span> *pTx, <span class="type">uint16_t</span> len,</span></span><br><span class="line"><span class="params">                               <span class="type">uint8_t</span> tsc,</span></span><br><span class="line"><span class="params">                               TC6_RawTxCallback_t txCallback, <span class="type">void</span> *pTag)</span>;</span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>pTx</code></td>
+<td><strong>整帧数据</strong>指针，<strong>必须保持有效</strong>直到 <code>txCallback</code> 被调用</td>
+</tr>
+<tr>
+<td><code>len</code></td>
+<td>帧字节数（14 字节以太网头 + 上层负载）</td>
+</tr>
+<tr>
+<td><code>tsc</code></td>
+<td>Timestamp Capture 通道选择：<br><code>0</code> &#x3D; 不捕获<br><code>1/2/3</code> &#x3D; 捕获到对应 TTSCAx 寄存器</td>
+</tr>
+<tr>
+<td><code>txCallback</code></td>
+<td>发送完成回调（可 NULL）</td>
+</tr>
+<tr>
+<td><code>pTag</code></td>
+<td>透传给回调的标签</td>
+</tr>
+</tbody></table>
+<p><strong>当前用法</strong>：<code>TC6_Arduino_10BASE_T1S.cpp</code> <strong>不使用</strong>这个 API，而是用 <code>TC6_SendRawEthernetSegments</code>（因为 lwIP 的 pbuf 是链表）。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">uint8_t</span> <span class="title function_">TC6_GetRawSegments</span><span class="params">(TC6_t *pInst, TC6_RawTxSegment **pSegments)</span>;</span><br><span class="line"><span class="type">bool</span> <span class="title function_">TC6_SendRawEthernetSegments</span><span class="params">(TC6_t *pInst, <span class="type">const</span> TC6_RawTxSegment *pSegments,</span></span><br><span class="line"><span class="params">                                 <span class="type">uint8_t</span> segmentCount, <span class="type">uint16_t</span> totalLen, <span class="type">uint8_t</span> tsc,</span></span><br><span class="line"><span class="params">                                 TC6_RawTxCallback_t txCallback, <span class="type">void</span> *pTag)</span>;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><code>TC6_GetRawSegments</code> 返回可用 segment 数组指针（通过出参）</li>
+<li><code>pSegments</code> 中每个段描述一个 pbuf 段</li>
+<li><strong>callback 的 <code>pTx</code> 指向第一个段</strong>（不是整个帧）——这是 Arduino 集成代码中需要 <code>pbuf_free(p)</code> 的依据</li>
+</ul>
+<h3 id="3-5-寄存器访问"><a href="#3-5-寄存器访问" class="headerlink" title="3.5 寄存器访问"></a>3.5 寄存器访问</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">bool</span> <span class="title function_">TC6_ReadRegister</span><span class="params">(TC6_t *pInst, <span class="type">uint32_t</span> addr, <span class="type">bool</span> secure,</span></span><br><span class="line"><span class="params">                      TC6_RegCallback_t rxCallback, <span class="type">void</span> *pTag)</span>;</span><br><span class="line"><span class="type">bool</span> <span class="title function_">TC6_WriteRegister</span><span class="params">(TC6_t *pInst, <span class="type">uint32_t</span> addr, <span class="type">uint32_t</span> value, <span class="type">bool</span> secure,</span></span><br><span class="line"><span class="params">                       TC6_RegCallback_t txCallback, <span class="type">void</span> *pTag)</span>;</span><br><span class="line"><span class="type">bool</span> <span class="title function_">TC6_ReadModifyWriteRegister</span><span class="params">(TC6_t *pInst, <span class="type">uint32_t</span> addr, <span class="type">uint32_t</span> value,</span></span><br><span class="line"><span class="params">                                 <span class="type">uint32_t</span> mask, <span class="type">bool</span> secure,</span></span><br><span class="line"><span class="params">                                 TC6_RegCallback_t modifyCallback, <span class="type">void</span> *pTag)</span>;</span><br><span class="line"><span class="type">uint16_t</span> <span class="title function_">TC6_MultipleRegisterAccess</span><span class="params">(TC6_t *pInst, <span class="type">const</span> MemoryMap_t *pMap,</span></span><br><span class="line"><span class="params">                                    <span class="type">uint16_t</span> mapLength,</span></span><br><span class="line"><span class="params">                                    TC6_RegCallback_t multipleCallback, <span class="type">void</span> *pTag)</span>;</span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>addr</code></td>
+<td>寄存器地址（32 位，含 MMS 字段）</td>
+</tr>
+<tr>
+<td><code>secure</code></td>
+<td><code>true</code> 启用保护模式（payload 同时含 normal + 反转数据，MAC-PHY 校验）</td>
+</tr>
+<tr>
+<td><code>*Callback</code></td>
+<td>完成回调（可 NULL）</td>
+</tr>
+<tr>
+<td><code>pTag</code></td>
+<td>透传标签</td>
+</tr>
+</tbody></table>
+<p><code>TC6_MultipleRegisterAccess</code> 返回成功入队的条目数（可能少于 <code>mapLength</code>，队列满时）。</p>
+<h3 id="3-6-状态查询"><a href="#3-6-状态查询" class="headerlink" title="3.6 状态查询"></a>3.6 状态查询</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> <span class="title function_">TC6_GetState</span><span class="params">(TC6_t *pInst, <span class="type">uint8_t</span> *pTxCredit, <span class="type">uint8_t</span> *pRxCredit, <span class="type">bool</span> *pSynced)</span>;</span><br><span class="line"><span class="type">uint8_t</span> <span class="title function_">TC6_GetInstance</span><span class="params">(TC6_t *pInst)</span>;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><code>TC6_GetState</code> 把当前 TX credit &#x2F; RX chunk available &#x2F; sync 状态写入输出参数</li>
+<li><code>TC6_GetInstance</code> 返回实例编号（0..N-1）</li>
+</ul>
+<h3 id="3-7-SPI-完成通知（异步支持）"><a href="#3-7-SPI-完成通知（异步支持）" class="headerlink" title="3.7 SPI 完成通知（异步支持）"></a>3.7 SPI 完成通知（异步支持）</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> <span class="title function_">TC6_SpiBufferDone</span><span class="params">(TC6_t *pInst, <span class="type">bool</span> success)</span>;</span><br></pre></td></tr></table></figure>
+
+<p><code>TC6_CB_OnSpiTransaction</code> 内部完成 SPI 后<strong>必须</strong>调用此函数通知 libtc6。</p>
+<p><strong>当前实现</strong>：<code>TC6_Arduino_10BASE_T1S.cpp:386-395</code> 同步 SPI 后立即调用。</p>
+<p>如果要把 HAL 改成 DMA + 异步：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">bool</span> <span class="title">TC6_CB_OnSpiTransaction</span><span class="params">(TC6_t *pInst, <span class="type">uint8_t</span> *pTx, <span class="type">uint8_t</span> *pRx, <span class="type">uint16_t</span> len, <span class="type">void</span> *g)</span> </span>&#123;</span><br><span class="line">  <span class="comment">// 排队到 DMA，enqueue 立即返回 true</span></span><br><span class="line">  <span class="built_in">dma_enqueue</span>(pInst, pTx, pRx, len);</span><br><span class="line">  <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// DMA 完成 ISR</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">dma_done_isr</span><span class="params">(TC6_t *pInst, <span class="type">bool</span> success)</span> </span>&#123;</span><br><span class="line">  <span class="built_in">TC6_SpiBufferDone</span>(pInst, success);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-8-扩展状态控制"><a href="#3-8-扩展状态控制" class="headerlink" title="3.8 扩展状态控制"></a>3.8 扩展状态控制</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> <span class="title function_">TC6_UnlockExtendedStatus</span><span class="params">(TC6_t *pInst)</span>;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>当 <code>Footer.EXST=1</code> 时 libtc6 调用 <code>TC6_CB_OnExtendedStatus</code></li>
+<li>用户应在读 STATUS0&#x2F;STATUS1 寄存器后<strong>主动调用此函数解锁</strong>下一个扩展状态事件</li>
+<li>防止高流量时产生大量回调</li>
+</ul>
+<h3 id="3-9-错误码到恢复动作的映射"><a href="#3-9-错误码到恢复动作的映射" class="headerlink" title="3.9 错误码到恢复动作的映射"></a>3.9 错误码到恢复动作的映射</h3><table>
+<thead>
+<tr>
+<th>错误</th>
+<th>库默认恢复</th>
+<th>实际代码位置</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>TC6Error_NoHardware</code></td>
+<td><code>TC6Regs_Reinit</code></td>
+<td><code>TC6_Arduino_10BASE_T1S.cpp:505</code></td>
+</tr>
+<tr>
+<td><code>TC6Error_BadChecksum</code></td>
+<td><code>TC6Regs_Reinit</code></td>
+<td><code>:515</code></td>
+</tr>
+<tr>
+<td><code>TC6Error_UnexpectedCtrl</code></td>
+<td><code>TC6Regs_Reinit</code></td>
+<td><code>:519</code></td>
+</tr>
+<tr>
+<td><code>TC6Error_BadTxData</code></td>
+<td><code>TC6Regs_Reinit</code></td>
+<td><code>:523</code></td>
+</tr>
+<tr>
+<td><code>TC6Error_SyncLost</code></td>
+<td><code>TC6Regs_Reinit</code></td>
+<td><code>:527</code></td>
+</tr>
+<tr>
+<td><code>TC6Error_SpiError</code></td>
+<td><code>TC6Regs_Reinit</code></td>
+<td><code>:531</code></td>
+</tr>
+<tr>
+<td>其他</td>
+<td>仅日志</td>
+<td>—</td>
+</tr>
+</tbody></table>
+<h2 id="4-libtc6-必实现回调（integrator-必须提供）"><a href="#4-libtc6-必实现回调（integrator-必须提供）" class="headerlink" title="4. libtc6 必实现回调（integrator 必须提供）"></a>4. libtc6 必实现回调（integrator 必须提供）</h2><h3 id="4-1-TC6-CB-OnSpiTransaction"><a href="#4-1-TC6-CB-OnSpiTransaction" class="headerlink" title="4.1 TC6_CB_OnSpiTransaction"></a>4.1 <code>TC6_CB_OnSpiTransaction</code></h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">extern</span> <span class="type">bool</span> <span class="title function_">TC6_CB_OnSpiTransaction</span><span class="params">(TC6_t *pInst, <span class="type">uint8_t</span> *pTx, <span class="type">uint8_t</span> *pRx,</span></span><br><span class="line"><span class="params">                                    <span class="type">uint16_t</span> len, <span class="type">void</span> *pGlobalTag)</span>;</span><br></pre></td></tr></table></figure>
+
+<p><strong>契约</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>pTx</code></td>
+<td>libtc6 提供的 MOSI 数据，<strong>指针在 <code>TC6_SpiBufferDone</code> 前必须有效</strong></td>
+</tr>
+<tr>
+<td><code>pRx</code></td>
+<td>libtc6 提供的 MISO 缓冲，<strong>同样必须保持有效</strong></td>
+</tr>
+<tr>
+<td><code>len</code></td>
+<td>字节数（必须全部传输）</td>
+</tr>
+<tr>
+<td><code>pGlobalTag</code></td>
+<td><code>TC6_Init</code> 时传入的 tag</td>
+</tr>
+<tr>
+<td>返回</td>
+<td><code>true</code> &#x3D; SPI 数据已成功 enqueue&#x2F;transfered；<code>false</code> &#x3D; 错误</td>
+</tr>
+<tr>
+<td><strong>警告</strong></td>
+<td>实现中<strong>不要调用</strong> <code>TC6_Service()</code>——会导致重入</td>
+</tr>
+</tbody></table>
+<p><strong>实现</strong>（<code>TC6_Arduino_10BASE_T1S.cpp:386-395</code>）：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">bool</span> <span class="title">TC6_CB_OnSpiTransaction</span><span class="params">(TC6_t *pInst, <span class="type">uint8_t</span> *pTx, <span class="type">uint8_t</span> *pRx, <span class="type">uint16_t</span> len, <span class="type">void</span> *pGlobalTag)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  TC6LwIP_t *lw = TC6::<span class="built_in">GetContextTC6</span>(pInst);</span><br><span class="line">  <span class="keyword">if</span> (lw == <span class="literal">nullptr</span>) <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line">  <span class="type">bool</span> <span class="type">const</span> success = lw-&gt;io-&gt;<span class="built_in">spiTransaction</span>(pTx, pRx, len);</span><br><span class="line">  <span class="built_in">TC6_SpiBufferDone</span>(pInst, success);</span><br><span class="line">  <span class="keyword">return</span> success;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-2-TC6-CB-OnRxEthernetSlice"><a href="#4-2-TC6-CB-OnRxEthernetSlice" class="headerlink" title="4.2 TC6_CB_OnRxEthernetSlice"></a>4.2 <code>TC6_CB_OnRxEthernetSlice</code></h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">extern</span> <span class="type">void</span> <span class="title function_">TC6_CB_OnRxEthernetSlice</span><span class="params">(TC6_t *pInst, <span class="type">const</span> <span class="type">uint8_t</span> *pRx,</span></span><br><span class="line"><span class="params">                                     <span class="type">uint16_t</span> offset, <span class="type">uint16_t</span> len, <span class="type">void</span> *pGlobalTag)</span>;</span><br></pre></td></tr></table></figure>
+
+<p><strong>契约</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>pRx</code></td>
+<td>当前 chunk 中的以太网数据（不含 header&#x2F;footer）</td>
+</tr>
+<tr>
+<td><code>offset</code></td>
+<td>在最终帧中的字节偏移（首段为 0）</td>
+</tr>
+<tr>
+<td><code>len</code></td>
+<td>当前段字节数</td>
+</tr>
+<tr>
+<td>上下文</td>
+<td><strong>任务上下文</strong>（非 ISR）</td>
+</tr>
+<tr>
+<td>多段</td>
+<td>一个以太网帧会被拆成多个 chunk → 多次调用 <code>OnRxEthernetSlice</code>，最后一次伴随 <code>OnRxEthernetPacket</code></td>
+</tr>
+</tbody></table>
+<p><strong>实现要点</strong>：</p>
+<ul>
+<li><code>TC6_Arduino_10BASE_T1S.cpp:397-430</code> 把所有 chunk 累积到一个 1536 字节 pbuf</li>
+<li>首次调用时分配 <code>pbuf_alloc(PBUF_RAW, MTU, PBUF_RAM)</code></li>
+<li>校验 <code>pbuf_alloc</code> 返回<strong>单段</strong>（<code>pbuf-&gt;next == NULL</code>），失败标记 <code>rxInvalid</code></li>
+<li>长度超过 MTU 也标记 <code>rxInvalid</code></li>
+</ul>
+<h3 id="4-3-TC6-CB-OnRxEthernetPacket"><a href="#4-3-TC6-CB-OnRxEthernetPacket" class="headerlink" title="4.3 TC6_CB_OnRxEthernetPacket"></a>4.3 <code>TC6_CB_OnRxEthernetPacket</code></h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">extern</span> <span class="type">void</span> <span class="title function_">TC6_CB_OnRxEthernetPacket</span><span class="params">(TC6_t *pInst, <span class="type">bool</span> success, <span class="type">uint16_t</span> len,</span></span><br><span class="line"><span class="params">                                      <span class="type">uint64_t</span> *rxTimestamp, <span class="type">void</span> *pGlobalTag)</span>;</span><br></pre></td></tr></table></figure>
+
+<p><strong>契约</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>success</code></td>
+<td>整个帧是否成功接收</td>
+</tr>
+<tr>
+<td><code>len</code></td>
+<td>整个帧的字节数（与之前所有 slice 的 <code>len</code> 之和一致）</td>
+</tr>
+<tr>
+<td><code>rxTimestamp</code></td>
+<td>接收时间戳指针（如果存在），<strong>回调返回后失效</strong></td>
+</tr>
+</tbody></table>
+<p><strong>实现</strong>（<code>TC6_Arduino_10BASE_T1S.cpp:432-491</code>）：</p>
+<ul>
+<li>校验长度 ≥ 42 (<code>MIN_HEADER_LEN = 42</code>)——最小 ARP 包大小</li>
+<li>解析 EtherType（<code>eth_hdr-&gt;type</code>），调用 <code>FilterRxEthernetPacket</code> 决定是否送入 lwIP</li>
+<li>仅 <code>0x0800</code> (IPv4) 和 <code>0x0806</code> (ARP) 走 <code>netif-&gt;input(pbuf, netif)</code></li>
+<li>失败路径只释放本地 pbuf，<strong>不</strong>返回给 lwIP</li>
+</ul>
+<h3 id="4-4-TC6-CB-OnNeedService"><a href="#4-4-TC6-CB-OnNeedService" class="headerlink" title="4.4 TC6_CB_OnNeedService"></a>4.4 <code>TC6_CB_OnNeedService</code></h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">extern</span> <span class="type">void</span> <span class="title function_">TC6_CB_OnNeedService</span><span class="params">(TC6_t *pInst, <span class="type">void</span> *pGlobalTag)</span>;</span><br></pre></td></tr></table></figure>
+
+<p><strong>契约</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>触发条件</td>
+<td>libtc6 内部有 pending 工作（典型：TX 队列待发）</td>
+</tr>
+<tr>
+<td>实现要求</td>
+<td><strong>必须非阻塞</strong>，仅置标志&#x2F;事件，<strong>不要直接调用</strong> <code>TC6_Service</code></td>
+</tr>
+<tr>
+<td><strong>警告</strong></td>
+<td><strong>可能从 ISR 上下文调用</strong></td>
+</tr>
+</tbody></table>
+<p><strong>实现</strong>（<code>TC6_Arduino_10BASE_T1S.cpp:375-379</code>）：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">void</span> <span class="title">TC6_CB_OnNeedService</span><span class="params">(TC6_t *pInst, <span class="type">void</span> *pGlobalTag)</span> </span>&#123;</span><br><span class="line">  TC6LwIP_t *lw = TC6::<span class="built_in">GetContextTC6</span>(pInst);</span><br><span class="line">  lw-&gt;tc.tc6NeedService = <span class="literal">true</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>只是一个 <code>bool</code> 写入，线程安全（在单核 Cortex-M 上原子）。</p>
+<h3 id="4-5-TC6-CB-OnError"><a href="#4-5-TC6-CB-OnError" class="headerlink" title="4.5 TC6_CB_OnError"></a>4.5 <code>TC6_CB_OnError</code></h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">extern</span> <span class="type">void</span> <span class="title function_">TC6_CB_OnError</span><span class="params">(TC6_t *pInst, TC6_Error_t err, <span class="type">void</span> *pGlobalTag)</span>;</span><br></pre></td></tr></table></figure>
+
+<p><strong>实现</strong> 见 3.9 表格中的恢复动作。</p>
+<h3 id="4-6-TC6-CB-OnExtendedStatus"><a href="#4-6-TC6-CB-OnExtendedStatus" class="headerlink" title="4.6 TC6_CB_OnExtendedStatus"></a>4.6 <code>TC6_CB_OnExtendedStatus</code></h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">extern</span> <span class="type">void</span> <span class="title function_">TC6_CB_OnExtendedStatus</span><span class="params">(TC6_t *pInst, <span class="type">void</span> *pGlobalTag)</span>;</span><br></pre></td></tr></table></figure>
+
+<p><strong>契约</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>触发</td>
+<td>Footer 中 <code>EXST=1</code></td>
+</tr>
+<tr>
+<td>实现要求</td>
+<td>读 STATUS0&#x2F;STATUS1 寄存器，<strong>调用 <code>TC6_UnlockExtendedStatus</code> 解锁</strong>下一个事件</td>
+</tr>
+<tr>
+<td><strong>重要</strong></td>
+<td>解锁过早会导致高流量下大量回调（每秒数千次）</td>
+</tr>
+</tbody></table>
+<p><strong>当前实现</strong>：<code>tc6-regs.cpp</code> 实现了这个回调（在 tc6-regs.h 声明 <code>void TC6_CB_OnExtendedStatus(...)</code>），不需要 Arduino 集成层重复实现。</p>
+<h2 id="5-队列实现：tc6-queue-h"><a href="#5-队列实现：tc6-queue-h" class="headerlink" title="5. 队列实现：tc6-queue.h"></a>5. 队列实现：<code>tc6-queue.h</code></h2><p><code>src/microchip/lib/libtc6/src/tc6-queue.h</code> 是一个<strong>自动生成</strong>的多阶段无锁环形队列。</p>
+<h3 id="5-1-三个队列"><a href="#5-1-三个队列" class="headerlink" title="5.1 三个队列"></a>5.1 三个队列</h3><table>
+<thead>
+<tr>
+<th>队列</th>
+<th>结构</th>
+<th>阶段数</th>
+<th>大小</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>qtxeth_queue</code></td>
+<td>待发以太网帧</td>
+<td>2 (enqueue → convert)</td>
+<td><code>TC6_TX_ETH_QSIZE = 4</code></td>
+</tr>
+<tr>
+<td><code>qspibuf_queue</code></td>
+<td>SPI 全双工缓冲</td>
+<td>3 (transfer → int → process)</td>
+<td><code>SPI_FULL_BUFFERS = 1</code></td>
+</tr>
+<tr>
+<td><code>regop_queue</code></td>
+<td>寄存器操作</td>
+<td><strong>7</strong> (enqueue → send → int → modify → send → int → event)</td>
+<td><code>REG_OP_ARRAY_SIZE = 4</code></td>
+</tr>
+</tbody></table>
+<h3 id="5-2-通用-API（每队列）"><a href="#5-2-通用-API（每队列）" class="headerlink" title="5.2 通用 API（每队列）"></a>5.2 通用 API（每队列）</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">init_&lt;name&gt;_queue(q, buffer, size)</span><br><span class="line">&lt;name&gt;_stage&lt;N&gt;_&lt;role&gt;_ready(q)         // 是否有空间</span><br><span class="line">&lt;name&gt;_stage&lt;N&gt;_&lt;role&gt;_ptr(q)          // 取槽位指针</span><br><span class="line">&lt;name&gt;_stage&lt;N&gt;_&lt;role&gt;_done(q)         // 完成本阶段</span><br><span class="line">&lt;name&gt;_stage&lt;N&gt;_&lt;role&gt;_undo(q)         // 撤销本阶段</span><br><span class="line">&lt;name&gt;_stage&lt;N&gt;_&lt;role&gt;_cap(q)         // 当前可用容量</span><br></pre></td></tr></table></figure>
+
+<p><strong>环形索引</strong>：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">return</span> &amp;q-&gt;buffer_[(q-&gt;stageN_&lt;role&gt;_ &amp; (q-&gt;size_ - <span class="number">1u</span>))];  <span class="comment">// size_ 必须是 2 的幂</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>判空&#x2F;判满</strong>：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ready:   ((stage - ref) &lt; size)</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-3-7-阶段-regop-queue-的状态机"><a href="#5-3-7-阶段-regop-queue-的状态机" class="headerlink" title="5.3 7 阶段 regop_queue 的状态机"></a>5.3 7 阶段 regop_queue 的状态机</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">enqueue (1) → send (2) → int (3) → modify (4) → send (5) → int (6) → event (7)</span><br><span class="line">   │                                                            │</span><br><span class="line">   │ TC6_ReadRegister 入队                                      │ 用户回调被调用</span><br><span class="line">   │                                                            │</span><br><span class="line">   └─ SPI 写入完成 ────────────────────────────────────────────┘</span><br><span class="line">                                          ↑             ↑</span><br><span class="line">                                    Read-Modify-Write:</span><br><span class="line">                                    阶段 2-3 是读阶段，4-7 是改+回写阶段</span><br></pre></td></tr></table></figure>
+
+<p><code>ReadModifyWriteRegister</code> 的 <code>modifyValue</code>&#x2F;<code>modifyMask</code> 在阶段 4 被应用，然后阶段 5 写入新值。</p>
+<h3 id="5-4-内存布局示例（regop-queue-槽位）"><a href="#5-4-内存布局示例（regop-queue-槽位）" class="headerlink" title="5.4 内存布局示例（regop_queue 槽位）"></a>5.4 内存布局示例（regop_queue 槽位）</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">register_operation</span> &#123;</span></span><br><span class="line">    <span class="type">uint8_t</span> tx_buf[TC6_CNTRL_BUF_SIZE];   <span class="comment">// = 12</span></span><br><span class="line">    <span class="type">uint8_t</span> rx_buf[TC6_CNTRL_BUF_SIZE];   <span class="comment">// = 12</span></span><br><span class="line">    TC6_RegCallback_t callback;</span><br><span class="line">    <span class="type">void</span> *tag;</span><br><span class="line">    <span class="class"><span class="keyword">enum</span> <span class="title">register_op_type</span> <span class="title">op</span>;</span></span><br><span class="line">    <span class="type">uint32_t</span> modifyValue, modifyMask, regAddr;</span><br><span class="line">    <span class="type">uint16_t</span> length;</span><br><span class="line">    <span class="type">bool</span> secure;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>每个槽约 ~40-50 字节，4 个槽 &#x3D; ~200 字节 RAM。</p>
+<h2 id="6-tc6-regs-寄存器层"><a href="#6-tc6-regs-寄存器层" class="headerlink" title="6. tc6-regs 寄存器层"></a>6. tc6-regs 寄存器层</h2><h3 id="6-1-API-清单"><a href="#6-1-API-清单" class="headerlink" title="6.1 API 清单"></a>6.1 API 清单</h3><p><code>src/microchip/lib/libtc6/inc/tc6-regs.h</code></p>
+<table>
+<thead>
+<tr>
+<th>API</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>bool TC6Regs_Init(TC6_t*, void *pTag, const uint8_t mac[6], bool enablePlca, uint8_t nodeId, uint8_t nodeCount, uint8_t burstCount, uint8_t burstTimer, bool promiscuous, bool txCutThrough, bool rxCutThrough)</code></td>
+<td>完整初始化（<strong>阻塞</strong>，内部用 <code>while + TC6_Service</code> 轮询）</td>
+</tr>
+<tr>
+<td><code>bool TC6Regs_GetInitDone(TC6_t*)</code></td>
+<td>查询初始化是否完成</td>
+</tr>
+<tr>
+<td><code>void TC6Regs_Reinit(TC6_t*)</code></td>
+<td>重大错误后重新初始化</td>
+</tr>
+<tr>
+<td><code>bool TC6Regs_SetPlca(TC6_t*, bool enable, uint8_t nodeId, uint8_t nodeCount)</code></td>
+<td>运行时修改 PLCA</td>
+</tr>
+<tr>
+<td><code>uint8_t TC6Regs_GetChipRevision(TC6_t*)</code></td>
+<td>读芯片 revision</td>
+</tr>
+<tr>
+<td><code>void TC6Regs_EnableDio_A0/A1(TC6_t*)</code></td>
+<td>配置 LAN8651 GPIO 为输出</td>
+</tr>
+<tr>
+<td><code>void TC6Regs_ToggleDio_A0/A1(TC6_t*)</code></td>
+<td>翻转 GPIO</td>
+</tr>
+<tr>
+<td><code>void TC6Regs_CheckTimers(void)</code></td>
+<td>内部超时检查（<strong>必须定期调用</strong>）</td>
+</tr>
+<tr>
+<td><code>void TC6_CB_OnExtendedStatus(TC6_t*, void*)</code></td>
+<td>实现 libtc6 回调</td>
+</tr>
+</tbody></table>
+<h3 id="6-2-必实现回调"><a href="#6-2-必实现回调" class="headerlink" title="6.2 必实现回调"></a>6.2 必实现回调</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">uint32_t</span> <span class="title function_">TC6Regs_CB_GetTicksMs</span><span class="params">(<span class="type">void</span>)</span>;  <span class="comment">// 返回当前毫秒 tick</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">TC6Regs_CB_OnEvent</span><span class="params">(TC6_t*, TC6Regs_Event_t event, <span class="type">void</span> *pTag)</span>;</span><br></pre></td></tr></table></figure>
+
+<p><strong>实现</strong>（<code>TC6_Arduino_10BASE_T1S.cpp:381</code>）：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">uint32_t</span> <span class="title">TC6Regs_CB_GetTicksMs</span><span class="params">(<span class="type">void</span>)</span> </span>&#123; <span class="keyword">return</span> <span class="built_in">millis</span>(); &#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="6-3-事件枚举-TC6Regs-Event-t"><a href="#6-3-事件枚举-TC6Regs-Event-t" class="headerlink" title="6.3 事件枚举 TC6Regs_Event_t"></a>6.3 事件枚举 <code>TC6Regs_Event_t</code></h3><p>35 种事件（<code>tc6-regs.h:47-85</code>），分两类：</p>
+<table>
+<thead>
+<tr>
+<th>颜色</th>
+<th>事件类型</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>绿色</strong></td>
+<td>信息性（Reset_Complete、PHY_Interrupt、TX_Timestamp_Available_*）</td>
+</tr>
+<tr>
+<td><strong>红色</strong></td>
+<td>错误（FSM_State_Error、SRAM_ECC_Error、Undervoltage、Chip_Error 等）</td>
+</tr>
+<tr>
+<td><strong>黄色</strong></td>
+<td>中间状态（MCLK_GEN_Status、SPI_Err_Int 等）</td>
+</tr>
+</tbody></table>
+<p><strong>触发自动 Reinit 的事件</strong>（<code>TC6_Arduino_10BASE_T1S.cpp:540-666</code>）：</p>
+<ul>
+<li><code>Loss_of_Framing_Error</code></li>
+<li><code>RX_Non_Recoverable_Error</code></li>
+<li><code>TX_Non_Recoverable_Error</code></li>
+</ul>
+<h3 id="6-4-LAN865x-寄存器初始化表"><a href="#6-4-LAN865x-寄存器初始化表" class="headerlink" title="6.4 LAN865x 寄存器初始化表"></a>6.4 LAN865x 寄存器初始化表</h3><p><code>src/microchip/lib/libtc6/src/tc6-regs.cpp:297-331</code></p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">const</span> MemoryMap_t TC6_MEMMAP[] = &#123;</span><br><span class="line">    &#123; .address=<span class="number">0x00000004</span>, .value=<span class="number">0x00000026</span>, .op=MemOp_Write, .secure=<span class="literal">false</span> &#125;, <span class="comment">// CONFIG0</span></span><br><span class="line">    &#123; .address=<span class="number">0x00010000</span>, .value=<span class="number">0x00000000</span>, .op=MemOp_Write, .secure=<span class="literal">true</span>  &#125;, <span class="comment">// NETWORK_CONTROL</span></span><br><span class="line">    &#123; .address=<span class="number">0x00040091</span>, .value=<span class="number">0x00009660</span>, .op=MemOp_Write, .secure=<span class="literal">true</span>  &#125;, <span class="comment">// PHY</span></span><br><span class="line">    <span class="comment">// ... 30+ 条 PHY 校准/配置寄存器</span></span><br><span class="line">    &#123; .address=<span class="number">0x0000000C</span>, .value=<span class="number">0x00000100</span>, .op=MemOp_Write, .secure=<span class="literal">true</span>  &#125;, <span class="comment">// IMASK0</span></span><br><span class="line">    &#123; .address=<span class="number">0x00040081</span>, .value=<span class="number">0x000000E0</span>, .op=MemOp_Write, .secure=<span class="literal">true</span>  &#125;, <span class="comment">// DEEP_SLEEP_CTRL_1</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p><strong>关键地址汇总</strong>（移植到竞品时需要替换）：</p>
+<table>
+<thead>
+<tr>
+<th>地址</th>
+<th>MMS</th>
+<th>寄存器名</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>0x00000004</code></td>
+<td>0</td>
+<td>CONFIG0</td>
+<td>SPI 块大小、cut-through</td>
+</tr>
+<tr>
+<td><code>0x0000000C</code></td>
+<td>0</td>
+<td>IMASK0</td>
+<td>中断屏蔽</td>
+</tr>
+<tr>
+<td><code>0x00010000</code></td>
+<td>1</td>
+<td>NETWORK_CONTROL</td>
+<td>MAC 使能</td>
+</tr>
+<tr>
+<td><code>0x00010001</code></td>
+<td>1</td>
+<td>NETWORK_CONFIG</td>
+<td>混杂模式</td>
+</tr>
+<tr>
+<td><code>0x00010022/24/25</code></td>
+<td>1</td>
+<td>SPEC_ADD1_BOTTOM &#x2F; SPEC_ADD2_BOTTOM&#x2F;TOP</td>
+<td>MAC 地址</td>
+</tr>
+<tr>
+<td><code>0x00040081</code></td>
+<td>4</td>
+<td>DEEP_SLEEP_CTRL_1</td>
+<td>低功耗</td>
+</tr>
+<tr>
+<td><code>0x00040087</code></td>
+<td>4</td>
+<td>COL_DET_CTRL0</td>
+<td>碰撞检测模式（PLCA &#x2F; CSMA-CD）</td>
+</tr>
+<tr>
+<td><code>0x00040091</code></td>
+<td>4</td>
+<td>PHY 配置</td>
+<td>PHY 基础</td>
+</tr>
+<tr>
+<td><code>0x000400B0..BB</code></td>
+<td>4</td>
+<td>PHY 校准区</td>
+<td>模拟参数（Microchip magic numbers）</td>
+</tr>
+<tr>
+<td><code>0x000400D0</code></td>
+<td>4</td>
+<td>revision-specific</td>
+<td>Rev1&#x2F;2 不同</td>
+</tr>
+<tr>
+<td><code>0x0004CA01</code></td>
+<td>4</td>
+<td>PLCA_CONTROL_0</td>
+<td>PLCA 使能</td>
+</tr>
+<tr>
+<td><code>0x0004CA02</code></td>
+<td>4</td>
+<td>PLCA_CONTROL_1</td>
+<td>Node ID&#x2F;Count</td>
+</tr>
+<tr>
+<td><code>0x0004CA03</code></td>
+<td>4</td>
+<td>PLCA_STATUS</td>
+<td>状态读取</td>
+</tr>
+<tr>
+<td><code>0x0004CA05</code></td>
+<td>4</td>
+<td>PLCA_BURST_MODE</td>
+<td>Burst Count&#x2F;Timer</td>
+</tr>
+<tr>
+<td><code>0x000A0094</code></td>
+<td>10</td>
+<td>间接：Chip Revision</td>
+<td>修订版本</td>
+</tr>
+</tbody></table>
+<h3 id="6-5-芯片-ID-校验"><a href="#6-5-芯片-ID-校验" class="headerlink" title="6.5 芯片 ID 校验"></a>6.5 芯片 ID 校验</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// tc6-regs.cpp:451-467</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">OnReadId1</span><span class="params">(TC6_t *pInst, <span class="type">bool</span> success, <span class="type">uint32_t</span> addr, <span class="type">uint32_t</span> value, <span class="type">void</span> *pTag, <span class="type">void</span> *pGlobalTag)</span> </span>&#123;</span><br><span class="line">    <span class="type">uint32_t</span> oui = value &gt;&gt; <span class="number">10</span>;</span><br><span class="line">    <span class="type">uint32_t</span> model = (value &gt;&gt; <span class="number">4</span>) &amp; <span class="number">0x3FFu</span>;</span><br><span class="line">    <span class="keyword">if</span> ((<span class="number">0x1F0u</span> != oui) || (<span class="number">0x1Bu</span> != model)) &#123;</span><br><span class="line">        <span class="comment">// 不是 LAN8651</span></span><br><span class="line">        <span class="built_in">TC6Regs_CB_OnEvent</span>(pInst, TC6Regs_Event_Unsupported_Hardware, pReg-&gt;pTag);</span><br><span class="line">        pReg-&gt;initialized = <span class="literal">false</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>移植时</strong>：替换为竞品的 OUI&#x2F;Model 期望值。</p>
+<h3 id="6-6-MAC-地址写入顺序"><a href="#6-6-MAC-地址写入顺序" class="headerlink" title="6.6 MAC 地址写入顺序"></a>6.6 MAC 地址写入顺序</h3><p><code>tc6-regs.cpp:371-389</code></p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">regVal = ((mac[<span class="number">3</span>] &lt;&lt; <span class="number">24</span>) | (mac[<span class="number">2</span>] &lt;&lt; <span class="number">16</span>) | (mac[<span class="number">1</span>] &lt;&lt; <span class="number">8</span>) | mac[<span class="number">0</span>]);</span><br><span class="line"><span class="built_in">TC6_WriteRegister</span>(... <span class="number">0x00010024</span> <span class="comment">/* SPEC_ADD2_BOTTOM */</span>, regVal, <span class="literal">true</span>);</span><br><span class="line">regVal = ((mac[<span class="number">5</span>] &lt;&lt; <span class="number">8</span>) | mac[<span class="number">4</span>]);</span><br><span class="line"><span class="built_in">TC6_WriteRegister</span>(... <span class="number">0x00010025</span> <span class="comment">/* SPEC_ADD2_TOP */</span>, regVal, <span class="literal">true</span>);</span><br><span class="line">regVal = ((mac[<span class="number">5</span>] &lt;&lt; <span class="number">24</span>) | (mac[<span class="number">4</span>] &lt;&lt; <span class="number">16</span>) | (mac[<span class="number">3</span>] &lt;&lt; <span class="number">8</span>) | mac[<span class="number">2</span>]);</span><br><span class="line"><span class="built_in">TC6_WriteRegister</span>(... <span class="number">0x00010022</span> <span class="comment">/* SPEC_ADD1_BOTTOM */</span>, regVal, <span class="literal">true</span>);</span><br></pre></td></tr></table></figure>
+
+<p><strong>字节序反转</strong>：MAC 地址 <code>[AA:BB:CC:DD:EE:FF]</code> 写入顺序为：</p>
+<ul>
+<li>SPEC_ADD2_BOTTOM &#x3D; <code>DDCCBBAA</code>（小端）</li>
+<li>SPEC_ADD2_TOP &#x3D; <code>FFEE</code></li>
+<li>SPEC_ADD1_BOTTOM &#x3D; <code>FFEEDDCC</code>（用于生成 back-off time）</li>
+</ul>
+<p>这是 LAN8651 datasheet 规定的写入方式，<strong>竞品芯片不一定遵循</strong>。</p>
+<h2 id="7-lwIP-集成层"><a href="#7-lwIP-集成层" class="headerlink" title="7. lwIP 集成层"></a>7. lwIP 集成层</h2><h3 id="7-1-关键文件"><a href="#7-1-关键文件" class="headerlink" title="7.1 关键文件"></a>7.1 关键文件</h3><ul>
+<li><code>src/microchip/TC6_Arduino_10BASE_T1S.cpp</code> — 集成代码（~700 行）</li>
+<li><code>src/lib/liblwip/cfg/lwipopts.h</code> — 编译配置</li>
+<li><code>src/lib/lwip_sys_now.cpp</code> — <code>sys_now()</code> 桥接到 <code>millis()</code></li>
+</ul>
+<h3 id="7-2-netif-三个回调"><a href="#7-2-netif-三个回调" class="headerlink" title="7.2 netif 三个回调"></a>7.2 netif 三个回调</h3><p><code>TC6_Arduino_10BASE_T1S.cpp:282-346</code></p>
+<h4 id="lwIpInit-struct-netif-netif-——-初始化回调"><a href="#lwIpInit-struct-netif-netif-——-初始化回调" class="headerlink" title="lwIpInit(struct netif *netif) —— 初始化回调"></a><code>lwIpInit(struct netif *netif)</code> —— 初始化回调</h4><table>
+<thead>
+<tr>
+<th>项</th>
+<th>配置</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>netif-&gt;output</code></td>
+<td><code>etharp_output</code>（lwIP 标准 ARP 处理）</td>
+</tr>
+<tr>
+<td><code>netif-&gt;linkoutput</code></td>
+<td><code>lwIpOut</code>（实际发送回调）</td>
+</tr>
+<tr>
+<td><code>netif-&gt;flags</code></td>
+<td>&#96;NETIF_FLAG_BROADCAST</td>
+</tr>
+<tr>
+<td><code>netif-&gt;mtu</code></td>
+<td><code>1536</code>（与 UdpRxPacket 容量匹配）</td>
+</tr>
+<tr>
+<td><code>netif-&gt;hwaddr_len</code></td>
+<td><code>ETHARP_HWADDR_LEN = 6</code></td>
+</tr>
+<tr>
+<td><code>netif-&gt;name</code></td>
+<td><code>&quot;tc&quot;</code>（前 2 字符）</td>
+</tr>
+<tr>
+<td>副作用</td>
+<td><code>netif_set_up()</code> + <code>netif_set_default()</code></td>
+</tr>
+</tbody></table>
+<p><strong>Context 解析</strong>：通过 <code>GetContextNetif(netif)</code> 遍历全局链表找到 <code>TC6LwIP_t*</code>。<strong>遍历开销 O(n)</strong>——单实例不影响，多实例需要哈希表。</p>
+<h4 id="lwIpOut-struct-netif-netif-struct-pbuf-p-——-发送回调"><a href="#lwIpOut-struct-netif-netif-struct-pbuf-p-——-发送回调" class="headerlink" title="lwIpOut(struct netif *netif, struct pbuf *p) —— 发送回调"></a><code>lwIpOut(struct netif *netif, struct pbuf *p)</code> —— 发送回调</h4><p>调用路径：</p>
+<ol>
+<li><code>udp_sendto</code> → lwIP 内部 → <code>etharp_output</code> → <code>netif-&gt;linkoutput</code> &#x3D; <code>lwIpOut</code></li>
+<li><code>TC6_GetRawSegments(tc6, &amp;txSeg)</code> 申请 segment 数组</li>
+<li>把 pbuf 链表每个段填入 segment 数组（<code>p-&gt;len</code>, <code>p-&gt;next</code>）</li>
+<li><code>TC6_SendRawEthernetSegments(tc6, txSeg, seg, p-&gt;tot_len, 0, callback, p)</code> 提交</li>
+<li>callback 释放 pbuf</li>
+</ol>
+<p><strong>关键引用计数</strong>：第 305 行 <code>pbuf_ref(p)</code>——为什么？</p>
+<blockquote>
+<p>在 <code>TC6_SendRawEthernetSegments</code> 路径中，<strong>MAC-PHY 异步发送完成前，pbuf 必须保持有效</strong>。但 lwIP 内部会在 <code>udp_sendto</code> 返回后立刻 <code>pbuf_free(p)</code>。<code>pbuf_ref</code> 增加引用计数，使得后续 <code>pbuf_free</code> 只减少引用，最后由 libtc6 TX 完成的 callback <code>pbuf_free</code> 真正释放。</p>
+</blockquote>
+<p><strong>返回码</strong>：</p>
+<ul>
+<li><code>ERR_OK</code> — 发送已入队（实际发送异步完成）</li>
+<li><code>ERR_WOULDBLOCK</code> — TX 队列满，无可用 segment</li>
+<li><code>ERR_IF</code> — TC6 拒绝（极少见）</li>
+</ul>
+<h4 id="etharp-input-——-RX-入口"><a href="#etharp-input-——-RX-入口" class="headerlink" title="etharp_input —— RX 入口"></a><code>etharp_input</code> —— RX 入口</h4><p>由 lwIP 内部通过 <code>netif-&gt;input(pbuf, netif)</code> 调用，即 <code>TC6_Arduino_10BASE_T1S::lwIpOut</code> 的反向路径。</p>
+<p><strong>EtherType 过滤</strong>（<code>:358-373</code>）：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">bool</span> <span class="title">FilterRxEthernetPacket</span><span class="params">(<span class="type">uint16_t</span> ethType)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">switch</span> (ethType) &#123;</span><br><span class="line">        <span class="keyword">case</span> <span class="number">0x0800</span>:  <span class="comment">// IPv4 → 走 lwIP</span></span><br><span class="line">        <span class="keyword">case</span> <span class="number">0x0806</span>:  <span class="comment">// ARP → 走 lwIP</span></span><br><span class="line">            <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>其他 EtherType（如 0x88A8 服务 VLAN tag、0x88CC LLDP、IPv6）的帧<strong>被静默丢弃</strong>。</p>
+<h3 id="7-3-命名空间冲突的处理"><a href="#7-3-命名空间冲突的处理" class="headerlink" title="7.3 命名空间冲突的处理"></a>7.3 命名空间冲突的处理</h3><p><code>src/lib/liblwip/cfg/lwipopts.h:590-742</code> 通过 <code>#define xxx t1s_xxx</code> 重命名所有 lwIP 符号：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">define</span> sys_now t1s_sys_now</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> etharp_output t1s_etharp_output</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> udp_sendto t1s_udp_sendto</span></span><br><span class="line"><span class="comment">// ... 100+ 项</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>为什么需要重命名？</strong></p>
+<ol>
+<li><strong>lwIP 内部函数</strong>会与 Arduino 核心库同名（例如 <code>sys_now</code>）</li>
+<li>库的多个 cpp 文件都会 include lwIP 头，重命名防止链接时符号冲突</li>
+<li><code>src/lib/lwip_sys_now.cpp:32</code> 实现的是 <code>extern &quot;C&quot; u32_t sys_now(void) { return millis(); }</code>，但因为 <code>#define sys_now t1s_sys_now</code>，实际编译出的是 <code>t1s_sys_now</code>——这就是为什么重命名列表里有 <code>sys_now</code></li>
+</ol>
+<h3 id="7-4-sys-now-的实现"><a href="#7-4-sys-now-的实现" class="headerlink" title="7.4 sys_now() 的实现"></a>7.4 <code>sys_now()</code> 的实现</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// src/lib/lwip_sys_now.cpp:32</span></span><br><span class="line"><span class="keyword">extern</span> <span class="string">&quot;C&quot;</span> <span class="function"><span class="type">u32_t</span> <span class="title">sys_now</span><span class="params">(<span class="type">void</span>)</span> </span>&#123;</span><br><span class="line">  <span class="keyword">return</span> <span class="built_in">millis</span>();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>注意</strong>：因为重命名，链接器看到的实际符号是 <code>t1s_sys_now</code>。<br>lwIP 用它实现所有超时（ARP 老化、TCP 重传等），所以 <code>service()</code> 必须周期性调用 <code>sys_check_timeouts()</code>（实际由 <code>t1s_Arduino_10BASE_T1S::service()</code> 调用）。</p>
+<h3 id="7-5-lwIP-内存配置（lwipopts-h-关键项）"><a href="#7-5-lwIP-内存配置（lwipopts-h-关键项）" class="headerlink" title="7.5 lwIP 内存配置（lwipopts.h 关键项）"></a>7.5 lwIP 内存配置（<code>lwipopts.h</code> 关键项）</h3><table>
+<thead>
+<tr>
+<th>宏</th>
+<th>值</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>NO_SYS</code></td>
+<td><code>1</code></td>
+<td><strong>裸机模式</strong>，无 RTOS</td>
+</tr>
+<tr>
+<td><code>SYS_LIGHTWEIGHT_PROT</code></td>
+<td><code>0</code></td>
+<td>无并发保护（依赖 IRQ 禁用临界区）</td>
+</tr>
+<tr>
+<td><code>MEM_LIBC_MALLOC</code></td>
+<td><code>1</code></td>
+<td>使用 libc malloc&#x2F;free（不维护 lwIP 私有 heap）</td>
+</tr>
+<tr>
+<td><code>MEM_SIZE</code></td>
+<td><code>0</code></td>
+<td>私有 heap 大小（用 libc malloc 时无效）</td>
+</tr>
+<tr>
+<td><code>LWIP_TCP</code></td>
+<td><code>0</code></td>
+<td><strong>禁用 TCP</strong>（库当前只支持 UDP）</td>
+</tr>
+<tr>
+<td><code>LWIP_UDP</code></td>
+<td><code>1</code></td>
+<td>启用 UDP</td>
+</tr>
+<tr>
+<td><code>LWIP_DHCP</code></td>
+<td><code>0</code></td>
+<td>禁用 DHCP（静态 IP）</td>
+</tr>
+<tr>
+<td><code>LWIP_AUTOIP</code></td>
+<td><code>0</code></td>
+<td>禁用 AutoIP</td>
+</tr>
+<tr>
+<td><code>LWIP_IGMP</code></td>
+<td><code>0</code></td>
+<td>禁用多播</td>
+</tr>
+<tr>
+<td><code>LWIP_DNS</code></td>
+<td><code>0</code></td>
+<td>禁用 DNS（解释 beginPacket 域名版返回 0）</td>
+</tr>
+<tr>
+<td><code>LWIP_ICMP</code></td>
+<td><code>1</code></td>
+<td>启用 ICMP（让 ping 工作）</td>
+</tr>
+<tr>
+<td><code>LWIP_RAW</code></td>
+<td><code>1</code></td>
+<td>启用 RAW PCB（可能未使用）</td>
+</tr>
+<tr>
+<td><code>MEMP_NUM_PBUF</code></td>
+<td><code>20</code></td>
+<td>pbuf 池</td>
+</tr>
+<tr>
+<td><code>MEMP_NUM_UDP_PCB</code></td>
+<td><code>4</code></td>
+<td>UDP 控制块数（最多 4 个并发 UDP socket）</td>
+</tr>
+<tr>
+<td><code>MEMP_NUM_TCP_PCB</code></td>
+<td><code>0</code></td>
+<td>TCP 控制块数</td>
+</tr>
+<tr>
+<td><code>MEMP_NUM_ARP_QUEUE</code></td>
+<td><code>6</code></td>
+<td>ARP 请求队列</td>
+</tr>
+<tr>
+<td><code>PBUF_POOL_SIZE</code></td>
+<td><code>1</code></td>
+<td>PBUF_POOL 类型池大小</td>
+</tr>
+<tr>
+<td><code>PBUF_LINK_HLEN</code></td>
+<td><code>14</code></td>
+<td>链路头长度（标准以太网）</td>
+</tr>
+<tr>
+<td><code>CHECKSUM_CHECK_IP/UDP/TCP</code></td>
+<td><code>0</code></td>
+<td><strong>禁用校验和验证</strong>（PHY 已做）</td>
+</tr>
+<tr>
+<td><code>ETHERNET_MTU</code></td>
+<td><code>1500</code></td>
+<td>标准 MTU</td>
+</tr>
+</tbody></table>
+<p><strong>实际 MTU 1536 vs 1500</strong>：<code>netif.mtu = 1536</code>（在 <code>TC6_Arduino_10BASE_T1S.cpp:288</code>），但 lwIP <code>ETHERNET_MTU = 1500</code>。lwIP 在发送路径会用 <code>min(netif.mtu, ETHERNET_MTU)</code>，所以<strong>实际 MTU 是 1500</strong>。<code>1536</code> 是给 RX pbuf 分配的容量（容纳 VLAN tag 等扩展）。</p>
+<h2 id="8-移植到非-Arduino-平台"><a href="#8-移植到非-Arduino-平台" class="headerlink" title="8. 移植到非 Arduino 平台"></a>8. 移植到非 Arduino 平台</h2><p>把 libtc6 移植到非 Arduino 平台（例如 RTOS + 通用 lwIP）需要提供：</p>
+<h3 id="8-1-必实现的回调"><a href="#8-1-必实现的回调" class="headerlink" title="8.1 必实现的回调"></a>8.1 必实现的回调</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">bool</span> <span class="title function_">TC6_CB_OnSpiTransaction</span><span class="params">(...)</span>;  <span class="comment">// 平台 SPI</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">TC6_CB_OnRxEthernetSlice</span><span class="params">(...)</span>;</span><br><span class="line"><span class="type">void</span> <span class="title function_">TC6_CB_OnRxEthernetPacket</span><span class="params">(...)</span>;</span><br><span class="line"><span class="type">void</span> <span class="title function_">TC6_CB_OnNeedService</span><span class="params">(...)</span>;</span><br><span class="line"><span class="type">void</span> <span class="title function_">TC6_CB_OnError</span><span class="params">(...)</span>;</span><br><span class="line"><span class="type">void</span> <span class="title function_">TC6_CB_OnExtendedStatus</span><span class="params">(...)</span>;  <span class="comment">// 或用 tc6-regs 实现</span></span><br><span class="line"><span class="type">uint32_t</span> <span class="title function_">TC6Regs_CB_GetTicksMs</span><span class="params">(<span class="type">void</span>)</span>;</span><br><span class="line"><span class="type">void</span> <span class="title function_">TC6Regs_CB_OnEvent</span><span class="params">(...)</span>;</span><br></pre></td></tr></table></figure>
+
+<h3 id="8-2-必实现的-lwIP-桥接"><a href="#8-2-必实现的-lwIP-桥接" class="headerlink" title="8.2 必实现的 lwIP 桥接"></a>8.2 必实现的 lwIP 桥接</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">u32_t</span> <span class="title function_">sys_now</span><span class="params">(<span class="type">void</span>)</span>;                    <span class="comment">// → 平台 tick</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">netif</span> *<span class="title">netif_default</span>;</span>            <span class="comment">// 已注册的网络接口</span></span><br><span class="line"><span class="comment">// netif_add(...) 已在 TC6_Arduino_10BASE_T1S::begin() 中完成</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="8-3-必须周期性调用"><a href="#8-3-必须周期性调用" class="headerlink" title="8.3 必须周期性调用"></a>8.3 必须周期性调用</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">TC6_Service(tc6, <span class="comment">/*IRQ 电平*/</span>);</span><br><span class="line">TC6Regs_CheckTimers();</span><br><span class="line">sys_check_timeouts();  <span class="comment">// lwIP</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>调用频率</strong>：建议 1ms 或更快。10BASE-T1S 64-byte chunk 在 24MHz SPI 下约 21μs 传输，每秒可处理 ~47000 chunks。</p>
+<h3 id="8-4-替换-tc6-regs-cpp"><a href="#8-4-替换-tc6-regs-cpp" class="headerlink" title="8.4 替换 tc6-regs.cpp"></a>8.4 替换 tc6-regs.cpp</h3><p><code>tc6-regs.cpp</code> 是 <strong>Microchip 专有</strong> 的——所有寄存器地址、值、magic numbers 都是 LAN8651 特有。移植到竞品：</p>
+<ol>
+<li>保留 <code>tc6-regs.h</code> 的 API（<code>TC6Regs_Init/Reinit/SetPlca/...</code>）</li>
+<li>重写 <code>tc6-regs.cpp</code>：<ul>
+<li>替换 <code>TC6_MEMMAP[]</code> 为竞品的初始化序列</li>
+<li>替换 <code>OnReadId1/2</code> 的 OUI&#x2F;Model 校验</li>
+<li>替换 <code>HandlePlca</code> 中的寄存器地址（如果竞品 PLCA 寄存器布局不同）</li>
+<li>替换 <code>InitChip</code>（PHY 校准间接寄存器读取公式）</li>
+</ul>
+</li>
+<li>如果竞品使用不同地址空间分布，调整 <code>MMS</code> 字段</li>
+</ol>
+<h2 id="9-错误恢复流程图"><a href="#9-错误恢复流程图" class="headerlink" title="9. 错误恢复流程图"></a>9. 错误恢复流程图</h2><pre class="mermaid">
+graph TD
+    Start([PHY service loop])
+    Start --&gt; SysTimeout[sys_check_timeouts]
+    SysTimeout --&gt; IrqActive{IRQ active?}
+    IrqActive -- yes --&gt; TC6SrvFalse["TC6_Service(tc6, false)"]
+    IrqActive -- no --&gt; NeedService{tc6NeedService?}
+    NeedService -- yes --&gt; TC6SrvTrue["TC6_Service(tc6, true)"]
+    NeedService -- no --&gt; CheckTimer[TC6Regs_CheckTimers]
+    TC6SrvFalse --&gt; Done{return true?}
+    Done -- yes --&gt; ReleaseIRQ[TC6_Io::releaseInterrupt]
+    Done -- no --&gt; CheckTimer
+    TC6SrvTrue --&gt; CheckTimer
+    ReleaseIRQ --&gt; CheckTimer
+    CheckTimer --&gt; Start
+    
+    subgraph AsyncError[Async error path]
+        ErrCB[TC6_CB_OnError]
+        ErrCB --&gt; ErrType{Error type}
+        ErrType -- severe --&gt; Reinit["TC6Regs_Reinit()&lt;br/&gt;(re-download all regs)"]
+        ErrType -- data error --&gt; LogOnly[log only]
+    end
+</pre>
+
+<h2 id="10-调试日志与可观测性"><a href="#10-调试日志与可观测性" class="headerlink" title="10. 调试日志与可观测性"></a>10. 调试日志与可观测性</h2><h3 id="10-1-启用-libtc6-错误打印"><a href="#10-1-启用-libtc6-错误打印" class="headerlink" title="10.1 启用 libtc6 错误打印"></a>10.1 启用 libtc6 错误打印</h3><p>修改 <code>src/microchip/TC6_Arduino_10BASE_T1S.cpp:493</code>：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// #define PRINT(...)   // 默认空</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PRINT(...) Serial.printf(__VA_ARGS__)</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> ESC_GREEN <span class="string">&quot;&quot;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> ESC_RED   <span class="string">&quot;&quot;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> ESC_YELLOW <span class="string">&quot;&quot;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> ESC_RESETCOLOR <span class="string">&quot;&quot;</span></span></span><br></pre></td></tr></table></figure>
+
+<p>重新编译，串口会看到所有 <code>TC6Error_*</code> 和 <code>TC6Regs_Event_*</code>。</p>
+<h3 id="10-2-用-Wireshark-验证数据通路"><a href="#10-2-用-Wireshark-验证数据通路" class="headerlink" title="10.2 用 Wireshark 验证数据通路"></a>10.2 用 Wireshark 验证数据通路</h3><p>LAN8651 收到帧 → RX pbuf → <code>FilterRxEthernetPacket</code> → <code>netif-&gt;input</code> → <code>udp_recv</code> → <code>Arduino_10BASE_T1S_UDP::_rx_pkt_list</code>。<strong>lwIP 本身不输出任何日志</strong>（<code>LWIP_STATS = 0</code>）。</p>
+<p>要在 lwIP 层加观测，可以临时打开：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">define</span> LWIP_STATS 1</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> UDP_STATS 1</span></span><br></pre></td></tr></table></figure>
+
+<p>但这会显著增加 RAM，需要重新评估 UNO R4 Minima 的 32KB 限制。</p>
+<h3 id="10-3-添加-RX-TX-计数器"><a href="#10-3-添加-RX-TX-计数器" class="headerlink" title="10.3 添加 RX&#x2F;TX 计数器"></a>10.3 添加 RX&#x2F;TX 计数器</h3><p>最简单的方法是在 <code>TC6_CB_OnRxEthernetPacket</code> 和 <code>lwIpOut</code> 里加 static 计数器，周期性打印：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 临时调试代码</span></span><br><span class="line"><span class="type">static</span> <span class="type">uint32_t</span> rx_count = <span class="number">0</span>, tx_count = <span class="number">0</span>;</span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">TC6_CB_OnRxEthernetPacket</span><span class="params">(TC6_t *pInst, <span class="type">bool</span> success, <span class="type">uint16_t</span> len, ...)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (success) rx_count++;</span><br><span class="line">    <span class="comment">// ... 原有实现</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">static</span> <span class="type">err_t</span> <span class="title">lwIpOut</span><span class="params">(<span class="keyword">struct</span> netif *netif, <span class="keyword">struct</span> pbuf *p)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// ... 原有实现</span></span><br><span class="line">    tx_count++;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="11-小结"><a href="#11-小结" class="headerlink" title="11. 小结"></a>11. 小结</h2><p>libtc6 作为一个 <strong>OA TC6 协议参考实现</strong>，展示了协议层 + 协议无关适配的清晰分层：</p>
+<table>
+<thead>
+<tr>
+<th>层</th>
+<th>模块</th>
+<th>替换边界</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>应用层</td>
+<td><code>Arduino_10BASE_T1S_UDP</code></td>
+<td>不依赖硬件，可保留</td>
+</tr>
+<tr>
+<td>网络层</td>
+<td>lwIP</td>
+<td>不依赖硬件，可保留</td>
+</tr>
+<tr>
+<td>协议适配层</td>
+<td><code>TC6_Arduino_10BASE_T1S</code></td>
+<td>网桥作用，替换 HAL&#x2F;regs</td>
+</tr>
+<tr>
+<td>协议核心</td>
+<td>libtc6 (<code>tc6.cpp</code>)</td>
+<td>OA TC6 规范相关，<strong>只在协议兼容时复用</strong></td>
+</tr>
+<tr>
+<td>寄存器层</td>
+<td><code>tc6-regs.cpp</code></td>
+<td><strong>完全 chip-specific</strong>，必须重写</td>
+</tr>
+<tr>
+<td>HAL</td>
+<td><code>TC6_Io</code></td>
+<td>平台 SPI 相关，可适配</td>
+</tr>
+</tbody></table>
+<p>整个库的<strong>复用价值</strong>集中在应用层 + lwIP；<strong>移植工作量</strong>集中在 <code>tc6-regs.cpp</code> 重写和 HAL 适配。</p>
+<p>至此本系列三篇结束。读者现在应能：</p>
+<ul>
+<li>在不读源码的前提下调用 Arduino UDP API 并排查错误</li>
+<li>替换 HAL 实现而无需修改 libtc6</li>
+<li>实现 <code>TC6_Arduino_10BASE_T1S</code> 的等价类对接新芯片</li>
+<li>完整替换 <code>tc6-regs.cpp</code> 移植到竞品 MAC-PHY</li>
+</ul>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">首页</a></li>
+        
+          <li><a href="/archives/">归档</a></li>
+        
+          <li><a href="/tags/">标签</a></li>
+        
+          <li><a href="/categories/">分类</a></li>
+        
+          <li><a href="/search/">搜索</a></li>
+        
+          <li><a href="/about/">关于</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%B3%BB%E5%88%97%E5%AF%BC%E8%AF%BB"><span class="toc-number">1.</span> <span class="toc-text">系列导读</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-libtc6-%E7%89%88%E6%9C%AC%E4%B8%8E%E9%85%8D%E7%BD%AE"><span class="toc-number">2.</span> <span class="toc-text">1. libtc6 版本与配置</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-%E7%89%88%E6%9C%AC"><span class="toc-number">2.1.</span> <span class="toc-text">1.1 版本</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-2-%E7%BC%96%E8%AF%91%E6%97%B6%E9%85%8D%E7%BD%AE%EF%BC%88tc6-conf-h%EF%BC%89"><span class="toc-number">2.2.</span> <span class="toc-text">1.2 编译时配置（tc6-conf.h）</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%B4%BE%E7%94%9F%E5%AE%8F%EF%BC%88tc6-queue-h%EF%BC%89"><span class="toc-number">2.2.1.</span> <span class="toc-text">派生宏（tc6-queue.h）</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-3-%E5%B9%B3%E5%8F%B0%E6%96%AD%E8%A8%80"><span class="toc-number">2.3.</span> <span class="toc-text">1.3 平台断言</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-libtc6-%E5%85%AC%E5%BC%80%E7%B1%BB%E5%9E%8B"><span class="toc-number">3.</span> <span class="toc-text">2. libtc6 公开类型</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E4%B8%8D%E9%80%8F%E6%98%8E%E7%BB%93%E6%9E%84%E4%BD%93-TC6-t"><span class="toc-number">3.1.</span> <span class="toc-text">2.1 不透明结构体 TC6_t</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-%E9%94%99%E8%AF%AF%E6%9E%9A%E4%B8%BE-TC6-Error-t"><span class="toc-number">3.2.</span> <span class="toc-text">2.2 错误枚举 TC6_Error_t</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-%E5%AF%84%E5%AD%98%E5%99%A8%E6%93%8D%E4%BD%9C%E6%8F%8F%E8%BF%B0"><span class="toc-number">3.3.</span> <span class="toc-text">2.3 寄存器操作描述</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-4-%E5%8F%91%E9%80%81%E6%AE%B5%E6%8F%8F%E8%BF%B0"><span class="toc-number">3.4.</span> <span class="toc-text">2.4 发送段描述</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-5-%E5%9B%9E%E8%B0%83%E5%87%BD%E6%95%B0%E7%B1%BB%E5%9E%8B"><span class="toc-number">3.5.</span> <span class="toc-text">2.5 回调函数类型</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-libtc6-%E5%BF%85%E5%AE%9E%E7%8E%B0-API%EF%BC%88integrator-API%EF%BC%89"><span class="toc-number">4.</span> <span class="toc-text">3. libtc6 必实现 API（integrator API）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E5%AE%9E%E4%BE%8B%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F"><span class="toc-number">4.1.</span> <span class="toc-text">3.1 实例生命周期</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E4%B8%BB%E5%BE%AA%E7%8E%AF%E5%BF%83%E8%B7%B3"><span class="toc-number">4.2.</span> <span class="toc-text">3.2 主循环心跳</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-%E6%95%B0%E6%8D%AE%E9%80%9A%E8%B7%AF%E5%BC%80%E5%85%B3"><span class="toc-number">4.3.</span> <span class="toc-text">3.3 数据通路开关</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-4-%E5%8F%91%E9%80%81%E5%8E%9F%E5%A7%8B%E4%BB%A5%E5%A4%AA%E7%BD%91%E5%B8%A7"><span class="toc-number">4.4.</span> <span class="toc-text">3.4 发送原始以太网帧</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-5-%E5%AF%84%E5%AD%98%E5%99%A8%E8%AE%BF%E9%97%AE"><span class="toc-number">4.5.</span> <span class="toc-text">3.5 寄存器访问</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-6-%E7%8A%B6%E6%80%81%E6%9F%A5%E8%AF%A2"><span class="toc-number">4.6.</span> <span class="toc-text">3.6 状态查询</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-7-SPI-%E5%AE%8C%E6%88%90%E9%80%9A%E7%9F%A5%EF%BC%88%E5%BC%82%E6%AD%A5%E6%94%AF%E6%8C%81%EF%BC%89"><span class="toc-number">4.7.</span> <span class="toc-text">3.7 SPI 完成通知（异步支持）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-8-%E6%89%A9%E5%B1%95%E7%8A%B6%E6%80%81%E6%8E%A7%E5%88%B6"><span class="toc-number">4.8.</span> <span class="toc-text">3.8 扩展状态控制</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-9-%E9%94%99%E8%AF%AF%E7%A0%81%E5%88%B0%E6%81%A2%E5%A4%8D%E5%8A%A8%E4%BD%9C%E7%9A%84%E6%98%A0%E5%B0%84"><span class="toc-number">4.9.</span> <span class="toc-text">3.9 错误码到恢复动作的映射</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-libtc6-%E5%BF%85%E5%AE%9E%E7%8E%B0%E5%9B%9E%E8%B0%83%EF%BC%88integrator-%E5%BF%85%E9%A1%BB%E6%8F%90%E4%BE%9B%EF%BC%89"><span class="toc-number">5.</span> <span class="toc-text">4. libtc6 必实现回调（integrator 必须提供）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-TC6-CB-OnSpiTransaction"><span class="toc-number">5.1.</span> <span class="toc-text">4.1 TC6_CB_OnSpiTransaction</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-TC6-CB-OnRxEthernetSlice"><span class="toc-number">5.2.</span> <span class="toc-text">4.2 TC6_CB_OnRxEthernetSlice</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-TC6-CB-OnRxEthernetPacket"><span class="toc-number">5.3.</span> <span class="toc-text">4.3 TC6_CB_OnRxEthernetPacket</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-4-TC6-CB-OnNeedService"><span class="toc-number">5.4.</span> <span class="toc-text">4.4 TC6_CB_OnNeedService</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-5-TC6-CB-OnError"><span class="toc-number">5.5.</span> <span class="toc-text">4.5 TC6_CB_OnError</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-6-TC6-CB-OnExtendedStatus"><span class="toc-number">5.6.</span> <span class="toc-text">4.6 TC6_CB_OnExtendedStatus</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-%E9%98%9F%E5%88%97%E5%AE%9E%E7%8E%B0%EF%BC%9Atc6-queue-h"><span class="toc-number">6.</span> <span class="toc-text">5. 队列实现：tc6-queue.h</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E4%B8%89%E4%B8%AA%E9%98%9F%E5%88%97"><span class="toc-number">6.1.</span> <span class="toc-text">5.1 三个队列</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E9%80%9A%E7%94%A8-API%EF%BC%88%E6%AF%8F%E9%98%9F%E5%88%97%EF%BC%89"><span class="toc-number">6.2.</span> <span class="toc-text">5.2 通用 API（每队列）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-7-%E9%98%B6%E6%AE%B5-regop-queue-%E7%9A%84%E7%8A%B6%E6%80%81%E6%9C%BA"><span class="toc-number">6.3.</span> <span class="toc-text">5.3 7 阶段 regop_queue 的状态机</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-4-%E5%86%85%E5%AD%98%E5%B8%83%E5%B1%80%E7%A4%BA%E4%BE%8B%EF%BC%88regop-queue-%E6%A7%BD%E4%BD%8D%EF%BC%89"><span class="toc-number">6.4.</span> <span class="toc-text">5.4 内存布局示例（regop_queue 槽位）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6-tc6-regs-%E5%AF%84%E5%AD%98%E5%99%A8%E5%B1%82"><span class="toc-number">7.</span> <span class="toc-text">6. tc6-regs 寄存器层</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-API-%E6%B8%85%E5%8D%95"><span class="toc-number">7.1.</span> <span class="toc-text">6.1 API 清单</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E5%BF%85%E5%AE%9E%E7%8E%B0%E5%9B%9E%E8%B0%83"><span class="toc-number">7.2.</span> <span class="toc-text">6.2 必实现回调</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E4%BA%8B%E4%BB%B6%E6%9E%9A%E4%B8%BE-TC6Regs-Event-t"><span class="toc-number">7.3.</span> <span class="toc-text">6.3 事件枚举 TC6Regs_Event_t</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-4-LAN865x-%E5%AF%84%E5%AD%98%E5%99%A8%E5%88%9D%E5%A7%8B%E5%8C%96%E8%A1%A8"><span class="toc-number">7.4.</span> <span class="toc-text">6.4 LAN865x 寄存器初始化表</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-5-%E8%8A%AF%E7%89%87-ID-%E6%A0%A1%E9%AA%8C"><span class="toc-number">7.5.</span> <span class="toc-text">6.5 芯片 ID 校验</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-6-MAC-%E5%9C%B0%E5%9D%80%E5%86%99%E5%85%A5%E9%A1%BA%E5%BA%8F"><span class="toc-number">7.6.</span> <span class="toc-text">6.6 MAC 地址写入顺序</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#7-lwIP-%E9%9B%86%E6%88%90%E5%B1%82"><span class="toc-number">8.</span> <span class="toc-text">7. lwIP 集成层</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#7-1-%E5%85%B3%E9%94%AE%E6%96%87%E4%BB%B6"><span class="toc-number">8.1.</span> <span class="toc-text">7.1 关键文件</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-2-netif-%E4%B8%89%E4%B8%AA%E5%9B%9E%E8%B0%83"><span class="toc-number">8.2.</span> <span class="toc-text">7.2 netif 三个回调</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#lwIpInit-struct-netif-netif-%E2%80%94%E2%80%94-%E5%88%9D%E5%A7%8B%E5%8C%96%E5%9B%9E%E8%B0%83"><span class="toc-number">8.2.1.</span> <span class="toc-text">lwIpInit(struct netif *netif) —— 初始化回调</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#lwIpOut-struct-netif-netif-struct-pbuf-p-%E2%80%94%E2%80%94-%E5%8F%91%E9%80%81%E5%9B%9E%E8%B0%83"><span class="toc-number">8.2.2.</span> <span class="toc-text">lwIpOut(struct netif *netif, struct pbuf *p) —— 发送回调</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#etharp-input-%E2%80%94%E2%80%94-RX-%E5%85%A5%E5%8F%A3"><span class="toc-number">8.2.3.</span> <span class="toc-text">etharp_input —— RX 入口</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-3-%E5%91%BD%E5%90%8D%E7%A9%BA%E9%97%B4%E5%86%B2%E7%AA%81%E7%9A%84%E5%A4%84%E7%90%86"><span class="toc-number">8.3.</span> <span class="toc-text">7.3 命名空间冲突的处理</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-4-sys-now-%E7%9A%84%E5%AE%9E%E7%8E%B0"><span class="toc-number">8.4.</span> <span class="toc-text">7.4 sys_now() 的实现</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-5-lwIP-%E5%86%85%E5%AD%98%E9%85%8D%E7%BD%AE%EF%BC%88lwipopts-h-%E5%85%B3%E9%94%AE%E9%A1%B9%EF%BC%89"><span class="toc-number">8.5.</span> <span class="toc-text">7.5 lwIP 内存配置（lwipopts.h 关键项）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#8-%E7%A7%BB%E6%A4%8D%E5%88%B0%E9%9D%9E-Arduino-%E5%B9%B3%E5%8F%B0"><span class="toc-number">9.</span> <span class="toc-text">8. 移植到非 Arduino 平台</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#8-1-%E5%BF%85%E5%AE%9E%E7%8E%B0%E7%9A%84%E5%9B%9E%E8%B0%83"><span class="toc-number">9.1.</span> <span class="toc-text">8.1 必实现的回调</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8-2-%E5%BF%85%E5%AE%9E%E7%8E%B0%E7%9A%84-lwIP-%E6%A1%A5%E6%8E%A5"><span class="toc-number">9.2.</span> <span class="toc-text">8.2 必实现的 lwIP 桥接</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8-3-%E5%BF%85%E9%A1%BB%E5%91%A8%E6%9C%9F%E6%80%A7%E8%B0%83%E7%94%A8"><span class="toc-number">9.3.</span> <span class="toc-text">8.3 必须周期性调用</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8-4-%E6%9B%BF%E6%8D%A2-tc6-regs-cpp"><span class="toc-number">9.4.</span> <span class="toc-text">8.4 替换 tc6-regs.cpp</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#9-%E9%94%99%E8%AF%AF%E6%81%A2%E5%A4%8D%E6%B5%81%E7%A8%8B%E5%9B%BE"><span class="toc-number">10.</span> <span class="toc-text">9. 错误恢复流程图</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#10-%E8%B0%83%E8%AF%95%E6%97%A5%E5%BF%97%E4%B8%8E%E5%8F%AF%E8%A7%82%E6%B5%8B%E6%80%A7"><span class="toc-number">11.</span> <span class="toc-text">10. 调试日志与可观测性</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#10-1-%E5%90%AF%E7%94%A8-libtc6-%E9%94%99%E8%AF%AF%E6%89%93%E5%8D%B0"><span class="toc-number">11.1.</span> <span class="toc-text">10.1 启用 libtc6 错误打印</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#10-2-%E7%94%A8-Wireshark-%E9%AA%8C%E8%AF%81%E6%95%B0%E6%8D%AE%E9%80%9A%E8%B7%AF"><span class="toc-number">11.2.</span> <span class="toc-text">10.2 用 Wireshark 验证数据通路</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#10-3-%E6%B7%BB%E5%8A%A0-RX-TX-%E8%AE%A1%E6%95%B0%E5%99%A8"><span class="toc-number">11.3.</span> <span class="toc-text">10.3 添加 RX&#x2F;TX 计数器</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#11-%E5%B0%8F%E7%BB%93"><span class="toc-number">12.</span> <span class="toc-text">11. 小结</span></a></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-libtc6-and-lwip/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-libtc6-and-lwip/&text=10BASE-T1S Arduino 代码接口深度解析（三）：libtc6 协议核心与 lwIP 集成"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-libtc6-and-lwip/&title=10BASE-T1S Arduino 代码接口深度解析（三）：libtc6 协议核心与 lwIP 集成"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-libtc6-and-lwip/&is_video=false&description=10BASE-T1S Arduino 代码接口深度解析（三）：libtc6 协议核心与 lwIP 集成"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=10BASE-T1S Arduino 代码接口深度解析（三）：libtc6 协议核心与 lwIP 集成&body=Check out this article: https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-libtc6-and-lwip/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-libtc6-and-lwip/&title=10BASE-T1S Arduino 代码接口深度解析（三）：libtc6 协议核心与 lwIP 集成"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-libtc6-and-lwip/&title=10BASE-T1S Arduino 代码接口深度解析（三）：libtc6 协议核心与 lwIP 集成"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-libtc6-and-lwip/&title=10BASE-T1S Arduino 代码接口深度解析（三）：libtc6 协议核心与 lwIP 集成"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-libtc6-and-lwip/&title=10BASE-T1S Arduino 代码接口深度解析（三）：libtc6 协议核心与 lwIP 集成"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-libtc6-and-lwip/&name=10BASE-T1S Arduino 代码接口深度解析（三）：libtc6 协议核心与 lwIP 集成&description=&lt;h2 id=&#34;系列导读&#34;&gt;&lt;a href=&#34;#系列导读&#34; class=&#34;headerlink&#34; title=&#34;系列导读&#34;&gt;&lt;/a&gt;系列导读&lt;/h2&gt;&lt;p&gt;本系列最后一篇深入到最底层——协议核心 libtc6 的 C API 和 lwIP 集成层：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;&lt;a href=&#34;/2026/07/31/10BASE-T1S-Code-Interfaces-UDP-API/&#34;&gt;应用层 UDP Socket API&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;/2026/07/31/10BASE-T1S-Code-Interfaces-PHY-and-HAL/&#34;&gt;PHY Interface 与 HAL 层&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;libtc6 协议核心与 lwIP 集成&lt;/strong&gt;（本篇）&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;目标：让读者在不读 libtc6 源码的情况下，能正确实现新的回调、能替换 &lt;code&gt;tc6-regs.cpp&lt;/code&gt; 的寄存器表、能复用到非 Arduino 的 lwIP 平台。&lt;/p&gt;
+&lt;h2 id=&#34;1-libtc6-版本与配置&#34;&gt;&lt;a href=&#34;#1-libtc6-版本与配置&#34; class=&#34;headerlink&#34; title=&#34;1. libtc6 版本与配置&#34;&gt;&lt;/a&gt;1. libtc6 版本与配置&lt;/h2&gt;&lt;h3 id=&#34;1-1-版本&#34;&gt;&lt;a href=&#34;#1-1-版本&#34; class=&#34;headerlink&#34; title=&#34;1.1 版本&#34;&gt;&lt;/a&gt;1.1 版本&lt;/h3&gt;&lt;figure class=&#34;highlight c&#34;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&#34;gutter&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;3&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;4&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;5&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&#34;code&#34;&gt;&lt;pre&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;comment&#34;&gt;// src/microchip/lib/libtc6/inc/tc6.h:55-58&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;meta&#34;&gt;#&lt;span class=&#34;keyword&#34;&gt;define&lt;/span&gt; TC6_LIB_VER_MAJOR  (3U)&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;meta&#34;&gt;#&lt;span class=&#34;keyword&#34;&gt;define&lt;/span&gt; TC6_LIB_VER_MINOR  (1U)&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;meta&#34;&gt;#&lt;span class=&#34;keyword&#34;&gt;define&lt;/span&gt; TC6_LIB_VER_BUGFIX (3U)&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;meta&#34;&gt;#&lt;span class=&#34;keyword&#34;&gt;define&lt;/span&gt; TC6_LIB_VER_STRING &lt;span class=&#34;string&#34;&gt;&amp;quot;V3.1.3&amp;quot;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;
+
+&lt;h3 id=&#34;1-2-编译时配置（tc6-conf-h）&#34;&gt;&lt;a href=&#34;#1-2-编译时配置（tc6-conf-h）&#34; class=&#34;headerlink&#34; title=&#34;1.2 编译时配置（tc6-conf.h）&#34;&gt;&lt;/a&gt;1.2 编译时配置（&lt;code&gt;tc6-conf.h&lt;/code&gt;）&lt;/h3&gt;&lt;p&gt;&lt;code&gt;src/microchip/lib/libtc6/cfg-example/tc6-conf.h&lt;/code&gt;&lt;/p&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;宏&lt;/th&gt;
+&lt;th&gt;默认值&lt;/th&gt;
+&lt;th&gt;含义&lt;/th&gt;
+&lt;th&gt;调小影响&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;TC6_MAX_INSTANCES&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;1&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;多 PHY 实例数&lt;/td&gt;
+&lt;td&gt;仅影响 RAM（每实例队列）&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;TC6_HEADER_SIZE&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;4&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;OA TC6 帧头&amp;#x2F;尾大小（规范固定）&lt;/td&gt;
+&lt;td&gt;&lt;strong&gt;不可改&lt;/strong&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;TC6_CHUNK_SIZE&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;64&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;每个 SPI chunk 的 payload 字节数&lt;/td&gt;
+&lt;td&gt;32 也合法，但要 &lt;code&gt;TC6_TX_ETH_MAX_SEGMENTS&lt;/code&gt; 翻倍&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;TC6_CHUNK_BUF_SIZE&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;TC6_CHUNK_SIZE + TC6_HEADER_SIZE&lt;/code&gt; &amp;#x3D; 68&lt;/td&gt;
+&lt;td&gt;单 chunk 的总 SPI 传输长度&lt;/td&gt;
+&lt;td&gt;派生值&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;REG_OP_ARRAY_SIZE&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;4&lt;/code&gt;（必须是 2^n）&lt;/td&gt;
+&lt;td&gt;寄存器操作队列容量&lt;/td&gt;
+&lt;td&gt;改小可省 RAM，但频繁读写会丢请求&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;TC6_CHUNKS_XACT&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;31&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;单次 SPI 突发最大 chunk 数&lt;/td&gt;
+&lt;td&gt;改小降低单次中断延迟&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;TC6_CONCAT_THRESHOLD&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;1024&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;超过此大小的帧会跨多个 SPI 突发&lt;/td&gt;
+&lt;td&gt;一般不改&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;SPI_FULL_BUFFERS&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;1&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;全 MOSI&amp;#x2F;MISO 缓冲对的数量&lt;/td&gt;
+&lt;td&gt;影响 SPI 流水深度&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;TC6_TX_ETH_QSIZE&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;4&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;待发以太网帧队列&lt;/td&gt;
+&lt;td&gt;改小增加丢帧概率&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;TC6_TX_ETH_MAX_SEGMENTS&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;8&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;单帧最多 pbuf 段数&lt;/td&gt;
+&lt;td&gt;与 lwIP pbuf 配置相关&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;TC6_MAX_CNTRL_VARS&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;1&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;同时挂起的寄存器访问数&lt;/td&gt;
+&lt;td&gt;改大会增加队列大小&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;&lt;/table&gt;"><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Code-Interfaces-libtc6-and-lwip/&t=10BASE-T1S Arduino 代码接口深度解析（三）：libtc6 协议核心与 lwIP 集成"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> 菜单</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> 目录</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> 分享</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> 返回顶部</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2026
+    cursorhu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"复制到粘贴板！\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "复制成功！");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+<!-- Mermaid diagrams -->
+
+  <script type="text/javascript">
+  (function() {
+    var mermaidElements = document.querySelectorAll('.mermaid');
+    if (!mermaidElements.length) return;
+
+    var mermaidTheme = 'auto';
+    if (mermaidTheme === 'auto') {
+      var colorscheme = 'dark';
+      mermaidTheme = (colorscheme === 'dark' || colorscheme === 'classic') ? 'dark' : 'default';
+    }
+
+    function initMermaid() {
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: mermaidTheme,
+        logLevel: 'error',
+        securityLevel: 'loose',
+        flowchart: { curve: 'basis' },
+        gantt: { axisFormat: '%m/%d/%Y' },
+        sequence: { actorMargin: 50 }
+      });
+      mermaid.run({ nodes: mermaidElements });
+    }
+
+    var script = document.createElement('script');
+    
+    script.src = 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js';
+    
+    script.onload = initMermaid;
+    document.head.appendChild(script);
+  })();
+  </script>
+
+</body>
+</html>

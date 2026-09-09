@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="固件开发 - 启动方式XIP和RISCV实例1. XIP概要1. 什么是 XIPXIP（Execute-In-Place，芯片内执行） 是指 CPU 无需将代码加载到内部 RAM，而是直接在外部或片上的 NOR Flash 存储介质中读取并执行程序代码的技术。在“大 Flash（如 128KB）、小 RAM（如 4KB）”的嵌入式系统中，这是保证程序正常运行的核心基石。  2. 硬件实现基础要实现">
+<meta property="og:type" content="article">
+<meta property="og:title" content="固件开发 - 启动方式XIP和RISCV实例">
+<meta property="og:url" content="https://cursorhu.github.io/2026/08/04/%E5%9B%BA%E4%BB%B6%E5%BC%80%E5%8F%91%20-%20%E5%90%AF%E5%8A%A8%E6%96%B9%E5%BC%8FXIP%E5%92%8CRISCV%E5%AE%9E%E4%BE%8B/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="固件开发 - 启动方式XIP和RISCV实例1. XIP概要1. 什么是 XIPXIP（Execute-In-Place，芯片内执行） 是指 CPU 无需将代码加载到内部 RAM，而是直接在外部或片上的 NOR Flash 存储介质中读取并执行程序代码的技术。在“大 Flash（如 128KB）、小 RAM（如 4KB）”的嵌入式系统中，这是保证程序正常运行的核心基石。  2. 硬件实现基础要实现">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-08-03T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-08-04T03:13:22.330Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="RISCV">
+<meta property="article:tag" content="XIP">
+<meta name="twitter:card" content="summary">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>固件开发 - 启动方式XIP和RISCV实例</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+		<script type="text/x-mathjax-config">
+		  MathJax.Hub.Config({
+			tex2jax: {
+			  skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+			  inlineMath: [['$','$']]
+			}
+		  });
+		</script>
+		<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-MML-AM_CHTML' async></script>
+	
+<meta name="generator" content="Hexo 8.0.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="顶部" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="上一篇" href="/2026/08/06/Ibex-RISC-V-Firmware-Development-Resources/"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="下一篇" href="/2026/07/31/10BASE_T1S%E7%B3%BB%E5%88%97/RCP_10BASE_T1S_Implementation_Log/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="返回顶部" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="分享文章" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">上一篇</span>
+      <span id="i-next" class="info" style="display:none;">下一篇</span>
+      <span id="i-top" class="info" style="display:none;">返回顶部</span>
+      <span id="i-share" class="info" style="display:none;">分享文章</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/08/04/%E5%9B%BA%E4%BB%B6%E5%BC%80%E5%8F%91%20-%20%E5%90%AF%E5%8A%A8%E6%96%B9%E5%BC%8FXIP%E5%92%8CRISCV%E5%AE%9E%E4%BE%8B/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/08/04/%E5%9B%BA%E4%BB%B6%E5%BC%80%E5%8F%91%20-%20%E5%90%AF%E5%8A%A8%E6%96%B9%E5%BC%8FXIP%E5%92%8CRISCV%E5%AE%9E%E4%BE%8B/&text=固件开发 - 启动方式XIP和RISCV实例"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/08/04/%E5%9B%BA%E4%BB%B6%E5%BC%80%E5%8F%91%20-%20%E5%90%AF%E5%8A%A8%E6%96%B9%E5%BC%8FXIP%E5%92%8CRISCV%E5%AE%9E%E4%BE%8B/&title=固件开发 - 启动方式XIP和RISCV实例"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/08/04/%E5%9B%BA%E4%BB%B6%E5%BC%80%E5%8F%91%20-%20%E5%90%AF%E5%8A%A8%E6%96%B9%E5%BC%8FXIP%E5%92%8CRISCV%E5%AE%9E%E4%BE%8B/&is_video=false&description=固件开发 - 启动方式XIP和RISCV实例"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=固件开发 - 启动方式XIP和RISCV实例&body=Check out this article: https://cursorhu.github.io/2026/08/04/%E5%9B%BA%E4%BB%B6%E5%BC%80%E5%8F%91%20-%20%E5%90%AF%E5%8A%A8%E6%96%B9%E5%BC%8FXIP%E5%92%8CRISCV%E5%AE%9E%E4%BE%8B/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/08/04/%E5%9B%BA%E4%BB%B6%E5%BC%80%E5%8F%91%20-%20%E5%90%AF%E5%8A%A8%E6%96%B9%E5%BC%8FXIP%E5%92%8CRISCV%E5%AE%9E%E4%BE%8B/&title=固件开发 - 启动方式XIP和RISCV实例"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/08/04/%E5%9B%BA%E4%BB%B6%E5%BC%80%E5%8F%91%20-%20%E5%90%AF%E5%8A%A8%E6%96%B9%E5%BC%8FXIP%E5%92%8CRISCV%E5%AE%9E%E4%BE%8B/&title=固件开发 - 启动方式XIP和RISCV实例"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/08/04/%E5%9B%BA%E4%BB%B6%E5%BC%80%E5%8F%91%20-%20%E5%90%AF%E5%8A%A8%E6%96%B9%E5%BC%8FXIP%E5%92%8CRISCV%E5%AE%9E%E4%BE%8B/&title=固件开发 - 启动方式XIP和RISCV实例"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/08/04/%E5%9B%BA%E4%BB%B6%E5%BC%80%E5%8F%91%20-%20%E5%90%AF%E5%8A%A8%E6%96%B9%E5%BC%8FXIP%E5%92%8CRISCV%E5%AE%9E%E4%BE%8B/&title=固件开发 - 启动方式XIP和RISCV实例"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/08/04/%E5%9B%BA%E4%BB%B6%E5%BC%80%E5%8F%91%20-%20%E5%90%AF%E5%8A%A8%E6%96%B9%E5%BC%8FXIP%E5%92%8CRISCV%E5%AE%9E%E4%BE%8B/&name=固件开发 - 启动方式XIP和RISCV实例&description=&lt;h1 id=&#34;固件开发-启动方式XIP和RISCV实例&#34;&gt;&lt;a href=&#34;#固件开发-启动方式XIP和RISCV实例&#34; class=&#34;headerlink&#34; title=&#34;固件开发 - 启动方式XIP和RISCV实例&#34;&gt;&lt;/a&gt;固件开发 - 启动方式XIP和RISCV实例&lt;/h1&gt;&lt;h2 id=&#34;1-XIP概要&#34;&gt;&lt;a href=&#34;#1-XIP概要&#34; class=&#34;headerlink&#34; title=&#34;1. XIP概要&#34;&gt;&lt;/a&gt;1. XIP概要&lt;/h2&gt;&lt;h3 id=&#34;1-什么是-XIP&#34;&gt;&lt;a href=&#34;#1-什么是-XIP&#34; class=&#34;headerlink&#34; title=&#34;1. 什么是 XIP&#34;&gt;&lt;/a&gt;1. 什么是 XIP&lt;/h3&gt;&lt;p&gt;&lt;strong&gt;XIP（Execute-In-Place，芯片内执行）&lt;/strong&gt; 是指 CPU 无需将代码加载到内部 RAM，而是直接在外部或片上的 NOR Flash 存储介质中读取并执行程序代码的技术。在“大 Flash（如 128KB）、小 RAM（如 4KB）”的嵌入式系统中，这是保证程序正常运行的核心基石。&lt;/p&gt;
+&lt;hr&gt;
+&lt;h3 id=&#34;2-硬件实现基础&#34;&gt;&lt;a href=&#34;#2-硬件实现基础&#34; class=&#34;headerlink&#34; title=&#34;2. 硬件实现基础&#34;&gt;&lt;/a&gt;2. 硬件实现基础&lt;/h3&gt;&lt;p&gt;要实现 CPU 随机访问 SPI Flash 并直接执行代码，需要满足以下硬件与机制要求：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;存储介质必须为 NOR Flash&lt;/strong&gt;：NOR Flash 支持&lt;strong&gt;按字节随机寻址&lt;/strong&gt;，CPU 可通过地址总线直接访问任意指令地址；而 NAND Flash 以块（Block）为单位读写，无法支持 XIP。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;内存映射（Memory Mapping）&lt;/strong&gt;：MCU 内部集成了 &lt;strong&gt;XIP 控制器&lt;/strong&gt;，将 SPI Flash 的一段物理地址空间映射到系统的统一编址内存空间中。当 CPU 访问该段地址时，硬件自动将其转化为 SPI 总线上的读取时序。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;XIP 读取模式&lt;/strong&gt;：普通 SPI Flash 读取需发送“指令 + 地址”，而 XIP 模式下，控制器在初始化后保持“读取态”，CPU 仅需提供目标地址，Flash 即可直接返回数据，显著降低随机访问的指令开销。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;hr&gt;
+&lt;h3 id=&#34;3-Cache（高速缓存）的关键作用&#34;&gt;&lt;a href=&#34;#3-Cache（高速缓存）的关键作用&#34; class=&#34;headerlink&#34; title=&#34;3. Cache（高速缓存）的关键作用&#34;&gt;&lt;/a&gt;3. Cache（高速缓存）的关键作用&lt;/h3&gt;"><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/08/04/%E5%9B%BA%E4%BB%B6%E5%BC%80%E5%8F%91%20-%20%E5%90%AF%E5%8A%A8%E6%96%B9%E5%BC%8FXIP%E5%92%8CRISCV%E5%AE%9E%E4%BE%8B/&t=固件开发 - 启动方式XIP和RISCV实例"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%9B%BA%E4%BB%B6%E5%BC%80%E5%8F%91-%E5%90%AF%E5%8A%A8%E6%96%B9%E5%BC%8FXIP%E5%92%8CRISCV%E5%AE%9E%E4%BE%8B"><span class="toc-number">1.</span> <span class="toc-text">固件开发 - 启动方式XIP和RISCV实例</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-XIP%E6%A6%82%E8%A6%81"><span class="toc-number">1.1.</span> <span class="toc-text">1. XIP概要</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E4%BB%80%E4%B9%88%E6%98%AF-XIP"><span class="toc-number">1.1.1.</span> <span class="toc-text">1. 什么是 XIP</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-%E7%A1%AC%E4%BB%B6%E5%AE%9E%E7%8E%B0%E5%9F%BA%E7%A1%80"><span class="toc-number">1.1.2.</span> <span class="toc-text">2. 硬件实现基础</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-Cache%EF%BC%88%E9%AB%98%E9%80%9F%E7%BC%93%E5%AD%98%EF%BC%89%E7%9A%84%E5%85%B3%E9%94%AE%E4%BD%9C%E7%94%A8"><span class="toc-number">1.1.3.</span> <span class="toc-text">3. Cache（高速缓存）的关键作用</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-%E5%A4%A7-Flash-%E5%B0%8F-RAM-%E4%B8%8B%E7%9A%84%E4%BB%A3%E7%A0%81%E4%B8%8E%E6%95%B0%E6%8D%AE%E5%88%86%E5%B7%A5"><span class="toc-number">1.1.4.</span> <span class="toc-text">4. 大 Flash + 小 RAM 下的代码与数据分工</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-RAM-%E7%9A%84%E2%80%9C%E5%8A%A0%E9%80%9F%E2%80%9D%E4%B8%8E%E2%80%9C%E7%89%B9%E6%AE%8A%E4%BB%BB%E5%8A%A1%E2%80%9D"><span class="toc-number">1.1.5.</span> <span class="toc-text">5. RAM 的“加速”与“特殊任务”</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-%E4%BF%9D%E9%9A%9C%E7%B3%BB%E7%BB%9F%E7%A8%B3%E5%AE%9A%E7%9A%84%E5%85%B3%E9%94%AE%E6%8A%80%E6%9C%AF"><span class="toc-number">1.1.6.</span> <span class="toc-text">6. 保障系统稳定的关键技术</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-%E9%87%8D%E8%A6%81%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9"><span class="toc-number">1.1.7.</span> <span class="toc-text">7. 重要注意事项</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8-%E6%A0%B8%E5%BF%83%E8%A6%81%E7%82%B9%E6%80%BB%E7%BB%93"><span class="toc-number">1.1.8.</span> <span class="toc-text">8. 核心要点总结</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#RISC-V%E7%8E%AF%E5%A2%83%E4%B8%AD%E5%AE%9E%E8%B7%B5XIP"><span class="toc-number">1.2.</span> <span class="toc-text">RISC-V环境中实践XIP</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%F0%9F%8E%AF-%E7%AC%AC%E4%B8%80%E6%AD%A5%EF%BC%9A%E7%BC%96%E5%86%99%E9%93%BE%E6%8E%A5%E8%84%9A%E6%9C%AC%EF%BC%88Linker-Script%EF%BC%89%E2%80%94%E2%80%94-%E5%AE%9A%E4%B9%89%E5%86%85%E5%AD%98%E5%B8%83%E5%B1%80"><span class="toc-number">1.2.1.</span> <span class="toc-text">🎯 第一步：编写链接脚本（Linker Script）—— 定义内存布局</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%F0%9F%9A%80-%E7%AC%AC%E4%BA%8C%E6%AD%A5%EF%BC%9A%E7%BC%96%E5%86%99%E5%90%AF%E5%8A%A8%E4%BB%A3%E7%A0%81%EF%BC%88Startup-Code%EF%BC%89%E2%80%94%E2%80%94-%E5%87%86%E5%A4%87%E6%89%A7%E8%A1%8C%E7%8E%AF%E5%A2%83"><span class="toc-number">1.2.2.</span> <span class="toc-text">🚀 第二步：编写启动代码（Startup Code）—— 准备执行环境</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E2%9A%99%EF%B8%8F-%E7%AC%AC%E4%B8%89%E6%AD%A5%EF%BC%9A%E9%85%8D%E7%BD%AE%E7%BC%96%E8%AF%91%E9%80%89%E9%A1%B9"><span class="toc-number">1.2.3.</span> <span class="toc-text">⚙️ 第三步：配置编译选项</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%F0%9F%A7%AA-%E5%AE%9E%E8%B7%B5%E6%A1%88%E4%BE%8B%EF%BC%9A%E5%9F%BA%E4%BA%8EGD32VF103%E7%B3%BB%E5%88%97MCU"><span class="toc-number">1.2.4.</span> <span class="toc-text">🧪 实践案例：基于GD32VF103系列MCU</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E2%9A%A0%EF%B8%8F-%E5%85%B3%E9%94%AE%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9"><span class="toc-number">1.2.5.</span> <span class="toc-text">⚠️ 关键注意事项</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#HBird-e200%E7%9A%84%E5%90%AF%E5%8A%A8%E6%96%B9%E5%BC%8F%EF%BC%88%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">HBird-e200的启动方式（最佳实践）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E2%9A%99%EF%B8%8F-%E8%9C%82%E9%B8%9FE203%E7%9A%84%E4%B8%89%E7%A7%8D%E5%90%AF%E5%8A%A8%E6%A8%A1%E5%BC%8F"><span class="toc-number">1.3.1.</span> <span class="toc-text">⚙️ 蜂鸟E203的三种启动模式</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%F0%9F%9A%80-%E2%80%9C%E6%8B%B7%E8%B4%9D%E5%88%B0ITCM%E6%89%A7%E8%A1%8C%E2%80%9D%E6%96%B9%E6%A1%88%E7%9A%84%E4%BC%98%E5%8A%BF%E4%B8%8E%E4%BB%A3%E4%BB%B7"><span class="toc-number">1.3.2.</span> <span class="toc-text">🚀 “拷贝到ITCM执行”方案的优势与代价</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%A0%B8%E5%BF%83%E4%BC%98%E5%8A%BF%EF%BC%9A%E6%9E%81%E8%87%B4%E7%9A%84%E6%80%A7%E8%83%BD%E4%B8%8E%E5%8A%9F%E8%80%97"><span class="toc-number">1.3.2.1.</span> <span class="toc-text">核心优势：极致的性能与功耗</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E4%BB%A3%E4%BB%B7%EF%BC%9A%E9%9C%80%E8%A6%81%E9%A2%9D%E5%A4%96%E7%9A%84%E2%80%9C%E6%90%AC%E8%BF%90%E2%80%9D%E5%BC%80%E9%94%80"><span class="toc-number">1.3.2.2.</span> <span class="toc-text">代价：需要额外的“搬运”开销</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%F0%9F%A4%94-%E4%B8%BA%E4%BB%80%E4%B9%88%E6%AD%A4%E7%B1%BB%E8%8A%AF%E7%89%87%E4%BC%9A%E9%87%87%E7%94%A8%E8%BF%99%E7%A7%8D%E6%A8%A1%E5%BC%8F%EF%BC%9F"><span class="toc-number">1.3.3.</span> <span class="toc-text">🤔 为什么此类芯片会采用这种模式？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%F0%9F%92%8E-%E6%80%BB%E7%BB%93"><span class="toc-number">1.3.4.</span> <span class="toc-text">💎 总结</span></a></li></ol></li></ol></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        固件开发 - 启动方式XIP和RISCV实例
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">cursorhu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2026-08-03T16:00:00.000Z" class="dt-published" itemprop="datePublished">2026-08-04</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fa-solid fa-archive"></i>
+        <a class="category-link" href="/categories/%E5%9B%BA%E4%BB%B6%E5%BC%80%E5%8F%91/">固件开发</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/RISCV/" rel="tag">RISCV</a>, <a class="p-category" href="/tags/XIP/" rel="tag">XIP</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <h1 id="固件开发-启动方式XIP和RISCV实例"><a href="#固件开发-启动方式XIP和RISCV实例" class="headerlink" title="固件开发 - 启动方式XIP和RISCV实例"></a>固件开发 - 启动方式XIP和RISCV实例</h1><h2 id="1-XIP概要"><a href="#1-XIP概要" class="headerlink" title="1. XIP概要"></a>1. XIP概要</h2><h3 id="1-什么是-XIP"><a href="#1-什么是-XIP" class="headerlink" title="1. 什么是 XIP"></a>1. 什么是 XIP</h3><p><strong>XIP（Execute-In-Place，芯片内执行）</strong> 是指 CPU 无需将代码加载到内部 RAM，而是直接在外部或片上的 NOR Flash 存储介质中读取并执行程序代码的技术。在“大 Flash（如 128KB）、小 RAM（如 4KB）”的嵌入式系统中，这是保证程序正常运行的核心基石。</p>
+<hr>
+<h3 id="2-硬件实现基础"><a href="#2-硬件实现基础" class="headerlink" title="2. 硬件实现基础"></a>2. 硬件实现基础</h3><p>要实现 CPU 随机访问 SPI Flash 并直接执行代码，需要满足以下硬件与机制要求：</p>
+<ul>
+<li><strong>存储介质必须为 NOR Flash</strong>：NOR Flash 支持<strong>按字节随机寻址</strong>，CPU 可通过地址总线直接访问任意指令地址；而 NAND Flash 以块（Block）为单位读写，无法支持 XIP。</li>
+<li><strong>内存映射（Memory Mapping）</strong>：MCU 内部集成了 <strong>XIP 控制器</strong>，将 SPI Flash 的一段物理地址空间映射到系统的统一编址内存空间中。当 CPU 访问该段地址时，硬件自动将其转化为 SPI 总线上的读取时序。</li>
+<li><strong>XIP 读取模式</strong>：普通 SPI Flash 读取需发送“指令 + 地址”，而 XIP 模式下，控制器在初始化后保持“读取态”，CPU 仅需提供目标地址，Flash 即可直接返回数据，显著降低随机访问的指令开销。</li>
+</ul>
+<hr>
+<h3 id="3-Cache（高速缓存）的关键作用"><a href="#3-Cache（高速缓存）的关键作用" class="headerlink" title="3. Cache（高速缓存）的关键作用"></a>3. Cache（高速缓存）的关键作用</h3><p>由于 SPI Flash 的读取速率（通常几十至上百 MHz）远低于 CPU 内核运行速率（数百 MHz），<strong>Cache 是不可或缺的加速桥梁</strong>：</p>
+<ul>
+<li><strong>指令预取与缓冲</strong>：Cache 自动缓存 CPU 最近访问过的 Flash 地址附近的指令代码。当 CPU 顺序执行或循环执行时，绝大多数指令可直接从极高速的 Cache 中获取，避免 CPU 频繁进入“等待（Wait-State）”状态。</li>
+<li><strong>性能平衡</strong>：Cache 的存在使 XIP 的平均执行速度大幅提升，但在面对长跳转或大规模随机分支时，Cache 命中率下降，执行速度会暂时变慢。</li>
+</ul>
+<hr>
+<h3 id="4-大-Flash-小-RAM-下的代码与数据分工"><a href="#4-大-Flash-小-RAM-下的代码与数据分工" class="headerlink" title="4. 大 Flash + 小 RAM 下的代码与数据分工"></a>4. 大 Flash + 小 RAM 下的代码与数据分工</h3><p>在 RAM 极度紧张（如仅 4KB）的场景下，代码与数据必须严格分层：</p>
+<table>
+<thead>
+<tr>
+<th align="left">存储介质</th>
+<th align="left">核心职责</th>
+<th align="left">具体内容</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong>Flash（128KB）</strong></td>
+<td align="left"><strong>存储与执行代码</strong></td>
+<td align="left">绝大部分固件代码（.text 段）、只读常量（.rodata 段）均存放于此。CPU 通过 XIP 机制直接在 Flash 中取指执行。</td>
+</tr>
+<tr>
+<td align="left"><strong>RAM（4KB）</strong></td>
+<td align="left"><strong>存储动态数据</strong></td>
+<td align="left">存放可读写的全局变量&#x2F;静态变量（.data&#x2F;.bss 段）、<strong>堆（Heap）</strong> 和 <strong>栈（Stack）</strong>。栈空间用于函数调用、局部变量及中断上下文保存，是程序运行的必要“工作台”。</td>
+</tr>
+</tbody></table>
+<p><strong>系统启动流程</strong>：芯片上电复位后，程序计数器（PC）硬件自动指向 Flash 映射地址中的<strong>复位向量</strong>，CPU 随即开始从 Flash 取指执行，完成堆栈指针初始化、变量搬移（如 .data 从 Flash 复制到 RAM）等操作后，进入主循环。</p>
+<hr>
+<h3 id="5-RAM-的“加速”与“特殊任务”"><a href="#5-RAM-的“加速”与“特殊任务”" class="headerlink" title="5. RAM 的“加速”与“特殊任务”"></a>5. RAM 的“加速”与“特殊任务”</h3><p>尽管代码主要在 Flash 运行，但仅有的 4KB RAM 还需承担以下关键加速任务：</p>
+<ul>
+<li><strong>运行关键中断服务程序（ISR）</strong>：对于响应时间要求极苛刻的中断，可将 ISR 代码通过链接脚本放置于 RAM 中运行，避免 Cache Miss 带来的延迟。</li>
+<li><strong>运行 Flash 擦写函数（IAP&#x2F;OTA）</strong>：当需要执行 Flash 扇区擦除或编程操作时，<strong>必须将这部分函数复制到 RAM 中执行</strong>。因为 Flash 在擦写期间无法响应读取请求，若 CPU 仍在 Flash 取指，将导致总线挂起（Hang）或指令异常。</li>
+<li><strong>临时数据缓冲</strong>：作为通信外设（如 UART、SPI）DMA 传输的临时缓冲区。</li>
+</ul>
+<hr>
+<h3 id="6-保障系统稳定的关键技术"><a href="#6-保障系统稳定的关键技术" class="headerlink" title="6. 保障系统稳定的关键技术"></a>6. 保障系统稳定的关键技术</h3><p>为了在 XIP 模式下保证程序的正确性和可靠性，编译与链接阶段需引入特殊技术：</p>
+<ul>
+<li><strong>位置无关代码（PIC，Position-Independent Code）</strong>：生成与绝对地址无关的指令码。这使得代码在 Flash 中即使因为固件升级（IAP）而发生地址偏移，程序依然能够正常跳转和运行。</li>
+<li><strong>覆盖（Overlay）技术</strong>：将功能互斥（不同时运行）的大型函数段分配到同一块 RAM 地址空间。需要时，从 Flash 将对应函数动态加载到该 RAM 区域执行，有效复用紧缺的 RAM 资源。</li>
+<li><strong>中断向量表重映射</strong>：将中断向量表放置在 Flash 起始地址或通过重映射寄存器指向 RAM，确保中断响应路径正确。</li>
+</ul>
+<hr>
+<h3 id="7-重要注意事项"><a href="#7-重要注意事项" class="headerlink" title="7. 重要注意事项"></a>7. 重要注意事项</h3><ul>
+<li><strong>并发操作限制（读-写-擦冲突）</strong>：在 XIP 模式下，若 CPU 一边从 Flash 取指执行，一边通过 SPI 接口对该 Flash 发起擦写操作，会引发总线冲突。高级 MCU 支持<strong>暂停（Suspend）&#x2F;恢复（Resume）</strong> 机制，或通过硬件仲裁临时挂起 CPU 取指请求。</li>
+<li><strong>只读属性</strong>：映射到内存空间的 XIP 地址区域通常为只读属性。若程序指针意外尝试写入该区域，将触发硬件总线错误（HardFault）异常。</li>
+<li><strong>性能权衡</strong>：XIP 适合顺序执行和循环密集的代码，而涉及大量随机跳转或频繁访问全局数据的算法，放在 RAM 中执行效率更高，需根据实际 CPU 主频和 Flash 等待周期进行测算。</li>
+</ul>
+<hr>
+<h3 id="8-核心要点总结"><a href="#8-核心要点总结" class="headerlink" title="8. 核心要点总结"></a>8. 核心要点总结</h3><blockquote>
+<p><strong>Flash 负责“存”和“执行”（XIP），RAM 负责“存”和“处理”（数据与关键加速）。</strong></p>
+</blockquote>
+<p>通过 <strong>NOR Flash 的随机寻址特性</strong> + <strong>MCU 的 XIP 内存映射控制器</strong> + <strong>高速 Cache 的缓冲加速</strong>，使得在极小 RAM（如 4KB）的 MCU 上运行百 KB 级别的固件成为可能。开发人员需通过合理的链接脚本（Linker Script）划分代码与数据段，并针对中断、IAP 函数进行特殊的 RAM 搬移处理，以充分发挥 XIP 技术的优势。</p>
+<h2 id="RISC-V环境中实践XIP"><a href="#RISC-V环境中实践XIP" class="headerlink" title="RISC-V环境中实践XIP"></a>RISC-V环境中实践XIP</h2><p>在RISC-V环境中实践XIP（就地执行），核心在于<strong>精确控制代码和数据的存放位置</strong>，并<strong>在启动时完成必要的数据搬运</strong>。这主要通过<strong>链接脚本（Linker Script）</strong> 和<strong>启动代码（Startup Code）</strong> 的配合来实现。</p>
+<p>以下是基于裸机或RTOS环境下的具体实践步骤和关键点。</p>
+<h3 id="🎯-第一步：编写链接脚本（Linker-Script）——-定义内存布局"><a href="#🎯-第一步：编写链接脚本（Linker-Script）——-定义内存布局" class="headerlink" title="🎯 第一步：编写链接脚本（Linker Script）—— 定义内存布局"></a>🎯 第一步：编写链接脚本（Linker Script）—— 定义内存布局</h3><p>链接脚本是XIP的“总设计师”，它决定了编译后的代码和数据的最终归宿。关键定义如下：</p>
+<ol>
+<li><p><strong>定义内存区域（MEMORY）</strong>：明确划分Flash（ROM）和RAM的起始地址与大小。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">/* 在链接脚本中定义内存区域 */</span><br><span class="line">MEMORY</span><br><span class="line">&#123;</span><br><span class="line">    /* Flash (ROM) 用于存放代码和只读数据，XIP在此执行 */</span><br><span class="line">    rom (rx)  : ORIGIN = 0x08000000, LENGTH = 128K /* 1. 定义只读、可执行的Flash区域 */</span><br><span class="line">    /* RAM 用于存放可读写数据 */</span><br><span class="line">    ram (rwx) : ORIGIN = 0x20000000, LENGTH = 4K   /* 2. 定义可读、写、执行的RAM区域 */</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这是一个典型的定义。<code>rx</code>表示只读、可执行，<code>rwx</code>表示可读、写、执行。</p>
+</li>
+<li><p><strong>分配段（SECTIONS）</strong>：精确控制各段在内存中的位置。</p>
+<ul>
+<li><strong><code>.text</code>、<code>.rodata</code> 段</strong>：包含代码和只读数据，它们的<strong>虚拟地址（VMA）</strong> 和<strong>加载地址（LMA）</strong> 都指向Flash (<code>rom</code>)区域，这是实现XIP的关键。</li>
+<li><strong><code>.data</code> 段</strong>：包含已初始化的全局变量。它的<strong>VMA在RAM</strong>，但<strong>LMA在Flash</strong>。这意味着程序的初始值存放在Flash中，但运行时需要在RAM中操作。</li>
+<li><strong><code>.bss</code> 段</strong>：包含未初始化的全局变量。它的VMA在RAM，LMA紧随<code>.data</code>段之后，没有实际的初始化数据。</li>
+<li><strong>堆（Heap）和栈（Stack）</strong>：在RAM中分配空间。</li>
+</ul>
+<p>一个简单的段分配示例如下：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">SECTIONS</span><br><span class="line">&#123;</span><br><span class="line">    /* 1. .text, .rodata 等只读段，VMA和LMA都在ROM */</span><br><span class="line">    .text : &#123;</span><br><span class="line">        KEEP(*(.vectors)) /* 确保中断向量表不被优化掉 */</span><br><span class="line">        *(.text*)</span><br><span class="line">        *(.rodata*)</span><br><span class="line">    &#125; &gt; rom</span><br><span class="line"></span><br><span class="line">    /* 2. .data 段：VMA在RAM，LMA在ROM，启动时需复制 */</span><br><span class="line">    _sidata = LOADADDR(.data); /* 3. 记录.data段在Flash中的加载地址 */</span><br><span class="line">    .data : AT ( _sidata ) &#123;</span><br><span class="line">        _sdata = .;            /* 4. 标记.data段在RAM中的起始地址 */</span><br><span class="line">        *(.data*)</span><br><span class="line">        _edata = .;            /* 5. 标记.data段在RAM中的结束地址 */</span><br><span class="line">    &#125; &gt; ram</span><br><span class="line"></span><br><span class="line">    /* 6. .bss 段：VMA在RAM，无需加载 */</span><br><span class="line">    .bss : &#123;</span><br><span class="line">        _sbss = .;             /* 7. 标记.bss段在RAM中的起始地址 */</span><br><span class="line">        *(.bss*)</span><br><span class="line">        _ebss = .;             /* 8. 标记.bss段在RAM中的结束地址 */</span><br><span class="line">    &#125; &gt; ram</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>注意，<code>_sidata</code>、<code>_sdata</code>等符号，是供后续启动代码使用的。</p>
+</li>
+</ol>
+<h3 id="🚀-第二步：编写启动代码（Startup-Code）——-准备执行环境"><a href="#🚀-第二步：编写启动代码（Startup-Code）——-准备执行环境" class="headerlink" title="🚀 第二步：编写启动代码（Startup Code）—— 准备执行环境"></a>🚀 第二步：编写启动代码（Startup Code）—— 准备执行环境</h3><p>启动代码（通常是<code>startup.s</code>或<code>crt0.S</code>）是芯片上电后执行的第一段程序，负责在进入<code>main()</code>函数前完成关键的“数据搬运”工作。</p>
+<ol>
+<li><strong>设置栈指针（Stack Pointer, sp）</strong>：初始化栈指针，为后续的函数调用做好准备。</li>
+<li><strong>搬运<code>.data</code>段</strong>：将从<code>_sidata</code>（Flash）开始的数据，复制到<code>_sdata</code>（RAM）开始的区域，直到<code>_edata</code>。</li>
+<li><strong>清零<code>.bss</code>段</strong>：将从<code>_sbss</code>到<code>_ebss</code>的RAM区域全部清零。</li>
+<li><strong>跳转到<code>main()</code></strong>：完成上述初始化后，跳转到主函数<code>main()</code>，开始执行用户的应用程序。</li>
+</ol>
+<p>以下是搬运<code>.data</code>段的汇编逻辑示意：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">    /* 伪代码，实际实现取决于具体汇编器 */</span><br><span class="line">    la a0, _sdata      /* 1. 加载RAM起始地址 */</span><br><span class="line">    la a1, _edata      /* 2. 加载RAM结束地址 */</span><br><span class="line">    la a2, _sidata     /* 3. 加载Flash中的源地址 */</span><br><span class="line">copy_data_loop:</span><br><span class="line">    beq a0, a1, copy_data_done</span><br><span class="line">    lw t0, 0(a2)       /* 从Flash加载 */</span><br><span class="line">    sw t0, 0(a0)       /* 存储到RAM */</span><br><span class="line">    addi a0, a0, 4</span><br><span class="line">    addi a2, a2, 4</span><br><span class="line">    j copy_data_loop</span><br><span class="line">copy_data_done:</span><br></pre></td></tr></table></figure>
+
+<h3 id="⚙️-第三步：配置编译选项"><a href="#⚙️-第三步：配置编译选项" class="headerlink" title="⚙️ 第三步：配置编译选项"></a>⚙️ 第三步：配置编译选项</h3><p>在编译时需要指定正确的架构、链接脚本和启动文件。例如，使用RISC-V GNU工具链时：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 1. 编译：使用启动代码startup.s，编译成目标文件</span></span><br><span class="line">riscv32-unknown-elf-gcc -march=rv32i -mabi=ilp32 -c startup.s -o startup.o</span><br><span class="line"><span class="comment"># 2. 链接：指定链接脚本 gcc_flashxip.ld，生成ELF文件</span></span><br><span class="line">riscv32-unknown-elf-gcc -T gcc_flashxip.ld *.o -o result.elf</span><br><span class="line"><span class="comment"># 3. 生成映射文件，用于调试</span></span><br><span class="line">riscv32-unknown-elf-objdump -h result.elf &gt; project.map</span><br></pre></td></tr></table></figure>
+
+<h3 id="🧪-实践案例：基于GD32VF103系列MCU"><a href="#🧪-实践案例：基于GD32VF103系列MCU" class="headerlink" title="🧪 实践案例：基于GD32VF103系列MCU"></a>🧪 实践案例：基于GD32VF103系列MCU</h3><p>以广泛使用的GD32VF103系列RISC-V MCU为例，使用<strong>Nuclei SDK</strong>可以快速上手XIP。</p>
+<ul>
+<li><strong>开发板与模式</strong>：Nuclei SDK为GD32VF103系列开发板（如RV-STAR、Longan Nano）预设了<code>flashxip</code>下载模式。</li>
+<li><strong>项目构建</strong>：通过指定<code>SOC</code>和<code>BOARD</code>变量即可编译、烧录和调试。<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">make SOC=gd32vf103 BOARD=gd32vf103v_rvstar all   <span class="comment"># 编译</span></span><br><span class="line">make SOC=gd32vf103 BOARD=gd32vf103v_rvstar upload <span class="comment"># 烧录</span></span><br></pre></td></tr></table></figure></li>
+<li><strong>链接脚本位置</strong>：对应的链接脚本（如<code>gcc_gd32vf103_flashxip.ld</code>）位于SDK的<code>SoC/gd32vf103/Board/.../Source/GCC/</code>目录下，可以直接参考或修改。</li>
+</ul>
+<h3 id="⚠️-关键注意事项"><a href="#⚠️-关键注意事项" class="headerlink" title="⚠️ 关键注意事项"></a>⚠️ 关键注意事项</h3><ul>
+<li><strong><code>KEEP()</code>指令</strong>：在链接脚本中，务必使用<code>KEEP()</code>指令包裹中断向量表等关键段，防止链接器在优化时将其误删。</li>
+<li><strong>数据一致性</strong>：确保启动代码中使用的<code>_sidata</code>、<code>_sdata</code>等符号与链接脚本中定义的完全一致。</li>
+<li><strong>Flash擦写</strong>：如果需要IAP（在线升级），擦写Flash的代码<strong>必须</strong>在RAM中运行。因为Flash在擦写时无法响应取指请求，若CPU仍在Flash取指会导致崩溃。</li>
+</ul>
+<p>总而言之，RISC-V环境下的XIP实现，就是通过链接脚本精确规划内存，再通过启动代码将“执行环境”准备就绪的过程。掌握这两个核心，就能顺利在RISC-V平台上实践XIP技术。</p>
+<h2 id="HBird-e200的启动方式（最佳实践）"><a href="#HBird-e200的启动方式（最佳实践）" class="headerlink" title="HBird-e200的启动方式（最佳实践）"></a>HBird-e200的启动方式（最佳实践）</h2><p>背景：hbird-e200 RISCV有ITCM空间，有基于此RISCV核的芯片产品，bootloader启动时将SPI Flash的code拷贝到此ITCM再执行，并不是XIP方式。</p>
+<p>以蜂鸟E203（hbird-e200）为代表的这类RISC-V芯片，确实提供了一种“非XIP”的启动方式：<strong>上电后，先将程序从Flash搬运到ITCM（指令紧耦合内存，Instruction Tightly Coupled Memory）中，再执行</strong>。</p>
+<p>这并非对XIP的否定，而是在<strong>极致的性能、功耗与设计简洁性</strong>之间做出的另一种权衡。蜂鸟E200系列本身就支持包括XIP在内的多种启动模式。</p>
+<h3 id="⚙️-蜂鸟E203的三种启动模式"><a href="#⚙️-蜂鸟E203的三种启动模式" class="headerlink" title="⚙️ 蜂鸟E203的三种启动模式"></a>⚙️ 蜂鸟E203的三种启动模式</h3><p>根据其SDK设计，蜂鸟E203支持三种不同的程序运行方式：</p>
+<table>
+<thead>
+<tr>
+<th align="left">模式</th>
+<th align="left">描述</th>
+<th align="left">特点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong><code>flashxip</code> (XIP模式)</strong></td>
+<td align="left">程序直接在SPI Flash中执行</td>
+<td align="left"><strong>非易失</strong>：代码掉电不丢失。<br><strong>执行较慢</strong>：需从外部Flash取指。</td>
+</tr>
+<tr>
+<td align="left"><strong><code>itcm</code> (ILM模式)</strong></td>
+<td align="left">程序直接下载到ITCM中执行</td>
+<td align="left"><strong>执行极快</strong>：直接从高速ITCM取指。<br><strong>易失</strong>：掉电程序丢失，适合调试。</td>
+</tr>
+<tr>
+<td align="left"><strong><code>flash</code> (拷贝执行模式)</strong></td>
+<td align="left">程序烧录在Flash中，<strong>上电后由启动代码搬运至ITCM</strong>再执行</td>
+<td align="left"><strong>兼具两者优点</strong>：代码固化在Flash，但获得ITCM的高速执行性能。</td>
+</tr>
+</tbody></table>
+<p>你提到的正是第三种 <strong><code>flash</code>（拷贝执行）模式</strong>。</p>
+<h3 id="🚀-“拷贝到ITCM执行”方案的优势与代价"><a href="#🚀-“拷贝到ITCM执行”方案的优势与代价" class="headerlink" title="🚀 “拷贝到ITCM执行”方案的优势与代价"></a>🚀 “拷贝到ITCM执行”方案的优势与代价</h3><p>这种设计是为了在特定场景下追求最优解。</p>
+<h4 id="核心优势：极致的性能与功耗"><a href="#核心优势：极致的性能与功耗" class="headerlink" title="核心优势：极致的性能与功耗"></a><strong>核心优势：极致的性能与功耗</strong></h4><ul>
+<li><strong>性能飞跃</strong>：ITCM通过<strong>专用的、高带宽的紧耦合总线</strong>与CPU核心直连，其访问速度和内部SRAM相当，远快于通过SPI外设读取外部Flash。程序在ITCM中运行，没有XIP模式下SPI总线和Flash访问的延迟，能达到CPU的满速运行。</li>
+<li><strong>功耗优化</strong>：程序在ITCM中运行期间，可以<strong>将外部SPI Flash置于低功耗或掉电状态</strong>，这对于电池供电的IoT设备至关重要。</li>
+<li><strong>设计简化</strong>：这种模式规避了XIP模式下复杂的Cache一致性、Flash擦写时总线阻塞等问题，简化了芯片设计和软件开发的复杂度。</li>
+</ul>
+<h4 id="代价：需要额外的“搬运”开销"><a href="#代价：需要额外的“搬运”开销" class="headerlink" title="代价：需要额外的“搬运”开销"></a><strong>代价：需要额外的“搬运”开销</strong></h4><ul>
+<li><strong>启动时间</strong>：每次上电都需要执行一段“搬运”代码（通常是BootROM），将程序从Flash复制到ITCM，这会增加启动时间。</li>
+<li><strong>ITCM容量限制</strong>：程序大小受限于ITCM的物理容量。如果程序超过ITCM大小，则无法使用此模式。</li>
+</ul>
+<h3 id="🤔-为什么此类芯片会采用这种模式？"><a href="#🤔-为什么此类芯片会采用这种模式？" class="headerlink" title="🤔 为什么此类芯片会采用这种模式？"></a>🤔 为什么此类芯片会采用这种模式？</h3><p>你看到的这种“拷贝执行”方案，常见于以下场景：</p>
+<ul>
+<li><strong>追求极致性能的MCU</strong>：对于需要进行大量计算或实时控制的场景（如电机控制、音频处理），程序在ITCM中运行能提供确定性的、极致的高速响应。</li>
+<li><strong>对功耗极端敏感的IoT设备</strong>：通过让程序在ITCM运行，可以长时间关闭外部Flash，从而降低系统功耗。</li>
+<li><strong>FPGA原型验证或仿真阶段</strong>：在开发初期，为了快速验证和调试，开发者常将程序直接加载到ITCM中运行。芯来科技（Nuclei）的MCU开发板上，也支持这种直接从ITCM启动的调试方式。</li>
+<li><strong>作为XIP的补充</strong>：许多芯片会同时提供XIP和ITCM执行两种模式。开发者可以根据应用需求，在“追求极致性能”和“追求大代码容量”之间灵活选择。例如，可以将<strong>核心算法</strong>放在ITCM中运行，而将<strong>非关键的业务逻辑</strong>放在Flash中XIP执行。</li>
+</ul>
+<h3 id="💎-总结"><a href="#💎-总结" class="headerlink" title="💎 总结"></a>💎 总结</h3><p>你观察到的“拷贝到ITCM执行”方案，是<strong>蜂鸟E203等RISC-V芯片为了追求极致性能而提供的一种与XIP并行的可选路径</strong>。</p>
+<p>它并非要取代XIP，而是通过**“用启动时间的微小增加，换取运行时的极致性能与功耗优化”**的策略，为开发者提供了另一种强有力的工具。这种灵活性，正是RISC-V架构的魅力所在。</p>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">首页</a></li>
+        
+          <li><a href="/archives/">归档</a></li>
+        
+          <li><a href="/tags/">标签</a></li>
+        
+          <li><a href="/categories/">分类</a></li>
+        
+          <li><a href="/search/">搜索</a></li>
+        
+          <li><a href="/about/">关于</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%9B%BA%E4%BB%B6%E5%BC%80%E5%8F%91-%E5%90%AF%E5%8A%A8%E6%96%B9%E5%BC%8FXIP%E5%92%8CRISCV%E5%AE%9E%E4%BE%8B"><span class="toc-number">1.</span> <span class="toc-text">固件开发 - 启动方式XIP和RISCV实例</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-XIP%E6%A6%82%E8%A6%81"><span class="toc-number">1.1.</span> <span class="toc-text">1. XIP概要</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E4%BB%80%E4%B9%88%E6%98%AF-XIP"><span class="toc-number">1.1.1.</span> <span class="toc-text">1. 什么是 XIP</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-%E7%A1%AC%E4%BB%B6%E5%AE%9E%E7%8E%B0%E5%9F%BA%E7%A1%80"><span class="toc-number">1.1.2.</span> <span class="toc-text">2. 硬件实现基础</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-Cache%EF%BC%88%E9%AB%98%E9%80%9F%E7%BC%93%E5%AD%98%EF%BC%89%E7%9A%84%E5%85%B3%E9%94%AE%E4%BD%9C%E7%94%A8"><span class="toc-number">1.1.3.</span> <span class="toc-text">3. Cache（高速缓存）的关键作用</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-%E5%A4%A7-Flash-%E5%B0%8F-RAM-%E4%B8%8B%E7%9A%84%E4%BB%A3%E7%A0%81%E4%B8%8E%E6%95%B0%E6%8D%AE%E5%88%86%E5%B7%A5"><span class="toc-number">1.1.4.</span> <span class="toc-text">4. 大 Flash + 小 RAM 下的代码与数据分工</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-RAM-%E7%9A%84%E2%80%9C%E5%8A%A0%E9%80%9F%E2%80%9D%E4%B8%8E%E2%80%9C%E7%89%B9%E6%AE%8A%E4%BB%BB%E5%8A%A1%E2%80%9D"><span class="toc-number">1.1.5.</span> <span class="toc-text">5. RAM 的“加速”与“特殊任务”</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-%E4%BF%9D%E9%9A%9C%E7%B3%BB%E7%BB%9F%E7%A8%B3%E5%AE%9A%E7%9A%84%E5%85%B3%E9%94%AE%E6%8A%80%E6%9C%AF"><span class="toc-number">1.1.6.</span> <span class="toc-text">6. 保障系统稳定的关键技术</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-%E9%87%8D%E8%A6%81%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9"><span class="toc-number">1.1.7.</span> <span class="toc-text">7. 重要注意事项</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8-%E6%A0%B8%E5%BF%83%E8%A6%81%E7%82%B9%E6%80%BB%E7%BB%93"><span class="toc-number">1.1.8.</span> <span class="toc-text">8. 核心要点总结</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#RISC-V%E7%8E%AF%E5%A2%83%E4%B8%AD%E5%AE%9E%E8%B7%B5XIP"><span class="toc-number">1.2.</span> <span class="toc-text">RISC-V环境中实践XIP</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%F0%9F%8E%AF-%E7%AC%AC%E4%B8%80%E6%AD%A5%EF%BC%9A%E7%BC%96%E5%86%99%E9%93%BE%E6%8E%A5%E8%84%9A%E6%9C%AC%EF%BC%88Linker-Script%EF%BC%89%E2%80%94%E2%80%94-%E5%AE%9A%E4%B9%89%E5%86%85%E5%AD%98%E5%B8%83%E5%B1%80"><span class="toc-number">1.2.1.</span> <span class="toc-text">🎯 第一步：编写链接脚本（Linker Script）—— 定义内存布局</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%F0%9F%9A%80-%E7%AC%AC%E4%BA%8C%E6%AD%A5%EF%BC%9A%E7%BC%96%E5%86%99%E5%90%AF%E5%8A%A8%E4%BB%A3%E7%A0%81%EF%BC%88Startup-Code%EF%BC%89%E2%80%94%E2%80%94-%E5%87%86%E5%A4%87%E6%89%A7%E8%A1%8C%E7%8E%AF%E5%A2%83"><span class="toc-number">1.2.2.</span> <span class="toc-text">🚀 第二步：编写启动代码（Startup Code）—— 准备执行环境</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E2%9A%99%EF%B8%8F-%E7%AC%AC%E4%B8%89%E6%AD%A5%EF%BC%9A%E9%85%8D%E7%BD%AE%E7%BC%96%E8%AF%91%E9%80%89%E9%A1%B9"><span class="toc-number">1.2.3.</span> <span class="toc-text">⚙️ 第三步：配置编译选项</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%F0%9F%A7%AA-%E5%AE%9E%E8%B7%B5%E6%A1%88%E4%BE%8B%EF%BC%9A%E5%9F%BA%E4%BA%8EGD32VF103%E7%B3%BB%E5%88%97MCU"><span class="toc-number">1.2.4.</span> <span class="toc-text">🧪 实践案例：基于GD32VF103系列MCU</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E2%9A%A0%EF%B8%8F-%E5%85%B3%E9%94%AE%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9"><span class="toc-number">1.2.5.</span> <span class="toc-text">⚠️ 关键注意事项</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#HBird-e200%E7%9A%84%E5%90%AF%E5%8A%A8%E6%96%B9%E5%BC%8F%EF%BC%88%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">HBird-e200的启动方式（最佳实践）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E2%9A%99%EF%B8%8F-%E8%9C%82%E9%B8%9FE203%E7%9A%84%E4%B8%89%E7%A7%8D%E5%90%AF%E5%8A%A8%E6%A8%A1%E5%BC%8F"><span class="toc-number">1.3.1.</span> <span class="toc-text">⚙️ 蜂鸟E203的三种启动模式</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%F0%9F%9A%80-%E2%80%9C%E6%8B%B7%E8%B4%9D%E5%88%B0ITCM%E6%89%A7%E8%A1%8C%E2%80%9D%E6%96%B9%E6%A1%88%E7%9A%84%E4%BC%98%E5%8A%BF%E4%B8%8E%E4%BB%A3%E4%BB%B7"><span class="toc-number">1.3.2.</span> <span class="toc-text">🚀 “拷贝到ITCM执行”方案的优势与代价</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%A0%B8%E5%BF%83%E4%BC%98%E5%8A%BF%EF%BC%9A%E6%9E%81%E8%87%B4%E7%9A%84%E6%80%A7%E8%83%BD%E4%B8%8E%E5%8A%9F%E8%80%97"><span class="toc-number">1.3.2.1.</span> <span class="toc-text">核心优势：极致的性能与功耗</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E4%BB%A3%E4%BB%B7%EF%BC%9A%E9%9C%80%E8%A6%81%E9%A2%9D%E5%A4%96%E7%9A%84%E2%80%9C%E6%90%AC%E8%BF%90%E2%80%9D%E5%BC%80%E9%94%80"><span class="toc-number">1.3.2.2.</span> <span class="toc-text">代价：需要额外的“搬运”开销</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%F0%9F%A4%94-%E4%B8%BA%E4%BB%80%E4%B9%88%E6%AD%A4%E7%B1%BB%E8%8A%AF%E7%89%87%E4%BC%9A%E9%87%87%E7%94%A8%E8%BF%99%E7%A7%8D%E6%A8%A1%E5%BC%8F%EF%BC%9F"><span class="toc-number">1.3.3.</span> <span class="toc-text">🤔 为什么此类芯片会采用这种模式？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%F0%9F%92%8E-%E6%80%BB%E7%BB%93"><span class="toc-number">1.3.4.</span> <span class="toc-text">💎 总结</span></a></li></ol></li></ol></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/08/04/%E5%9B%BA%E4%BB%B6%E5%BC%80%E5%8F%91%20-%20%E5%90%AF%E5%8A%A8%E6%96%B9%E5%BC%8FXIP%E5%92%8CRISCV%E5%AE%9E%E4%BE%8B/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/08/04/%E5%9B%BA%E4%BB%B6%E5%BC%80%E5%8F%91%20-%20%E5%90%AF%E5%8A%A8%E6%96%B9%E5%BC%8FXIP%E5%92%8CRISCV%E5%AE%9E%E4%BE%8B/&text=固件开发 - 启动方式XIP和RISCV实例"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/08/04/%E5%9B%BA%E4%BB%B6%E5%BC%80%E5%8F%91%20-%20%E5%90%AF%E5%8A%A8%E6%96%B9%E5%BC%8FXIP%E5%92%8CRISCV%E5%AE%9E%E4%BE%8B/&title=固件开发 - 启动方式XIP和RISCV实例"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/08/04/%E5%9B%BA%E4%BB%B6%E5%BC%80%E5%8F%91%20-%20%E5%90%AF%E5%8A%A8%E6%96%B9%E5%BC%8FXIP%E5%92%8CRISCV%E5%AE%9E%E4%BE%8B/&is_video=false&description=固件开发 - 启动方式XIP和RISCV实例"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=固件开发 - 启动方式XIP和RISCV实例&body=Check out this article: https://cursorhu.github.io/2026/08/04/%E5%9B%BA%E4%BB%B6%E5%BC%80%E5%8F%91%20-%20%E5%90%AF%E5%8A%A8%E6%96%B9%E5%BC%8FXIP%E5%92%8CRISCV%E5%AE%9E%E4%BE%8B/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/08/04/%E5%9B%BA%E4%BB%B6%E5%BC%80%E5%8F%91%20-%20%E5%90%AF%E5%8A%A8%E6%96%B9%E5%BC%8FXIP%E5%92%8CRISCV%E5%AE%9E%E4%BE%8B/&title=固件开发 - 启动方式XIP和RISCV实例"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/08/04/%E5%9B%BA%E4%BB%B6%E5%BC%80%E5%8F%91%20-%20%E5%90%AF%E5%8A%A8%E6%96%B9%E5%BC%8FXIP%E5%92%8CRISCV%E5%AE%9E%E4%BE%8B/&title=固件开发 - 启动方式XIP和RISCV实例"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/08/04/%E5%9B%BA%E4%BB%B6%E5%BC%80%E5%8F%91%20-%20%E5%90%AF%E5%8A%A8%E6%96%B9%E5%BC%8FXIP%E5%92%8CRISCV%E5%AE%9E%E4%BE%8B/&title=固件开发 - 启动方式XIP和RISCV实例"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/08/04/%E5%9B%BA%E4%BB%B6%E5%BC%80%E5%8F%91%20-%20%E5%90%AF%E5%8A%A8%E6%96%B9%E5%BC%8FXIP%E5%92%8CRISCV%E5%AE%9E%E4%BE%8B/&title=固件开发 - 启动方式XIP和RISCV实例"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/08/04/%E5%9B%BA%E4%BB%B6%E5%BC%80%E5%8F%91%20-%20%E5%90%AF%E5%8A%A8%E6%96%B9%E5%BC%8FXIP%E5%92%8CRISCV%E5%AE%9E%E4%BE%8B/&name=固件开发 - 启动方式XIP和RISCV实例&description=&lt;h1 id=&#34;固件开发-启动方式XIP和RISCV实例&#34;&gt;&lt;a href=&#34;#固件开发-启动方式XIP和RISCV实例&#34; class=&#34;headerlink&#34; title=&#34;固件开发 - 启动方式XIP和RISCV实例&#34;&gt;&lt;/a&gt;固件开发 - 启动方式XIP和RISCV实例&lt;/h1&gt;&lt;h2 id=&#34;1-XIP概要&#34;&gt;&lt;a href=&#34;#1-XIP概要&#34; class=&#34;headerlink&#34; title=&#34;1. XIP概要&#34;&gt;&lt;/a&gt;1. XIP概要&lt;/h2&gt;&lt;h3 id=&#34;1-什么是-XIP&#34;&gt;&lt;a href=&#34;#1-什么是-XIP&#34; class=&#34;headerlink&#34; title=&#34;1. 什么是 XIP&#34;&gt;&lt;/a&gt;1. 什么是 XIP&lt;/h3&gt;&lt;p&gt;&lt;strong&gt;XIP（Execute-In-Place，芯片内执行）&lt;/strong&gt; 是指 CPU 无需将代码加载到内部 RAM，而是直接在外部或片上的 NOR Flash 存储介质中读取并执行程序代码的技术。在“大 Flash（如 128KB）、小 RAM（如 4KB）”的嵌入式系统中，这是保证程序正常运行的核心基石。&lt;/p&gt;
+&lt;hr&gt;
+&lt;h3 id=&#34;2-硬件实现基础&#34;&gt;&lt;a href=&#34;#2-硬件实现基础&#34; class=&#34;headerlink&#34; title=&#34;2. 硬件实现基础&#34;&gt;&lt;/a&gt;2. 硬件实现基础&lt;/h3&gt;&lt;p&gt;要实现 CPU 随机访问 SPI Flash 并直接执行代码，需要满足以下硬件与机制要求：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;存储介质必须为 NOR Flash&lt;/strong&gt;：NOR Flash 支持&lt;strong&gt;按字节随机寻址&lt;/strong&gt;，CPU 可通过地址总线直接访问任意指令地址；而 NAND Flash 以块（Block）为单位读写，无法支持 XIP。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;内存映射（Memory Mapping）&lt;/strong&gt;：MCU 内部集成了 &lt;strong&gt;XIP 控制器&lt;/strong&gt;，将 SPI Flash 的一段物理地址空间映射到系统的统一编址内存空间中。当 CPU 访问该段地址时，硬件自动将其转化为 SPI 总线上的读取时序。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;XIP 读取模式&lt;/strong&gt;：普通 SPI Flash 读取需发送“指令 + 地址”，而 XIP 模式下，控制器在初始化后保持“读取态”，CPU 仅需提供目标地址，Flash 即可直接返回数据，显著降低随机访问的指令开销。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;hr&gt;
+&lt;h3 id=&#34;3-Cache（高速缓存）的关键作用&#34;&gt;&lt;a href=&#34;#3-Cache（高速缓存）的关键作用&#34; class=&#34;headerlink&#34; title=&#34;3. Cache（高速缓存）的关键作用&#34;&gt;&lt;/a&gt;3. Cache（高速缓存）的关键作用&lt;/h3&gt;"><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/08/04/%E5%9B%BA%E4%BB%B6%E5%BC%80%E5%8F%91%20-%20%E5%90%AF%E5%8A%A8%E6%96%B9%E5%BC%8FXIP%E5%92%8CRISCV%E5%AE%9E%E4%BE%8B/&t=固件开发 - 启动方式XIP和RISCV实例"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> 菜单</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> 目录</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> 分享</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> 返回顶部</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2026
+    cursorhu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"复制到粘贴板！\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "复制成功！");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+<!-- Mermaid diagrams -->
+
+  <script type="text/javascript">
+  (function() {
+    var mermaidElements = document.querySelectorAll('.mermaid');
+    if (!mermaidElements.length) return;
+
+    var mermaidTheme = 'auto';
+    if (mermaidTheme === 'auto') {
+      var colorscheme = 'dark';
+      mermaidTheme = (colorscheme === 'dark' || colorscheme === 'classic') ? 'dark' : 'default';
+    }
+
+    function initMermaid() {
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: mermaidTheme,
+        logLevel: 'error',
+        securityLevel: 'loose',
+        flowchart: { curve: 'basis' },
+        gantt: { axisFormat: '%m/%d/%Y' },
+        sequence: { actorMargin: 50 }
+      });
+      mermaid.run({ nodes: mermaidElements });
+    }
+
+    var script = document.createElement('script');
+    
+    script.src = 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js';
+    
+    script.onload = initMermaid;
+    document.head.appendChild(script);
+  })();
+  </script>
+
+</body>
+</html>
