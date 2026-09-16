@@ -8,7 +8,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
     <meta name="description" content="以太网MAC-PHY简介以太网接入是嵌入式系统最常见的功能之一。本篇整理 MAC、PHY、MII 接口的基本结构与工作原理，并深入 PHY 内部的 PCS &#x2F; PMA &#x2F; PMD 子层、4B&#x2F;5B 与 MLT-3 编码、自协商（Auto-Negotiation）等核心机制，方便后续在驱动调试和硬件故障排查时快速参考。 参考文章：  MAC和PHY基本组成与工作原理简析">
 <meta property="og:type" content="article">
-<meta property="og:title" content="以太网MAC-PHY简介">
+<meta property="og:title" content="车载以太网 - MAC-PHY简介">
 <meta property="og:url" content="https://cursorhu.github.io/2026/09/09/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20MAC-PHY%E7%AE%80%E4%BB%8B/index.html">
 <meta property="og:site_name" content="ThinkNotes">
 <meta property="og:description" content="以太网MAC-PHY简介以太网接入是嵌入式系统最常见的功能之一。本篇整理 MAC、PHY、MII 接口的基本结构与工作原理，并深入 PHY 内部的 PCS &#x2F; PMA &#x2F; PMD 子层、4B&#x2F;5B 与 MLT-3 编码、自协商（Auto-Negotiation）等核心机制，方便后续在驱动调试和硬件故障排查时快速参考。 参考文章：  MAC和PHY基本组成与工作原理简析">
@@ -18,7 +18,7 @@
 <meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/mac_block_diagram.jpeg">
 <meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/phy_block_diagram.png">
 <meta property="article:published_time" content="2026-09-09T07:20:00.000Z">
-<meta property="article:modified_time" content="2026-09-09T07:29:34.661Z">
+<meta property="article:modified_time" content="2026-09-16T09:38:19.657Z">
 <meta property="article:author" content="cursorhu">
 <meta property="article:tag" content="以太网">
 <meta name="twitter:card" content="summary">
@@ -42,7 +42,7 @@
       
     
     <!-- title -->
-    <title>以太网MAC-PHY简介</title>
+    <title>车载以太网 - MAC-PHY简介</title>
     <!-- async scripts -->
     <!-- Google Analytics -->
 
@@ -118,15 +118,15 @@
     <div id="share" style="display: none">
       <ul>
   <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/09/09/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20MAC-PHY%E7%AE%80%E4%BB%8B/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/09/09/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20MAC-PHY%E7%AE%80%E4%BB%8B/&text=以太网MAC-PHY简介"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/09/09/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20MAC-PHY%E7%AE%80%E4%BB%8B/&title=以太网MAC-PHY简介"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/09/09/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20MAC-PHY%E7%AE%80%E4%BB%8B/&is_video=false&description=以太网MAC-PHY简介"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
-  <li><a class="icon" href="mailto:?subject=以太网MAC-PHY简介&body=Check out this article: https://cursorhu.github.io/2026/09/09/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20MAC-PHY%E7%AE%80%E4%BB%8B/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/09/09/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20MAC-PHY%E7%AE%80%E4%BB%8B/&title=以太网MAC-PHY简介"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/09/09/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20MAC-PHY%E7%AE%80%E4%BB%8B/&title=以太网MAC-PHY简介"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/09/09/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20MAC-PHY%E7%AE%80%E4%BB%8B/&title=以太网MAC-PHY简介"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/09/09/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20MAC-PHY%E7%AE%80%E4%BB%8B/&title=以太网MAC-PHY简介"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/09/09/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20MAC-PHY%E7%AE%80%E4%BB%8B/&name=以太网MAC-PHY简介&description=&lt;h1 id=&#34;以太网MAC-PHY简介&#34;&gt;&lt;a href=&#34;#以太网MAC-PHY简介&#34; class=&#34;headerlink&#34; title=&#34;以太网MAC-PHY简介&#34;&gt;&lt;/a&gt;以太网MAC-PHY简介&lt;/h1&gt;&lt;p&gt;以太网接入是嵌入式系统最常见的功能之一。本篇整理 MAC、PHY、MII 接口的基本结构与工作原理，并深入 PHY 内部的 PCS &amp;#x2F; PMA &amp;#x2F; PMD 子层、4B&amp;#x2F;5B 与 MLT-3 编码、自协商（Auto-Negotiation）等核心机制，方便后续在驱动调试和硬件故障排查时快速参考。&lt;/p&gt;
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/09/09/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20MAC-PHY%E7%AE%80%E4%BB%8B/&text=车载以太网 - MAC-PHY简介"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/09/09/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20MAC-PHY%E7%AE%80%E4%BB%8B/&title=车载以太网 - MAC-PHY简介"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/09/09/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20MAC-PHY%E7%AE%80%E4%BB%8B/&is_video=false&description=车载以太网 - MAC-PHY简介"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=车载以太网 - MAC-PHY简介&body=Check out this article: https://cursorhu.github.io/2026/09/09/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20MAC-PHY%E7%AE%80%E4%BB%8B/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/09/09/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20MAC-PHY%E7%AE%80%E4%BB%8B/&title=车载以太网 - MAC-PHY简介"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/09/09/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20MAC-PHY%E7%AE%80%E4%BB%8B/&title=车载以太网 - MAC-PHY简介"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/09/09/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20MAC-PHY%E7%AE%80%E4%BB%8B/&title=车载以太网 - MAC-PHY简介"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/09/09/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20MAC-PHY%E7%AE%80%E4%BB%8B/&title=车载以太网 - MAC-PHY简介"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/09/09/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20MAC-PHY%E7%AE%80%E4%BB%8B/&name=车载以太网 - MAC-PHY简介&description=&lt;h1 id=&#34;以太网MAC-PHY简介&#34;&gt;&lt;a href=&#34;#以太网MAC-PHY简介&#34; class=&#34;headerlink&#34; title=&#34;以太网MAC-PHY简介&#34;&gt;&lt;/a&gt;以太网MAC-PHY简介&lt;/h1&gt;&lt;p&gt;以太网接入是嵌入式系统最常见的功能之一。本篇整理 MAC、PHY、MII 接口的基本结构与工作原理，并深入 PHY 内部的 PCS &amp;#x2F; PMA &amp;#x2F; PMD 子层、4B&amp;#x2F;5B 与 MLT-3 编码、自协商（Auto-Negotiation）等核心机制，方便后续在驱动调试和硬件故障排查时快速参考。&lt;/p&gt;
 &lt;p&gt;参考文章：&lt;/p&gt;
 &lt;ul&gt;
 &lt;li&gt;&lt;a href=&#34;https://blog.csdn.net/csdnxmj/article/details/103769139&#34;&gt;MAC和PHY基本组成与工作原理简析&lt;/a&gt;&lt;/li&gt;
@@ -143,7 +143,7 @@
 &lt;li&gt;&lt;strong&gt;CPU 不集成 MAC 与 PHY，MAC 与 PHY 采用集成芯片&lt;/strong&gt;&lt;/li&gt;
 &lt;/ol&gt;
 &lt;p&gt;下面选用第 2 种方案做进一步说明。CPU 总线接口很常见，通常都会做成可以像访问内存一样去访问；MAC 与 PHY 之间的 MII 接口需要多做些说明。&lt;/p&gt;"><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/09/09/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20MAC-PHY%E7%AE%80%E4%BB%8B/&t=以太网MAC-PHY简介"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/09/09/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20MAC-PHY%E7%AE%80%E4%BB%8B/&t=车载以太网 - MAC-PHY简介"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
 </ul>
 
     </div>
@@ -163,7 +163,7 @@
   <header>
     
     <h1 class="posttitle p-name" itemprop="name headline">
-        以太网MAC-PHY简介
+        车载以太网 - MAC-PHY简介
     </h1>
 
 
@@ -537,15 +537,15 @@
     <div id="share-footer" style="display: none">
       <ul>
   <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/09/09/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20MAC-PHY%E7%AE%80%E4%BB%8B/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/09/09/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20MAC-PHY%E7%AE%80%E4%BB%8B/&text=以太网MAC-PHY简介"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/09/09/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20MAC-PHY%E7%AE%80%E4%BB%8B/&title=以太网MAC-PHY简介"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/09/09/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20MAC-PHY%E7%AE%80%E4%BB%8B/&is_video=false&description=以太网MAC-PHY简介"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" href="mailto:?subject=以太网MAC-PHY简介&body=Check out this article: https://cursorhu.github.io/2026/09/09/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20MAC-PHY%E7%AE%80%E4%BB%8B/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/09/09/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20MAC-PHY%E7%AE%80%E4%BB%8B/&title=以太网MAC-PHY简介"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/09/09/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20MAC-PHY%E7%AE%80%E4%BB%8B/&title=以太网MAC-PHY简介"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/09/09/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20MAC-PHY%E7%AE%80%E4%BB%8B/&title=以太网MAC-PHY简介"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/09/09/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20MAC-PHY%E7%AE%80%E4%BB%8B/&title=以太网MAC-PHY简介"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/09/09/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20MAC-PHY%E7%AE%80%E4%BB%8B/&name=以太网MAC-PHY简介&description=&lt;h1 id=&#34;以太网MAC-PHY简介&#34;&gt;&lt;a href=&#34;#以太网MAC-PHY简介&#34; class=&#34;headerlink&#34; title=&#34;以太网MAC-PHY简介&#34;&gt;&lt;/a&gt;以太网MAC-PHY简介&lt;/h1&gt;&lt;p&gt;以太网接入是嵌入式系统最常见的功能之一。本篇整理 MAC、PHY、MII 接口的基本结构与工作原理，并深入 PHY 内部的 PCS &amp;#x2F; PMA &amp;#x2F; PMD 子层、4B&amp;#x2F;5B 与 MLT-3 编码、自协商（Auto-Negotiation）等核心机制，方便后续在驱动调试和硬件故障排查时快速参考。&lt;/p&gt;
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/09/09/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20MAC-PHY%E7%AE%80%E4%BB%8B/&text=车载以太网 - MAC-PHY简介"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/09/09/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20MAC-PHY%E7%AE%80%E4%BB%8B/&title=车载以太网 - MAC-PHY简介"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/09/09/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20MAC-PHY%E7%AE%80%E4%BB%8B/&is_video=false&description=车载以太网 - MAC-PHY简介"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=车载以太网 - MAC-PHY简介&body=Check out this article: https://cursorhu.github.io/2026/09/09/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20MAC-PHY%E7%AE%80%E4%BB%8B/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/09/09/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20MAC-PHY%E7%AE%80%E4%BB%8B/&title=车载以太网 - MAC-PHY简介"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/09/09/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20MAC-PHY%E7%AE%80%E4%BB%8B/&title=车载以太网 - MAC-PHY简介"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/09/09/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20MAC-PHY%E7%AE%80%E4%BB%8B/&title=车载以太网 - MAC-PHY简介"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/09/09/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20MAC-PHY%E7%AE%80%E4%BB%8B/&title=车载以太网 - MAC-PHY简介"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/09/09/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20MAC-PHY%E7%AE%80%E4%BB%8B/&name=车载以太网 - MAC-PHY简介&description=&lt;h1 id=&#34;以太网MAC-PHY简介&#34;&gt;&lt;a href=&#34;#以太网MAC-PHY简介&#34; class=&#34;headerlink&#34; title=&#34;以太网MAC-PHY简介&#34;&gt;&lt;/a&gt;以太网MAC-PHY简介&lt;/h1&gt;&lt;p&gt;以太网接入是嵌入式系统最常见的功能之一。本篇整理 MAC、PHY、MII 接口的基本结构与工作原理，并深入 PHY 内部的 PCS &amp;#x2F; PMA &amp;#x2F; PMD 子层、4B&amp;#x2F;5B 与 MLT-3 编码、自协商（Auto-Negotiation）等核心机制，方便后续在驱动调试和硬件故障排查时快速参考。&lt;/p&gt;
 &lt;p&gt;参考文章：&lt;/p&gt;
 &lt;ul&gt;
 &lt;li&gt;&lt;a href=&#34;https://blog.csdn.net/csdnxmj/article/details/103769139&#34;&gt;MAC和PHY基本组成与工作原理简析&lt;/a&gt;&lt;/li&gt;
@@ -562,7 +562,7 @@
 &lt;li&gt;&lt;strong&gt;CPU 不集成 MAC 与 PHY，MAC 与 PHY 采用集成芯片&lt;/strong&gt;&lt;/li&gt;
 &lt;/ol&gt;
 &lt;p&gt;下面选用第 2 种方案做进一步说明。CPU 总线接口很常见，通常都会做成可以像访问内存一样去访问；MAC 与 PHY 之间的 MII 接口需要多做些说明。&lt;/p&gt;"><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/09/09/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20MAC-PHY%E7%AE%80%E4%BB%8B/&t=以太网MAC-PHY简介"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/09/09/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20MAC-PHY%E7%AE%80%E4%BB%8B/&t=车载以太网 - MAC-PHY简介"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
 </ul>
 
     </div>
