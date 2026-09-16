@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="深入剖析 IEEE Std 802.1X-2020(Port-Based Network Access Control) 的标准部分(MACE认证架构、MKA密钥协商框架、EAPOL协议)和车载部分(OPEN Alliance Automotive MKA的30ms启动、PSK优先、精简配置)。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="IEEE 802.1X-2020 端口访问控制与MKA核心架构详解">
+<meta property="og:url" content="https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/IEEE%20802.1X-2020%20%E7%AB%AF%E5%8F%A3%E8%AE%BF%E9%97%AE%E6%8E%A7%E5%88%B6%E4%B8%8EMKA%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84%E8%AF%A6%E8%A7%A3/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="深入剖析 IEEE Std 802.1X-2020(Port-Based Network Access Control) 的标准部分(MACE认证架构、MKA密钥协商框架、EAPOL协议)和车载部分(OPEN Alliance Automotive MKA的30ms启动、PSK优先、精简配置)。">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-09-16T05:00:00.000Z">
+<meta property="article:modified_time" content="2026-09-16T07:12:28.328Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="EAP">
+<meta property="article:tag" content="EAPOL">
+<meta property="article:tag" content="IEEE 802.1X">
+<meta property="article:tag" content="MACsec">
+<meta property="article:tag" content="MKA">
+<meta property="article:tag" content="PAE">
+<meta property="article:tag" content="端口访问控制">
+<meta name="twitter:card" content="summary">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>IEEE 802.1X-2020 端口访问控制与MKA核心架构详解</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+		<script type="text/x-mathjax-config">
+		  MathJax.Hub.Config({
+			tex2jax: {
+			  skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+			  inlineMath: [['$','$']]
+			}
+		  });
+		</script>
+		<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-MML-AM_CHTML' async></script>
+	
+<meta name="generator" content="Hexo 8.0.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="顶部" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="上一篇" href="/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/IEEE%20802.1AE-2018%20MACsec%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84%E4%B8%8E%E5%B8%A7%E6%A0%BC%E5%BC%8F%E8%AF%A6%E8%A7%A3/"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="下一篇" href="/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/%E8%BD%A6%E8%BD%BD%E4%BB%A5%E5%A4%AA%E7%BD%91MACsec%E7%B3%BB%E5%88%97%EF%BC%9A%E5%9B%9B%E5%A4%A7%E6%A0%87%E5%87%86%E6%A6%82%E8%A7%88%E4%B8%8E%E9%A1%B6%E5%B1%82%E5%AE%89%E5%85%A8%E6%9E%B6%E6%9E%84/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="返回顶部" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="分享文章" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">上一篇</span>
+      <span id="i-next" class="info" style="display:none;">下一篇</span>
+      <span id="i-top" class="info" style="display:none;">返回顶部</span>
+      <span id="i-share" class="info" style="display:none;">分享文章</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/IEEE%20802.1X-2020%20%E7%AB%AF%E5%8F%A3%E8%AE%BF%E9%97%AE%E6%8E%A7%E5%88%B6%E4%B8%8EMKA%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84%E8%AF%A6%E8%A7%A3/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/IEEE%20802.1X-2020%20%E7%AB%AF%E5%8F%A3%E8%AE%BF%E9%97%AE%E6%8E%A7%E5%88%B6%E4%B8%8EMKA%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84%E8%AF%A6%E8%A7%A3/&text=IEEE 802.1X-2020 端口访问控制与MKA核心架构详解"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/IEEE%20802.1X-2020%20%E7%AB%AF%E5%8F%A3%E8%AE%BF%E9%97%AE%E6%8E%A7%E5%88%B6%E4%B8%8EMKA%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84%E8%AF%A6%E8%A7%A3/&title=IEEE 802.1X-2020 端口访问控制与MKA核心架构详解"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/IEEE%20802.1X-2020%20%E7%AB%AF%E5%8F%A3%E8%AE%BF%E9%97%AE%E6%8E%A7%E5%88%B6%E4%B8%8EMKA%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84%E8%AF%A6%E8%A7%A3/&is_video=false&description=IEEE 802.1X-2020 端口访问控制与MKA核心架构详解"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=IEEE 802.1X-2020 端口访问控制与MKA核心架构详解&body=Check out this article: https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/IEEE%20802.1X-2020%20%E7%AB%AF%E5%8F%A3%E8%AE%BF%E9%97%AE%E6%8E%A7%E5%88%B6%E4%B8%8EMKA%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84%E8%AF%A6%E8%A7%A3/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/IEEE%20802.1X-2020%20%E7%AB%AF%E5%8F%A3%E8%AE%BF%E9%97%AE%E6%8E%A7%E5%88%B6%E4%B8%8EMKA%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84%E8%AF%A6%E8%A7%A3/&title=IEEE 802.1X-2020 端口访问控制与MKA核心架构详解"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/IEEE%20802.1X-2020%20%E7%AB%AF%E5%8F%A3%E8%AE%BF%E9%97%AE%E6%8E%A7%E5%88%B6%E4%B8%8EMKA%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84%E8%AF%A6%E8%A7%A3/&title=IEEE 802.1X-2020 端口访问控制与MKA核心架构详解"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/IEEE%20802.1X-2020%20%E7%AB%AF%E5%8F%A3%E8%AE%BF%E9%97%AE%E6%8E%A7%E5%88%B6%E4%B8%8EMKA%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84%E8%AF%A6%E8%A7%A3/&title=IEEE 802.1X-2020 端口访问控制与MKA核心架构详解"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/IEEE%20802.1X-2020%20%E7%AB%AF%E5%8F%A3%E8%AE%BF%E9%97%AE%E6%8E%A7%E5%88%B6%E4%B8%8EMKA%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84%E8%AF%A6%E8%A7%A3/&title=IEEE 802.1X-2020 端口访问控制与MKA核心架构详解"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/IEEE%20802.1X-2020%20%E7%AB%AF%E5%8F%A3%E8%AE%BF%E9%97%AE%E6%8E%A7%E5%88%B6%E4%B8%8EMKA%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84%E8%AF%A6%E8%A7%A3/&name=IEEE 802.1X-2020 端口访问控制与MKA核心架构详解&description=&lt;blockquote&gt;
+&lt;p&gt;本文是「以太网IEEE标准系列」第三篇,聚焦 &lt;strong&gt;IEEE Std 802.1X™-2020&lt;/strong&gt;(Port-Based Network Access Control)。本文分两部分:第一部分解析通用标准(认证架构、MKA密钥层次、EAPOL协议),第二部分对照 &lt;strong&gt;OPEN Alliance TC17 Automotive MKA Specification v1.0&lt;/strong&gt;(2025-02)的车载精简要求。&lt;/p&gt;
+&lt;/blockquote&gt;"><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/IEEE%20802.1X-2020%20%E7%AB%AF%E5%8F%A3%E8%AE%BF%E9%97%AE%E6%8E%A7%E5%88%B6%E4%B8%8EMKA%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84%E8%AF%A6%E8%A7%A3/&t=IEEE 802.1X-2020 端口访问控制与MKA核心架构详解"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%AC%AC%E4%B8%80%E9%83%A8%E5%88%86-%E6%A0%87%E5%87%86%E7%AF%87"><span class="toc-number">1.</span> <span class="toc-text">第一部分:标准篇</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E4%B8%89%E4%B8%AA%E6%A0%B8%E5%BF%83%E9%97%AE%E9%A2%98"><span class="toc-number">1.1.</span> <span class="toc-text">一、三个核心问题</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E2%9D%93-Q1-%E8%BF%99%E4%B8%AA%E6%A0%87%E5%87%86%E6%98%AF%E4%BB%80%E4%B9%88"><span class="toc-number">1.1.1.</span> <span class="toc-text">❓ Q1:这个标准是什么?</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E2%9D%93-Q2-%E8%A7%A3%E5%86%B3%E4%BB%80%E4%B9%88%E9%97%AE%E9%A2%98"><span class="toc-number">1.1.2.</span> <span class="toc-text">❓ Q2:解决什么问题?</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E2%9D%93-Q3-%E5%A6%82%E4%BD%95%E5%BA%94%E7%94%A8"><span class="toc-number">1.1.3.</span> <span class="toc-text">❓ Q3:如何应用?</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84-%E4%B8%89%E8%A7%92%E8%89%B2%E4%B8%8E%E5%8F%8C%E7%AB%AF%E5%8F%A3"><span class="toc-number">1.2.</span> <span class="toc-text">二、核心架构:三角色与双端口</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#2-1-%E7%B3%BB%E7%BB%9F%E8%A7%92%E8%89%B2%E4%B8%89%E4%BB%B6%E5%A5%97"><span class="toc-number">1.2.1.</span> <span class="toc-text">2.1 系统角色三件套</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-2-%E7%AB%AF%E5%8F%A3%E7%9A%84%E2%80%9D%E4%B8%A4%E6%89%87%E9%97%A8%E2%80%9D"><span class="toc-number">1.2.2.</span> <span class="toc-text">2.2 端口的”两扇门”</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%AF%86%E9%92%A5%E5%B1%82%E6%AC%A1-Key-Hierarchy"><span class="toc-number">1.3.</span> <span class="toc-text">三、密钥层次(Key Hierarchy)</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#3-1-%E4%B8%89%E7%A7%8D-CAK-%E6%9D%A5%E6%BA%90%E5%AF%B9%E6%AF%94"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 三种 CAK 来源对比</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-2-%E5%85%B3%E9%94%AE%E6%B4%BE%E7%94%9F%E5%8F%82%E6%95%B0"><span class="toc-number">1.3.2.</span> <span class="toc-text">3.2 关键派生参数</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E5%8D%8F%E8%AE%AE%E6%9C%BA%E5%88%B6%E8%AF%A6%E8%A7%A3"><span class="toc-number">1.4.</span> <span class="toc-text">四、协议机制详解</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#4-1-EAP-%E8%AE%A4%E8%AF%81-%E2%80%94%E2%80%94-PACP-%E7%8A%B6%E6%80%81%E6%9C%BA"><span class="toc-number">1.4.1.</span> <span class="toc-text">4.1 EAP 认证 —— PACP 状态机</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#4-2-MKA-MACsec-Key-Agreement-%E2%80%94%E2%80%94%E6%9C%80%E6%A0%B8%E5%BF%83%E7%9A%84%E7%AB%A0%E8%8A%82"><span class="toc-number">1.4.2.</span> <span class="toc-text">4.2 MKA(MACsec Key Agreement)——最核心的章节</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#4-2-1-%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5"><span class="toc-number">1.4.2.1.</span> <span class="toc-text">4.2.1 核心概念</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#4-2-2-MKA-%E5%9C%A8%E7%82%B9%E5%AF%B9%E7%82%B9%E9%93%BE%E8%B7%AF%E4%B8%8A%E7%9A%84%E5%85%B8%E5%9E%8B%E6%B5%81%E7%A8%8B-9-17"><span class="toc-number">1.4.2.2.</span> <span class="toc-text">4.2.2 MKA 在点对点链路上的典型流程(9.17)</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#4-2-3-9-8-SAK-%E7%94%9F%E6%88%90%E8%A7%84%E5%88%99"><span class="toc-number">1.4.2.3.</span> <span class="toc-text">4.2.3 9.8 SAK 生成规则</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#4-2-4-9-12-CA-Formation"><span class="toc-number">1.4.2.4.</span> <span class="toc-text">4.2.4 9.12 CA Formation</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#4-2-5-MKA-%E5%AE%9A%E6%97%B6%E5%99%A8%E5%8F%82%E6%95%B0"><span class="toc-number">1.4.2.5.</span> <span class="toc-text">4.2.5 MKA 定时器参数</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#4-2-6-9-4-3-Liveness-%E5%88%A4%E6%96%AD"><span class="toc-number">1.4.2.6.</span> <span class="toc-text">4.2.6 9.4.3 Liveness 判断</span></a></li></ol></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BA%94%E3%80%81EAPOL-%E5%B8%A7%E6%A0%BC%E5%BC%8F"><span class="toc-number">1.5.</span> <span class="toc-text">五、EAPOL 帧格式</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%AD%E3%80%81802-1AE-MACsec-%E7%9A%84%E5%8D%8F%E4%BD%9C%E5%85%B3%E7%B3%BB"><span class="toc-number">1.6.</span> <span class="toc-text">六、802.1AE MACsec 的协作关系</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%AC%AC%E4%BA%8C%E9%83%A8%E5%88%86-%E8%BD%A6%E8%BD%BD%E7%AF%87%E2%80%94%E2%80%94OPEN-Alliance-Automotive-MKA"><span class="toc-number">2.</span> <span class="toc-text">第二部分:车载篇——OPEN Alliance Automotive MKA</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%83%E3%80%81%E8%BD%A6%E8%BD%BD-MKA-%E7%9A%84%E8%AE%BE%E8%AE%A1%E7%9B%AE%E6%A0%87"><span class="toc-number">2.1.</span> <span class="toc-text">七、车载 MKA 的设计目标</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%AB%E3%80%81Automotive-MKA-%E5%BF%85%E9%80%89%E8%83%BD%E5%8A%9B%E9%9B%86"><span class="toc-number">2.2.</span> <span class="toc-text">八、Automotive MKA 必选能力集</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#8-1-MACsec-%E8%83%BD%E5%8A%9B%E5%8D%8F%E5%95%86-AutoMKA-01001-01004-01005"><span class="toc-number">2.2.1.</span> <span class="toc-text">8.1 MACsec 能力协商(AutoMKA-01001, 01004, 01005)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#8-2-%E5%90%AF%E5%8A%A8%E6%97%B6%E9%97%B4-%E2%89%A4-30-ms-AutoMKA-01014"><span class="toc-number">2.2.2.</span> <span class="toc-text">8.2 启动时间:≤ 30 ms(AutoMKA-01014)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#8-3-Peer-List-%E4%B8%8A%E9%99%90-2-AutoMKA-03016"><span class="toc-number">2.2.3.</span> <span class="toc-text">8.3 Peer List 上限:2(AutoMKA-03016)</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B9%9D%E3%80%81Automotive-MKA-%E5%88%A0%E9%99%A4%E7%9A%84%E5%8A%9F%E8%83%BD"><span class="toc-number">2.3.</span> <span class="toc-text">九、Automotive MKA 删除的功能</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#9-1-Replay-Protection-%E5%9B%BA%E5%AE%9A%E4%B8%BA%E7%AA%97%E5%8F%A3-0-AutoMKA-01012-01013"><span class="toc-number">2.3.1.</span> <span class="toc-text">9.1 Replay Protection 固定为窗口&#x3D;0(AutoMKA-01012, 01013)</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8D%81%E3%80%81MKA-%E4%BC%A0%E8%BE%93%E4%BC%98%E5%8C%96-10ms-%E8%B5%B7%E6%AD%A5%E7%9A%84-doubling-ramp-up-AutoMKA-03003-03004"><span class="toc-number">2.4.</span> <span class="toc-text">十、MKA 传输优化:10ms 起步的 doubling ramp-up(AutoMKA-03003, 03004)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8D%81%E4%B8%80%E3%80%81Key-Server-%E4%BC%98%E5%8C%96-AutoMKA-03007-03008"><span class="toc-number">2.5.</span> <span class="toc-text">十一、Key Server 优化(AutoMKA-03007, 03008)</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#11-1-Key-Server-Priority-%E5%9B%BA%E5%AE%9A-AutoMKA-03007"><span class="toc-number">2.5.1.</span> <span class="toc-text">11.1 Key Server Priority 固定(AutoMKA-03007)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#11-2-SAK-%E6%8F%90%E5%89%8D%E5%88%86%E5%8F%91%E4%BC%98%E5%8C%96-AutoMKA-03010"><span class="toc-number">2.5.2.</span> <span class="toc-text">11.2 SAK 提前分发优化(AutoMKA-03010)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#11-3-%E5%BC%BA%E5%88%B6%E7%AB%8B%E5%8D%B3-rekey-AutoMKA-03011"><span class="toc-number">2.5.3.</span> <span class="toc-text">11.3 强制立即 rekey(AutoMKA-03011)</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8D%81%E4%BA%8C%E3%80%81PAE-%E7%8A%B6%E6%80%81%E6%9C%BA%E4%BC%98%E5%8C%96-AutoMKA-05001-05002-05003"><span class="toc-number">2.6.</span> <span class="toc-text">十二、PAE 状态机优化(AutoMKA-05001, 05002, 05003)</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#12-1-%E5%A4%9A%E7%8A%B6%E6%80%81%E4%B8%80%E6%AC%A1-tick-%E5%AE%8C%E6%88%90-AutoMKA-05001"><span class="toc-number">2.6.1.</span> <span class="toc-text">12.1 多状态一次 tick 完成(AutoMKA-05001)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#12-2-unauthAllowed-%E5%92%8C-unsecureAllowed-%E5%9B%BA%E5%AE%9A%E4%B8%BA-never-AutoMKA-05002-05003"><span class="toc-number">2.6.2.</span> <span class="toc-text">12.2 unauthAllowed 和 unsecureAllowed 固定为 never(AutoMKA-05002, 05003)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#12-3-%E5%88%A0%E9%99%A4%E7%9A%84-PAE-%E5%8A%9F%E8%83%BD-AutoMKA-05004"><span class="toc-number">2.6.3.</span> <span class="toc-text">12.3 删除的 PAE 功能(AutoMKA-05004)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#12-4-CAK-Cache-KMD-NID-%E5%8F%98%E4%B8%BA%E5%8F%AF%E9%80%89-AutoMKA-05005-05006"><span class="toc-number">2.6.4.</span> <span class="toc-text">12.4 CAK Cache KMD&#x2F;NID 变为可选(AutoMKA-05005, 05006)</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8D%81%E4%B8%89%E3%80%81%E8%AF%8A%E6%96%AD%E4%B8%8E%E7%AE%A1%E7%90%86-API-AutoMKA-06001"><span class="toc-number">2.7.</span> <span class="toc-text">十三、诊断与管理 API(AutoMKA-06001)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8D%81%E5%9B%9B%E3%80%81%E9%85%8D%E7%BD%AE%E7%AE%A1%E7%90%86-AutoMKA-08001-08002-08003-08004"><span class="toc-number">2.8.</span> <span class="toc-text">十四、配置管理(AutoMKA-08001, 08002, 08003, 08004)</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#14-1-%E5%85%A8%E5%B1%80%E9%85%8D%E7%BD%AE%E9%A1%B9-%E6%89%80%E6%9C%89%E7%AB%AF%E5%8F%A3%E7%BB%9F%E4%B8%80"><span class="toc-number">2.8.1.</span> <span class="toc-text">14.1 全局配置项(所有端口统一)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#14-2-%E6%AF%8F%E7%AB%AF%E5%8F%A3%E9%85%8D%E7%BD%AE%E9%A1%B9-AutoMKA-08004"><span class="toc-number">2.8.2.</span> <span class="toc-text">14.2 每端口配置项(AutoMKA-08004)</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8D%81%E4%BA%94%E3%80%81%E9%AB%98%E7%BA%A7%E7%89%B9%E6%80%A7"><span class="toc-number">2.9.</span> <span class="toc-text">十五、高级特性</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#15-1-%E5%A4%9A-CAK-CKN-%E5%B9%B6%E8%A1%8C%E6%94%AF%E6%8C%81-AutoMKA-09001-09002-09003"><span class="toc-number">2.9.1.</span> <span class="toc-text">15.1 多 CAK&#x2F;CKN 并行支持(AutoMKA-09001, 09002, 09003)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#15-2-%E5%BF%AB%E9%80%9F-Link-Down-%E6%81%A2%E5%A4%8D-AutoMKA-10001"><span class="toc-number">2.9.2.</span> <span class="toc-text">15.2 快速 Link Down 恢复(AutoMKA-10001)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#15-3-MACsec-%E7%A6%81%E7%94%A8%E6%97%B6%E7%9A%84%E5%9B%BA%E5%AE%9A%E6%97%B6%E5%BA%8F-AutoMKA-12001-12002"><span class="toc-number">2.9.3.</span> <span class="toc-text">15.3 MACsec 禁用时的固定时序(AutoMKA-12001, 12002)</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8D%81%E5%85%AD%E3%80%81Automotive-MKA-%E4%B8%8E-Automotive-MACsec-%E7%9A%84%E5%8D%8F%E5%90%8C"><span class="toc-number">2.10.</span> <span class="toc-text">十六、Automotive MKA 与 Automotive MACsec 的协同</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%80%BB%E7%BB%93"><span class="toc-number">3.</span> <span class="toc-text">总结</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%A0%87%E5%87%86%E9%83%A8%E5%88%86-%E2%98%85-%E4%B8%89%E5%8F%A5%E8%AF%9D%E5%9B%9E%E9%A1%BE-%E2%98%85"><span class="toc-number">3.1.</span> <span class="toc-text">标准部分(★ 三句话回顾 ★)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%BD%A6%E8%BD%BD%E9%83%A8%E5%88%86-%E2%98%85-Automotive-MKA-%E8%A6%81%E7%82%B9-%E2%98%85"><span class="toc-number">3.2.</span> <span class="toc-text">车载部分(★ Automotive MKA 要点 ★)</span></a></li></ol></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        IEEE 802.1X-2020 端口访问控制与MKA核心架构详解
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">cursorhu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2026-09-16T05:00:00.000Z" class="dt-published" itemprop="datePublished">2026-09-16</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fa-solid fa-archive"></i>
+        <a class="category-link" href="/categories/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/">以太网IEEE标准系列</a> › <a class="category-link" href="/categories/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/%E7%BD%91%E7%BB%9C%E5%AE%89%E5%85%A8/">网络安全</a> › <a class="category-link" href="/categories/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/%E7%BD%91%E7%BB%9C%E5%AE%89%E5%85%A8/%E6%95%B0%E6%8D%AE%E9%93%BE%E8%B7%AF%E5%B1%82/">数据链路层</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/EAP/" rel="tag">EAP</a>, <a class="p-category" href="/tags/EAPOL/" rel="tag">EAPOL</a>, <a class="p-category" href="/tags/IEEE-802-1X/" rel="tag">IEEE 802.1X</a>, <a class="p-category" href="/tags/MACsec/" rel="tag">MACsec</a>, <a class="p-category" href="/tags/MKA/" rel="tag">MKA</a>, <a class="p-category" href="/tags/PAE/" rel="tag">PAE</a>, <a class="p-category" href="/tags/%E7%AB%AF%E5%8F%A3%E8%AE%BF%E9%97%AE%E6%8E%A7%E5%88%B6/" rel="tag">端口访问控制</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <blockquote>
+<p>本文是「以太网IEEE标准系列」第三篇,聚焦 <strong>IEEE Std 802.1X™-2020</strong>(Port-Based Network Access Control)。本文分两部分:第一部分解析通用标准(认证架构、MKA密钥层次、EAPOL协议),第二部分对照 <strong>OPEN Alliance TC17 Automotive MKA Specification v1.0</strong>(2025-02)的车载精简要求。</p>
+</blockquote>
+<span id="more"></span>
+
+<h2 id="第一部分-标准篇"><a href="#第一部分-标准篇" class="headerlink" title="第一部分:标准篇"></a>第一部分:标准篇</h2><h3 id="一、三个核心问题"><a href="#一、三个核心问题" class="headerlink" title="一、三个核心问题"></a>一、三个核心问题</h3><h4 id="❓-Q1-这个标准是什么"><a href="#❓-Q1-这个标准是什么" class="headerlink" title="❓ Q1:这个标准是什么?"></a>❓ Q1:这个标准是什么?</h4><blockquote>
+<p><strong>IEEE 802.1X</strong> 全称 <em>Port-Based Network Access Control</em>(基于端口的网络访问控制),是 IEEE 802.1 工作组的标准之一,2020 版本号是 802.1X-2020。</p>
+</blockquote>
+<p>它定义了一种<strong>通用架构</strong>,通过在每个 LAN 端口上划分 <em>受控端口(Controlled Port)</em> 与 <em>非受控端口(Uncontrolled Port)</em>:</p>
+<ul>
+<li><strong>非受控端口</strong> —— 不管主机有没有通过认证,只允许认证相关的协议帧通行(如 EAPOL)。</li>
+<li><strong>受控端口</strong> —— 通过认证才”打开”,正常业务数据只能从这扇门进出。</li>
+</ul>
+<h4 id="❓-Q2-解决什么问题"><a href="#❓-Q2-解决什么问题" class="headerlink" title="❓ Q2:解决什么问题?"></a>❓ Q2:解决什么问题?</h4><table>
+<thead>
+<tr>
+<th>安全威胁</th>
+<th>802.1X 的应对</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>未经授权设备私自接入 LAN,获取 IP 后渗透内网</td>
+<td>端口默认关闭 → 必须通过 EAP 认证才能打开受控端口</td>
+</tr>
+<tr>
+<td>链路窃听(Wi-Fi&#x2F;可接入的铜缆&#x2F;光模块)</td>
+<td>协商出 CAK → 派生 KEK → Key Server 分发 SAK → MACsec 帧级加密</td>
+</tr>
+<tr>
+<td>多设备&#x2F;跨域&#x2F;跨厂商互通</td>
+<td>标准化协议:EAP over LAN (EAPOL)、MACsec Key Agreement (MKA)</td>
+</tr>
+<tr>
+<td>CA 内群组成员变动(新增&#x2F;离开&#x2F;失效)</td>
+<td>MKA Live Peer List + 选举 Key Server + 周期性重协商</td>
+</tr>
+</tbody></table>
+<h4 id="❓-Q3-如何应用"><a href="#❓-Q3-如何应用" class="headerlink" title="❓ Q3:如何应用?"></a>❓ Q3:如何应用?</h4><p>标准第 7 章列出 <strong>7 类典型应用场景</strong>,工业落地通常从中选择:</p>
+<table>
+<thead>
+<tr>
+<th>场景编号</th>
+<th>名称</th>
+<th>关键组件</th>
+<th>典型设备</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>7.1</td>
+<td>物理安全 LAN 的主机接入</td>
+<td>PAC &#x2F; PAE</td>
+<td>企业办公有线端口</td>
+</tr>
+<tr>
+<td>7.2</td>
+<td>物理安全 LAN 的基础设施互联</td>
+<td>PAC &#x2F; PAE</td>
+<td>机房内交换机-交换机互联</td>
+</tr>
+<tr>
+<td>7.3</td>
+<td>点对点 MACsec 主机接入</td>
+<td>SecY + PAE</td>
+<td>数据中心 ToR-Leaf</td>
+</tr>
+<tr>
+<td>7.4</td>
+<td>MACsec 基础设施 LAN</td>
+<td>SecY + PAE</td>
+<td>跨机柜&#x2F;跨机房骨干</td>
+</tr>
+<tr>
+<td>7.5</td>
+<td>多接入 LAN 的 MACsec 主机接入</td>
+<td>SecY + 虚拟端口</td>
+<td>工业以太网 &#x2F; daisy-chain</td>
+</tr>
+<tr>
+<td>7.6</td>
+<td>MACsec 组播</td>
+<td>组 CA(group CAK)</td>
+<td>视频分发 &#x2F; 软件定义车 CAN 替代</td>
+</tr>
+<tr>
+<td>7.7</td>
+<td>Provider Bridged Network 中的 MACsec</td>
+<td>SecY + 桥接</td>
+<td>运营商接入网</td>
+</tr>
+</tbody></table>
+<hr>
+<h3 id="二、核心架构-三角色与双端口"><a href="#二、核心架构-三角色与双端口" class="headerlink" title="二、核心架构:三角色与双端口"></a>二、核心架构:三角色与双端口</h3><h4 id="2-1-系统角色三件套"><a href="#2-1-系统角色三件套" class="headerlink" title="2.1 系统角色三件套"></a>2.1 系统角色三件套</h4><p>802.1X 引入了 EAP 协议里规定的三个角色:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">      ┌──────────────────┐</span><br><span class="line">      │  Authentication  │  ← AAA Server(集中存储用户/设备证书)</span><br><span class="line">      │     Server       │     通常与 Authenticator 通过 RADIUS 通信</span><br><span class="line">      └────────▲─────────┘</span><br><span class="line">               │ (RADIUS / Diameter, 标准外)</span><br><span class="line">┌──────────────┴──────────────┐</span><br><span class="line">│      Authenticator         │  ← &quot;门卫&quot;:等待 Supplicant 自证</span><br><span class="line">│   (交换机端口 / 无线 AP)    │</span><br><span class="line">└──────────────┬──────────────┘</span><br><span class="line">               │ EAPOL over LAN</span><br><span class="line">┌──────────────▼──────────────┐</span><br><span class="line">│       Supplicant           │  ← &quot;访客&quot;:用户提供凭证、自证身份</span><br><span class="line">│   (笔记本/手机/IoT 终端)    │</span><br><span class="line">└────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>⚠️ <strong>Authenticator 与 Authentication Server 不必同机</strong>。大多数企业会把服务器独立部署,通过 RADIUS 把 Authenticator 转发过来的 EAP 包再处理一次。</p>
+</blockquote>
+<h4 id="2-2-端口的”两扇门”"><a href="#2-2-端口的”两扇门”" class="headerlink" title="2.2 端口的”两扇门”"></a>2.2 端口的”两扇门”</h4><p>这是整个标准最核心的比喻 — 每个端口都存在两扇门:</p>
+<table>
+<thead>
+<tr>
+<th>端口类型</th>
+<th>状态</th>
+<th>允许流通的帧</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Uncontrolled Port</strong></td>
+<td>始终打开</td>
+<td>仅 EAPOL、Announcement 等”用来开门”的协议帧</td>
+</tr>
+<tr>
+<td><strong>Controlled Port</strong></td>
+<td>默认关闭,通过认证后才”受控”打开</td>
+<td>用户业务数据(被 MACsec 加密或被 PAC 转发)</td>
+</tr>
+</tbody></table>
+<p>标准里用两个组件去”开门”:</p>
+<ul>
+<li><strong>PAE(Port Access Entity)</strong>:负责执行 EAP 认证 + 派生密钥 + 跑 MKA。详细行为见第 12 章。</li>
+<li><strong>PAC(Port Access Controller)</strong>:轻量级”协议垫片”,在没有 MACsec、只靠物理隔离保证安全的点对点链路上简单放行&#x2F;隔离流量。详细行为见第 6.4 节。</li>
+</ul>
+<blockquote>
+<p>二者关系: <strong>PAE 兼容 PAC</strong>。一款实现可以只做 PAC(物理安全 LAN)或 PAE(完整加密链路),也可以同时启用。</p>
+</blockquote>
+<hr>
+<h3 id="三、密钥层次-Key-Hierarchy"><a href="#三、密钥层次-Key-Hierarchy" class="headerlink" title="三、密钥层次(Key Hierarchy)"></a>三、密钥层次(Key Hierarchy)</h3><p>802.1X 的密钥体系是整个 MACsec 链路安全的核心,它将「身份证明」和「数据加密」两个职责解耦:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────┐</span><br><span class="line">│                    MKA 密钥层次                            │</span><br><span class="line">│         (Source: IEEE 802.1X-2020, Figure 6-3)           │</span><br><span class="line">│                                                             │</span><br><span class="line">│              CAK(Connectivity Association Key)              │</span><br><span class="line">│              ─ 信任根,证明你是 CA 的成员                    │</span><br><span class="line">│              ─ 来源①:EAP 协商(msk[0..15])                 │</span><br><span class="line">│              ─ 来源②:预共享 PSK(管理员配置)               │</span><br><span class="line">│              ─ 来源③:Group CAK(组播分发)                  │</span><br><span class="line">│                    │                                        │</span><br><span class="line">│              KDF(CAK, &quot;IEEE8021 EAP CAK&quot;)                  │</span><br><span class="line">│                    │                                        │</span><br><span class="line">│         ┌──────────┼──────────┐                           │</span><br><span class="line">│         ▼          ▼          ▼                            │</span><br><span class="line">│      KEK         ICK        SAK                            │</span><br><span class="line">│  (Key Encrypting (ICV Key)  (Secure Assn Key)             │</span><br><span class="line">│   Key,分发SAK)   校验MKPDU)   ─ 实际加密帧的密钥           │</span><br><span class="line">│                            (周期性轮换)                      │</span><br><span class="line">└─────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>🔑 一句话:<strong>CAK 是”信任根”,由 EAP 协商;SAK 是”加密钥匙”,由 MKA 在 CA 内分发。</strong></p>
+</blockquote>
+<h4 id="3-1-三种-CAK-来源对比"><a href="#3-1-三种-CAK-来源对比" class="headerlink" title="3.1 三种 CAK 来源对比"></a>3.1 三种 CAK 来源对比</h4><table>
+<thead>
+<tr>
+<th>类型</th>
+<th>产生方式</th>
+<th>适用场景</th>
+<th>Automotive MKA 态度</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>EAP 派生(pairwise)</strong></td>
+<td>EAP 完成后 KDF(MSK, “IEEE8021 EAP CAK”)</td>
+<td>默认推荐,适合已知用户的接入网</td>
+<td>⚠️ 可用,但非首选</td>
+</tr>
+<tr>
+<td><strong>预共享密钥(PSK)</strong></td>
+<td>管理员手工配置 pairwise&#x2F;group CAK + CKN</td>
+<td>无 AAA 环境、点对点专线、车载网络</td>
+<td>✅ <strong>推荐首选</strong></td>
+</tr>
+<tr>
+<td><strong>组 GAK(group CAK)</strong></td>
+<td>多个 pairwise CAK 一起”再分发”出一个被组内成员共同持有的 CAK</td>
+<td>7.6 节 MACsec 组播</td>
+<td>❌ 不支持(AutoMKA-03008)</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>标准在 6.2.2 节明确禁止”用 EAP 派生出来的 pairwise CAK 再当 group CAK 用”——这是为了防止中间人拦截后扩展权限面。</p>
+</blockquote>
+<h4 id="3-2-关键派生参数"><a href="#3-2-关键派生参数" class="headerlink" title="3.2 关键派生参数"></a>3.2 关键派生参数</h4><ul>
+<li><strong>KDF</strong>:与 NIST SP 800-108 计数器模式兼容,PRF 用 AES-CMAC-128 &#x2F; AES-CMAC-256。</li>
+<li><strong>CAK Label</strong>:<code>&quot;IEEE8021 EAP CAK&quot;</code>(UTF-8, 16 字节,带特定空格布局,见 6.2.2)。</li>
+<li><strong>CKN Label</strong>:<code>&quot;IEEE8021 EAP CKN&quot;</code>,来源:EAP Session-ID(16 字节)。</li>
+<li><strong>ICK&#x2F;KEK 长度</strong>:与 CAK 长度相同。</li>
+</ul>
+<hr>
+<h3 id="四、协议机制详解"><a href="#四、协议机制详解" class="headerlink" title="四、协议机制详解"></a>四、协议机制详解</h3><h4 id="4-1-EAP-认证-——-PACP-状态机"><a href="#4-1-EAP-认证-——-PACP-状态机" class="headerlink" title="4.1 EAP 认证 —— PACP 状态机"></a>4.1 EAP 认证 —— PACP 状态机</h4><p>PACP(Port Access Control Protocol)是 802.1X 在链路层”装 EAP”的载体。它定义了两个对称的状态机:</p>
+<ul>
+<li><strong>Supplicant PACP</strong>(8.7):7 个状态,典型为 <code>Initialize → Disconnected → Connecting → Authenticating → Authenticated → Aborting → Held → Restart</code>。</li>
+<li><strong>Authenticator PACP</strong>(8.9):典型为 <code>Initialize → Disconnected → Connecting → Authenticating → Authenticated → Aborting → Held → Restart</code>。</li>
+</ul>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">Authenticator (交换机)                  Supplicant (终端)</span><br><span class="line">    │                                       │</span><br><span class="line">    │  ─── EAPOL-Start / EAP-Request/Identity ───► │   ① 触发 / 请求身份</span><br><span class="line">    │                                       │</span><br><span class="line">    │         EAP-Response/Identity         │</span><br><span class="line">    │  ◄──────────────────────────────────── │   ② 上报身份</span><br><span class="line">    │                                       │</span><br><span class="line">    │  (中间可能反复 EAP-Request / Response  │   ③ EAP 方法协商</span><br><span class="line">    │   协商各种 Method 内部消息)            │   (EAP-TLS / PEAP / GTC)</span><br><span class="line">    │                                       │</span><br><span class="line">    │            EAP-Success                │</span><br><span class="line">    │  ◄──────────────────────────────────── │   ④ PAE 派生 MSK→CAK</span><br><span class="line">    │  PAE 把 MSK[0..15]   ──► CAK          │</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>在 Automotive MKA 场景下,这个握手会被 PSK 模式替代:EAP-TLS 等方法<strong>不需要</strong>,CAK 由预共享密钥直接提供。</p>
+</blockquote>
+<h4 id="4-2-MKA-MACsec-Key-Agreement-——最核心的章节"><a href="#4-2-MKA-MACsec-Key-Agreement-——最核心的章节" class="headerlink" title="4.2 MKA(MACsec Key Agreement)——最核心的章节"></a>4.2 MKA(MACsec Key Agreement)——最核心的章节</h4><p>MKA 是 802.1X-2020 第 9 章的精华,本质是 <strong>“在一个 CA 内,选出一个 Key Server,周期性广播 SAK 给其他成员”</strong>。</p>
+<h5 id="4-2-1-核心概念"><a href="#4-2-1-核心概念" class="headerlink" title="4.2.1 核心概念"></a>4.2.1 核心概念</h5><table>
+<thead>
+<tr>
+<th>概念</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>MKA Participant</strong></td>
+<td>每个端口上”跑 MKA 的实例”,持有 CAK,生成 Member Identifier(MI)&#x3D; 1-byte MI 编号 + 6-byte 端口 MAC</td>
+</tr>
+<tr>
+<td><strong>Key Server</strong></td>
+<td>由最低 Key Server Priority 选举产生(可平局后看 MI 大小),负责生成 + 分发 SAK</td>
+</tr>
+<tr>
+<td><strong>MKPDU</strong></td>
+<td>EAPOL Packet Type&#x3D;5,广播组地址 <code>01-80-C2-00-00-03</code></td>
+</tr>
+<tr>
+<td><strong>ICV</strong></td>
+<td>用 ICK 对 MKPDU 计算的 MAC,等于”我拥有此 CAK”的实时证明</td>
+</tr>
+<tr>
+<td><strong>Live Peer List &#x2F; Potential Peer List</strong></td>
+<td>在 MKPDU 中广播对组成员的心跳</td>
+</tr>
+<tr>
+<td><strong>SAK 轮换</strong></td>
+<td>默认每 SAK Retire Time 轮换一次</td>
+</tr>
+</tbody></table>
+<h5 id="4-2-2-MKA-在点对点链路上的典型流程-9-17"><a href="#4-2-2-MKA-在点对点链路上的典型流程-9-17" class="headerlink" title="4.2.2 MKA 在点对点链路上的典型流程(9.17)"></a>4.2.2 MKA 在点对点链路上的典型流程(9.17)</h5><ol>
+<li>A、B 上线 → 各自广播 MKPDU(Basic Param + Live Peer List 自报)。</li>
+<li>双方通过 ICV 互相认证 → 任一方发现自己有权 Key Server 时开始产 SAK。</li>
+<li>Key Server 把 SAK 用 KEK 加密后放在 <em>Distributed SAK</em> 集里广播。</li>
+<li>双方都安装 SAK 到 SecY → 业务数据开始走 MACsec。</li>
+<li>SAK 即将到寿命 → 提前一个新 SAK 安到 <em>MACsec SAK Use</em> 集中告知 → 到时无缝轮换。</li>
+</ol>
+<h5 id="4-2-3-9-8-SAK-生成规则"><a href="#4-2-3-9-8-SAK-生成规则" class="headerlink" title="4.2.3 9.8 SAK 生成规则"></a>4.2.3 9.8 SAK 生成规则</h5><ul>
+<li><strong>Key Server 强 RNG + 各成员贡献</strong>:SAK 由 Key Server 的强 RNG <strong>加上 Live Peer List 成员的 MI 拼接</strong>后 KDF 得到(9.8.1 节)。</li>
+<li><strong>分布式 SAK 派发</strong>:Key Server 用 KEK 对 SAK 做 AES Key Wrap(RFC 3394)后放入 MKPDU 的 <em>Distributed SAK</em> 集广播。</li>
+<li><strong>SAK 缓存</strong>:旧 SAK 在 SAK Retire Time 内保留,供抗重放使用。</li>
+</ul>
+<h5 id="4-2-4-9-12-CA-Formation"><a href="#4-2-4-9-12-CA-Formation" class="headerlink" title="4.2.4 9.12 CA Formation"></a>4.2.4 9.12 CA Formation</h5><ul>
+<li>CA(Connectivity Association)是两个或多个端口之间的<strong>安全关联域</strong>,共享同一 CAK。</li>
+<li>CA 可包含最多 <strong>30 个 MKA Participant</strong>(9.1d 节)。</li>
+<li>组 CAK 分发:Key Server 在 pairwise CA 上<strong>再发</strong>一个 <em>Distributed CAK Set</em>,把 group CAK 加密派发给大家。</li>
+</ul>
+<blockquote>
+<p>Automotive MKA 将这一数字缩减为<strong>最多 2 人&#x2F;CA</strong>(AutoMKA-03001)。</p>
+</blockquote>
+<h5 id="4-2-5-MKA-定时器参数"><a href="#4-2-5-MKA-定时器参数" class="headerlink" title="4.2.5 MKA 定时器参数"></a>4.2.5 MKA 定时器参数</h5><table>
+<thead>
+<tr>
+<th>参数</th>
+<th>默认值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>MKA Hello Time</strong></td>
+<td>2 s</td>
+<td>MKPDU 广播间隔</td>
+</tr>
+<tr>
+<td><strong>MKA Life Time</strong></td>
+<td>6 s</td>
+<td>成员被认为掉线的超时</td>
+</tr>
+<tr>
+<td><strong>SAK Retire Time</strong></td>
+<td>3 s</td>
+<td>旧 SAK 保留时间</td>
+</tr>
+<tr>
+<td><strong>Bounded Hello Time</strong></td>
+<td>0.5 s</td>
+<td>delay protection 开启时</td>
+</tr>
+</tbody></table>
+<h5 id="4-2-6-9-4-3-Liveness-判断"><a href="#4-2-6-9-4-3-Liveness-判断" class="headerlink" title="4.2.6 9.4.3 Liveness 判断"></a>4.2.6 9.4.3 Liveness 判断</h5><ul>
+<li><strong>可接受的最新 MN</strong>:对应最近 3 个发出的 MKPDU 的 Message Number。</li>
+<li>收到更高 MN 的 MKPDU → 对方存活,刷新 Life Timer。</li>
+<li>超过 Life Time 没收到 → 对方掉线,从 Live Peer List 移除。</li>
+</ul>
+<hr>
+<h3 id="五、EAPOL-帧格式"><a href="#五、EAPOL-帧格式" class="headerlink" title="五、EAPOL 帧格式"></a>五、EAPOL 帧格式</h3><p>EAPOL(第 11 章)是 EAP 在 LAN 上的封装,以太网类型 <code>0x888E</code>,分为:</p>
+<table>
+<thead>
+<tr>
+<th>Packet Type</th>
+<th>值</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>EAPOL-Start</strong></td>
+<td>0x00</td>
+<td>Supplicant 触发认证(可省)</td>
+</tr>
+<tr>
+<td><strong>EAPOL-EAP</strong></td>
+<td>0x04</td>
+<td><strong>核心</strong>:承载 EAP 包</td>
+</tr>
+<tr>
+<td><strong>EAPOL-MKA</strong></td>
+<td>0x05</td>
+<td><strong>核心</strong>:承载 MKPDU,广播 CA 内心跳&#x2F;SAK</td>
+</tr>
+<tr>
+<td><strong>EAPOL-Announcement</strong></td>
+<td>0x06</td>
+<td>网络身份&#x2F;能力广播</td>
+</tr>
+<tr>
+<td><strong>EAPOL-Announcement-Req</strong></td>
+<td>0x07</td>
+<td>请求对方发 Announcement</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>多播&#x2F;单播:大多数 EAPOL&#x2F;EAPOL-MKA 用组地址 <code>01-80-C2-00-00-03</code>(便于发现),EAP-Success&#x2F;EAP-Failure 用对端单播。</p>
+</blockquote>
+<hr>
+<h3 id="六、802-1AE-MACsec-的协作关系"><a href="#六、802-1AE-MACsec-的协作关系" class="headerlink" title="六、802.1AE MACsec 的协作关系"></a>六、802.1AE MACsec 的协作关系</h3><p>802.1X 真正强大的地方,在于它<strong>为 MACsec 提供”密钥分发通道”</strong>:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">IEEE 802.1X MKA                          IEEE 802.1AE MACsec</span><br><span class="line">     │                                          │</span><br><span class="line">     │ CAK ──KDF──► KEK + ICK                  │</span><br><span class="line">     │                                          │</span><br><span class="line">     │ Key Server 选举                          │</span><br><span class="line">     │        │                                │</span><br><span class="line">     │        ▼                                │</span><br><span class="line">     │   SAK 生成 + Key Wrap(KEK)              │</span><br><span class="line">     │        │                                │</span><br><span class="line">     │        ▼                                │</span><br><span class="line">     │  MKPDU 广播 SAK                          │</span><br><span class="line">     │        │                                │</span><br><span class="line">     └────────┼────────────────────────────────┘</span><br><span class="line">              │ SAK 安装到 SecY</span><br><span class="line">              ▼</span><br><span class="line">     SecY Engine: MAC 帧加解密</span><br><span class="line">     • 加密:明文 MAC Payload ──AES-GCM──► 密文 + SecTAG + ICV</span><br><span class="line">     • 解密:接收方 SecY 用同一 SAK 解密 + ICV 校验</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>🔑 一句话:<strong>CAK 是”信任根”,由 EAP 协商;SAK 是”加密钥匙”,由 MKA 在 CA 内分发。二者解耦带来极大灵活性——一份 CAK 可以轮换出多把 SAK。</strong></p>
+</blockquote>
+<hr>
+<h2 id="第二部分-车载篇——OPEN-Alliance-Automotive-MKA"><a href="#第二部分-车载篇——OPEN-Alliance-Automotive-MKA" class="headerlink" title="第二部分:车载篇——OPEN Alliance Automotive MKA"></a>第二部分:车载篇——OPEN Alliance Automotive MKA</h2><blockquote>
+<p>本部分对照 <strong>OPEN Alliance TC17 Automotive MKA Specification v1.0</strong>(2025-02, Final, Public),提取所有规范级需求(AutoMKA-xxxxx),说明车载实现与通用 IEEE 802.1X-2020 的差异。</p>
+</blockquote>
+<h3 id="七、车载-MKA-的设计目标"><a href="#七、车载-MKA-的设计目标" class="headerlink" title="七、车载 MKA 的设计目标"></a>七、车载 MKA 的设计目标</h3><p>OPEN Alliance TC17 制定 Automotive MKA 的三个核心目标:</p>
+<ol>
+<li><strong>缩短最坏启动时间</strong> — 从 IEEE 标准的 8 秒压缩到 <strong>≤ 30 ms</strong> (AutoMKA-01014)</li>
+<li><strong>移除不需要的功能</strong> — 精简掉 in-service upgrade、MKA suspension、distributed CAK、KMD、NID 等车载用不到的特性</li>
+<li><strong>添加车载特有功能</strong> — 多 CKN 并行支持(适配不同车型项目)、快速 Link Down 恢复、API 管理接口</li>
+</ol>
+<blockquote>
+<p><strong>与通用 MKA 的兼容性</strong>:Automotive MKA 与标准 IEEE 802.1X MKA <strong>可互操作</strong>,前提是两端配置为仅使用共同特性。但性能会下降到不符合 AutoMKA-01014 的 30 ms 要求。</p>
+</blockquote>
+<hr>
+<h3 id="八、Automotive-MKA-必选能力集"><a href="#八、Automotive-MKA-必选能力集" class="headerlink" title="八、Automotive MKA 必选能力集"></a>八、Automotive MKA 必选能力集</h3><p>以下能力在 Automotive MKA 实现中是<strong>必须支持</strong>的:</p>
+<h4 id="8-1-MACsec-能力协商-AutoMKA-01001-01004-01005"><a href="#8-1-MACsec-能力协商-AutoMKA-01001-01004-01005" class="headerlink" title="8.1 MACsec 能力协商(AutoMKA-01001, 01004, 01005)"></a>8.1 MACsec 能力协商(AutoMKA-01001, 01004, 01005)</h4><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">Automotive MKA 必须支持以下 MACsec 能力:</span><br><span class="line"></span><br><span class="line">✅ Integrity without Confidentiality(仅完整性校验)</span><br><span class="line">✅ Integrity and Confidentiality with Offset 0(带加密,偏移0)</span><br><span class="line">✅ MACsec SecTAG 有 SCI / 无 SCI 两种模式</span><br><span class="line">   └── 无 SCI 模式:点对点 CA 可省略 SCI,节省 8 字节/帧</span><br><span class="line">✅ XPN(Extended Packet Number)cipher suite</span><br><span class="line">✅ Non-XPN cipher suite</span><br><span class="line">✅ 256-bit CAKs 和 128-bit CAKs</span><br></pre></td></tr></table></figure>
+
+<p><strong>Confidentiality Offset 30 和 50 是可选的</strong>(AutoMKA-01002),目前没有已知的车载用例需要它们。</p>
+<h4 id="8-2-启动时间-≤-30-ms-AutoMKA-01014"><a href="#8-2-启动时间-≤-30-ms-AutoMKA-01014" class="headerlink" title="8.2 启动时间:≤ 30 ms(AutoMKA-01014)"></a>8.2 启动时间:≤ 30 ms(AutoMKA-01014)</h4><p>这是 Automotive MKA 与通用标准<strong>最大的工程差异</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>IEEE 802.1X MKA</th>
+<th>Automotive MKA</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>最坏启动时间</strong></td>
+<td>8 秒(默认)</td>
+<td><strong>≤ 30 ms</strong></td>
+</tr>
+<tr>
+<td><strong>测量起点</strong></td>
+<td>Link Up</td>
+<td>Link Up</td>
+</tr>
+<tr>
+<td><strong>测量终点</strong></td>
+<td>SAK_USE RX&#x2F;TX 建立(两端)</td>
+<td>相同</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>⚠️ <strong>注意</strong>:该要求适用于单个 switched Ethernet 链路。ECU 级的性能目标受 SoC 型号、端口数量、HSM 延迟、MDIO 性能等因素影响,可能无法在所有 ECU 上实现(AutoMKA §1 注)。</p>
+</blockquote>
+<h4 id="8-3-Peer-List-上限-2-AutoMKA-03016"><a href="#8-3-Peer-List-上限-2-AutoMKA-03016" class="headerlink" title="8.3 Peer List 上限:2(AutoMKA-03016)"></a>8.3 Peer List 上限:2(AutoMKA-03016)</h4><p>通用标准支持最多 30 个 MKA Participant,但 switched Automotive Ethernet 链路只有<strong>两个对等节点</strong>,因此 Automotive MKA 将 Peer List 大小限制为 <strong>2</strong>:</p>
+<ul>
+<li>最小内存分配:1(正常 Peer) + 1(Reset 场景备用)</li>
+</ul>
+<hr>
+<h3 id="九、Automotive-MKA-删除的功能"><a href="#九、Automotive-MKA-删除的功能" class="headerlink" title="九、Automotive MKA 删除的功能"></a>九、Automotive MKA 删除的功能</h3><p>以下通用 MKA 特性在 Automotive MKA 中<strong>不支持</strong>(可在实现中省略):</p>
+<table>
+<thead>
+<tr>
+<th>特性</th>
+<th>IEEE 802.1X 章节</th>
+<th>Automotive MKA 要求</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>In-service upgrades</strong></td>
+<td>9.18 节</td>
+<td>❌ 不支持(AutoMKA-03006)</td>
+</tr>
+<tr>
+<td><strong>MKA Suspension</strong></td>
+<td>9.19 节</td>
+<td>❌ 不支持(AutoMKA-03007)</td>
+</tr>
+<tr>
+<td><strong>Distributed CAKs</strong></td>
+<td>9.12 节</td>
+<td>❌ 不支持(AutoMKA-03008)</td>
+</tr>
+<tr>
+<td><strong>Key Management Domains(KMD)</strong></td>
+<td>6.3.5 节</td>
+<td>❌ 不支持(AutoMKA-02009)</td>
+</tr>
+<tr>
+<td><strong>Network Identifiers(NIDs)</strong></td>
+<td>6.3.5 节</td>
+<td>❌ 不支持(AutoMKA-02010)</td>
+</tr>
+<tr>
+<td><strong>Cipher Suite 协商</strong></td>
+<td>9.13 节</td>
+<td>❌ 不支持(AutoMKA-11001)</td>
+</tr>
+<tr>
+<td><strong>Secure Announcements</strong></td>
+<td>9.13 节</td>
+<td>❌ 不支持(AutoMKA-02001)</td>
+</tr>
+<tr>
+<td><strong>动态降级 MACsec</strong></td>
+<td>9.13 节</td>
+<td>❌ 不支持(AutoMKA-02011)</td>
+</tr>
+<tr>
+<td><strong>Replay Protection 关闭</strong></td>
+<td>可配置</td>
+<td>❌ 不支持,Replay Window 固定&#x3D;0(AutoMKA-01012&#x2F;01013)</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p><strong>为什么删除这些?</strong> 车载网络是静态设计的,两点之间只有一个网络(AutoMKA-02001 注);车内不需要组播(group CAK);KMD&#x2F;NID 等多域特性在单一车型内无意义;Cipher Suite 协商增加不必要的复杂度和攻击面。</p>
+</blockquote>
+<h4 id="9-1-Replay-Protection-固定为窗口-0-AutoMKA-01012-01013"><a href="#9-1-Replay-Protection-固定为窗口-0-AutoMKA-01012-01013" class="headerlink" title="9.1 Replay Protection 固定为窗口&#x3D;0(AutoMKA-01012, 01013)"></a>9.1 Replay Protection 固定为窗口&#x3D;0(AutoMKA-01012, 01013)</h4><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">Replay Protection Window = 0:</span><br><span class="line">  ─ 任何收到的 PN 小于最近收到的 PN 的帧,一律丢弃</span><br><span class="line">  ─ 这是最强 replay 保护,也是唯一的 Automotive MKA 配置</span><br><span class="line">  ─ 关闭 Replay Protection 不在互操作范围内(AutoMKA-01012 注)</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h3 id="十、MKA-传输优化-10ms-起步的-doubling-ramp-up-AutoMKA-03003-03004"><a href="#十、MKA-传输优化-10ms-起步的-doubling-ramp-up-AutoMKA-03003-03004" class="headerlink" title="十、MKA 传输优化:10ms 起步的 doubling ramp-up(AutoMKA-03003, 03004)"></a>十、MKA 传输优化:10ms 起步的 doubling ramp-up(AutoMKA-03003, 03004)</h3><p>通用标准使用固定的 2 秒 Hello Time,Automotive MKA 使用<strong>加速 ramp-up 序列</strong>:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">Automotive MKA 启动时序(Link Up 后):</span><br><span class="line"></span><br><span class="line">  10ms ──► 20ms ──► 40ms ──► ... ──► 2s</span><br><span class="line">  ↑</span><br><span class="line">  所有事件立即响应:</span><br><span class="line">  · 收到未知 Peer 的 MKPDU → 立即回复 Potential Peer List</span><br><span class="line">  · Peer 变为 Live → 立即回复 Distributed SAK(Key Server)</span><br><span class="line">  · Peer List 变化 → 立即发送 MKPDU(不等 Hello Time)</span><br><span class="line"></span><br><span class="line">  ─── 达到 2s 后切换为标准 MKA Hello Time ───</span><br></pre></td></tr></table></figure>
+
+<p><strong>与通用 MKA 的区别</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>事件</th>
+<th>通用 MKA</th>
+<th>Automotive MKA</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>链路 Up 后首次发送</td>
+<td>等 2s Hello Time</td>
+<td><strong>立即发送,10ms 后重试</strong>(AutoMKA-03004)</td>
+</tr>
+<tr>
+<td>收到未知 Peer</td>
+<td>等 Hello Time 到期</td>
+<td><strong>立即响应</strong>(AutoMKA-03003)</td>
+</tr>
+<tr>
+<td>Peer 变 Live</td>
+<td>等 Hello Time 到期</td>
+<td><strong>立即发送 SAK</strong>(AutoMKA-03003)</td>
+</tr>
+<tr>
+<td>MN Liveness 判断</td>
+<td>最近 3 个 MKPDU</td>
+<td><strong>最近 3 个 MKPDU</strong>(与通用一致)(AutoMKA-03005)</td>
+</tr>
+</tbody></table>
+<hr>
+<h3 id="十一、Key-Server-优化-AutoMKA-03007-03008"><a href="#十一、Key-Server-优化-AutoMKA-03007-03008" class="headerlink" title="十一、Key Server 优化(AutoMKA-03007, 03008)"></a>十一、Key Server 优化(AutoMKA-03007, 03008)</h3><h4 id="11-1-Key-Server-Priority-固定-AutoMKA-03007"><a href="#11-1-Key-Server-Priority-固定-AutoMKA-03007" class="headerlink" title="11.1 Key Server Priority 固定(AutoMKA-03007)"></a>11.1 Key Server Priority 固定(AutoMKA-03007)</h4><p>通用标准 Key Server Priority 是可配置参数,Automotive MKA 简化为<strong>只有两个有效值</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Priority 值</th>
+<th>含义</th>
+<th>典型用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>0</strong></td>
+<td>始终是 Key Server</td>
+<td>交换机侧(网关&#x2F;域控制器)</td>
+</tr>
+<tr>
+<td><strong>255</strong></td>
+<td>永不主动成为 Key Server</td>
+<td>终端侧(sensor ECU)</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>这样设计确保 link up 后<strong>没有选举争议</strong>,Key Server 直接开始生成和分发 SAK,零协商延迟。</p>
+</blockquote>
+<h4 id="11-2-SAK-提前分发优化-AutoMKA-03010"><a href="#11-2-SAK-提前分发优化-AutoMKA-03010" class="headerlink" title="11.2 SAK 提前分发优化(AutoMKA-03010)"></a>11.2 SAK 提前分发优化(AutoMKA-03010)</h4><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">通用流程:</span><br><span class="line">  Key Server 生成 SAK → 安装到本地 SecY → 发送 Distributed SAK → Peer 安装 SAK</span><br><span class="line">  时间线: [生成][安装][发送]────────────────► [Peer安装]</span><br><span class="line">          └──────── 两者间隔时间,这段时间链路有安全空窗 ──┘</span><br><span class="line"></span><br><span class="line">Automotive MKA 优化:</span><br><span class="line">  Key Server 生成 SAK → 发送 Distributed SAK → 安装到本地 SecY</span><br><span class="line">  时间线: [生成][发送]─────────────► [本地安装]</span><br><span class="line">                              ↑</span><br><span class="line">                          Peer 收到后立即安装</span><br><span class="line">          └── 显著减少两端建立 SAK 的时间差 ──┘</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>此优化在 Key Server 安装 SAK 时间较长时(例如 MACsec 在外置 PHY,通过 MDIO 配置)尤其有效。</p>
+</blockquote>
+<h4 id="11-3-强制立即-rekey-AutoMKA-03011"><a href="#11-3-强制立即-rekey-AutoMKA-03011" class="headerlink" title="11.3 强制立即 rekey(AutoMKA-03011)"></a>11.3 强制立即 rekey(AutoMKA-03011)</h4><p>如果 Key Server 收到 Peer 的 MKPDU 满足以下任一条件,<strong>立即触发 rekey</strong>:</p>
+<ul>
+<li>MKPDU 没有 SAK Use</li>
+<li>MKPDU 有无效 SAK Use</li>
+<li>MKPDU 有空 SAK Use</li>
+</ul>
+<hr>
+<h3 id="十二、PAE-状态机优化-AutoMKA-05001-05002-05003"><a href="#十二、PAE-状态机优化-AutoMKA-05001-05002-05003" class="headerlink" title="十二、PAE 状态机优化(AutoMKA-05001, 05002, 05003)"></a>十二、PAE 状态机优化(AutoMKA-05001, 05002, 05003)</h3><h4 id="12-1-多状态一次-tick-完成-AutoMKA-05001"><a href="#12-1-多状态一次-tick-完成-AutoMKA-05001" class="headerlink" title="12.1 多状态一次 tick 完成(AutoMKA-05001)"></a>12.1 多状态一次 tick 完成(AutoMKA-05001)</h4><p>通用标准要求 PAE 状态机<strong>逐个状态切换</strong>,Automotive MKA 允许<strong>一次 tick 内到达终态</strong>:</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">通用 MKA PAE 状态机(逐状态跳转,每事件一个状态):</span><br><span class="line">  RECEIVE ─► TRANSMITTING ─► DONE ─► RETIRE ─► ...</span><br><span class="line">  [tick][tick][tick][tick]  (每个状态一个 tick)</span><br><span class="line"></span><br><span class="line">Automotive MKA PAE(一次 tick 内到达终态):</span><br><span class="line">  RECEIVE ──► TRANSMITTING ──► ... ──► RETIRE ─► final state</span><br><span class="line">  [one tick]──────────────────────────────────────►  ✓</span><br><span class="line"></span><br><span class="line">两端必须互操作:Automotive MKA 节点也必须能接受标准节点的逐状态行为。</span><br></pre></td></tr></table></figure>
+
+<h4 id="12-2-unauthAllowed-和-unsecureAllowed-固定为-never-AutoMKA-05002-05003"><a href="#12-2-unauthAllowed-和-unsecureAllowed-固定为-never-AutoMKA-05002-05003" class="headerlink" title="12.2 unauthAllowed 和 unsecureAllowed 固定为 never(AutoMKA-05002, 05003)"></a>12.2 unauthAllowed 和 unsecureAllowed 固定为 never(AutoMKA-05002, 05003)</h4><table>
+<thead>
+<tr>
+<th>参数</th>
+<th>IEEE 802.1X</th>
+<th>Automotive MKA</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>unauthAllowed</strong></td>
+<td>可配置</td>
+<td><strong>固定&#x3D;never</strong>(AutoMKA-05002)</td>
+</tr>
+<tr>
+<td><strong>unsecureAllowed</strong></td>
+<td>可配置</td>
+<td><strong>固定&#x3D;never</strong>(AutoMKA-05003)</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>这意味着<strong>未认证状态下,即使 MACsec 未建立,受控端口也绝对不放行任何非认证帧</strong>。只有认证完成且 SAK 安装后,业务流量才放行。</p>
+</blockquote>
+<h4 id="12-3-删除的-PAE-功能-AutoMKA-05004"><a href="#12-3-删除的-PAE-功能-AutoMKA-05004" class="headerlink" title="12.3 删除的 PAE 功能(AutoMKA-05004)"></a>12.3 删除的 PAE 功能(AutoMKA-05004)</h4><table>
+<thead>
+<tr>
+<th>删除功能</th>
+<th>IEEE 章节</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Network Identities</td>
+<td>12.5.3</td>
+<td>NID 不支持,自然删除</td>
+</tr>
+<tr>
+<td>Session Statistics</td>
+<td>12.5.4</td>
+<td>车内诊断不需要</td>
+</tr>
+<tr>
+<td>Virtual Port Creation&#x2F;Deletion</td>
+<td>12.7</td>
+<td>点对点链路不需要虚拟端口</td>
+</tr>
+<tr>
+<td>EAPOL Frame Reception Statistics</td>
+<td>12.8.1</td>
+<td>精简</td>
+</tr>
+<tr>
+<td>EAPOL Frame Reception Diagnostics</td>
+<td>12.8.2</td>
+<td>精简</td>
+</tr>
+<tr>
+<td>EAPOL Frame Transmission Statistics</td>
+<td>12.8.3</td>
+<td>精简</td>
+</tr>
+</tbody></table>
+<h4 id="12-4-CAK-Cache-KMD-NID-变为可选-AutoMKA-05005-05006"><a href="#12-4-CAK-Cache-KMD-NID-变为可选-AutoMKA-05005-05006" class="headerlink" title="12.4 CAK Cache KMD&#x2F;NID 变为可选(AutoMKA-05005, 05006)"></a>12.4 CAK Cache KMD&#x2F;NID 变为可选(AutoMKA-05005, 05006)</h4><p>通用标准要求 CAK Cache 必须包含 KMD 和 NID,Automotive MKA 将其改为<strong>可选</strong>。</p>
+<hr>
+<h3 id="十三、诊断与管理-API-AutoMKA-06001"><a href="#十三、诊断与管理-API-AutoMKA-06001" class="headerlink" title="十三、诊断与管理 API(AutoMKA-06001)"></a>十三、诊断与管理 API(AutoMKA-06001)</h3><p>通用标准依赖 <strong>SNMP MIB</strong> 进行管理,Automotive MKA <strong>不使用 SNMP 和 MIB</strong>,改为 API 方式:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">必须支持的 API(所有 API 参数名和类型均可在实现中做等价映射):</span><br><span class="line"></span><br><span class="line">[ ] Activate/Deactivate MKA         (AutoMKA-07002)</span><br><span class="line">    In: port_number(255=all), enabled</span><br><span class="line">[ ] Get MKA Activation               (AutoMKA-07003)</span><br><span class="line">    In: port_number → Out: enabled</span><br><span class="line">[ ] Get MKA Activations              (AutoMKA-07004)</span><br><span class="line">    → Out: 所有端口的激活状态数组</span><br><span class="line">[ ] Activate/Deactivate CKN          (AutoMKA-07005)</span><br><span class="line">    In: CKN[1..32], port_number, enabled</span><br><span class="line">[ ] Get CKN Activation               (AutoMKA-07006)</span><br><span class="line">    In: CKN → Out: port_number + enabled 数组</span><br><span class="line">[ ] Event CKN Activations            (AutoMKA-07007)</span><br><span class="line">    → Out: 所有 CKN 的激活状态事件数组</span><br><span class="line">[ ] Get PAE Status / PAE Status Event(AutoMKA-07008)</span><br><span class="line">    → Out: MKA状态枚举(Running/Waiting_For_Link_Up/Waiting_For_Peer/</span><br><span class="line">           In_Progress/Auth_Fail/Undefined)</span><br><span class="line">           + peer_sci[8] + ckn_in_use[1..32] + cipher_suite</span><br><span class="line">[ ] Get MACsec Statistics            (AutoMKA-07009)</span><br><span class="line">    → Out: tx_secy_statistics + rx_secy_statistics</span><br><span class="line">           + tx_sc_statistics[] + rx_sc_statistics[]</span><br><span class="line">           (与 IEEE 802.1AE SecYStatsEntry 对齐)</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h3 id="十四、配置管理-AutoMKA-08001-08002-08003-08004"><a href="#十四、配置管理-AutoMKA-08001-08002-08003-08004" class="headerlink" title="十四、配置管理(AutoMKA-08001, 08002, 08003, 08004)"></a>十四、配置管理(AutoMKA-08001, 08002, 08003, 08004)</h3><h4 id="14-1-全局配置项-所有端口统一"><a href="#14-1-全局配置项-所有端口统一" class="headerlink" title="14.1 全局配置项(所有端口统一)"></a>14.1 全局配置项(所有端口统一)</h4><table>
+<thead>
+<tr>
+<th>参数</th>
+<th>默认值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Hello time</strong></td>
+<td>2 s</td>
+<td>标准 MKA 默认值</td>
+</tr>
+<tr>
+<td><strong>Bounded hello time</strong></td>
+<td>0.5 s</td>
+<td>delay protection 开启时</td>
+</tr>
+<tr>
+<td><strong>Lifetime</strong></td>
+<td>6 s</td>
+<td>标准 MKA 默认值</td>
+</tr>
+<tr>
+<td><strong>SAK retire time</strong></td>
+<td>3 s</td>
+<td>标准 MKA 默认值</td>
+</tr>
+<tr>
+<td><strong>Hello time ramp</strong></td>
+<td>[10ms, 20ms, 40ms, …, 2s]</td>
+<td>doubling 序列(AutoMKA-08003)</td>
+</tr>
+<tr>
+<td><strong>Rekey 周期</strong></td>
+<td>可配置(0s~24h)</td>
+<td>SAK 生命周期(AutoMKA-08002)</td>
+</tr>
+</tbody></table>
+<h4 id="14-2-每端口配置项-AutoMKA-08004"><a href="#14-2-每端口配置项-AutoMKA-08004" class="headerlink" title="14.2 每端口配置项(AutoMKA-08004)"></a>14.2 每端口配置项(AutoMKA-08004)</h4><table>
+<thead>
+<tr>
+<th>配置项</th>
+<th>选项</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>PSK(CAK &amp; CKN)</strong></td>
+<td>16~32 字节</td>
+<td>预共享密钥</td>
+</tr>
+<tr>
+<td><strong>Include SCI in SecTAG</strong></td>
+<td>OFF&#x2F;ON</td>
+<td>仅在某些架构下需要</td>
+</tr>
+<tr>
+<td><strong>MKA enabled</strong></td>
+<td>true&#x2F;false</td>
+<td>端口级开关</td>
+</tr>
+<tr>
+<td><strong>MACsec enabled</strong></td>
+<td>true&#x2F;false</td>
+<td>MACsec 使能</td>
+</tr>
+<tr>
+<td><strong>KAY role</strong></td>
+<td>SERVER &#x2F; CLIENT</td>
+<td>AUTO 不支持(AutoMKA-08004)</td>
+</tr>
+<tr>
+<td><strong>Delay protection</strong></td>
+<td>ON &#x2F; OFF</td>
+<td>开启时使用 bounded hello time</td>
+</tr>
+<tr>
+<td><strong>Participant activation</strong></td>
+<td>DISABLED &#x2F; ONOPERUP &#x2F; ALWAYS</td>
+<td>激活时机</td>
+</tr>
+<tr>
+<td><strong>Logon enabled</strong></td>
+<td>true&#x2F;false</td>
+<td>MKA 会话开关</td>
+</tr>
+<tr>
+<td><strong>Use_EAP</strong></td>
+<td>NEVER &#x2F; IMMEDIATE &#x2F; ON_MKA_FAIL</td>
+<td>EAP 用途</td>
+</tr>
+<tr>
+<td><strong>Cipher preference</strong></td>
+<td>单条目(无协商)</td>
+<td>固定 cipher suite</td>
+</tr>
+<tr>
+<td><strong>Confidentiality</strong></td>
+<td>integrity_only &#x2F; integrity_with_confidentiality</td>
+<td>是否加密</td>
+</tr>
+<tr>
+<td><strong>Confidentiality offset</strong></td>
+<td>0 &#x2F; 30 &#x2F; 50</td>
+<td>0 必选,30&#x2F;50 可选</td>
+</tr>
+</tbody></table>
+<hr>
+<h3 id="十五、高级特性"><a href="#十五、高级特性" class="headerlink" title="十五、高级特性"></a>十五、高级特性</h3><h4 id="15-1-多-CAK-CKN-并行支持-AutoMKA-09001-09002-09003"><a href="#15-1-多-CAK-CKN-并行支持-AutoMKA-09001-09002-09003" class="headerlink" title="15.1 多 CAK&#x2F;CKN 并行支持(AutoMKA-09001, 09002, 09003)"></a>15.1 多 CAK&#x2F;CKN 并行支持(AutoMKA-09001, 09002, 09003)</h4><p>一辆车可能有<strong>多个车型项目</strong>,同一 ECU 会被用于不同项目而有不同 CAK 配置。Automotive MKA 支持:</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">ECU 启动时:</span><br><span class="line"></span><br><span class="line">  所有 CKN 同时激活 ──► 并行发送 MKPDU</span><br><span class="line">       │                    │</span><br><span class="line">       │         ┌─────────┴──────────┐</span><br><span class="line">       │         ▼                     ▼</span><br><span class="line">       │    Peer 接受 CKN1         Peer 接受 CKN2</span><br><span class="line">       │    SAK 建立成功           (被忽略)</span><br><span class="line">       │         │                     │</span><br><span class="line">       └─────────┼─────────────────────┘</span><br><span class="line">                 ▼</span><br><span class="line">        CKN1 的 SAK 用于 MACsec</span><br><span class="line">        其余 CKN 的 MKPDU 停止发送(节省资源)</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>Link Down 或 MKA 会话终止时,<strong>所有 CKN 恢复发送</strong>,下次 Link Up 重新协商(AutoMKA-09002)。</li>
+<li>最大并行 CKN 数量由实现决定(AutoMKA-09003 注)。</li>
+</ul>
+<h4 id="15-2-快速-Link-Down-恢复-AutoMKA-10001"><a href="#15-2-快速-Link-Down-恢复-AutoMKA-10001" class="headerlink" title="15.2 快速 Link Down 恢复(AutoMKA-10001)"></a>15.2 快速 Link Down 恢复(AutoMKA-10001)</h4><p>通用标准链路 Down 后,Peer 需等待 <strong>6 秒 Life Time</strong> 才认为对方掉线。Automotive MKA 通过 <strong>MI 刷新</strong>机制加速:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">Automotive MKA 链路 Down 恢复流程:</span><br><span class="line"></span><br><span class="line">  链路 Down ──► 本端 MI 改变 ──► Link Up ──► 发送新 MI 的 MKPDU</span><br><span class="line">                                          │</span><br><span class="line">                                          ▼</span><br><span class="line">                     Peer 收到新 MI 的 MKPDU → 立即识别为新会话</span><br><span class="line">                                          │</span><br><span class="line">                                          ▼</span><br><span class="line">                              立即重新协商 SAK ──► MACsec 恢复</span><br><span class="line">                               (无需等待 6s Life Time)</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>通用 MKA 实现需要在收到<strong>新 MI + 本端 MI 在对方 Potential&#x2F;Live Peer List 中</strong>时,才确认是新会话(AutoMKA-03006)。</p>
+</blockquote>
+<h4 id="15-3-MACsec-禁用时的固定时序-AutoMKA-12001-12002"><a href="#15-3-MACsec-禁用时的固定时序-AutoMKA-12001-12002" class="headerlink" title="15.3 MACsec 禁用时的固定时序(AutoMKA-12001, 12002)"></a>15.3 MACsec 禁用时的固定时序(AutoMKA-12001, 12002)</h4><p>Automotive MKA 支持在 <strong>MACsec 禁用</strong>的情况下运行 MKA,此时:</p>
+<ul>
+<li>MACsec 与 MKA 的联动<strong>被禁用</strong>(不安装 filter、不安装 key、不读取 PN&#x2F;XPN 计数器)</li>
+<li>配置自动设为 <code>MACsec_desired=false</code> + 显式选择 <strong>Null Cipher Suite</strong></li>
+<li>链路 Up 信令延迟与正常 MKA 启动时序一致(<strong>~30 ms</strong>),避免应用层因时序差异而需特殊处理</li>
+</ul>
+<hr>
+<h3 id="十六、Automotive-MKA-与-Automotive-MACsec-的协同"><a href="#十六、Automotive-MKA-与-Automotive-MACsec-的协同" class="headerlink" title="十六、Automotive MKA 与 Automotive MACsec 的协同"></a>十六、Automotive MKA 与 Automotive MACsec 的协同</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">┌──────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                  Automotive MKA + Automotive MACsec              │</span><br><span class="line">│                                                                  │</span><br><span class="line">│  Zone Controller ECU                                              │</span><br><span class="line">│  ┌──────────────────────────────────────────────────────────┐   │</span><br><span class="line">│  │  Automotive MKA(固件)                                      │   │</span><br><span class="line">│  │  · PSK CAK/CKN                                             │   │</span><br><span class="line">│  │  · Key Server Priority = 0                                  │   │</span><br><span class="line">│  │  · ≤ 30 ms SAK 交付                                        │   │</span><br><span class="line">│  │  · Doubling ramp-up Hello Time                             │   │</span><br><span class="line">│  └──────────────────────┬─────────────────────────────────────┘   │</span><br><span class="line">│                          │ SAK 安装                               │</span><br><span class="line">│                          ▼                                        │</span><br><span class="line">│  ┌──────────────────────────────────────────────────────────┐   │</span><br><span class="line">│  │  Automotive MACsec SecY Engine(硬件)                     │   │</span><br><span class="line">│  │  · 点对点 MACsec                                          │   │</span><br><span class="line">│  │  · SecTAG 可无 SCI(省 8 字节)                             │   │</span><br><span class="line">│  │  · Confidentiality Offset 0                               │   │</span><br><span class="line">│  │  · Replay Window = 0                                       │   │</span><br><span class="line">│  └──────────────────────┬─────────────────────────────────────┘   │</span><br><span class="line">│                          │ 加密 MAC 帧                            │</span><br><span class="line">│                          ▼                                        │</span><br><span class="line">│                    100BASE-T1 / 1000BASE-T1 链路                  │</span><br><span class="line">└──────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>本节协同关系基于 OPEN Alliance Automotive MACsec Specification v1.0 §2(AutoMACsec-01001<del>01008)和 Automotive MKA Specification v1.0 §1</del>§4。</p>
+</blockquote>
+<hr>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><h3 id="标准部分-★-三句话回顾-★"><a href="#标准部分-★-三句话回顾-★" class="headerlink" title="标准部分(★ 三句话回顾 ★)"></a>标准部分(★ 三句话回顾 ★)</h3><ol>
+<li><strong>是什么</strong>:IEEE 802.1X 是基于 MAC 端口的”认证 + 授权 + 密钥协商”通用框架,通过受控&#x2F;非受控端口二象限模型隔离未授权流量。</li>
+<li><strong>解决什么</strong>:阻止未授权 LAN 接入、把密钥分发链路(MKA)与 MACsec(数据加密)解耦,使 CAK&#x2F;SAK 滚动轮换成为可能。</li>
+<li><strong>怎么用</strong>:选 PAE 还是 PAC,选 EAP-TLS &#x2F; PSK &#x2F; 组 CAK;按 Clause 7 七大场景(物理安全 &#x2F; 点对点 MACsec &#x2F; 多接入 &#x2F; 组播 &#x2F; Provider Bridged)落地。</li>
+</ol>
+<h3 id="车载部分-★-Automotive-MKA-要点-★"><a href="#车载部分-★-Automotive-MKA-要点-★" class="headerlink" title="车载部分(★ Automotive MKA 要点 ★)"></a>车载部分(★ Automotive MKA 要点 ★)</h3><ol>
+<li><strong>≤ 30 ms 启动</strong>:Doubling ramp-up Hello Time(10ms→20ms→40ms→…→2s) + 立即响应未知 Peer + 固定 Key Server Priority(0&#x2F;255)。</li>
+<li><strong>删除不需要的特性</strong>:无 KMD&#x2F;NID、无 in-service upgrade&#x2F;suspension、无 distributed CAK、无 cipher suite 协商。</li>
+<li><strong>车载特有增强</strong>:多 CKN 并行支持(首个成功者建立 MACsec)、MI 刷新快速 Link Down 恢复、Replay Window 固定&#x3D;0、API 管理接口替代 SNMP。</li>
+</ol>
+<hr>
+<blockquote>
+<p><strong>版权声明</strong>: 本文引用了 IEEE Std 802.1X-2020 和 OPEN Alliance Automotive MKA Specification v1.0 的内容,版权归各标准组织所有,引用仅供学习。</p>
+</blockquote>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">首页</a></li>
+        
+          <li><a href="/archives/">归档</a></li>
+        
+          <li><a href="/tags/">标签</a></li>
+        
+          <li><a href="/categories/">分类</a></li>
+        
+          <li><a href="/search/">搜索</a></li>
+        
+          <li><a href="/about/">关于</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%AC%AC%E4%B8%80%E9%83%A8%E5%88%86-%E6%A0%87%E5%87%86%E7%AF%87"><span class="toc-number">1.</span> <span class="toc-text">第一部分:标准篇</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E4%B8%89%E4%B8%AA%E6%A0%B8%E5%BF%83%E9%97%AE%E9%A2%98"><span class="toc-number">1.1.</span> <span class="toc-text">一、三个核心问题</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E2%9D%93-Q1-%E8%BF%99%E4%B8%AA%E6%A0%87%E5%87%86%E6%98%AF%E4%BB%80%E4%B9%88"><span class="toc-number">1.1.1.</span> <span class="toc-text">❓ Q1:这个标准是什么?</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E2%9D%93-Q2-%E8%A7%A3%E5%86%B3%E4%BB%80%E4%B9%88%E9%97%AE%E9%A2%98"><span class="toc-number">1.1.2.</span> <span class="toc-text">❓ Q2:解决什么问题?</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E2%9D%93-Q3-%E5%A6%82%E4%BD%95%E5%BA%94%E7%94%A8"><span class="toc-number">1.1.3.</span> <span class="toc-text">❓ Q3:如何应用?</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84-%E4%B8%89%E8%A7%92%E8%89%B2%E4%B8%8E%E5%8F%8C%E7%AB%AF%E5%8F%A3"><span class="toc-number">1.2.</span> <span class="toc-text">二、核心架构:三角色与双端口</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#2-1-%E7%B3%BB%E7%BB%9F%E8%A7%92%E8%89%B2%E4%B8%89%E4%BB%B6%E5%A5%97"><span class="toc-number">1.2.1.</span> <span class="toc-text">2.1 系统角色三件套</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-2-%E7%AB%AF%E5%8F%A3%E7%9A%84%E2%80%9D%E4%B8%A4%E6%89%87%E9%97%A8%E2%80%9D"><span class="toc-number">1.2.2.</span> <span class="toc-text">2.2 端口的”两扇门”</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%AF%86%E9%92%A5%E5%B1%82%E6%AC%A1-Key-Hierarchy"><span class="toc-number">1.3.</span> <span class="toc-text">三、密钥层次(Key Hierarchy)</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#3-1-%E4%B8%89%E7%A7%8D-CAK-%E6%9D%A5%E6%BA%90%E5%AF%B9%E6%AF%94"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 三种 CAK 来源对比</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-2-%E5%85%B3%E9%94%AE%E6%B4%BE%E7%94%9F%E5%8F%82%E6%95%B0"><span class="toc-number">1.3.2.</span> <span class="toc-text">3.2 关键派生参数</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E5%8D%8F%E8%AE%AE%E6%9C%BA%E5%88%B6%E8%AF%A6%E8%A7%A3"><span class="toc-number">1.4.</span> <span class="toc-text">四、协议机制详解</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#4-1-EAP-%E8%AE%A4%E8%AF%81-%E2%80%94%E2%80%94-PACP-%E7%8A%B6%E6%80%81%E6%9C%BA"><span class="toc-number">1.4.1.</span> <span class="toc-text">4.1 EAP 认证 —— PACP 状态机</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#4-2-MKA-MACsec-Key-Agreement-%E2%80%94%E2%80%94%E6%9C%80%E6%A0%B8%E5%BF%83%E7%9A%84%E7%AB%A0%E8%8A%82"><span class="toc-number">1.4.2.</span> <span class="toc-text">4.2 MKA(MACsec Key Agreement)——最核心的章节</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#4-2-1-%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5"><span class="toc-number">1.4.2.1.</span> <span class="toc-text">4.2.1 核心概念</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#4-2-2-MKA-%E5%9C%A8%E7%82%B9%E5%AF%B9%E7%82%B9%E9%93%BE%E8%B7%AF%E4%B8%8A%E7%9A%84%E5%85%B8%E5%9E%8B%E6%B5%81%E7%A8%8B-9-17"><span class="toc-number">1.4.2.2.</span> <span class="toc-text">4.2.2 MKA 在点对点链路上的典型流程(9.17)</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#4-2-3-9-8-SAK-%E7%94%9F%E6%88%90%E8%A7%84%E5%88%99"><span class="toc-number">1.4.2.3.</span> <span class="toc-text">4.2.3 9.8 SAK 生成规则</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#4-2-4-9-12-CA-Formation"><span class="toc-number">1.4.2.4.</span> <span class="toc-text">4.2.4 9.12 CA Formation</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#4-2-5-MKA-%E5%AE%9A%E6%97%B6%E5%99%A8%E5%8F%82%E6%95%B0"><span class="toc-number">1.4.2.5.</span> <span class="toc-text">4.2.5 MKA 定时器参数</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#4-2-6-9-4-3-Liveness-%E5%88%A4%E6%96%AD"><span class="toc-number">1.4.2.6.</span> <span class="toc-text">4.2.6 9.4.3 Liveness 判断</span></a></li></ol></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BA%94%E3%80%81EAPOL-%E5%B8%A7%E6%A0%BC%E5%BC%8F"><span class="toc-number">1.5.</span> <span class="toc-text">五、EAPOL 帧格式</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%AD%E3%80%81802-1AE-MACsec-%E7%9A%84%E5%8D%8F%E4%BD%9C%E5%85%B3%E7%B3%BB"><span class="toc-number">1.6.</span> <span class="toc-text">六、802.1AE MACsec 的协作关系</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%AC%AC%E4%BA%8C%E9%83%A8%E5%88%86-%E8%BD%A6%E8%BD%BD%E7%AF%87%E2%80%94%E2%80%94OPEN-Alliance-Automotive-MKA"><span class="toc-number">2.</span> <span class="toc-text">第二部分:车载篇——OPEN Alliance Automotive MKA</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%83%E3%80%81%E8%BD%A6%E8%BD%BD-MKA-%E7%9A%84%E8%AE%BE%E8%AE%A1%E7%9B%AE%E6%A0%87"><span class="toc-number">2.1.</span> <span class="toc-text">七、车载 MKA 的设计目标</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%AB%E3%80%81Automotive-MKA-%E5%BF%85%E9%80%89%E8%83%BD%E5%8A%9B%E9%9B%86"><span class="toc-number">2.2.</span> <span class="toc-text">八、Automotive MKA 必选能力集</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#8-1-MACsec-%E8%83%BD%E5%8A%9B%E5%8D%8F%E5%95%86-AutoMKA-01001-01004-01005"><span class="toc-number">2.2.1.</span> <span class="toc-text">8.1 MACsec 能力协商(AutoMKA-01001, 01004, 01005)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#8-2-%E5%90%AF%E5%8A%A8%E6%97%B6%E9%97%B4-%E2%89%A4-30-ms-AutoMKA-01014"><span class="toc-number">2.2.2.</span> <span class="toc-text">8.2 启动时间:≤ 30 ms(AutoMKA-01014)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#8-3-Peer-List-%E4%B8%8A%E9%99%90-2-AutoMKA-03016"><span class="toc-number">2.2.3.</span> <span class="toc-text">8.3 Peer List 上限:2(AutoMKA-03016)</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B9%9D%E3%80%81Automotive-MKA-%E5%88%A0%E9%99%A4%E7%9A%84%E5%8A%9F%E8%83%BD"><span class="toc-number">2.3.</span> <span class="toc-text">九、Automotive MKA 删除的功能</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#9-1-Replay-Protection-%E5%9B%BA%E5%AE%9A%E4%B8%BA%E7%AA%97%E5%8F%A3-0-AutoMKA-01012-01013"><span class="toc-number">2.3.1.</span> <span class="toc-text">9.1 Replay Protection 固定为窗口&#x3D;0(AutoMKA-01012, 01013)</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8D%81%E3%80%81MKA-%E4%BC%A0%E8%BE%93%E4%BC%98%E5%8C%96-10ms-%E8%B5%B7%E6%AD%A5%E7%9A%84-doubling-ramp-up-AutoMKA-03003-03004"><span class="toc-number">2.4.</span> <span class="toc-text">十、MKA 传输优化:10ms 起步的 doubling ramp-up(AutoMKA-03003, 03004)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8D%81%E4%B8%80%E3%80%81Key-Server-%E4%BC%98%E5%8C%96-AutoMKA-03007-03008"><span class="toc-number">2.5.</span> <span class="toc-text">十一、Key Server 优化(AutoMKA-03007, 03008)</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#11-1-Key-Server-Priority-%E5%9B%BA%E5%AE%9A-AutoMKA-03007"><span class="toc-number">2.5.1.</span> <span class="toc-text">11.1 Key Server Priority 固定(AutoMKA-03007)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#11-2-SAK-%E6%8F%90%E5%89%8D%E5%88%86%E5%8F%91%E4%BC%98%E5%8C%96-AutoMKA-03010"><span class="toc-number">2.5.2.</span> <span class="toc-text">11.2 SAK 提前分发优化(AutoMKA-03010)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#11-3-%E5%BC%BA%E5%88%B6%E7%AB%8B%E5%8D%B3-rekey-AutoMKA-03011"><span class="toc-number">2.5.3.</span> <span class="toc-text">11.3 强制立即 rekey(AutoMKA-03011)</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8D%81%E4%BA%8C%E3%80%81PAE-%E7%8A%B6%E6%80%81%E6%9C%BA%E4%BC%98%E5%8C%96-AutoMKA-05001-05002-05003"><span class="toc-number">2.6.</span> <span class="toc-text">十二、PAE 状态机优化(AutoMKA-05001, 05002, 05003)</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#12-1-%E5%A4%9A%E7%8A%B6%E6%80%81%E4%B8%80%E6%AC%A1-tick-%E5%AE%8C%E6%88%90-AutoMKA-05001"><span class="toc-number">2.6.1.</span> <span class="toc-text">12.1 多状态一次 tick 完成(AutoMKA-05001)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#12-2-unauthAllowed-%E5%92%8C-unsecureAllowed-%E5%9B%BA%E5%AE%9A%E4%B8%BA-never-AutoMKA-05002-05003"><span class="toc-number">2.6.2.</span> <span class="toc-text">12.2 unauthAllowed 和 unsecureAllowed 固定为 never(AutoMKA-05002, 05003)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#12-3-%E5%88%A0%E9%99%A4%E7%9A%84-PAE-%E5%8A%9F%E8%83%BD-AutoMKA-05004"><span class="toc-number">2.6.3.</span> <span class="toc-text">12.3 删除的 PAE 功能(AutoMKA-05004)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#12-4-CAK-Cache-KMD-NID-%E5%8F%98%E4%B8%BA%E5%8F%AF%E9%80%89-AutoMKA-05005-05006"><span class="toc-number">2.6.4.</span> <span class="toc-text">12.4 CAK Cache KMD&#x2F;NID 变为可选(AutoMKA-05005, 05006)</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8D%81%E4%B8%89%E3%80%81%E8%AF%8A%E6%96%AD%E4%B8%8E%E7%AE%A1%E7%90%86-API-AutoMKA-06001"><span class="toc-number">2.7.</span> <span class="toc-text">十三、诊断与管理 API(AutoMKA-06001)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8D%81%E5%9B%9B%E3%80%81%E9%85%8D%E7%BD%AE%E7%AE%A1%E7%90%86-AutoMKA-08001-08002-08003-08004"><span class="toc-number">2.8.</span> <span class="toc-text">十四、配置管理(AutoMKA-08001, 08002, 08003, 08004)</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#14-1-%E5%85%A8%E5%B1%80%E9%85%8D%E7%BD%AE%E9%A1%B9-%E6%89%80%E6%9C%89%E7%AB%AF%E5%8F%A3%E7%BB%9F%E4%B8%80"><span class="toc-number">2.8.1.</span> <span class="toc-text">14.1 全局配置项(所有端口统一)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#14-2-%E6%AF%8F%E7%AB%AF%E5%8F%A3%E9%85%8D%E7%BD%AE%E9%A1%B9-AutoMKA-08004"><span class="toc-number">2.8.2.</span> <span class="toc-text">14.2 每端口配置项(AutoMKA-08004)</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8D%81%E4%BA%94%E3%80%81%E9%AB%98%E7%BA%A7%E7%89%B9%E6%80%A7"><span class="toc-number">2.9.</span> <span class="toc-text">十五、高级特性</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#15-1-%E5%A4%9A-CAK-CKN-%E5%B9%B6%E8%A1%8C%E6%94%AF%E6%8C%81-AutoMKA-09001-09002-09003"><span class="toc-number">2.9.1.</span> <span class="toc-text">15.1 多 CAK&#x2F;CKN 并行支持(AutoMKA-09001, 09002, 09003)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#15-2-%E5%BF%AB%E9%80%9F-Link-Down-%E6%81%A2%E5%A4%8D-AutoMKA-10001"><span class="toc-number">2.9.2.</span> <span class="toc-text">15.2 快速 Link Down 恢复(AutoMKA-10001)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#15-3-MACsec-%E7%A6%81%E7%94%A8%E6%97%B6%E7%9A%84%E5%9B%BA%E5%AE%9A%E6%97%B6%E5%BA%8F-AutoMKA-12001-12002"><span class="toc-number">2.9.3.</span> <span class="toc-text">15.3 MACsec 禁用时的固定时序(AutoMKA-12001, 12002)</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8D%81%E5%85%AD%E3%80%81Automotive-MKA-%E4%B8%8E-Automotive-MACsec-%E7%9A%84%E5%8D%8F%E5%90%8C"><span class="toc-number">2.10.</span> <span class="toc-text">十六、Automotive MKA 与 Automotive MACsec 的协同</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%80%BB%E7%BB%93"><span class="toc-number">3.</span> <span class="toc-text">总结</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%A0%87%E5%87%86%E9%83%A8%E5%88%86-%E2%98%85-%E4%B8%89%E5%8F%A5%E8%AF%9D%E5%9B%9E%E9%A1%BE-%E2%98%85"><span class="toc-number">3.1.</span> <span class="toc-text">标准部分(★ 三句话回顾 ★)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%BD%A6%E8%BD%BD%E9%83%A8%E5%88%86-%E2%98%85-Automotive-MKA-%E8%A6%81%E7%82%B9-%E2%98%85"><span class="toc-number">3.2.</span> <span class="toc-text">车载部分(★ Automotive MKA 要点 ★)</span></a></li></ol></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/IEEE%20802.1X-2020%20%E7%AB%AF%E5%8F%A3%E8%AE%BF%E9%97%AE%E6%8E%A7%E5%88%B6%E4%B8%8EMKA%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84%E8%AF%A6%E8%A7%A3/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/IEEE%20802.1X-2020%20%E7%AB%AF%E5%8F%A3%E8%AE%BF%E9%97%AE%E6%8E%A7%E5%88%B6%E4%B8%8EMKA%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84%E8%AF%A6%E8%A7%A3/&text=IEEE 802.1X-2020 端口访问控制与MKA核心架构详解"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/IEEE%20802.1X-2020%20%E7%AB%AF%E5%8F%A3%E8%AE%BF%E9%97%AE%E6%8E%A7%E5%88%B6%E4%B8%8EMKA%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84%E8%AF%A6%E8%A7%A3/&title=IEEE 802.1X-2020 端口访问控制与MKA核心架构详解"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/IEEE%20802.1X-2020%20%E7%AB%AF%E5%8F%A3%E8%AE%BF%E9%97%AE%E6%8E%A7%E5%88%B6%E4%B8%8EMKA%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84%E8%AF%A6%E8%A7%A3/&is_video=false&description=IEEE 802.1X-2020 端口访问控制与MKA核心架构详解"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=IEEE 802.1X-2020 端口访问控制与MKA核心架构详解&body=Check out this article: https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/IEEE%20802.1X-2020%20%E7%AB%AF%E5%8F%A3%E8%AE%BF%E9%97%AE%E6%8E%A7%E5%88%B6%E4%B8%8EMKA%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84%E8%AF%A6%E8%A7%A3/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/IEEE%20802.1X-2020%20%E7%AB%AF%E5%8F%A3%E8%AE%BF%E9%97%AE%E6%8E%A7%E5%88%B6%E4%B8%8EMKA%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84%E8%AF%A6%E8%A7%A3/&title=IEEE 802.1X-2020 端口访问控制与MKA核心架构详解"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/IEEE%20802.1X-2020%20%E7%AB%AF%E5%8F%A3%E8%AE%BF%E9%97%AE%E6%8E%A7%E5%88%B6%E4%B8%8EMKA%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84%E8%AF%A6%E8%A7%A3/&title=IEEE 802.1X-2020 端口访问控制与MKA核心架构详解"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/IEEE%20802.1X-2020%20%E7%AB%AF%E5%8F%A3%E8%AE%BF%E9%97%AE%E6%8E%A7%E5%88%B6%E4%B8%8EMKA%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84%E8%AF%A6%E8%A7%A3/&title=IEEE 802.1X-2020 端口访问控制与MKA核心架构详解"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/IEEE%20802.1X-2020%20%E7%AB%AF%E5%8F%A3%E8%AE%BF%E9%97%AE%E6%8E%A7%E5%88%B6%E4%B8%8EMKA%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84%E8%AF%A6%E8%A7%A3/&title=IEEE 802.1X-2020 端口访问控制与MKA核心架构详解"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/IEEE%20802.1X-2020%20%E7%AB%AF%E5%8F%A3%E8%AE%BF%E9%97%AE%E6%8E%A7%E5%88%B6%E4%B8%8EMKA%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84%E8%AF%A6%E8%A7%A3/&name=IEEE 802.1X-2020 端口访问控制与MKA核心架构详解&description=&lt;blockquote&gt;
+&lt;p&gt;本文是「以太网IEEE标准系列」第三篇,聚焦 &lt;strong&gt;IEEE Std 802.1X™-2020&lt;/strong&gt;(Port-Based Network Access Control)。本文分两部分:第一部分解析通用标准(认证架构、MKA密钥层次、EAPOL协议),第二部分对照 &lt;strong&gt;OPEN Alliance TC17 Automotive MKA Specification v1.0&lt;/strong&gt;(2025-02)的车载精简要求。&lt;/p&gt;
+&lt;/blockquote&gt;"><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/IEEE%20802.1X-2020%20%E7%AB%AF%E5%8F%A3%E8%AE%BF%E9%97%AE%E6%8E%A7%E5%88%B6%E4%B8%8EMKA%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84%E8%AF%A6%E8%A7%A3/&t=IEEE 802.1X-2020 端口访问控制与MKA核心架构详解"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> 菜单</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> 目录</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> 分享</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> 返回顶部</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2026
+    cursorhu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"复制到粘贴板！\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "复制成功！");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+<!-- Mermaid diagrams -->
+
+  <script type="text/javascript">
+  (function() {
+    var mermaidElements = document.querySelectorAll('.mermaid');
+    if (!mermaidElements.length) return;
+
+    var mermaidTheme = 'auto';
+    if (mermaidTheme === 'auto') {
+      var colorscheme = 'dark';
+      mermaidTheme = (colorscheme === 'dark' || colorscheme === 'classic') ? 'dark' : 'default';
+    }
+
+    function initMermaid() {
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: mermaidTheme,
+        logLevel: 'error',
+        securityLevel: 'loose',
+        flowchart: { curve: 'basis' },
+        gantt: { axisFormat: '%m/%d/%Y' },
+        sequence: { actorMargin: 50 }
+      });
+      mermaid.run({ nodes: mermaidElements });
+    }
+
+    var script = document.createElement('script');
+    
+    script.src = 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js';
+    
+    script.onload = initMermaid;
+    document.head.appendChild(script);
+  })();
+  </script>
+
+</body>
+</html>

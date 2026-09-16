@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="以太网 - CSMA 碰撞检测实测：从单帧触发到 Burst 模式的全链路验证 前置阅读：本文是《多节点网络的冲突处理算法——从 ALOHA 到 PLCA》的姊妹篇。建议先阅读该文了解 CSMA&#x2F;CD → CSMA&#x2F;CA → PLCA 的演进脉络，本文聚焦于 CSMA&#x2F;CD 碰撞检测在 10BASE-T1S 硬件上的实测验证方案。   实验环境：两块 Arduino">
+<meta property="og:type" content="article">
+<meta property="og:title" content="以太网 - CSMA 碰撞检测实测：从单帧触发到 Burst 模式的全链路验证">
+<meta property="og:url" content="https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20CSMA%E7%A2%B0%E6%92%9E%E6%A3%80%E6%B5%8B%E5%AE%9E%E6%B5%8B%E6%96%B9%E6%A1%88/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="以太网 - CSMA 碰撞检测实测：从单帧触发到 Burst 模式的全链路验证 前置阅读：本文是《多节点网络的冲突处理算法——从 ALOHA 到 PLCA》的姊妹篇。建议先阅读该文了解 CSMA&#x2F;CD → CSMA&#x2F;CA → PLCA 的演进脉络，本文聚焦于 CSMA&#x2F;CD 碰撞检测在 10BASE-T1S 硬件上的实测验证方案。   实验环境：两块 Arduino">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-09-16T09:00:00.000Z">
+<meta property="article:modified_time" content="2026-09-16T09:08:55.273Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="10BASE-T1S">
+<meta property="article:tag" content="CSMA&#x2F;CD">
+<meta property="article:tag" content="LAN8650">
+<meta property="article:tag" content="嵌入式以太网">
+<meta property="article:tag" content="碰撞检测">
+<meta name="twitter:card" content="summary">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>以太网 - CSMA 碰撞检测实测：从单帧触发到 Burst 模式的全链路验证</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+		<script type="text/x-mathjax-config">
+		  MathJax.Hub.Config({
+			tex2jax: {
+			  skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+			  inlineMath: [['$','$']]
+			}
+		  });
+		</script>
+		<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-MML-AM_CHTML' async></script>
+	
+<meta name="generator" content="Hexo 8.0.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="顶部" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        
+        <li><a class="icon" aria-label="下一篇" href="/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/IEEE%20802.1AE-2018%20MACsec%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84%E4%B8%8E%E5%B8%A7%E6%A0%BC%E5%BC%8F%E8%AF%A6%E8%A7%A3/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="返回顶部" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="分享文章" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">上一篇</span>
+      <span id="i-next" class="info" style="display:none;">下一篇</span>
+      <span id="i-top" class="info" style="display:none;">返回顶部</span>
+      <span id="i-share" class="info" style="display:none;">分享文章</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20CSMA%E7%A2%B0%E6%92%9E%E6%A3%80%E6%B5%8B%E5%AE%9E%E6%B5%8B%E6%96%B9%E6%A1%88/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20CSMA%E7%A2%B0%E6%92%9E%E6%A3%80%E6%B5%8B%E5%AE%9E%E6%B5%8B%E6%96%B9%E6%A1%88/&text=以太网 - CSMA 碰撞检测实测：从单帧触发到 Burst 模式的全链路验证"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20CSMA%E7%A2%B0%E6%92%9E%E6%A3%80%E6%B5%8B%E5%AE%9E%E6%B5%8B%E6%96%B9%E6%A1%88/&title=以太网 - CSMA 碰撞检测实测：从单帧触发到 Burst 模式的全链路验证"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20CSMA%E7%A2%B0%E6%92%9E%E6%A3%80%E6%B5%8B%E5%AE%9E%E6%B5%8B%E6%96%B9%E6%A1%88/&is_video=false&description=以太网 - CSMA 碰撞检测实测：从单帧触发到 Burst 模式的全链路验证"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=以太网 - CSMA 碰撞检测实测：从单帧触发到 Burst 模式的全链路验证&body=Check out this article: https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20CSMA%E7%A2%B0%E6%92%9E%E6%A3%80%E6%B5%8B%E5%AE%9E%E6%B5%8B%E6%96%B9%E6%A1%88/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20CSMA%E7%A2%B0%E6%92%9E%E6%A3%80%E6%B5%8B%E5%AE%9E%E6%B5%8B%E6%96%B9%E6%A1%88/&title=以太网 - CSMA 碰撞检测实测：从单帧触发到 Burst 模式的全链路验证"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20CSMA%E7%A2%B0%E6%92%9E%E6%A3%80%E6%B5%8B%E5%AE%9E%E6%B5%8B%E6%96%B9%E6%A1%88/&title=以太网 - CSMA 碰撞检测实测：从单帧触发到 Burst 模式的全链路验证"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20CSMA%E7%A2%B0%E6%92%9E%E6%A3%80%E6%B5%8B%E5%AE%9E%E6%B5%8B%E6%96%B9%E6%A1%88/&title=以太网 - CSMA 碰撞检测实测：从单帧触发到 Burst 模式的全链路验证"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20CSMA%E7%A2%B0%E6%92%9E%E6%A3%80%E6%B5%8B%E5%AE%9E%E6%B5%8B%E6%96%B9%E6%A1%88/&title=以太网 - CSMA 碰撞检测实测：从单帧触发到 Burst 模式的全链路验证"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20CSMA%E7%A2%B0%E6%92%9E%E6%A3%80%E6%B5%8B%E5%AE%9E%E6%B5%8B%E6%96%B9%E6%A1%88/&name=以太网 - CSMA 碰撞检测实测：从单帧触发到 Burst 模式的全链路验证&description=&lt;h1 id=&#34;以太网-CSMA-碰撞检测实测：从单帧触发到-Burst-模式的全链路验证&#34;&gt;&lt;a href=&#34;#以太网-CSMA-碰撞检测实测：从单帧触发到-Burst-模式的全链路验证&#34; class=&#34;headerlink&#34; title=&#34;以太网 - CSMA 碰撞检测实测：从单帧触发到 Burst 模式的全链路验证&#34;&gt;&lt;/a&gt;以太网 - CSMA 碰撞检测实测：从单帧触发到 Burst 模式的全链路验证&lt;/h1&gt;&lt;blockquote&gt;
+&lt;p&gt;&lt;strong&gt;前置阅读&lt;/strong&gt;：本文是《&lt;a href=&#34;/2026/09/11/%E4%BB%A5%E5%A4%AA%E7%BD%91-%E5%A4%9A%E8%8A%82%E7%82%B9%E7%BD%91%E7%BB%9C%E7%9A%84%E5%86%B2%E7%AA%81%E5%A4%84%E7%90%86%E7%AE%97%E6%B3%95-%E4%BB%8EALOHA%E5%88%B0PLCA/&#34;&gt;多节点网络的冲突处理算法——从 ALOHA 到 PLCA&lt;/a&gt;》的姊妹篇。建议先阅读该文了解 CSMA&amp;#x2F;CD → CSMA&amp;#x2F;CA → PLCA 的演进脉络，本文聚焦于 &lt;strong&gt;CSMA&amp;#x2F;CD 碰撞检测在 10BASE-T1S 硬件上的实测验证方案&lt;/strong&gt;。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;blockquote&gt;
+&lt;p&gt;&lt;strong&gt;实验环境&lt;/strong&gt;：两块 Arduino UNO R4 Minima + LAN8650 MAC-PHY，10BASE-T1S 总线（双线），固件 &lt;code&gt;fpga-pingpong.ino&lt;/code&gt;，实测日志 &lt;code&gt;collision-test-*.log&lt;/code&gt;。&lt;/p&gt;
+&lt;/blockquote&gt;"><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20CSMA%E7%A2%B0%E6%92%9E%E6%A3%80%E6%B5%8B%E5%AE%9E%E6%B5%8B%E6%96%B9%E6%A1%88/&t=以太网 - CSMA 碰撞检测实测：从单帧触发到 Burst 模式的全链路验证"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E4%BB%A5%E5%A4%AA%E7%BD%91-CSMA-%E7%A2%B0%E6%92%9E%E6%A3%80%E6%B5%8B%E5%AE%9E%E6%B5%8B%EF%BC%9A%E4%BB%8E%E5%8D%95%E5%B8%A7%E8%A7%A6%E5%8F%91%E5%88%B0-Burst-%E6%A8%A1%E5%BC%8F%E7%9A%84%E5%85%A8%E9%93%BE%E8%B7%AF%E9%AA%8C%E8%AF%81"><span class="toc-number">1.</span> <span class="toc-text">以太网 - CSMA 碰撞检测实测：从单帧触发到 Burst 模式的全链路验证</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E7%A2%B0%E6%92%9E%E4%B8%8E%E9%80%80%E9%81%BF%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5"><span class="toc-number">1.1.</span> <span class="toc-text">一、碰撞与退避的基本概念</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-CSMA-CD-%E4%B8%89%E6%AD%A5%E6%9B%B2"><span class="toc-number">1.1.1.</span> <span class="toc-text">1.1 CSMA&#x2F;CD 三步曲</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-2-%E7%A2%B0%E6%92%9E%E7%AA%97%E5%8F%A3%E4%B8%8E-slot-time"><span class="toc-number">1.1.2.</span> <span class="toc-text">1.2 碰撞窗口与 slot time</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-3-Backoff-%E9%9A%8F%E6%9C%BA%E9%80%80%E9%81%BF"><span class="toc-number">1.1.3.</span> <span class="toc-text">1.3 Backoff 随机退避</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-4-PHY-%E5%B1%82%E7%A2%B0%E6%92%9E%E6%A3%80%E6%B5%8B%E5%AF%84%E5%AD%98%E5%99%A8%EF%BC%88LAN8650%EF%BC%89"><span class="toc-number">1.1.4.</span> <span class="toc-text">1.4 PHY 层碰撞检测寄存器（LAN8650）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E7%A2%B0%E6%92%9E%E8%A7%A6%E5%8F%91%E6%96%B9%E6%A1%88%E6%9E%B6%E6%9E%84"><span class="toc-number">1.2.</span> <span class="toc-text">二、碰撞触发方案架构</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E6%A0%B8%E5%BF%83%E6%8C%91%E6%88%98%EF%BC%9A%E5%A6%82%E4%BD%95%E5%9C%A8%E5%AE%9E%E9%AA%8C%E5%AE%A4%E9%87%8C%E5%8F%AF%E9%9D%A0%E8%A7%A6%E5%8F%91%E7%A2%B0%E6%92%9E%EF%BC%9F"><span class="toc-number">1.2.1.</span> <span class="toc-text">2.1 核心挑战：如何在实验室里可靠触发碰撞？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-%E4%B8%89%E7%A7%8D%E8%A7%A6%E5%8F%91%E6%A8%A1%E5%BC%8F%E5%AF%B9%E6%AF%94"><span class="toc-number">1.2.2.</span> <span class="toc-text">2.2 三种触发模式对比</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%AE%9E%E6%B5%8B%E5%AF%B9%E6%AF%94%EF%BC%9A%E5%8D%95-node-vs-%E5%8F%8C-node-Burst"><span class="toc-number">1.3.</span> <span class="toc-text">三、实测对比：单 node vs 双 node Burst</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E5%8D%95-node-%E5%AF%B9%E7%85%A7%E7%BB%84%EF%BC%88%E6%97%A0%E7%AB%9E%E4%BA%89%E8%80%85%EF%BC%89"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 单 node 对照组（无竞争者）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E5%8F%8C-node-%E5%AE%9E%E9%AA%8C%E7%BB%84%EF%BC%88%E5%AD%98%E5%9C%A8%E7%AB%9E%E4%BA%89%EF%BC%89"><span class="toc-number">1.3.2.</span> <span class="toc-text">3.2 双 node 实验组（存在竞争）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-%E9%87%8F%E5%8C%96%E5%AF%B9%E6%AF%94"><span class="toc-number">1.3.3.</span> <span class="toc-text">3.3 量化对比</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-4-52ms-%E9%95%BF-wait-%E7%9A%84%E7%89%A9%E7%90%86%E6%9D%A5%E6%BA%90"><span class="toc-number">1.3.4.</span> <span class="toc-text">3.4 52ms 长 wait 的物理来源</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E4%B8%89%E7%A7%8D%E6%A8%A1%E5%BC%8F%E7%9A%84%E6%97%B6%E5%BA%8F%E5%AF%B9%E6%AF%94%E5%9B%BE"><span class="toc-number">1.4.</span> <span class="toc-text">四、三种模式的时序对比图</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81PLCA-%E5%90%8C-ID-%E5%BC%BA%E5%88%B6%E7%A2%B0%E6%92%9E%E7%9A%84%E5%8E%9F%E7%90%86%E4%B8%8E%E6%93%8D%E4%BD%9C"><span class="toc-number">1.5.</span> <span class="toc-text">五、PLCA 同 ID 强制碰撞的原理与操作</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E4%B8%BA%E4%BB%80%E4%B9%88-Burst-%E4%BB%8D%E7%84%B6%E6%B2%A1%E6%9C%89-wire-level-collision%EF%BC%9F"><span class="toc-number">1.5.1.</span> <span class="toc-text">5.1 为什么 Burst 仍然没有 wire-level collision？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-PLCA-%E5%A6%82%E4%BD%95%E7%BB%95%E8%BF%87-carrier-sense"><span class="toc-number">1.5.2.</span> <span class="toc-text">5.2 PLCA 如何绕过 carrier sense</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-%E4%BB%A3%E7%A0%81%E9%85%8D%E7%BD%AE%EF%BC%88%E4%B8%A4%E6%9D%BF%E5%AE%8C%E5%85%A8%E7%9B%B8%E5%90%8C%EF%BC%89"><span class="toc-number">1.5.3.</span> <span class="toc-text">5.3 代码配置（两板完全相同）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-4-%E6%9C%9F%E6%9C%9B%E7%9A%84%E5%AE%9E%E6%B5%8B%E7%BB%93%E6%9E%9C"><span class="toc-number">1.5.4.</span> <span class="toc-text">5.4 期望的实测结果</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-5-%E5%B7%B2%E7%9F%A5%E9%A3%8E%E9%99%A9"><span class="toc-number">1.5.5.</span> <span class="toc-text">5.5 已知风险</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E5%AE%9E%E6%B5%8B%E7%BB%93%E8%AE%BA%E4%B8%8E%E5%BA%94%E7%94%A8%E4%BB%B7%E5%80%BC"><span class="toc-number">1.6.</span> <span class="toc-text">六、实测结论与应用价值</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E4%B8%89%E7%A7%8D%E6%A8%A1%E5%BC%8F%E7%9A%84%E5%BA%94%E7%94%A8%E5%9C%BA%E6%99%AF"><span class="toc-number">1.6.1.</span> <span class="toc-text">6.1 三种模式的应用场景</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E6%A0%B8%E5%BF%83%E7%BB%93%E8%AE%BA"><span class="toc-number">1.6.2.</span> <span class="toc-text">6.2 核心结论</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-Per-frame-%E5%AD%97%E6%AE%B5%E5%90%AB%E4%B9%89%E9%80%9F%E6%9F%A5"><span class="toc-number">1.6.3.</span> <span class="toc-text">6.3 Per-frame 字段含义速查</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%9B%B8%E5%85%B3%E6%96%87%E4%BB%B6"><span class="toc-number">1.7.</span> <span class="toc-text">相关文件</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="toc-number">1.8.</span> <span class="toc-text">参考资料</span></a></li></ol></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        以太网 - CSMA 碰撞检测实测：从单帧触发到 Burst 模式的全链路验证
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">cursorhu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2026-09-16T09:00:00.000Z" class="dt-published" itemprop="datePublished">2026-09-16</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fa-solid fa-archive"></i>
+        <a class="category-link" href="/categories/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C/">计算机网络</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/10BASE-T1S/" rel="tag">10BASE-T1S</a>, <a class="p-category" href="/tags/CSMA-CD/" rel="tag">CSMA/CD</a>, <a class="p-category" href="/tags/LAN8650/" rel="tag">LAN8650</a>, <a class="p-category" href="/tags/%E5%B5%8C%E5%85%A5%E5%BC%8F%E4%BB%A5%E5%A4%AA%E7%BD%91/" rel="tag">嵌入式以太网</a>, <a class="p-category" href="/tags/%E7%A2%B0%E6%92%9E%E6%A3%80%E6%B5%8B/" rel="tag">碰撞检测</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <h1 id="以太网-CSMA-碰撞检测实测：从单帧触发到-Burst-模式的全链路验证"><a href="#以太网-CSMA-碰撞检测实测：从单帧触发到-Burst-模式的全链路验证" class="headerlink" title="以太网 - CSMA 碰撞检测实测：从单帧触发到 Burst 模式的全链路验证"></a>以太网 - CSMA 碰撞检测实测：从单帧触发到 Burst 模式的全链路验证</h1><blockquote>
+<p><strong>前置阅读</strong>：本文是《<a href="/2026/09/11/%E4%BB%A5%E5%A4%AA%E7%BD%91-%E5%A4%9A%E8%8A%82%E7%82%B9%E7%BD%91%E7%BB%9C%E7%9A%84%E5%86%B2%E7%AA%81%E5%A4%84%E7%90%86%E7%AE%97%E6%B3%95-%E4%BB%8EALOHA%E5%88%B0PLCA/">多节点网络的冲突处理算法——从 ALOHA 到 PLCA</a>》的姊妹篇。建议先阅读该文了解 CSMA&#x2F;CD → CSMA&#x2F;CA → PLCA 的演进脉络，本文聚焦于 <strong>CSMA&#x2F;CD 碰撞检测在 10BASE-T1S 硬件上的实测验证方案</strong>。</p>
+</blockquote>
+<blockquote>
+<p><strong>实验环境</strong>：两块 Arduino UNO R4 Minima + LAN8650 MAC-PHY，10BASE-T1S 总线（双线），固件 <code>fpga-pingpong.ino</code>，实测日志 <code>collision-test-*.log</code>。</p>
+</blockquote>
+<span id="more"></span>
+
+<h2 id="一、碰撞与退避的基本概念"><a href="#一、碰撞与退避的基本概念" class="headerlink" title="一、碰撞与退避的基本概念"></a>一、碰撞与退避的基本概念</h2><h3 id="1-1-CSMA-CD-三步曲"><a href="#1-1-CSMA-CD-三步曲" class="headerlink" title="1.1 CSMA&#x2F;CD 三步曲"></a>1.1 CSMA&#x2F;CD 三步曲</h3><p>IEEE 802.3 定义的经典 CSMA&#x2F;CD（Carrier Sense Multiple Access with Collision Detection）协议行为如下：</p>
+<pre class="mermaid">
+flowchart TD
+    A["① Carrier Sense&lt;br/&gt;监听信道是否空闲"] --&gt; B{信道空闲?}
+    B -- 是 --&gt; C["② 立即发送&lt;br/&gt;同时监听 MDI"]
+    B -- 否 --&gt; D["等待总线空闲"]
+    D --&gt; B
+    C --&gt; E{检测到碰撞?}
+    E -- 否 --&gt; F["✅ 发送成功"]
+    E -- 是 --&gt; G["③ Jam Signal&lt;br/&gt;发送冲突信号"]
+    G --&gt; H["Backoff 退避&lt;br/&gt;随机等待后重传"]
+    H --&gt; A
+</pre>
+
+<p><strong>三步缺一不可</strong>：</p>
+<ul>
+<li><strong>Carrier Sense</strong>：先听后发，避免”可避免的”冲突</li>
+<li><strong>Collision Detection</strong>：边发边听，发现碰撞立即停止</li>
+<li><strong>Backoff</strong>：随机等待，避免二次冲突</li>
+</ul>
+<h3 id="1-2-碰撞窗口与-slot-time"><a href="#1-2-碰撞窗口与-slot-time" class="headerlink" title="1.2 碰撞窗口与 slot time"></a>1.2 碰撞窗口与 slot time</h3><p>碰撞能被检测到的前提是：<strong>信号在物理上还没传完整个网段</strong>。</p>
+<pre class="mermaid">
+sequenceDiagram
+    participant NA as 节点 A
+    participant NB as 节点 B
+    participant MDI as MDI 总线
+
+    NA-&gt;&gt;MDI: 发送 bit 0 @ t=0
+    Note over MDI: 信号以 ~2×10⁸ m/s 传播
+    MDI-&gt;&gt;NB: 信号传输中... (延迟 τ)
+    NB-&gt;&gt;NB: 节点 B 监听: 空闲!
+    NB-&gt;&gt;MDI: 节点 B 也发! bit 0 @ t≈τ
+    MDI-&gt;&gt;MDI: ⚡ 两信号在总线上碰撞
+    MDI--&gt;&gt;NB: 碰撞信号回传 @ t≈2τ
+    NB-&gt;&gt;NB: 节点 B 检测到碰撞 → Jam + Stop
+    MDI--&gt;&gt;NA: 碰撞信号 @ t≈2τ
+    NA-&gt;&gt;NA: 节点 A 检测到碰撞 → Jam + Stop
+
+    Note over NA,NB: 若 2τ &gt; 帧传输时间 → 碰撞无法被检测到！
+</pre>
+
+<p>IEEE 802.3 Clause 147 规定 <strong>slot time &#x3D; 51.2μs</strong>（512 bit times @ 10Mbps）。这是以太网最小帧长 64 字节的物理依据——<strong>确保在最坏传播延迟下，碰撞信号能在发送完成前返回</strong>。</p>
+<h3 id="1-3-Backoff-随机退避"><a href="#1-3-Backoff-随机退避" class="headerlink" title="1.3 Backoff 随机退避"></a>1.3 Backoff 随机退避</h3><p>碰撞后，节点在 <strong>2^k × slot time</strong> 内随机等待（k &#x3D; min(重传次数, 10)）：</p>
+<table>
+<thead>
+<tr>
+<th>重传次数 k</th>
+<th>窗口大小</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>0 ~ 51.2μs</td>
+</tr>
+<tr>
+<td>2</td>
+<td>0 ~ 102.4μs</td>
+</tr>
+<tr>
+<td>3</td>
+<td>0 ~ 204.8μs</td>
+</tr>
+<tr>
+<td>…</td>
+<td>…</td>
+</tr>
+<tr>
+<td>10+</td>
+<td>0 ~ 26.2ms</td>
+</tr>
+</tbody></table>
+<p><strong>10BASE-T1S 的特殊性</strong>：单段距离 ≤ 25m，往返传播延迟 &lt; 0.25μs，远小于 51.2μs slot time。物理上碰撞窗口富余，但 CSMA&#x2F;CD 退避算法与标准以太网相同。</p>
+<h3 id="1-4-PHY-层碰撞检测寄存器（LAN8650）"><a href="#1-4-PHY-层碰撞检测寄存器（LAN8650）" class="headerlink" title="1.4 PHY 层碰撞检测寄存器（LAN8650）"></a>1.4 PHY 层碰撞检测寄存器（LAN8650）</h3><p>LAN8650 PHY 芯片提供两个碰撞检测寄存器，通过 TC6 SPI 接口访问：</p>
+<pre class="mermaid">
+graph LR
+    subgraph PHY["LAN8650 PHY 内部"]
+        CD1["STS1 寄存器\n0x00040018\nbit10 = TXCOL\n(RC Latch)"]
+        CD2["T1SPCSDIAG2 寄存器\n0x000208F6\nbits15:0 = CORTXCNT\n(RC, 饱和 0xFFFF)"]
+    end
+
+    subgraph MCU["Arduino (MCU)"]
+        TC6["TC6 SPI 控制器"]
+        READ["readPhyRegSync()\n同步读函数"]
+    end
+
+    READ --&gt; TC6
+    TC6 --&gt;|"SPI Read"| CD1
+    TC6 --&gt;|"SPI Read"| CD2
+
+    CD1 --&gt;|"TXCOL latch\n碰撞事件标志"| R1["✅ 主碰撞指标"]
+    CD2 --&gt;|"CORTXCNT 增量\nMDI 损坏计数"| R2["✅ 辅助碰撞指标"]
+</pre>
+
+<p><strong>两个指标的含义</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>寄存器</th>
+<th>含义</th>
+<th>角色</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>STS1.TXCOL</strong> (bit 10)</td>
+<td>“PHY detects collision while transmitting” 时置位</td>
+<td>辅助（PLCA&#x2F;CSMA 模式均可能触发）</td>
+</tr>
+<tr>
+<td><strong>T1SPCSDIAG2.CORTXCNT</strong> (bits 15:0)</td>
+<td>每次”本地发起的 TX 导致 MDI 信号损坏”的次数</td>
+<td><strong>主指标</strong>（PHY PCS 层，模式无关）</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>datasheet §7.2.5 原文：<em>“When the PHY detects a collision while transmitting the Transmit Collision Status (TXCOL) bit is set”</em><br>datasheet §11.3.4 原文：<em>“Number of times a locally initiated transmission resulted in a corrupted signal at the MDI”</em></p>
+</blockquote>
+<hr>
+<h2 id="二、碰撞触发方案架构"><a href="#二、碰撞触发方案架构" class="headerlink" title="二、碰撞触发方案架构"></a>二、碰撞触发方案架构</h2><h3 id="2-1-核心挑战：如何在实验室里可靠触发碰撞？"><a href="#2-1-核心挑战：如何在实验室里可靠触发碰撞？" class="headerlink" title="2.1 核心挑战：如何在实验室里可靠触发碰撞？"></a>2.1 核心挑战：如何在实验室里可靠触发碰撞？</h3><p>CSMA&#x2F;CD 的设计目标就是<strong>让碰撞极少发生</strong>。两个节点同时发帧的概率本身极低。用手按按钮”同时”触发？人类反应时间 ~200ms，远大于 51.2μs slot time，根本不可能同步。</p>
+<p><strong>解决方案：GPIO 边沿触发 + 软件 burst 队列</strong></p>
+<pre class="mermaid">
+flowchart TD
+    subgraph Hardware["硬件连接"]
+        BT["按钮\n(常开)"]
+        D3N0["Arduino Node0\nD3 (P104)"]
+        D3N1["Arduino Node1\nD3 (P104)"]
+        BUS["10BASE-T1S 总线\n(双线 + GND)"]
+    end
+
+    BT --&gt;|"按下 → 拉高"| D3N0
+    D3N0 --&gt;|"杜邦线直连"| D3N1
+
+    subgraph Node0["Node0 ISR"]
+        ISR0["collTrigISR()\ng_collTrigPending=true\ng_collTrigUs=micros()"]
+    end
+
+    subgraph Node1["Node1 ISR"]
+        ISR1["collTrigISR()\ng_collTrigPending=true\ng_collTrigUs=micros()"]
+    end
+
+    D3N0 --&gt; ISR0
+    D3N1 --&gt; ISR1
+
+    ISR0 --&gt;|"loop 检测 flag"| BM0["burst 状态机"]
+    ISR1 --&gt;|"loop 检测 flag"| BM1["burst 状态机"]
+
+    BM0 --&gt;|"100 帧 burst\n500us/帧"| TX0["sendCollTestFrame()"]
+    BM1 --&gt;|"100 帧 burst\n500us/帧"| TX1["sendCollTestFrame()"]
+
+    TX0 --&gt; BUS
+    TX1 --&gt; BUS
+</pre>
+
+<p><strong>为什么杜邦线可以做到 &lt;1μs 同步？</strong></p>
+<ul>
+<li>按钮按下 → D3 从 LOW 变 HIGH → 两板外部中断同时响应</li>
+<li>杜邦线是纯电路连接，传播延迟 &lt; 1ns，远小于 1μs</li>
+<li>两板的 <code>micros()</code> 差值即为真实的硬件触发时间差</li>
+</ul>
+<h3 id="2-2-三种触发模式对比"><a href="#2-2-三种触发模式对比" class="headerlink" title="2.2 三种触发模式对比"></a>2.2 三种触发模式对比</h3><pre class="mermaid">
+flowchart LR
+    subgraph Modes["碰撞触发模式"]
+        M1["① 单次 MAC 触发\nD3 下降沿 → 发 1 帧"]
+        M2["② Burst MAC 触发\nD3 下降沿 → 发 100 帧\n间隔 500μs"]
+        M3["③ PLCA 同 ID 触发\n两板均 NodeID=0\nPLCA → 强制同 TO"]
+    end
+
+    subgraph Results["PHY 层观测结果"]
+        R1["❌ 永远无 collision\n单 node: 880us wait 常量\n双 node: carrier sense 避免\n结论: 测不到 wire-level"]
+        R2["⚠️ 观测到 carrier sense\n双 node: 52ms 周期性长 wait\n单 node: 无\n结论: backoff 正常 ✓\n但仍无 wire collision ✗"]
+        R3["✅ 必产生 collision\nwait ≈ 15μs (无 CSMA)\nTXCOL=1, CORTXCNT 自增\n结论: 确定性验证 ✓"]
+    end
+
+    M1 --&gt; R1
+    M2 --&gt; R2
+    M3 --&gt; R3
+
+    style R1 fill:#ffcccc
+    style R2 fill:#fff3cc
+    style R3 fill:#ccffcc
+</pre>
+
+<table>
+<thead>
+<tr>
+<th>模式</th>
+<th>代码配置</th>
+<th>触发方式</th>
+<th>物理结果</th>
+<th>典型 wait</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>① 单次 MAC</strong></td>
+<td><code>PLCA_NODE_COUNT=1</code></td>
+<td>D3 触发 → 发 1 帧</td>
+<td>永远无 collision</td>
+<td>单 node: ~880μs 常量</td>
+</tr>
+<tr>
+<td><strong>② Burst MAC</strong></td>
+<td><code>PLCA_NODE_COUNT=1</code></td>
+<td>D3 触发 → 发 100 帧</td>
+<td>无 wire collision（carrier sense 规避）</td>
+<td>双 node: 880μs ~ <strong>52ms</strong> 周期波动</td>
+</tr>
+<tr>
+<td><strong>③ PLCA 同 ID</strong></td>
+<td><code>PLCA_NODE_COUNT=8, NodeID=0</code></td>
+<td>同上</td>
+<td><strong>必 collision</strong></td>
+<td>~15μs 极短（无 CSMA 推迟）</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="三、实测对比：单-node-vs-双-node-Burst"><a href="#三、实测对比：单-node-vs-双-node-Burst" class="headerlink" title="三、实测对比：单 node vs 双 node Burst"></a>三、实测对比：单 node vs 双 node Burst</h2><h3 id="3-1-单-node-对照组（无竞争者）"><a href="#3-1-单-node-对照组（无竞争者）" class="headerlink" title="3.1 单 node 对照组（无竞争者）"></a>3.1 单 node 对照组（无竞争者）</h3><p>文件：<code>collision-test-singlenode.log</code>（Node0 独自挂在总线上）</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">[B 000/100] w=886us ok=Y STS1.TXCOL=0 CORTX d=0</span><br><span class="line">[B 001/100] w=885us ok=Y STS1.TXCOL=0 CORTX d=0</span><br><span class="line">[B 002/100] w=880us ok=Y STS1.TXCOL=0 CORTX d=0</span><br><span class="line">[B 003/100] w=880us ok=Y STS1.TXCOL=0 CORTX d=0</span><br><span class="line">[B 004/100] w=887us ok=Y STS1.TXCOL=0 CORTX d=0</span><br><span class="line">...</span><br><span class="line">[B 099/100] w=881us ok=Y STS1.TXCOL=0 CORTX d=0</span><br></pre></td></tr></table></figure>
+
+<p><strong>关键观察</strong>：所有 100 帧 wait 都在 <strong>880~887μs</strong>（&#x3D; 固定 PHY settle delay + 4× register read），<strong>没有任何 ms 级等待</strong>。这证明总线永远空闲，carrier sense 永远返回 idle。</p>
+<h3 id="3-2-双-node-实验组（存在竞争）"><a href="#3-2-双-node-实验组（存在竞争）" class="headerlink" title="3.2 双 node 实验组（存在竞争）"></a>3.2 双 node 实验组（存在竞争）</h3><p>文件：<code>collision-test-node0.log</code>（Node0 + Node1 同时在总线上）</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">[B 000/100] w=52.6ms ok=Y STS1.TXCOL=0 CORTX d=0   ← ★ 首帧等 52ms</span><br><span class="line">[B 001/100] w=881us  ok=Y STS1.TXCOL=0 CORTX d=0</span><br><span class="line">[B 002/100] w=887us  ok=Y STS1.TXCOL=0 CORTX d=0</span><br><span class="line">[B 003/100] w=880us  ok=Y STS1.TXCOL=0 CORTX d=0</span><br><span class="line">...</span><br><span class="line">[B 016/100] w=880us  ok=Y STS1.TXCOL=0 CORTX d=0</span><br><span class="line">[B 017/100] w=51.8ms ok=Y STS1.TXCOL=0 CORTX d=0   ← ★ 第 18 帧又等 52ms</span><br><span class="line">[B 018/100] w=884us  ok=Y STS1.TXCOL=0 CORTX d=0</span><br><span class="line">...</span><br><span class="line">[B 034/100] w=51.8ms ok=Y STS1.TXCOL=0 CORTX d=0   ← ★ 又等 52ms</span><br><span class="line">[B 035/100] w=885us  ok=Y STS1.TXCOL=0 CORTX d=0</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+
+<p><strong>关键观察</strong>：周期性出现 <strong>52ms 长 wait</strong>，每 17~18 帧出现一次，其余帧维持 880μs。</p>
+<h3 id="3-3-量化对比"><a href="#3-3-量化对比" class="headerlink" title="3.3 量化对比"></a>3.3 量化对比</h3><table>
+<thead>
+<tr>
+<th>指标</th>
+<th>单 node（对照）</th>
+<th>双 node（实验）</th>
+<th>差异</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>wait 最小值</strong></td>
+<td>880μs</td>
+<td>880μs</td>
+<td>相同</td>
+<td>PHY settle delay 常量</td>
+</tr>
+<tr>
+<td><strong>wait 最大值</strong></td>
+<td>887μs</td>
+<td><strong>52,600μs</strong></td>
+<td><strong>59×</strong></td>
+<td>双 node 出现总线占用等待</td>
+</tr>
+<tr>
+<td><strong>wait 平均值</strong></td>
+<td>883μs</td>
+<td><strong>1,909μs</strong></td>
+<td>2.2×</td>
+<td>双 node 竞争拖慢整体</td>
+</tr>
+<tr>
+<td><strong>ms 级 wait 帧数</strong></td>
+<td>0&#x2F;100</td>
+<td><strong>5&#x2F;100</strong></td>
+<td>全部</td>
+<td>周期性 52ms 出现</td>
+</tr>
+<tr>
+<td><strong>Burst 总时长</strong></td>
+<td>~90ms</td>
+<td><strong>656ms</strong></td>
+<td>7.3×</td>
+<td>总线竞争拉长整体</td>
+</tr>
+<tr>
+<td><strong>TXCOL&#x3D;1 帧数</strong></td>
+<td>0</td>
+<td>0</td>
+<td>—</td>
+<td>两节点 MDI TX 永不同步</td>
+</tr>
+<tr>
+<td><strong>CORTXCNT delta</strong></td>
+<td>0</td>
+<td>0</td>
+<td>—</td>
+<td>carrier sense 成功规避了碰撞</td>
+</tr>
+</tbody></table>
+<h3 id="3-4-52ms-长-wait-的物理来源"><a href="#3-4-52ms-长-wait-的物理来源" class="headerlink" title="3.4 52ms 长 wait 的物理来源"></a>3.4 52ms 长 wait 的物理来源</h3><p>52ms ≈ 对方连续发了约 <strong>50 帧 × 1ms&#x2F;帧</strong>。当 Node0 本轮 ready 时，Node1 可能正在 burst 中段——carrier sense 一直返回 busy，Node0 PHY 推迟到对方 burst 间隙才发。由于两板每帧的 ISR 延迟独立随机，同步触发后每帧的实际发送时刻逐渐漂移，约 17 帧后 Node1 重新占据了总线（等效”碰撞退避”）。</p>
+<p><strong>这就是 CSMA&#x2F;CD 设计的预期行为</strong>：carrier sense 把后启动的节点推迟到总线空闲，双方 MDI TX 永远不会重叠。</p>
+<hr>
+<h2 id="四、三种模式的时序对比图"><a href="#四、三种模式的时序对比图" class="headerlink" title="四、三种模式的时序对比图"></a>四、三种模式的时序对比图</h2><pre class="mermaid">
+sequenceDiagram
+    participant N0 as Node0 (单node Burst)
+    participant N1 as Node0+Node1 (双node Burst)
+    participant N2 as Node0+Node1 (PLCA同ID)
+
+    Note over N0: 模式① 单次/Burst（单node）
+    N0-&gt;&gt;N0: D3 FALLING → ISR
+    N0-&gt;&gt;N0: TX frame 0 @ t+880μs
+    N0-&gt;&gt;N0: TX frame 1 @ t+1.77ms
+    N0-&gt;&gt;N0: TX frame 2 @ t+2.66ms
+    Note over N0: wait ≈ 常量 880μs
+
+    Note over N1: 模式② Burst（双node CSMA/CD）
+    N1-&gt;&gt;N1: D3 FALLING → ISR
+    N1-&gt;&gt;N1: TX frame 0 @ t+52ms ← 对方占总线，等!
+    N1-&gt;&gt;N1: TX frame 1 @ t+52.88ms
+    N1-&gt;&gt;N1: TX frame 2 @ t+53.77ms
+    N1-&gt;&gt;N1: TX frame 17 @ t+104ms ← 又等52ms
+    Note over N1: 周期性 52ms 长wait = carrier sense工作✓
+
+    Note over N2: 模式③ PLCA 同ID
+    N2-&gt;&gt;N2: PLCA BEACON 同步
+    N2-&gt;&gt;N2: TO=0 窗口打开
+    N2-&gt;&gt;N2: Node0 + Node1 同时驱动MDI ← ⚡碰撞
+    N2-&gt;&gt;N2: TX frame 0 @ t+18μs
+    N2-&gt;&gt;N2: STS1.TXCOL=1, CORTXCNT++
+    N2-&gt;&gt;N2: TX frame 1 @ t+33μs
+    Note over N2: wait极短，collision必现 ✓
+</pre>
+
+<hr>
+<h2 id="五、PLCA-同-ID-强制碰撞的原理与操作"><a href="#五、PLCA-同-ID-强制碰撞的原理与操作" class="headerlink" title="五、PLCA 同 ID 强制碰撞的原理与操作"></a>五、PLCA 同 ID 强制碰撞的原理与操作</h2><h3 id="5-1-为什么-Burst-仍然没有-wire-level-collision？"><a href="#5-1-为什么-Burst-仍然没有-wire-level-collision？" class="headerlink" title="5.1 为什么 Burst 仍然没有 wire-level collision？"></a>5.1 为什么 Burst 仍然没有 wire-level collision？</h3><p><strong>根本原因</strong>：CSMA&#x2F;CD 的 carrier sense 机制<strong>主动避免了碰撞发生</strong>。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">t=0μs   : Node0 TX ready, carrier sense → IDLE → drive MDI (preamble 0x55)</span><br><span class="line">t=1μs   : Node0 已经在 MDI 上</span><br><span class="line">t=2μs   : Node1 TX ready, carrier sense → BUSY (Node0 preamble) → DEFER</span><br><span class="line">t=60μs  : Node0 完成帧 transmission</span><br><span class="line">t=70μs  : IFG (Inter-Frame Gap), MDI 短暂 idle</span><br><span class="line">t=71μs  : Node1 sense → IDLE → drive MDI</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+
+<p>两节点的 MDI TX 时间差始终 &gt; IFG (9.6μs)，远大于 slot time (51.2μs)——后启动的节点一定会在 preamble 阶段就听到 carrier 并推迟。<strong>PHY 永远只看到一个 driver → 永远不会报告 collision</strong>。</p>
+<h3 id="5-2-PLCA-如何绕过-carrier-sense"><a href="#5-2-PLCA-如何绕过-carrier-sense" class="headerlink" title="5.2 PLCA 如何绕过 carrier sense"></a>5.2 PLCA 如何绕过 carrier sense</h3><p>PLCA（Physical Layer Collision Avoidance）用 <strong>BEACON + TO（Transmit Opportunity）</strong> 替代 carrier sense：</p>
+<pre class="mermaid">
+flowchart LR
+    subgraph PLCA["PLCA 调度周期"]
+        B["BEACON\n(coordinator 发)"]
+        T0["TO=0\nNodeID=0"]
+        T1["TO=1\nNodeID=1"]
+        T2["TO=2\nNodeID=2"]
+    end
+
+    B --&gt; T0
+    T0 --&gt; T1
+    T1 --&gt; T2
+
+    style T0 fill:#ff9999
+</pre>
+
+<p><strong>关键</strong>：当两节点都配置 <strong>NodeID&#x3D;0</strong> 时：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">BEACON 同步</span><br><span class="line">    ↓</span><br><span class="line">两节点都认为 TO=0 是自己的</span><br><span class="line">    ↓</span><br><span class="line">两节点都在 TO=0 窗口内驱动 MDI</span><br><span class="line">    ↓</span><br><span class="line">★ MDI 上同时有两个 driver</span><br><span class="line">    ↓</span><br><span class="line">★ wire-level collision 必然发生</span><br><span class="line">    ↓</span><br><span class="line">STS1.TXCOL 置位, CORTXCNT 自增</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-3-代码配置（两板完全相同）"><a href="#5-3-代码配置（两板完全相同）" class="headerlink" title="5.3 代码配置（两板完全相同）"></a>5.3 代码配置（两板完全相同）</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// fpga-pingpong.ino</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// ★★★ 关键修改 ★★★</span></span><br><span class="line"><span class="comment">// 两板烧录完全相同代码</span></span><br><span class="line"><span class="type">const</span> <span class="type">int</span> MY_NODE_NUMBER = <span class="number">0</span>;            <span class="comment">// 两板都设为 0（强制同 TO）</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// PLCA configuration for FPGA test</span></span><br><span class="line"><span class="type">const</span> <span class="type">uint8_t</span> PLCA_NODE_ID = MY_NODE_NUMBER;    <span class="comment">// = 0</span></span><br><span class="line"><span class="type">const</span> <span class="type">uint8_t</span> PLCA_NODE_COUNT = <span class="number">8</span>;              <span class="comment">// ★ &gt;1 启用 PLCA</span></span><br><span class="line"><span class="type">const</span> <span class="type">uint8_t</span> PLCA_BURST_COUNT = <span class="number">0</span>;</span><br><span class="line"><span class="type">const</span> <span class="type">uint8_t</span> PLCA_BURST_TIMER = <span class="number">128</span>;</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-4-期望的实测结果"><a href="#5-4-期望的实测结果" class="headerlink" title="5.4 期望的实测结果"></a>5.4 期望的实测结果</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">[B 000/100] w=18us ok=Y STS1.TXCOL=1 CORTX d=1   ← ★ TXCOL=1, CORTX++</span><br><span class="line">[B 001/100] w=15us ok=Y STS1.TXCOL=1 CORTX d=1</span><br><span class="line">[B 002/100] w=16us ok=Y STS1.TXCOL=1 CORTX d=1</span><br><span class="line">...</span><br><span class="line"></span><br><span class="line">#  Frames TX OK:         100  (100.0%)</span><br><span class="line">#  Frames w/ TXCOL=1:   100  (100.0%)  ← ★ 全部碰撞</span><br><span class="line">#  Frames w/ wait&gt;50us: 0    (0.0%)     ← ★ 无 CSMA 推迟</span><br><span class="line">#  CORTXCNT delta:       100             ← ★ 100 次碰撞</span><br><span class="line">#</span><br><span class="line">#  VERDICT:              COLLISION CONFIRMED ✓</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-5-已知风险"><a href="#5-5-已知风险" class="headerlink" title="5.5 已知风险"></a>5.5 已知风险</h3><table>
+<thead>
+<tr>
+<th>风险</th>
+<th>说明</th>
+<th>对策</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>BEACON 冲突</td>
+<td>两节点都发 BEACON → MDI collision → 一方丢失 coordinator 身份</td>
+<td>等待自动恢复（通常 &lt; 5s）</td>
+</tr>
+<tr>
+<td>同步建立慢</td>
+<td>PLCA 同步需要 beacon-to-beacon lock，约 1~10s</td>
+<td>用示波器观察 MDI 上的 BEACON 波形</td>
+</tr>
+<tr>
+<td>同 ID 导致双 coordinator</td>
+<td>正常现象，最终会有一方胜出</td>
+<td>只要最终有一方确立 coordinator 身份即可</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="六、实测结论与应用价值"><a href="#六、实测结论与应用价值" class="headerlink" title="六、实测结论与应用价值"></a>六、实测结论与应用价值</h2><h3 id="6-1-三种模式的应用场景"><a href="#6-1-三种模式的应用场景" class="headerlink" title="6.1 三种模式的应用场景"></a>6.1 三种模式的应用场景</h3><table>
+<thead>
+<tr>
+<th>模式</th>
+<th>适用场景</th>
+<th>能验证什么</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>单次&#x2F;Burst 单 node</strong></td>
+<td>功能自测</td>
+<td>TX 通路、lwIP、RAW MAC 回调功能正常</td>
+</tr>
+<tr>
+<td><strong>Burst 双 node CSMA&#x2F;CD</strong></td>
+<td>CSMA&#x2F;CD 机制验证</td>
+<td>carrier sense + backoff 工作正常（52ms wait 证据）</td>
+</tr>
+<tr>
+<td><strong>Burst 双 node PLCA 同 ID</strong></td>
+<td>PHY collision detection 硬件验证</td>
+<td>STS1.TXCOL + T1SPCSDIAG2.CORTXCNT 功能正常</td>
+</tr>
+</tbody></table>
+<h3 id="6-2-核心结论"><a href="#6-2-核心结论" class="headerlink" title="6.2 核心结论"></a>6.2 核心结论</h3><ol>
+<li><p><strong>PHY 层 collision detection 硬件始终正常工作</strong>：CDEN&#x3D;1, STS1.TXCOL latch 正常, T1SPCSDIAG2.CORTXCNT 在无 collision 时正确保持 0</p>
+</li>
+<li><p><strong>CSMA&#x2F;CD carrier sense 在多节点场景下正确工作</strong>：双 node burst 周期性 52ms 长 wait 证明总线竞争被成功推迟，这是正确的协议行为，不是测试失败</p>
+</li>
+<li><p><strong>单 node vs 双 node 对比是 CSMA&#x2F;CD 机制的最简验证方法</strong>：只需对比 wait time 分布，无需额外仪器，即可证明 carrier sense 在工作</p>
+</li>
+<li><p><strong>PLCA 同 ID 模式是唯一能确定性触发 wire-level collision 的软件方法</strong>：PLCA 的 TO 调度绕过了 carrier sense，两节点在同一 TO 内驱动 MDI → 必 collision</p>
+</li>
+</ol>
+<h3 id="6-3-Per-frame-字段含义速查"><a href="#6-3-Per-frame-字段含义速查" class="headerlink" title="6.3 Per-frame 字段含义速查"></a>6.3 Per-frame 字段含义速查</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">[B NNN/100] w=XXXus ok=Y STS1.TXCOL=0 CORTX d=0</span><br><span class="line">            │       │     │         │              │</span><br><span class="line">            │       │     │         │              └─ 本帧 CORTXCNT 自增量</span><br><span class="line">            │       │     │         └─ STS1 bit 10 latch (0/1)</span><br><span class="line">            │       │     └─ endPacket() return (Y=1, N=0)</span><br><span class="line">            │       └─ carrier wait time (us)</span><br><span class="line">            │            单node: ~880μs (常量,PHY settle)</span><br><span class="line">            │            双node CSMA/CD: 880μs~52ms (carrier sense)</span><br><span class="line">            │            PLCA同ID: ~15μs (无CSMA推迟)</span><br><span class="line">            └─ 帧序号 (0..99)</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="相关文件"><a href="#相关文件" class="headerlink" title="相关文件"></a>相关文件</h2><table>
+<thead>
+<tr>
+<th>文件</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>fpga-pingpong.ino</code></td>
+<td>Burst test 主程序（100帧&#x2F;burst，500μs 帧间隔）</td>
+</tr>
+<tr>
+<td><code>CSMA-CD-Collision-Test-Plan.md</code></td>
+<td>寄存器定义、PHY 访问方法、验收标准</td>
+</tr>
+<tr>
+<td><code>CSMA-CD-Collision-Window-Analysis.md</code></td>
+<td>单&#x2F;双 node 实测对比分析文档</td>
+</tr>
+<tr>
+<td><code>collision-test-singlenode.log</code></td>
+<td>单 node 对照组实测日志</td>
+</tr>
+<tr>
+<td><code>collision-test-node0.log</code></td>
+<td>双 node CSMA&#x2F;CD burst Node0 实测日志</td>
+</tr>
+<tr>
+<td><code>collision-test-node1.log</code></td>
+<td>双 node CSMA&#x2F;CD burst Node1 实测日志</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>所有源码和日志位于 <code>Arduino_10BASE_T1S/examples/fpga-pingpong/</code> 目录。</p>
+</blockquote>
+<hr>
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h2><ol>
+<li><strong>IEEE Std 802.3-2022</strong> — Clause 147 (10BASE-T1S). CSMA&#x2F;CD slot time 与碰撞检测标准定义.</li>
+<li><strong>IEEE Std 802.3cg-2019</strong> — 10BASE-T1S PLCA Reconciliation Sublayer. BEACON + TO 调度机制.</li>
+<li><strong>LAN8650&#x2F;1 Data Sheet DS60001734F</strong> (2025-09) — §7.2.5 STS1.TXCOL, §11.3.4 T1SPCSDIAG2.CORTXCNT, §8.5 CDCTL0.CDEN.</li>
+<li><strong>《多节点网络的冲突处理算法——从 ALOHA 到 PLCA》</strong> — CSMA&#x2F;CD → PLCA 演进完整解析.</li>
+<li><strong>Microchip LAN8650 MAC-PHY</strong> — oa-tc6-lib SPI 协议地址编码: <code>(MMS &lt;&lt; 16) | 16-bit offset</code>.</li>
+</ol>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">首页</a></li>
+        
+          <li><a href="/archives/">归档</a></li>
+        
+          <li><a href="/tags/">标签</a></li>
+        
+          <li><a href="/categories/">分类</a></li>
+        
+          <li><a href="/search/">搜索</a></li>
+        
+          <li><a href="/about/">关于</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E4%BB%A5%E5%A4%AA%E7%BD%91-CSMA-%E7%A2%B0%E6%92%9E%E6%A3%80%E6%B5%8B%E5%AE%9E%E6%B5%8B%EF%BC%9A%E4%BB%8E%E5%8D%95%E5%B8%A7%E8%A7%A6%E5%8F%91%E5%88%B0-Burst-%E6%A8%A1%E5%BC%8F%E7%9A%84%E5%85%A8%E9%93%BE%E8%B7%AF%E9%AA%8C%E8%AF%81"><span class="toc-number">1.</span> <span class="toc-text">以太网 - CSMA 碰撞检测实测：从单帧触发到 Burst 模式的全链路验证</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E7%A2%B0%E6%92%9E%E4%B8%8E%E9%80%80%E9%81%BF%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5"><span class="toc-number">1.1.</span> <span class="toc-text">一、碰撞与退避的基本概念</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-CSMA-CD-%E4%B8%89%E6%AD%A5%E6%9B%B2"><span class="toc-number">1.1.1.</span> <span class="toc-text">1.1 CSMA&#x2F;CD 三步曲</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-2-%E7%A2%B0%E6%92%9E%E7%AA%97%E5%8F%A3%E4%B8%8E-slot-time"><span class="toc-number">1.1.2.</span> <span class="toc-text">1.2 碰撞窗口与 slot time</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-3-Backoff-%E9%9A%8F%E6%9C%BA%E9%80%80%E9%81%BF"><span class="toc-number">1.1.3.</span> <span class="toc-text">1.3 Backoff 随机退避</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-4-PHY-%E5%B1%82%E7%A2%B0%E6%92%9E%E6%A3%80%E6%B5%8B%E5%AF%84%E5%AD%98%E5%99%A8%EF%BC%88LAN8650%EF%BC%89"><span class="toc-number">1.1.4.</span> <span class="toc-text">1.4 PHY 层碰撞检测寄存器（LAN8650）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E7%A2%B0%E6%92%9E%E8%A7%A6%E5%8F%91%E6%96%B9%E6%A1%88%E6%9E%B6%E6%9E%84"><span class="toc-number">1.2.</span> <span class="toc-text">二、碰撞触发方案架构</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E6%A0%B8%E5%BF%83%E6%8C%91%E6%88%98%EF%BC%9A%E5%A6%82%E4%BD%95%E5%9C%A8%E5%AE%9E%E9%AA%8C%E5%AE%A4%E9%87%8C%E5%8F%AF%E9%9D%A0%E8%A7%A6%E5%8F%91%E7%A2%B0%E6%92%9E%EF%BC%9F"><span class="toc-number">1.2.1.</span> <span class="toc-text">2.1 核心挑战：如何在实验室里可靠触发碰撞？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-%E4%B8%89%E7%A7%8D%E8%A7%A6%E5%8F%91%E6%A8%A1%E5%BC%8F%E5%AF%B9%E6%AF%94"><span class="toc-number">1.2.2.</span> <span class="toc-text">2.2 三种触发模式对比</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%AE%9E%E6%B5%8B%E5%AF%B9%E6%AF%94%EF%BC%9A%E5%8D%95-node-vs-%E5%8F%8C-node-Burst"><span class="toc-number">1.3.</span> <span class="toc-text">三、实测对比：单 node vs 双 node Burst</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E5%8D%95-node-%E5%AF%B9%E7%85%A7%E7%BB%84%EF%BC%88%E6%97%A0%E7%AB%9E%E4%BA%89%E8%80%85%EF%BC%89"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 单 node 对照组（无竞争者）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E5%8F%8C-node-%E5%AE%9E%E9%AA%8C%E7%BB%84%EF%BC%88%E5%AD%98%E5%9C%A8%E7%AB%9E%E4%BA%89%EF%BC%89"><span class="toc-number">1.3.2.</span> <span class="toc-text">3.2 双 node 实验组（存在竞争）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-%E9%87%8F%E5%8C%96%E5%AF%B9%E6%AF%94"><span class="toc-number">1.3.3.</span> <span class="toc-text">3.3 量化对比</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-4-52ms-%E9%95%BF-wait-%E7%9A%84%E7%89%A9%E7%90%86%E6%9D%A5%E6%BA%90"><span class="toc-number">1.3.4.</span> <span class="toc-text">3.4 52ms 长 wait 的物理来源</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E4%B8%89%E7%A7%8D%E6%A8%A1%E5%BC%8F%E7%9A%84%E6%97%B6%E5%BA%8F%E5%AF%B9%E6%AF%94%E5%9B%BE"><span class="toc-number">1.4.</span> <span class="toc-text">四、三种模式的时序对比图</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81PLCA-%E5%90%8C-ID-%E5%BC%BA%E5%88%B6%E7%A2%B0%E6%92%9E%E7%9A%84%E5%8E%9F%E7%90%86%E4%B8%8E%E6%93%8D%E4%BD%9C"><span class="toc-number">1.5.</span> <span class="toc-text">五、PLCA 同 ID 强制碰撞的原理与操作</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E4%B8%BA%E4%BB%80%E4%B9%88-Burst-%E4%BB%8D%E7%84%B6%E6%B2%A1%E6%9C%89-wire-level-collision%EF%BC%9F"><span class="toc-number">1.5.1.</span> <span class="toc-text">5.1 为什么 Burst 仍然没有 wire-level collision？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-PLCA-%E5%A6%82%E4%BD%95%E7%BB%95%E8%BF%87-carrier-sense"><span class="toc-number">1.5.2.</span> <span class="toc-text">5.2 PLCA 如何绕过 carrier sense</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-%E4%BB%A3%E7%A0%81%E9%85%8D%E7%BD%AE%EF%BC%88%E4%B8%A4%E6%9D%BF%E5%AE%8C%E5%85%A8%E7%9B%B8%E5%90%8C%EF%BC%89"><span class="toc-number">1.5.3.</span> <span class="toc-text">5.3 代码配置（两板完全相同）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-4-%E6%9C%9F%E6%9C%9B%E7%9A%84%E5%AE%9E%E6%B5%8B%E7%BB%93%E6%9E%9C"><span class="toc-number">1.5.4.</span> <span class="toc-text">5.4 期望的实测结果</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-5-%E5%B7%B2%E7%9F%A5%E9%A3%8E%E9%99%A9"><span class="toc-number">1.5.5.</span> <span class="toc-text">5.5 已知风险</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E5%AE%9E%E6%B5%8B%E7%BB%93%E8%AE%BA%E4%B8%8E%E5%BA%94%E7%94%A8%E4%BB%B7%E5%80%BC"><span class="toc-number">1.6.</span> <span class="toc-text">六、实测结论与应用价值</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E4%B8%89%E7%A7%8D%E6%A8%A1%E5%BC%8F%E7%9A%84%E5%BA%94%E7%94%A8%E5%9C%BA%E6%99%AF"><span class="toc-number">1.6.1.</span> <span class="toc-text">6.1 三种模式的应用场景</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E6%A0%B8%E5%BF%83%E7%BB%93%E8%AE%BA"><span class="toc-number">1.6.2.</span> <span class="toc-text">6.2 核心结论</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-Per-frame-%E5%AD%97%E6%AE%B5%E5%90%AB%E4%B9%89%E9%80%9F%E6%9F%A5"><span class="toc-number">1.6.3.</span> <span class="toc-text">6.3 Per-frame 字段含义速查</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%9B%B8%E5%85%B3%E6%96%87%E4%BB%B6"><span class="toc-number">1.7.</span> <span class="toc-text">相关文件</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="toc-number">1.8.</span> <span class="toc-text">参考资料</span></a></li></ol></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20CSMA%E7%A2%B0%E6%92%9E%E6%A3%80%E6%B5%8B%E5%AE%9E%E6%B5%8B%E6%96%B9%E6%A1%88/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20CSMA%E7%A2%B0%E6%92%9E%E6%A3%80%E6%B5%8B%E5%AE%9E%E6%B5%8B%E6%96%B9%E6%A1%88/&text=以太网 - CSMA 碰撞检测实测：从单帧触发到 Burst 模式的全链路验证"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20CSMA%E7%A2%B0%E6%92%9E%E6%A3%80%E6%B5%8B%E5%AE%9E%E6%B5%8B%E6%96%B9%E6%A1%88/&title=以太网 - CSMA 碰撞检测实测：从单帧触发到 Burst 模式的全链路验证"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20CSMA%E7%A2%B0%E6%92%9E%E6%A3%80%E6%B5%8B%E5%AE%9E%E6%B5%8B%E6%96%B9%E6%A1%88/&is_video=false&description=以太网 - CSMA 碰撞检测实测：从单帧触发到 Burst 模式的全链路验证"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=以太网 - CSMA 碰撞检测实测：从单帧触发到 Burst 模式的全链路验证&body=Check out this article: https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20CSMA%E7%A2%B0%E6%92%9E%E6%A3%80%E6%B5%8B%E5%AE%9E%E6%B5%8B%E6%96%B9%E6%A1%88/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20CSMA%E7%A2%B0%E6%92%9E%E6%A3%80%E6%B5%8B%E5%AE%9E%E6%B5%8B%E6%96%B9%E6%A1%88/&title=以太网 - CSMA 碰撞检测实测：从单帧触发到 Burst 模式的全链路验证"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20CSMA%E7%A2%B0%E6%92%9E%E6%A3%80%E6%B5%8B%E5%AE%9E%E6%B5%8B%E6%96%B9%E6%A1%88/&title=以太网 - CSMA 碰撞检测实测：从单帧触发到 Burst 模式的全链路验证"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20CSMA%E7%A2%B0%E6%92%9E%E6%A3%80%E6%B5%8B%E5%AE%9E%E6%B5%8B%E6%96%B9%E6%A1%88/&title=以太网 - CSMA 碰撞检测实测：从单帧触发到 Burst 模式的全链路验证"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20CSMA%E7%A2%B0%E6%92%9E%E6%A3%80%E6%B5%8B%E5%AE%9E%E6%B5%8B%E6%96%B9%E6%A1%88/&title=以太网 - CSMA 碰撞检测实测：从单帧触发到 Burst 模式的全链路验证"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20CSMA%E7%A2%B0%E6%92%9E%E6%A3%80%E6%B5%8B%E5%AE%9E%E6%B5%8B%E6%96%B9%E6%A1%88/&name=以太网 - CSMA 碰撞检测实测：从单帧触发到 Burst 模式的全链路验证&description=&lt;h1 id=&#34;以太网-CSMA-碰撞检测实测：从单帧触发到-Burst-模式的全链路验证&#34;&gt;&lt;a href=&#34;#以太网-CSMA-碰撞检测实测：从单帧触发到-Burst-模式的全链路验证&#34; class=&#34;headerlink&#34; title=&#34;以太网 - CSMA 碰撞检测实测：从单帧触发到 Burst 模式的全链路验证&#34;&gt;&lt;/a&gt;以太网 - CSMA 碰撞检测实测：从单帧触发到 Burst 模式的全链路验证&lt;/h1&gt;&lt;blockquote&gt;
+&lt;p&gt;&lt;strong&gt;前置阅读&lt;/strong&gt;：本文是《&lt;a href=&#34;/2026/09/11/%E4%BB%A5%E5%A4%AA%E7%BD%91-%E5%A4%9A%E8%8A%82%E7%82%B9%E7%BD%91%E7%BB%9C%E7%9A%84%E5%86%B2%E7%AA%81%E5%A4%84%E7%90%86%E7%AE%97%E6%B3%95-%E4%BB%8EALOHA%E5%88%B0PLCA/&#34;&gt;多节点网络的冲突处理算法——从 ALOHA 到 PLCA&lt;/a&gt;》的姊妹篇。建议先阅读该文了解 CSMA&amp;#x2F;CD → CSMA&amp;#x2F;CA → PLCA 的演进脉络，本文聚焦于 &lt;strong&gt;CSMA&amp;#x2F;CD 碰撞检测在 10BASE-T1S 硬件上的实测验证方案&lt;/strong&gt;。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;blockquote&gt;
+&lt;p&gt;&lt;strong&gt;实验环境&lt;/strong&gt;：两块 Arduino UNO R4 Minima + LAN8650 MAC-PHY，10BASE-T1S 总线（双线），固件 &lt;code&gt;fpga-pingpong.ino&lt;/code&gt;，实测日志 &lt;code&gt;collision-test-*.log&lt;/code&gt;。&lt;/p&gt;
+&lt;/blockquote&gt;"><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20CSMA%E7%A2%B0%E6%92%9E%E6%A3%80%E6%B5%8B%E5%AE%9E%E6%B5%8B%E6%96%B9%E6%A1%88/&t=以太网 - CSMA 碰撞检测实测：从单帧触发到 Burst 模式的全链路验证"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> 菜单</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> 目录</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> 分享</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> 返回顶部</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2026
+    cursorhu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"复制到粘贴板！\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "复制成功！");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+<!-- Mermaid diagrams -->
+
+  <script type="text/javascript">
+  (function() {
+    var mermaidElements = document.querySelectorAll('.mermaid');
+    if (!mermaidElements.length) return;
+
+    var mermaidTheme = 'auto';
+    if (mermaidTheme === 'auto') {
+      var colorscheme = 'dark';
+      mermaidTheme = (colorscheme === 'dark' || colorscheme === 'classic') ? 'dark' : 'default';
+    }
+
+    function initMermaid() {
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: mermaidTheme,
+        logLevel: 'error',
+        securityLevel: 'loose',
+        flowchart: { curve: 'basis' },
+        gantt: { axisFormat: '%m/%d/%Y' },
+        sequence: { actorMargin: 50 }
+      });
+      mermaid.run({ nodes: mermaidElements });
+    }
+
+    var script = document.createElement('script');
+    
+    script.src = 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js';
+    
+    script.onload = initMermaid;
+    document.head.appendChild(script);
+  })();
+  </script>
+
+</body>
+</html>

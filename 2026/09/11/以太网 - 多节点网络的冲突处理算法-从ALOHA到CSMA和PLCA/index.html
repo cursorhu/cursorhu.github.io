@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="多节点网络的冲突处理算法——从 ALOHA 到 PLCA引言在共享介质的网络中，多个节点同时发送数据会导致冲突（Collision）。如何高效地协调多个节点对共享信道的访问，是数据链路层的核心问题之一。本章系统梳理从 ALOHA 到 CSMA&#x2F;CD、CSMA&#x2F;CA 再到 PLCA（Physical Layer Collision Avoidance） 的演进过程，对比传统带冲突">
+<meta property="og:type" content="article">
+<meta property="og:title" content="多节点网络的冲突处理算法——从 ALOHA 到 PLCA">
+<meta property="og:url" content="https://cursorhu.github.io/2026/09/11/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20%E5%A4%9A%E8%8A%82%E7%82%B9%E7%BD%91%E7%BB%9C%E7%9A%84%E5%86%B2%E7%AA%81%E5%A4%84%E7%90%86%E7%AE%97%E6%B3%95-%E4%BB%8EALOHA%E5%88%B0CSMA%E5%92%8CPLCA/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="多节点网络的冲突处理算法——从 ALOHA 到 PLCA引言在共享介质的网络中，多个节点同时发送数据会导致冲突（Collision）。如何高效地协调多个节点对共享信道的访问，是数据链路层的核心问题之一。本章系统梳理从 ALOHA 到 CSMA&#x2F;CD、CSMA&#x2F;CA 再到 PLCA（Physical Layer Collision Avoidance） 的演进过程，对比传统带冲突">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/slide-03.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/slide-06.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/slide-02.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/slide-09.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/slide-11.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/63aff1196c0983b8da46bc7f613b4618913f1151328b7827da09c0f128ee3480.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/slide-15.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/slide-16.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/slide-20.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/slide-22.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/slide-24.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/slide-25.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/slide-27.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/slide-29.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/slide-30.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/plca-11.jpg">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/plca-22.jpg">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/plca-33.jpg">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/plca-44.jpg">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/plca-55.jpg">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/plca-66.jpg">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/plca-77.jpg">
+<meta property="og:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/plca-88.jpg">
+<meta property="article:published_time" content="2026-09-11T02:40:00.000Z">
+<meta property="article:modified_time" content="2026-09-11T03:15:44.775Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="10BASE-T1S">
+<meta property="article:tag" content="CSMA">
+<meta property="article:tag" content="PLCA">
+<meta property="article:tag" content="以太网">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/slide-03.png">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>多节点网络的冲突处理算法——从 ALOHA 到 PLCA</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+		<script type="text/x-mathjax-config">
+		  MathJax.Hub.Config({
+			tex2jax: {
+			  skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+			  inlineMath: [['$','$']]
+			}
+		  });
+		</script>
+		<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-MML-AM_CHTML' async></script>
+	
+<meta name="generator" content="Hexo 8.0.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="顶部" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="上一篇" href="/2026/09/14/RISC-V-Boot-ROM-ECC%E5%AE%9E%E8%B7%B5/"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="下一篇" href="/2026/09/11/10BASE_T1S%E7%B3%BB%E5%88%97/10BASE-T1S-Collision-Window-Analysis/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="返回顶部" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="分享文章" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">上一篇</span>
+      <span id="i-next" class="info" style="display:none;">下一篇</span>
+      <span id="i-top" class="info" style="display:none;">返回顶部</span>
+      <span id="i-share" class="info" style="display:none;">分享文章</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/09/11/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20%E5%A4%9A%E8%8A%82%E7%82%B9%E7%BD%91%E7%BB%9C%E7%9A%84%E5%86%B2%E7%AA%81%E5%A4%84%E7%90%86%E7%AE%97%E6%B3%95-%E4%BB%8EALOHA%E5%88%B0CSMA%E5%92%8CPLCA/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/09/11/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20%E5%A4%9A%E8%8A%82%E7%82%B9%E7%BD%91%E7%BB%9C%E7%9A%84%E5%86%B2%E7%AA%81%E5%A4%84%E7%90%86%E7%AE%97%E6%B3%95-%E4%BB%8EALOHA%E5%88%B0CSMA%E5%92%8CPLCA/&text=多节点网络的冲突处理算法——从 ALOHA 到 PLCA"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/09/11/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20%E5%A4%9A%E8%8A%82%E7%82%B9%E7%BD%91%E7%BB%9C%E7%9A%84%E5%86%B2%E7%AA%81%E5%A4%84%E7%90%86%E7%AE%97%E6%B3%95-%E4%BB%8EALOHA%E5%88%B0CSMA%E5%92%8CPLCA/&title=多节点网络的冲突处理算法——从 ALOHA 到 PLCA"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/09/11/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20%E5%A4%9A%E8%8A%82%E7%82%B9%E7%BD%91%E7%BB%9C%E7%9A%84%E5%86%B2%E7%AA%81%E5%A4%84%E7%90%86%E7%AE%97%E6%B3%95-%E4%BB%8EALOHA%E5%88%B0CSMA%E5%92%8CPLCA/&is_video=false&description=多节点网络的冲突处理算法——从 ALOHA 到 PLCA"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=多节点网络的冲突处理算法——从 ALOHA 到 PLCA&body=Check out this article: https://cursorhu.github.io/2026/09/11/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20%E5%A4%9A%E8%8A%82%E7%82%B9%E7%BD%91%E7%BB%9C%E7%9A%84%E5%86%B2%E7%AA%81%E5%A4%84%E7%90%86%E7%AE%97%E6%B3%95-%E4%BB%8EALOHA%E5%88%B0CSMA%E5%92%8CPLCA/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/09/11/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20%E5%A4%9A%E8%8A%82%E7%82%B9%E7%BD%91%E7%BB%9C%E7%9A%84%E5%86%B2%E7%AA%81%E5%A4%84%E7%90%86%E7%AE%97%E6%B3%95-%E4%BB%8EALOHA%E5%88%B0CSMA%E5%92%8CPLCA/&title=多节点网络的冲突处理算法——从 ALOHA 到 PLCA"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/09/11/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20%E5%A4%9A%E8%8A%82%E7%82%B9%E7%BD%91%E7%BB%9C%E7%9A%84%E5%86%B2%E7%AA%81%E5%A4%84%E7%90%86%E7%AE%97%E6%B3%95-%E4%BB%8EALOHA%E5%88%B0CSMA%E5%92%8CPLCA/&title=多节点网络的冲突处理算法——从 ALOHA 到 PLCA"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/09/11/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20%E5%A4%9A%E8%8A%82%E7%82%B9%E7%BD%91%E7%BB%9C%E7%9A%84%E5%86%B2%E7%AA%81%E5%A4%84%E7%90%86%E7%AE%97%E6%B3%95-%E4%BB%8EALOHA%E5%88%B0CSMA%E5%92%8CPLCA/&title=多节点网络的冲突处理算法——从 ALOHA 到 PLCA"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/09/11/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20%E5%A4%9A%E8%8A%82%E7%82%B9%E7%BD%91%E7%BB%9C%E7%9A%84%E5%86%B2%E7%AA%81%E5%A4%84%E7%90%86%E7%AE%97%E6%B3%95-%E4%BB%8EALOHA%E5%88%B0CSMA%E5%92%8CPLCA/&title=多节点网络的冲突处理算法——从 ALOHA 到 PLCA"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/09/11/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20%E5%A4%9A%E8%8A%82%E7%82%B9%E7%BD%91%E7%BB%9C%E7%9A%84%E5%86%B2%E7%AA%81%E5%A4%84%E7%90%86%E7%AE%97%E6%B3%95-%E4%BB%8EALOHA%E5%88%B0CSMA%E5%92%8CPLCA/&name=多节点网络的冲突处理算法——从 ALOHA 到 PLCA&description=&lt;h1 id=&#34;多节点网络的冲突处理算法——从-ALOHA-到-PLCA&#34;&gt;&lt;a href=&#34;#多节点网络的冲突处理算法——从-ALOHA-到-PLCA&#34; class=&#34;headerlink&#34; title=&#34;多节点网络的冲突处理算法——从 ALOHA 到 PLCA&#34;&gt;&lt;/a&gt;多节点网络的冲突处理算法——从 ALOHA 到 PLCA&lt;/h1&gt;&lt;h2 id=&#34;引言&#34;&gt;&lt;a href=&#34;#引言&#34; class=&#34;headerlink&#34; title=&#34;引言&#34;&gt;&lt;/a&gt;引言&lt;/h2&gt;&lt;p&gt;在共享介质的网络中，多个节点同时发送数据会导致&lt;strong&gt;冲突（Collision）&lt;/strong&gt;。如何高效地协调多个节点对共享信道的访问，是数据链路层的核心问题之一。本章系统梳理从 &lt;strong&gt;ALOHA&lt;/strong&gt; 到 &lt;strong&gt;CSMA&amp;#x2F;CD、CSMA&amp;#x2F;CA&lt;/strong&gt; 再到 &lt;strong&gt;PLCA（Physical Layer Collision Avoidance）&lt;/strong&gt; 的演进过程，对比&lt;strong&gt;传统带冲突检测的方案&lt;/strong&gt;与&lt;strong&gt;物理层防碰撞的确定性方案&lt;/strong&gt;，并基于经纬恒润的实测数据，分析 10BASE-T1S 在多节点场景下的负载率、时延与抖动表现。&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;本文素材来源：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;讲义 &lt;code&gt;Chapt-06.ppt&lt;/code&gt;（Multiple Radio Access, Chapter 6）— ALOHA、Slotted ALOHA、CSMA 系列&lt;/li&gt;
+&lt;li&gt;用户提供的 Markdown：&lt;code&gt;C:\ai-projects\minerU\Chapt-06-CSMA\office\Chapt-06-CSMA.md&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;Zhihu 专栏《深度解析 10BASE-T1S PLCA 的多节点通信效率》— &lt;a href=&#34;https://zhuanlan.zhihu.com/p/1995067444474159482&#34;&gt;https://zhuanlan.zhihu.com/p/1995067444474159482&lt;/a&gt; （&lt;strong&gt;因 Zhihu 反爬限制，内容从同源博客园版本获取&lt;/strong&gt;：&lt;a href=&#34;https://www.cnblogs.com/hirain123/p/19033489%EF%BC%89&#34;&gt;https://www.cnblogs.com/hirain123/p/19033489）&lt;/a&gt;&lt;/li&gt;
+&lt;/ol&gt;
+&lt;/blockquote&gt;
+&lt;h2 id=&#34;一、介质共享与多址接入概述&#34;&gt;&lt;a href=&#34;#一、介质共享与多址接入概述&#34; class=&#34;headerlink&#34; title=&#34;一、介质共享与多址接入概述&#34;&gt;&lt;/a&gt;一、介质共享与多址接入概述&lt;/h2&gt;&lt;h3 id=&#34;1-1-多址接入信道模型&#34;&gt;&lt;a href=&#34;#1-1-多址接入信道模型&#34; class=&#34;headerlink&#34; title=&#34;1.1 多址接入信道模型&#34;&gt;&lt;/a&gt;1.1 多址接入信道模型&lt;/h3&gt;&lt;p&gt;&lt;img src=&#34;https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/slide-03.png&#34; alt=&#34;多址接入信道模型&#34;&gt;&lt;/p&gt;
+&lt;p&gt;在多址接入（Multiple Access）系统中，每个节点通过&lt;strong&gt;发射&amp;#x2F;接收设备&lt;/strong&gt;与一条被多个节点共享的信道相连，&lt;strong&gt;任何一个节点的发射信号都会被其他节点接收&lt;/strong&gt;。&lt;/p&gt;
+&lt;h3 id=&#34;1-2-多址接入的核心问题&#34;&gt;&lt;a href=&#34;#1-2-多址接入的核心问题&#34; class=&#34;headerlink&#34; title=&#34;1.2 多址接入的核心问题&#34;&gt;&lt;/a&gt;1.2 多址接入的核心问题&lt;/h3&gt;&lt;ul&gt;
+&lt;li&gt;当超过一个节点同时向 BS（基站）的控制信道发送数据时，&lt;strong&gt;冲突（collision）就会发生&lt;/strong&gt;&lt;/li&gt;
+&lt;li&gt;因此多址接入协议必须解决：&lt;strong&gt;由哪个节点来发送？&lt;/strong&gt;&lt;/li&gt;
+&lt;/ul&gt;"><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/09/11/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20%E5%A4%9A%E8%8A%82%E7%82%B9%E7%BD%91%E7%BB%9C%E7%9A%84%E5%86%B2%E7%AA%81%E5%A4%84%E7%90%86%E7%AE%97%E6%B3%95-%E4%BB%8EALOHA%E5%88%B0CSMA%E5%92%8CPLCA/&t=多节点网络的冲突处理算法——从 ALOHA 到 PLCA"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%A4%9A%E8%8A%82%E7%82%B9%E7%BD%91%E7%BB%9C%E7%9A%84%E5%86%B2%E7%AA%81%E5%A4%84%E7%90%86%E7%AE%97%E6%B3%95%E2%80%94%E2%80%94%E4%BB%8E-ALOHA-%E5%88%B0-PLCA"><span class="toc-number">1.</span> <span class="toc-text">多节点网络的冲突处理算法——从 ALOHA 到 PLCA</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%BC%95%E8%A8%80"><span class="toc-number">1.1.</span> <span class="toc-text">引言</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E4%BB%8B%E8%B4%A8%E5%85%B1%E4%BA%AB%E4%B8%8E%E5%A4%9A%E5%9D%80%E6%8E%A5%E5%85%A5%E6%A6%82%E8%BF%B0"><span class="toc-number">1.2.</span> <span class="toc-text">一、介质共享与多址接入概述</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-%E5%A4%9A%E5%9D%80%E6%8E%A5%E5%85%A5%E4%BF%A1%E9%81%93%E6%A8%A1%E5%9E%8B"><span class="toc-number">1.2.1.</span> <span class="toc-text">1.1 多址接入信道模型</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-2-%E5%A4%9A%E5%9D%80%E6%8E%A5%E5%85%A5%E7%9A%84%E6%A0%B8%E5%BF%83%E9%97%AE%E9%A2%98"><span class="toc-number">1.2.2.</span> <span class="toc-text">1.2 多址接入的核心问题</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-3-%E5%A4%9A%E5%9D%80%E6%8E%A5%E5%85%A5%E5%8D%8F%E8%AE%AE%E7%9A%84%E5%88%86%E7%B1%BB"><span class="toc-number">1.2.3.</span> <span class="toc-text">1.3 多址接入协议的分类</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-4-%E4%BF%A1%E9%81%93%E5%85%B1%E4%BA%AB%E6%8A%80%E6%9C%AF%E6%80%BB%E8%A7%88"><span class="toc-number">1.2.4.</span> <span class="toc-text">1.4 信道共享技术总览</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-5-%E6%9C%AC%E7%AB%A0%E5%A4%A7%E7%BA%B2"><span class="toc-number">1.2.5.</span> <span class="toc-text">1.5 本章大纲</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81ALOHA-%E5%8D%8F%E8%AE%AE%E2%80%94%E2%80%94%E6%9C%80%E5%8E%9F%E5%A7%8B%E7%9A%84%E7%AB%9E%E4%BA%89%E5%8D%8F%E8%AE%AE"><span class="toc-number">1.3.</span> <span class="toc-text">二、ALOHA 协议——最原始的竞争协议</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E5%8D%8F%E8%AE%AE%E7%89%B9%E6%80%A7"><span class="toc-number">1.3.1.</span> <span class="toc-text">2.1 协议特性</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-%E5%90%9E%E5%90%90%E9%87%8F%E5%88%86%E6%9E%90"><span class="toc-number">1.3.2.</span> <span class="toc-text">2.2 吞吐量分析</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81Slotted-ALOHA%E2%80%94%E2%80%94%E5%BC%95%E5%85%A5%E6%97%B6%E6%A7%BD%EF%BC%8C%E6%8F%90%E5%8D%87%E4%B8%80%E5%80%8D%E6%95%88%E7%8E%87"><span class="toc-number">1.4.</span> <span class="toc-text">三、Slotted ALOHA——引入时槽，提升一倍效率</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E6%94%B9%E8%BF%9B%E7%82%B9"><span class="toc-number">1.4.1.</span> <span class="toc-text">3.1 改进点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E6%80%A7%E8%83%BD%E5%85%AC%E5%BC%8F"><span class="toc-number">1.4.2.</span> <span class="toc-text">3.2 性能公式</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-%E4%B8%A4%E7%A7%8D-ALOHA-%E7%9A%84%E5%90%9E%E5%90%90%E7%8E%87%E5%AF%B9%E6%AF%94"><span class="toc-number">1.4.3.</span> <span class="toc-text">3.3 两种 ALOHA 的吞吐率对比</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81CSMA%E2%80%94%E2%80%94%E5%85%88%E5%90%AC%E5%90%8E%E5%8F%91"><span class="toc-number">1.5.</span> <span class="toc-text">四、CSMA——先听后发</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-%E6%A0%B8%E5%BF%83%E6%94%B9%E8%BF%9B"><span class="toc-number">1.5.1.</span> <span class="toc-text">4.1 核心改进</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-%E5%86%B2%E7%AA%81%E6%9C%BA%E5%88%B6%E7%A4%BA%E6%84%8F"><span class="toc-number">1.5.2.</span> <span class="toc-text">4.2 冲突机制示意</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-CSMA-%E5%88%86%E7%B1%BB%E6%A0%91"><span class="toc-number">1.5.3.</span> <span class="toc-text">4.3 CSMA 分类树</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-4-Nonpersistent-CSMA"><span class="toc-number">1.5.4.</span> <span class="toc-text">4.4 Nonpersistent CSMA</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-5-1-persistent-CSMA"><span class="toc-number">1.5.5.</span> <span class="toc-text">4.5 1-persistent CSMA</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-6-p-persistent-CSMA%EF%BC%88%E6%8A%98%E4%B8%AD%E6%96%B9%E6%A1%88%EF%BC%89"><span class="toc-number">1.5.6.</span> <span class="toc-text">4.6 p-persistent CSMA（折中方案）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-7-%E5%A6%82%E4%BD%95%E9%80%89%E5%8F%96-p-%EF%BC%9F"><span class="toc-number">1.5.7.</span> <span class="toc-text">4.7 如何选取 $p$？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-8-CSMA-%E7%B3%BB%E5%88%97%E5%90%9E%E5%90%90%E7%8E%87%E5%AF%B9%E6%AF%94"><span class="toc-number">1.5.8.</span> <span class="toc-text">4.8 CSMA 系列吞吐率对比</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81CSMA-CD%E2%80%94%E2%80%94%E5%B8%A6%E5%86%B2%E7%AA%81%E6%A3%80%E6%B5%8B%E7%9A%84%E6%9C%89%E7%BA%BF%E4%BB%A5%E5%A4%AA%E7%BD%91"><span class="toc-number">1.6.</span> <span class="toc-text">五、CSMA&#x2F;CD——带冲突检测的有线以太网</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E6%94%B9%E8%BF%9B%EF%BC%9A%E8%BE%B9%E5%8F%91%E8%BE%B9%E5%90%AC"><span class="toc-number">1.6.1.</span> <span class="toc-text">5.1 改进：边发边听</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E4%B8%BA%E4%BB%80%E4%B9%88%E9%9C%80%E8%A6%81%E5%86%B2%E7%AA%81%E6%A3%80%E6%B5%8B%EF%BC%9F"><span class="toc-number">1.6.2.</span> <span class="toc-text">5.2 为什么需要冲突检测？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-%E5%86%B2%E7%AA%81%E6%97%B6%E5%BA%8F"><span class="toc-number">1.6.3.</span> <span class="toc-text">5.3 冲突时序</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81CSMA-CA%E2%80%94%E2%80%94%E5%86%B2%E7%AA%81%E9%81%BF%E5%85%8D%EF%BC%8C%E6%97%A0%E7%BA%BF%E5%9C%BA%E6%99%AF%E7%9A%84%E4%B8%BB%E6%B5%81"><span class="toc-number">1.7.</span> <span class="toc-text">六、CSMA&#x2F;CA——冲突避免，无线场景的主流</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E4%B8%BA%E4%BD%95%E4%B8%8D%E8%83%BD%E2%80%9D%E6%A3%80%E6%B5%8B%E2%80%9D%EF%BC%9F"><span class="toc-number">1.7.1.</span> <span class="toc-text">6.1 为何不能”检测”？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E7%AE%97%E6%B3%95%E8%A6%81%E7%82%B9"><span class="toc-number">1.7.2.</span> <span class="toc-text">6.2 算法要点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E5%A4%9A%E8%8A%82%E7%82%B9%E9%80%80%E9%81%BF%E7%A4%BA%E6%84%8F"><span class="toc-number">1.7.3.</span> <span class="toc-text">6.3 多节点退避示意</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-4-CSMA-CA-%E6%97%B6%E5%BA%8F"><span class="toc-number">1.7.4.</span> <span class="toc-text">6.4 CSMA&#x2F;CA 时序</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-5-CSMA-CA-ACK%E2%80%94%E2%80%94%E5%8D%95%E5%90%91%E7%A1%AE%E8%AE%A4%E6%8F%90%E9%AB%98%E5%8F%AF%E9%9D%A0%E6%80%A7"><span class="toc-number">1.7.5.</span> <span class="toc-text">6.5 CSMA&#x2F;CA + ACK——单向确认提高可靠性</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-6-CSMA-CA-RTS-CTS%E2%80%94%E2%80%94%E9%A2%84%E7%95%99%E4%BF%A1%E9%81%93"><span class="toc-number">1.7.6.</span> <span class="toc-text">6.6 CSMA&#x2F;CA + RTS&#x2F;CTS——预留信道</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-7-RTS-CTS-%E6%B6%88%E6%81%AF%E6%B5%81"><span class="toc-number">1.7.7.</span> <span class="toc-text">6.7 RTS&#x2F;CTS 消息流</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%83%E3%80%81PLCA%E2%80%94%E2%80%94%E7%89%A9%E7%90%86%E5%B1%82%E5%86%B2%E7%AA%81%E9%81%BF%E5%85%8D%EF%BC%8810BASE-T1S-%E7%9A%84%E7%A1%AE%E5%AE%9A%E6%80%A7%E6%96%B9%E6%A1%88%EF%BC%89"><span class="toc-number">1.8.</span> <span class="toc-text">七、PLCA——物理层冲突避免（10BASE-T1S 的确定性方案）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#7-1-%E8%AE%BE%E8%AE%A1%E5%93%B2%E5%AD%A6%E7%9A%84%E5%88%87%E6%8D%A2"><span class="toc-number">1.8.1.</span> <span class="toc-text">7.1 设计哲学的切换</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-2-PLCA-%E7%AE%80%E4%BB%8B"><span class="toc-number">1.8.2.</span> <span class="toc-text">7.2 PLCA 简介</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-3-%E5%85%B3%E9%94%AE%E5%8F%82%E6%95%B0"><span class="toc-number">1.8.3.</span> <span class="toc-text">7.3 关键参数</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-4-%E6%80%A7%E8%83%BD%E5%88%86%E6%9E%90"><span class="toc-number">1.8.4.</span> <span class="toc-text">7.4 性能分析</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#7-4-1-%E6%B5%8B%E8%AF%95%E5%9C%BA%E6%99%AF"><span class="toc-number">1.8.4.1.</span> <span class="toc-text">7.4.1 测试场景</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#7-4-2-%E8%B4%9F%E8%BD%BD%E7%8E%87%E5%88%86%E6%9E%90"><span class="toc-number">1.8.4.2.</span> <span class="toc-text">7.4.2 负载率分析</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#7-4-3-%E5%BB%B6%E6%97%B6%E5%88%86%E6%9E%90"><span class="toc-number">1.8.4.3.</span> <span class="toc-text">7.4.3 延时分析</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#7-4-4-%E6%8A%96%E5%8A%A8%E5%AF%B9%E6%AF%94"><span class="toc-number">1.8.4.4.</span> <span class="toc-text">7.4.4 抖动对比</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-5-PLCA-vs-CSMA-%E5%AE%B6%E6%97%8F%EF%BC%9A%E6%A0%B8%E5%BF%83%E5%AF%B9%E6%AF%94"><span class="toc-number">1.8.5.</span> <span class="toc-text">7.5 PLCA vs CSMA 家族：核心对比</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-6-PLCA-%E7%9A%84%E5%B7%A5%E7%A8%8B%E5%AE%9E%E8%B7%B5%E8%A6%81%E7%82%B9"><span class="toc-number">1.8.6.</span> <span class="toc-text">7.6 PLCA 的工程实践要点</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AB%E3%80%81%E5%B0%8F%E7%BB%93%E4%B8%8E%E9%80%89%E5%9E%8B%E5%BB%BA%E8%AE%AE"><span class="toc-number">1.9.</span> <span class="toc-text">八、小结与选型建议</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="toc-number">1.10.</span> <span class="toc-text">参考资料</span></a></li></ol></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        多节点网络的冲突处理算法——从 ALOHA 到 PLCA
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">cursorhu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2026-09-11T02:40:00.000Z" class="dt-published" itemprop="datePublished">2026-09-11</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fa-solid fa-archive"></i>
+        <a class="category-link" href="/categories/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C/">计算机网络</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/10BASE-T1S/" rel="tag">10BASE-T1S</a>, <a class="p-category" href="/tags/CSMA/" rel="tag">CSMA</a>, <a class="p-category" href="/tags/PLCA/" rel="tag">PLCA</a>, <a class="p-category" href="/tags/%E4%BB%A5%E5%A4%AA%E7%BD%91/" rel="tag">以太网</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <h1 id="多节点网络的冲突处理算法——从-ALOHA-到-PLCA"><a href="#多节点网络的冲突处理算法——从-ALOHA-到-PLCA" class="headerlink" title="多节点网络的冲突处理算法——从 ALOHA 到 PLCA"></a>多节点网络的冲突处理算法——从 ALOHA 到 PLCA</h1><h2 id="引言"><a href="#引言" class="headerlink" title="引言"></a>引言</h2><p>在共享介质的网络中，多个节点同时发送数据会导致<strong>冲突（Collision）</strong>。如何高效地协调多个节点对共享信道的访问，是数据链路层的核心问题之一。本章系统梳理从 <strong>ALOHA</strong> 到 <strong>CSMA&#x2F;CD、CSMA&#x2F;CA</strong> 再到 <strong>PLCA（Physical Layer Collision Avoidance）</strong> 的演进过程，对比<strong>传统带冲突检测的方案</strong>与<strong>物理层防碰撞的确定性方案</strong>，并基于经纬恒润的实测数据，分析 10BASE-T1S 在多节点场景下的负载率、时延与抖动表现。</p>
+<blockquote>
+<p>本文素材来源：</p>
+<ol>
+<li>讲义 <code>Chapt-06.ppt</code>（Multiple Radio Access, Chapter 6）— ALOHA、Slotted ALOHA、CSMA 系列</li>
+<li>用户提供的 Markdown：<code>C:\ai-projects\minerU\Chapt-06-CSMA\office\Chapt-06-CSMA.md</code></li>
+<li>Zhihu 专栏《深度解析 10BASE-T1S PLCA 的多节点通信效率》— <a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/1995067444474159482">https://zhuanlan.zhihu.com/p/1995067444474159482</a> （<strong>因 Zhihu 反爬限制，内容从同源博客园版本获取</strong>：<a target="_blank" rel="noopener" href="https://www.cnblogs.com/hirain123/p/19033489%EF%BC%89">https://www.cnblogs.com/hirain123/p/19033489）</a></li>
+</ol>
+</blockquote>
+<h2 id="一、介质共享与多址接入概述"><a href="#一、介质共享与多址接入概述" class="headerlink" title="一、介质共享与多址接入概述"></a>一、介质共享与多址接入概述</h2><h3 id="1-1-多址接入信道模型"><a href="#1-1-多址接入信道模型" class="headerlink" title="1.1 多址接入信道模型"></a>1.1 多址接入信道模型</h3><p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/slide-03.png" alt="多址接入信道模型"></p>
+<p>在多址接入（Multiple Access）系统中，每个节点通过<strong>发射&#x2F;接收设备</strong>与一条被多个节点共享的信道相连，<strong>任何一个节点的发射信号都会被其他节点接收</strong>。</p>
+<h3 id="1-2-多址接入的核心问题"><a href="#1-2-多址接入的核心问题" class="headerlink" title="1.2 多址接入的核心问题"></a>1.2 多址接入的核心问题</h3><ul>
+<li>当超过一个节点同时向 BS（基站）的控制信道发送数据时，<strong>冲突（collision）就会发生</strong></li>
+<li>因此多址接入协议必须解决：<strong>由哪个节点来发送？</strong></li>
+</ul>
+<h3 id="1-3-多址接入协议的分类"><a href="#1-3-多址接入协议的分类" class="headerlink" title="1.3 多址接入协议的分类"></a>1.3 多址接入协议的分类</h3><p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/slide-06.png" alt="协议分类"></p>
+<p><strong>两大类协议：</strong></p>
+<table>
+<thead>
+<tr>
+<th>类型</th>
+<th>思路</th>
+<th>典型协议</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Contention protocols（竞争协议）</strong></td>
+<td>允许冲突发生，事后解决</td>
+<td>ALOHA、CSMA、BTMA、ISMA</td>
+</tr>
+<tr>
+<td><strong>Conflict-free protocols（无冲突协议）</strong></td>
+<td>从协议上杜绝冲突发生</td>
+<td>Bit-map、Binary Countdown、Token Bus、DQDB</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>此外还有<strong>Collision Resolution</strong> 子类（基于 TREE、WINDOW 等算法对已发生的冲突做协商解决），也可归为冲突型协议。</p>
+</blockquote>
+<h3 id="1-4-信道共享技术总览"><a href="#1-4-信道共享技术总览" class="headerlink" title="1.4 信道共享技术总览"></a>1.4 信道共享技术总览</h3><p>信道共享技术分为三大类：</p>
+<ol>
+<li><strong>Static Channelization（静态信道化）</strong>：固定分配资源，无冲突。典型：FDMA、TDMA、CDMA</li>
+<li><strong>Scheduling（调度）</strong>：中心或令牌调度，无冲突。典型：Token Bus、DQDB</li>
+<li><strong>Dynamic Medium Access（动态介质访问）</strong>：按需竞争，处理冲突。典型：ALOHA、CSMA</li>
+</ol>
+<h3 id="1-5-本章大纲"><a href="#1-5-本章大纲" class="headerlink" title="1.5 本章大纲"></a>1.5 本章大纲</h3><p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/slide-02.png" alt="本章大纲"></p>
+<p>本章聚焦于<strong>竞争协议</strong>的演进史：<strong>ALOHA → Slotted ALOHA → CSMA → CSMA&#x2F;CD → CSMA&#x2F;CA（含 ACK&#x2F;RTS-CTS）</strong>，并在最后一节引入<strong>PLCA</strong> 这一来自 10BASE-T1S 的物理层防碰撞机制。</p>
+<h2 id="二、ALOHA-协议——最原始的竞争协议"><a href="#二、ALOHA-协议——最原始的竞争协议" class="headerlink" title="二、ALOHA 协议——最原始的竞争协议"></a>二、ALOHA 协议——最原始的竞争协议</h2><h3 id="2-1-协议特性"><a href="#2-1-协议特性" class="headerlink" title="2.1 协议特性"></a>2.1 协议特性</h3><p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/slide-09.png" alt="ALOHA 冲突机制"></p>
+<ul>
+<li>由夏威夷大学在 1970 年代为<strong>分组无线网</strong>设计</li>
+<li><strong>有数据就发</strong>：节点产生数据后立即发送</li>
+<li><strong>监听确认</strong>：发送方监听来自目的站的广播信号，判断是否成功</li>
+<li><strong>冲突重传</strong>：若发生冲突，等待<strong>随机时间</strong>后重传</li>
+</ul>
+<h3 id="2-2-吞吐量分析"><a href="#2-2-吞吐量分析" class="headerlink" title="2.2 吞吐量分析"></a>2.2 吞吐量分析</h3><p>设业务负载为 $G$（平均每两个分组时间内尝试发送的分组数），则在两个分组时间内到达 $n$ 个分组的概率为：</p>
+<p>$$<br>P_n &#x3D; \frac{(2G)^n e^{-2G}}{n!}<br>$$</p>
+<p>无冲突成功的概率（$n&#x3D;0$）：</p>
+<p>$$<br>P_0 &#x3D; e^{-2G}<br>$$</p>
+<p>吞吐量为：</p>
+<p>$$<br>S &#x3D; G \cdot e^{-2G}<br>$$</p>
+<blockquote>
+<p><strong>ALOHA 的最大吞吐率为 18.4%</strong>（当 $G &#x3D; 0.5$ 时）。</p>
+</blockquote>
+<h2 id="三、Slotted-ALOHA——引入时槽，提升一倍效率"><a href="#三、Slotted-ALOHA——引入时槽，提升一倍效率" class="headerlink" title="三、Slotted ALOHA——引入时槽，提升一倍效率"></a>三、Slotted ALOHA——引入时槽，提升一倍效率</h2><h3 id="3-1-改进点"><a href="#3-1-改进点" class="headerlink" title="3.1 改进点"></a>3.1 改进点</h3><p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/slide-11.png" alt="Slotted ALOHA 冲突机制"></p>
+<ul>
+<li>将时间划分为等长的<strong>时槽（Slot）</strong></li>
+<li>节点只能在时槽开始时刻发送分组</li>
+<li>冲突窗口从「两个分组时间」压缩到「一个分组时间」</li>
+</ul>
+<h3 id="3-2-性能公式"><a href="#3-2-性能公式" class="headerlink" title="3.2 性能公式"></a>3.2 性能公式</h3><p>无冲突成功的概率（恰好 1 个分组到达）：</p>
+<p>$$<br>P_1 &#x3D; G e^{-G}<br>$$</p>
+<p>吞吐量为：</p>
+<p>$$<br>S &#x3D; G \cdot e^{-G}<br>$$</p>
+<blockquote>
+<p><strong>Slotted ALOHA 最大吞吐率为 36.8%</strong>（当 $G &#x3D; 1$ 时），是 Pure ALOHA 的两倍。</p>
+</blockquote>
+<h3 id="3-3-两种-ALOHA-的吞吐率对比"><a href="#3-3-两种-ALOHA-的吞吐率对比" class="headerlink" title="3.3 两种 ALOHA 的吞吐率对比"></a>3.3 两种 ALOHA 的吞吐率对比</h3><p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/63aff1196c0983b8da46bc7f613b4618913f1151328b7827da09c0f128ee3480.png" alt="吞吐率对比"></p>
+<table>
+<thead>
+<tr>
+<th>协议</th>
+<th>最大吞吐率</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Pure ALOHA</td>
+<td>18.4%</td>
+</tr>
+<tr>
+<td>Slotted ALOHA</td>
+<td>36.8%</td>
+</tr>
+</tbody></table>
+<p>即便时槽化后，ALOHA 系列的吞吐率仍不足以支撑高负载场景，需要进一步提升。</p>
+<h2 id="四、CSMA——先听后发"><a href="#四、CSMA——先听后发" class="headerlink" title="四、CSMA——先听后发"></a>四、CSMA——先听后发</h2><h3 id="4-1-核心改进"><a href="#4-1-核心改进" class="headerlink" title="4.1 核心改进"></a>4.1 核心改进</h3><p>Slotted ALOHA 的最大吞吐率 0.368 已到瓶颈，<strong>CSMA（Carrier Sense Multiple Access）</strong> 通过<strong>先听后发</strong>进一步降低不必要的冲突：</p>
+<blockquote>
+<p>在发送分组之前先监听信道是否空闲，<strong>避免可避免的冲突</strong>。</p>
+</blockquote>
+<h3 id="4-2-冲突机制示意"><a href="#4-2-冲突机制示意" class="headerlink" title="4.2 冲突机制示意"></a>4.2 冲突机制示意</h3><p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/slide-15.png" alt="CSMA 冲突机制"></p>
+<p>注意：CSMA 仍然存在冲突，因为存在<strong>传播延迟（Propagation Delay）</strong>。如上图，Node 1 和 Node 2 可能在同一时刻都检测到信道空闲，但实际上信号尚未到达对方，从而产生冲突。</p>
+<h3 id="4-3-CSMA-分类树"><a href="#4-3-CSMA-分类树" class="headerlink" title="4.3 CSMA 分类树"></a>4.3 CSMA 分类树</h3><p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/slide-16.png" alt="CSMA 分类"></p>
+<table>
+<thead>
+<tr>
+<th>大类</th>
+<th>子类</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Nonpersistent CSMA（非坚持）</strong></td>
+<td>Unslotted Nonpersistent、Slotted Nonpersistent</td>
+</tr>
+<tr>
+<td><strong>Persistent CSMA（坚持）</strong></td>
+<td>1-persistent、p-persistent</td>
+</tr>
+</tbody></table>
+<h3 id="4-4-Nonpersistent-CSMA"><a href="#4-4-Nonpersistent-CSMA" class="headerlink" title="4.4 Nonpersistent CSMA"></a>4.4 Nonpersistent CSMA</h3><p><strong>算法步骤</strong>：</p>
+<ol>
+<li>若信道<strong>空闲</strong>，立即发送</li>
+<li>若信道<strong>忙碌</strong>，<strong>等待一段随机时间</strong>后回到步骤 1</li>
+</ol>
+<ul>
+<li>随机退避降低了冲突概率</li>
+<li>若退避时间过长，<strong>会浪费信道空闲时间</strong></li>
+</ul>
+<h3 id="4-5-1-persistent-CSMA"><a href="#4-5-1-persistent-CSMA" class="headerlink" title="4.5 1-persistent CSMA"></a>4.5 1-persistent CSMA</h3><p><strong>算法步骤</strong>：</p>
+<ol>
+<li>若信道<strong>空闲</strong>，立即发送</li>
+<li>若信道<strong>忙碌</strong>，<strong>持续监听</strong>直到信道空闲后立即发送</li>
+</ol>
+<ul>
+<li>若两个节点都想重传，<strong>必然会发生冲突</strong></li>
+<li>实际系统一般会设置尝试上限</li>
+</ul>
+<h3 id="4-6-p-persistent-CSMA（折中方案）"><a href="#4-6-p-persistent-CSMA（折中方案）" class="headerlink" title="4.6 p-persistent CSMA（折中方案）"></a>4.6 p-persistent CSMA（折中方案）</h3><p>适用于时槽化信道：</p>
+<ol>
+<li>若信道<strong>空闲</strong>，<strong>以概率 $p$ 发送</strong>；以概率 $1-p$ 在最坏传播延迟（一个分组时间）后重新检查</li>
+<li>若信道<strong>忙碌</strong>，持续监听直到空闲，回到步骤 1</li>
+<li>若本次被推迟一个时槽，回到步骤 1 继续</li>
+</ol>
+<blockquote>
+<p>在 Nonpersistent 和 1-persistent 之间提供了<strong>良好的折中</strong>。</p>
+</blockquote>
+<h3 id="4-7-如何选取-p-？"><a href="#4-7-如何选取-p-？" class="headerlink" title="4.7 如何选取 $p$？"></a>4.7 如何选取 $p$？</h3><ul>
+<li>假设有 $N$ 个节点都有分组要发送，且信道从忙变闲</li>
+<li>那么 $Np$ 是信道空闲后<strong>期望尝试发送的节点数</strong></li>
+<li>若 $Np &gt; 1$，<strong>冲突必然会发生</strong></li>
+</ul>
+<blockquote>
+<p>因此网络必须确保 $Np &lt; 1$ 以避免冲突，其中 $N$ 是最大可能的活动节点数。</p>
+</blockquote>
+<h3 id="4-8-CSMA-系列吞吐率对比"><a href="#4-8-CSMA-系列吞吐率对比" class="headerlink" title="4.8 CSMA 系列吞吐率对比"></a>4.8 CSMA 系列吞吐率对比</h3><p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/slide-20.png" alt="CSMA 系列吞吐率"></p>
+<table>
+<thead>
+<tr>
+<th>协议</th>
+<th>吞吐率大小（同一负载下）</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>0.01-persistent CSMA</td>
+<td>接近 1（理论极限）</td>
+</tr>
+<tr>
+<td>Nonpersistent CSMA</td>
+<td>中等</td>
+</tr>
+<tr>
+<td>0.1-persistent CSMA</td>
+<td>中高</td>
+</tr>
+<tr>
+<td>0.5-persistent CSMA</td>
+<td>中</td>
+</tr>
+<tr>
+<td>1-persistent CSMA</td>
+<td>中低</td>
+</tr>
+<tr>
+<td>Slotted ALOHA</td>
+<td>低</td>
+</tr>
+<tr>
+<td>Pure ALOHA</td>
+<td>最低</td>
+</tr>
+</tbody></table>
+<h2 id="五、CSMA-CD——带冲突检测的有线以太网"><a href="#五、CSMA-CD——带冲突检测的有线以太网" class="headerlink" title="五、CSMA&#x2F;CD——带冲突检测的有线以太网"></a>五、CSMA&#x2F;CD——带冲突检测的有线以太网</h2><h3 id="5-1-改进：边发边听"><a href="#5-1-改进：边发边听" class="headerlink" title="5.1 改进：边发边听"></a>5.1 改进：边发边听</h3><p>在 CSMA 基础上增加<strong>冲突检测（Collision Detection）</strong>：</p>
+<ol>
+<li>若信道<strong>空闲</strong>，立即发送</li>
+<li>若信道<strong>忙碌</strong>，持续监听直到空闲后发送</li>
+<li><strong>若在发送过程中检测到冲突，立即停止发送</strong></li>
+<li>等待<strong>随机时间</strong>后再次尝试</li>
+</ol>
+<h3 id="5-2-为什么需要冲突检测？"><a href="#5-2-为什么需要冲突检测？" class="headerlink" title="5.2 为什么需要冲突检测？"></a>5.2 为什么需要冲突检测？</h3><p>在 CSMA 中，若两个终端同时开始发送分组，每个终端都会<strong>完整地发完整个分组</strong>（尽管冲突正在发生），这会<strong>浪费一整个分组时间</strong>的信道。CSMA&#x2F;CD 通过尽早停止冲突分组的发送来提升效率。</p>
+<h3 id="5-3-冲突时序"><a href="#5-3-冲突时序" class="headerlink" title="5.3 冲突时序"></a>5.3 冲突时序</h3><p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/slide-22.png" alt="CSMA&#x2F;CD 时序"></p>
+<table>
+<thead>
+<tr>
+<th>时刻</th>
+<th>事件</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>$T_0$</td>
+<td>节点 A 开始发送</td>
+</tr>
+<tr>
+<td>$T_0 + \tau - \epsilon$</td>
+<td>节点 B 因没听到 A 的信号也开始发送（实际冲突）</td>
+</tr>
+<tr>
+<td>$T_0 + \tau$</td>
+<td>B 检测到冲突</td>
+</tr>
+<tr>
+<td>$T_0 + 2\tau - \epsilon$</td>
+<td>A 即将发完时检测到冲突</td>
+</tr>
+</tbody></table>
+<p>其中 $\tau$ 是单程传播延迟。</p>
+<blockquote>
+<p>该时序解释了<strong>以太网为何有最小帧长限制</strong>：要确保在最坏情况下也能可靠检测到冲突。CSMA&#x2F;CD 是<strong>有线半双工以太网</strong>的成功关键。</p>
+</blockquote>
+<h2 id="六、CSMA-CA——冲突避免，无线场景的主流"><a href="#六、CSMA-CA——冲突避免，无线场景的主流" class="headerlink" title="六、CSMA&#x2F;CA——冲突避免，无线场景的主流"></a>六、CSMA&#x2F;CA——冲突避免，无线场景的主流</h2><h3 id="6-1-为何不能”检测”？"><a href="#6-1-为何不能”检测”？" class="headerlink" title="6.1 为何不能”检测”？"></a>6.1 为何不能”检测”？</h3><p>无线场景下存在<strong>隐蔽站问题（Hidden Terminal Problem）<strong>且信号衰减快，难以可靠检测冲突。因此改为</strong>避免冲突（Collision Avoidance）</strong>：在发送前主动回避可能的冲突。</p>
+<h3 id="6-2-算法要点"><a href="#6-2-算法要点" class="headerlink" title="6.2 算法要点"></a>6.2 算法要点</h3><ol>
+<li>所有终端都监听同一信道（同 CSMA&#x2F;CD）</li>
+<li>准备发送的终端先<strong>感知信道</strong></li>
+<li>若信道<strong>忙碌</strong>，等到当前传输结束</li>
+<li>再额外等待一个 <strong>DIFS（Distributed Inter Frame Space）</strong> 时间</li>
+<li>在<strong>竞争窗口（Contention Window）</strong> 内选取一个随机数的时槽数作为退避计数</li>
+<li>若其他终端在此期间开始传输，<strong>冻结</strong>自身计数器</li>
+<li>其他终端结束后 + DIFS，继续倒计数；<strong>归零时立即发送</strong></li>
+</ol>
+<h3 id="6-3-多节点退避示意"><a href="#6-3-多节点退避示意" class="headerlink" title="6.3 多节点退避示意"></a>6.3 多节点退避示意</h3><p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/slide-24.png" alt="CSMA&#x2F;CA 节点行为"></p>
+<p>Node B、C 同时侦听到信道空闲并各自选取一个随机退避：</p>
+<ul>
+<li>C 选到较小的退避值，<strong>先到达零</strong>，开始发送</li>
+<li>B 在 C 传输期间<strong>冻结</strong>自身计数器</li>
+<li>C 结束后 + DIFS，B 解冻继续倒计数</li>
+</ul>
+<h3 id="6-4-CSMA-CA-时序"><a href="#6-4-CSMA-CA-时序" class="headerlink" title="6.4 CSMA&#x2F;CA 时序"></a>6.4 CSMA&#x2F;CA 时序</h3><p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/slide-25.png" alt="CSMA&#x2F;CA 时序"></p>
+<ul>
+<li><strong>DIFS</strong>：分布式帧间间隔，所有节点需等待的”决策窗口”</li>
+<li><strong>竞争窗口（CW）</strong>：退避计数器在其中倒计</li>
+<li><strong>退避时槽（Slot）</strong>：基本的退避时间单位</li>
+</ul>
+<h3 id="6-5-CSMA-CA-ACK——单向确认提高可靠性"><a href="#6-5-CSMA-CA-ACK——单向确认提高可靠性" class="headerlink" title="6.5 CSMA&#x2F;CA + ACK——单向确认提高可靠性"></a>6.5 CSMA&#x2F;CA + ACK——单向确认提高可靠性</h3><p>接收端在收到数据帧后<strong>无需感知信道</strong>，直接等待 <strong>SIFS（Short Inter Frame Space）</strong> 后回送 ACK：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/slide-27.png" alt="CSMA&#x2F;CA + ACK 时序"></p>
+<ul>
+<li>SIFS &lt; DIFS，确保 ACK 不会被其他节点”插队”</li>
+<li>若 ACK 丢失则触发重传</li>
+</ul>
+<blockquote>
+<p>DIFS 和 SIFS 的不同优先级是 IEEE 802.11 DCF 实现的关键魔法。</p>
+</blockquote>
+<h3 id="6-6-CSMA-CA-RTS-CTS——预留信道"><a href="#6-6-CSMA-CA-RTS-CTS——预留信道" class="headerlink" title="6.6 CSMA&#x2F;CA + RTS&#x2F;CTS——预留信道"></a>6.6 CSMA&#x2F;CA + RTS&#x2F;CTS——预留信道</h3><p>为解决<strong>隐蔽站问题</strong>，引入 <strong>RTS（Request to Send）&#x2F; CTS（Clear to Send）</strong> 握手：</p>
+<ol>
+<li>发送方在信道空闲 DIFS 后发送 <strong>RTS</strong></li>
+<li>接收方等待 SIFS 后回送 <strong>CTS</strong></li>
+<li>双方在 SIFS 后开始真正的<strong>数据帧</strong>传输，再 SIFS 后 <strong>ACK</strong></li>
+</ol>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/slide-29.png" alt="RTS&#x2F;CTS 时序"></p>
+<blockquote>
+<p>RTS&#x2F;CTS 只可能在小控制帧上发生冲突，<strong>业务数据帧几乎不会碰撞</strong>。</p>
+</blockquote>
+<h3 id="6-7-RTS-CTS-消息流"><a href="#6-7-RTS-CTS-消息流" class="headerlink" title="6.7 RTS&#x2F;CTS 消息流"></a>6.7 RTS&#x2F;CTS 消息流</h3><p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/slide-30.png" alt="RTS&#x2F;CTS 消息流"></p>
+<p>握手过程揭示了传播延迟在协议中的作用——这是为何需要 SIFS&#x2F;DIFS 等时序参数的根本原因。</p>
+<h2 id="七、PLCA——物理层冲突避免（10BASE-T1S-的确定性方案）"><a href="#七、PLCA——物理层冲突避免（10BASE-T1S-的确定性方案）" class="headerlink" title="七、PLCA——物理层冲突避免（10BASE-T1S 的确定性方案）"></a>七、PLCA——物理层冲突避免（10BASE-T1S 的确定性方案）</h2><h3 id="7-1-设计哲学的切换"><a href="#7-1-设计哲学的切换" class="headerlink" title="7.1 设计哲学的切换"></a>7.1 设计哲学的切换</h3><p>CSMA&#x2F;CD 和 CSMA&#x2F;CA 都属于”<strong>允许冲突发生，再用算法恢复</strong>“的设计思想。在<strong>汽车以太网 10BASE-T1S</strong> 场景下：</p>
+<ul>
+<li>半双工、单对线、总线型拓扑（≥2 节点，可达 8 节点以上）</li>
+<li>距离短（≤ 25 m &#x2F; 15 m，节点数 ≤ 8 时）</li>
+<li>对<strong>延迟确定性</strong>要求极高（实时控制）</li>
+</ul>
+<p>传统 CSMA&#x2F;CD 的”碰撞随机退避”无法满足实时性需求。10BASE-T1S 引入了 <strong>PLCA（Physical Layer Collision Avoidance）</strong>——<strong>在物理层就避免冲突，本质是”时分确定性调度”</strong>。</p>
+<h3 id="7-2-PLCA-简介"><a href="#7-2-PLCA-简介" class="headerlink" title="7.2 PLCA 简介"></a>7.2 PLCA 简介</h3><p>PLCA（Physical Layer Collision Avoidance）是 10BASE-T1S 实现多节点互联的核心机制。它<strong>通过指定总线唯一协调者（Node0）节点对当前总线时间进行划分和分时调度，协调各节点允许发送数据的时机</strong>：</p>
+<ul>
+<li>只有当轮到某一节点的传输机会时，才可以发送数据</li>
+<li>传输机会没有优先级的概念（<strong>采用 round robin 的方式分配传输时机</strong>）</li>
+<li>每个新的传输周期，节点 0 都会发送一个 <strong>BEACON</strong> 帧</li>
+</ul>
+<h3 id="7-3-关键参数"><a href="#7-3-关键参数" class="headerlink" title="7.3 关键参数"></a>7.3 关键参数</h3><table>
+<thead>
+<tr>
+<th>参数</th>
+<th>含义</th>
+<th>备注</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Node ID</strong></td>
+<td>网络中唯一标识，0 为协调者</td>
+<td>全网必须唯一</td>
+</tr>
+<tr>
+<td><strong>Node Count</strong></td>
+<td>PLCA 调度循环包含的节点总数</td>
+<td>仅协调者设置有效</td>
+</tr>
+<tr>
+<td><strong>TO Timer</strong></td>
+<td>每个节点的发送窗口长度</td>
+<td>全网所有节点必须相同</td>
+</tr>
+<tr>
+<td><strong>Max Burst Count</strong></td>
+<td>单次 TO 内允许连续发送的帧数</td>
+<td>决定节点带宽占比</td>
+</tr>
+<tr>
+<td><strong>Burst Timer</strong></td>
+<td>连续发送时的总窗口限制</td>
+<td>全网需一致</td>
+</tr>
+</tbody></table>
+<h3 id="7-4-性能分析"><a href="#7-4-性能分析" class="headerlink" title="7.4 性能分析"></a>7.4 性能分析</h3><h4 id="7-4-1-测试场景"><a href="#7-4-1-测试场景" class="headerlink" title="7.4.1 测试场景"></a>7.4.1 测试场景</h4><p>选取 <strong>10BASE-T1S 与 CANXL</strong> 进行横向对比，分别发送相同的应用数据：</p>
+<p><strong>场景一</strong>：长报文，慢周期</p>
+<ul>
+<li>控制总线节点数量：<strong>4、6、8 个</strong></li>
+<li>每个节点发送：<strong>5 ms 周期报文</strong></li>
+<li>Payload 长度：<strong>600 字节</strong></li>
+</ul>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/plca-11.jpg" alt="场景一设置"></p>
+<p><strong>场景二</strong>：短报文，快周期</p>
+<ul>
+<li>控制总线节点数量：<strong>4、6、8 个</strong></li>
+<li>每个节点发送：<strong>1 ms 周期报文</strong></li>
+<li>Payload 长度：<strong>120 字节</strong></li>
+</ul>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/plca-22.jpg" alt="场景二设置"></p>
+<p>针对以上两个场景中发送的数据长度，可以计算出每一帧报文的发送时间：</p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/plca-33.jpg" alt="帧发送时间"></p>
+<h4 id="7-4-2-负载率分析"><a href="#7-4-2-负载率分析" class="headerlink" title="7.4.2 负载率分析"></a>7.4.2 负载率分析</h4><p><strong>场景一下的负载率对比：</strong></p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/plca-44.jpg" alt="场景一负载率"></p>
+<ul>
+<li>在 10M 速率下，由于 CANXL 报文中报头的速率较低，<strong>10BASE-T1S 的负载率大致是 CANXL 的 70% 左右</strong></li>
+<li>需注意：CANXL 是<strong>竞争型总线</strong>，测试场景一下 10M CANXL 的负载率过高，<strong>无法保证报文时延</strong></li>
+<li>在设置为 20M 后，CANXL 负载降低至可接收范围</li>
+<li>结论：<strong>运行在同等速率下，10BASE-T1S 的报文效率比 CANXL 更高</strong></li>
+</ul>
+<p><strong>场景二下的负载率对比：</strong></p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/plca-55.jpg" alt="场景二负载率"></p>
+<ul>
+<li>10BASE-T1S 与 CANXL 的负载率均有所上涨</li>
+<li>但 10BASE-T1S 负载率增长的幅度<strong>远小于</strong> CANXL</li>
+<li>结论：<strong>在短报文、短周期的场景下，10BASE-T1S 的负载率仍优于 CANXL</strong></li>
+</ul>
+<h4 id="7-4-3-延时分析"><a href="#7-4-3-延时分析" class="headerlink" title="7.4.3 延时分析"></a>7.4.3 延时分析</h4><blockquote>
+<p>对比相同报文长度和周期下的<strong>报文最坏延时</strong>。</p>
+</blockquote>
+<p><strong>场景一下的延时对比：</strong></p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/plca-66.jpg" alt="场景一延时"></p>
+<ul>
+<li>10BASE-T1S 由于 <strong>PLCA 机制</strong>的存在，需要排队等待其他节点报文报送完成后才可以发送，<strong>无法进行抢占</strong></li>
+<li>所有报文的最坏延时一致，且<strong>节点数量越多，最坏延时时间越长</strong></li>
+<li>CANXL 可以根据 CANID 竞争发送机会，<strong>优先级高的报文可以优先发送</strong></li>
+<li>结论：<strong>对于尽快发送要求高的场景，CANXL 表现更优</strong></li>
+</ul>
+<p><strong>场景二下的延时对比：</strong></p>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/plca-77.jpg" alt="场景二延时"></p>
+<ul>
+<li>得益于 PLCA 机制，10BASE-T1S 在缩短报文长度后，报文发送时间变短，发送周期循环加快，报文等待时间变短，<strong>最坏延时大幅度降低</strong></li>
+<li>在数值上与 CANXL <strong>几乎相同</strong></li>
+<li>设计参考：<strong>在 10BASE-T1S 通信矩阵的设计上，较短的报文可有效降低延时</strong></li>
+</ul>
+<h4 id="7-4-4-抖动对比"><a href="#7-4-4-抖动对比" class="headerlink" title="7.4.4 抖动对比"></a>7.4.4 抖动对比</h4><blockquote>
+<p>报文接收端最小延时和最坏延时表征了报文周期的变化范围。</p>
+</blockquote>
+<p><img src="https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/plca-88.jpg" alt="抖动对比"></p>
+<ul>
+<li>表格中纵向数值为<strong>接收报文周期相对于发送报文周期的变化率</strong></li>
+<li>与延时测试类似：发送长报文时，<strong>10BASE-T1S 数据周期抖动较大</strong>，CANXL 比 10BASE-T1S 抖动情况小</li>
+<li>发送短报文时，10BASE-T1S 数据周期抖动<strong>明显降低</strong>，且<strong>略微优于 CANXL</strong></li>
+<li>抖动验证同样印证了相同的结论：<strong>较短的报文可有效降低延时</strong></li>
+</ul>
+<h3 id="7-5-PLCA-vs-CSMA-家族：核心对比"><a href="#7-5-PLCA-vs-CSMA-家族：核心对比" class="headerlink" title="7.5 PLCA vs CSMA 家族：核心对比"></a>7.5 PLCA vs CSMA 家族：核心对比</h3><table>
+<thead>
+<tr>
+<th>维度</th>
+<th>ALOHA &#x2F; Slotted ALOHA</th>
+<th>CSMA &#x2F; CSMA-CD</th>
+<th>CSMA-CA</th>
+<th><strong>PLCA</strong></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>冲突发生</td>
+<td>是</td>
+<td>是</td>
+<td>减少冲突</td>
+<td><strong>物理层避免冲突</strong></td>
+</tr>
+<tr>
+<td>调度方式</td>
+<td>随机发送</td>
+<td>监听 + 退避</td>
+<td>监听 + 随机退避</td>
+<td><strong>协调者 BEACON + 轮询</strong></td>
+</tr>
+<tr>
+<td>实时性</td>
+<td>差</td>
+<td>中</td>
+<td>中</td>
+<td><strong>确定性</strong></td>
+</tr>
+<tr>
+<td>适用场景</td>
+<td>早期无线分组网</td>
+<td>有线以太网</td>
+<td>无线 Wi-Fi</td>
+<td><strong>汽车短距离总线</strong></td>
+</tr>
+<tr>
+<td>标准</td>
+<td>-</td>
+<td>IEEE 802.3 早期</td>
+<td>IEEE 802.11 DCF</td>
+<td><strong>IEEE 802.3cg (10BASE-T1S)</strong></td>
+</tr>
+<tr>
+<td>拓扑</td>
+<td>总线&#x2F;无线</td>
+<td>总线</td>
+<td>无线</td>
+<td><strong>总线&#x2F;混合</strong></td>
+</tr>
+<tr>
+<td>是否需协调者</td>
+<td>否</td>
+<td>否</td>
+<td>否</td>
+<td><strong>是（Node ID &#x3D; 0）</strong></td>
+</tr>
+</tbody></table>
+<h3 id="7-6-PLCA-的工程实践要点"><a href="#7-6-PLCA-的工程实践要点" class="headerlink" title="7.6 PLCA 的工程实践要点"></a>7.6 PLCA 的工程实践要点</h3><blockquote>
+<p>以下实战经验来源于公开技术资料的整合，可作为调试时的检查清单。</p>
+</blockquote>
+<ol>
+<li><strong>全网必须使能 PLCA</strong>——总线中超过 2 个节点通信时，任何一个节点没开 PLCA 都会扰乱整条总线</li>
+<li><strong>Node Count 仅协调者设置</strong>——跟随节点的 Node Count 设置被忽略</li>
+<li><strong>TO Timer 必须全网一致</strong>——不一致会导致部分节点窗口被错过，引起通信异常</li>
+<li><strong>Node ID 必须全网唯一</strong>——重复 ID 会造成数据冲突</li>
+<li><strong>Node Count 过大</strong>——不会造成通信错误，但增加 cycle 长度中的”空转”开销，降低带宽利用率</li>
+<li><strong>通过 Max Burst Count 调节带宽占比</strong>——需要保证总带宽占比时，设置更高的 Max Burst Count</li>
+<li><strong>总线两端各需一个终端电阻</strong>（典型 100 Ω），是 10BASE-T1S 物理层稳定工作的前提</li>
+</ol>
+<h2 id="八、小结与选型建议"><a href="#八、小结与选型建议" class="headerlink" title="八、小结与选型建议"></a>八、小结与选型建议</h2><table>
+<thead>
+<tr>
+<th>场景</th>
+<th>推荐协议</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>高负载有线总线（半双工）</td>
+<td>CSMA&#x2F;CD（传统以太网）</td>
+</tr>
+<tr>
+<td>无线 LAN</td>
+<td>CSMA&#x2F;CA + ACK（802.11 DCF）</td>
+</tr>
+<tr>
+<td>无线 Mesh &#x2F; 隐蔽站严重</td>
+<td>CSMA&#x2F;CA + RTS&#x2F;CTS</td>
+</tr>
+<tr>
+<td>汽车短距离实时控制总线</td>
+<td><strong>PLCA（10BASE-T1S）</strong></td>
+</tr>
+<tr>
+<td>多业务流混合实时网络</td>
+<td>PLCA + TSN 双层调度</td>
+</tr>
+<tr>
+<td>已弃用演示（教学）</td>
+<td>Pure ALOHA、Slotted ALOHA</td>
+</tr>
+</tbody></table>
+<p><strong>演进规律</strong>：从 ALOHA 的”放任冲突” → CSMA 的”先听后发” → CSMA&#x2F;CD 的”边发边检” → CSMA&#x2F;CA 的”主动避让” → <strong>PLCA 的”时分调度，从根本上无冲突”</strong>——本质都是在与<strong>传播延迟、节点数量、业务实时性需求</strong>这三者的对抗中不断升级。</p>
+<p>经纬恒润的实测数据揭示了一个重要结论：<strong>在短报文、快周期场景下，10BASE-T1S + PLCA 的负载率、延时和抖动均可与 20M CANXL 持平甚至更优</strong>——这对汽车 E&#x2F;E 架构从 CAN&#x2F;CAN XL 向 10BASE-T1S 演进具有重要的工程参考价值。</p>
+<hr>
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h2><ol>
+<li><strong>Chapt-06.ppt</strong> — Multiple Radio Access, 第 6 章. 课程讲义，包含 ALOHA、Slotted ALOHA、CSMA、CSMA&#x2F;CD、CSMA&#x2F;CA 等算法的原始图示。</li>
+<li><strong>IEEE Std 802.3-2022</strong> — Clause 147 (10BASE-T1S). 工业以太网 MAC 与 PHY 标准.</li>
+<li><strong>IEEE Std 802.3cg-2019</strong> — 10BASE-T1S PHY 和 PLCA Reconciliation Sublayer 标准定义.</li>
+<li><strong>深度解析 10BASE-T1S PLCA 的多节点通信效率（经纬恒润）</strong> —<br>同源博客园版本：<a target="_blank" rel="noopener" href="https://www.cnblogs.com/hirain123/p/19033489">https://www.cnblogs.com/hirain123/p/19033489</a></li>
+<li><strong>PLCA Parameter Interpretation</strong> — <a target="_blank" rel="noopener" href="https://blog.csdn.net/2401_84369443/article/details/149642603">https://blog.csdn.net/2401_84369443/article/details/149642603</a> — PLCA 参数详解与实战测试.</li>
+<li><strong>10BASE-T1S 协议解读系列</strong> — <a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/685108918">https://zhuanlan.zhihu.com/p/685108918</a> — 知乎相关文章.</li>
+</ol>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">首页</a></li>
+        
+          <li><a href="/archives/">归档</a></li>
+        
+          <li><a href="/tags/">标签</a></li>
+        
+          <li><a href="/categories/">分类</a></li>
+        
+          <li><a href="/search/">搜索</a></li>
+        
+          <li><a href="/about/">关于</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%A4%9A%E8%8A%82%E7%82%B9%E7%BD%91%E7%BB%9C%E7%9A%84%E5%86%B2%E7%AA%81%E5%A4%84%E7%90%86%E7%AE%97%E6%B3%95%E2%80%94%E2%80%94%E4%BB%8E-ALOHA-%E5%88%B0-PLCA"><span class="toc-number">1.</span> <span class="toc-text">多节点网络的冲突处理算法——从 ALOHA 到 PLCA</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%BC%95%E8%A8%80"><span class="toc-number">1.1.</span> <span class="toc-text">引言</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E4%BB%8B%E8%B4%A8%E5%85%B1%E4%BA%AB%E4%B8%8E%E5%A4%9A%E5%9D%80%E6%8E%A5%E5%85%A5%E6%A6%82%E8%BF%B0"><span class="toc-number">1.2.</span> <span class="toc-text">一、介质共享与多址接入概述</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-%E5%A4%9A%E5%9D%80%E6%8E%A5%E5%85%A5%E4%BF%A1%E9%81%93%E6%A8%A1%E5%9E%8B"><span class="toc-number">1.2.1.</span> <span class="toc-text">1.1 多址接入信道模型</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-2-%E5%A4%9A%E5%9D%80%E6%8E%A5%E5%85%A5%E7%9A%84%E6%A0%B8%E5%BF%83%E9%97%AE%E9%A2%98"><span class="toc-number">1.2.2.</span> <span class="toc-text">1.2 多址接入的核心问题</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-3-%E5%A4%9A%E5%9D%80%E6%8E%A5%E5%85%A5%E5%8D%8F%E8%AE%AE%E7%9A%84%E5%88%86%E7%B1%BB"><span class="toc-number">1.2.3.</span> <span class="toc-text">1.3 多址接入协议的分类</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-4-%E4%BF%A1%E9%81%93%E5%85%B1%E4%BA%AB%E6%8A%80%E6%9C%AF%E6%80%BB%E8%A7%88"><span class="toc-number">1.2.4.</span> <span class="toc-text">1.4 信道共享技术总览</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-5-%E6%9C%AC%E7%AB%A0%E5%A4%A7%E7%BA%B2"><span class="toc-number">1.2.5.</span> <span class="toc-text">1.5 本章大纲</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81ALOHA-%E5%8D%8F%E8%AE%AE%E2%80%94%E2%80%94%E6%9C%80%E5%8E%9F%E5%A7%8B%E7%9A%84%E7%AB%9E%E4%BA%89%E5%8D%8F%E8%AE%AE"><span class="toc-number">1.3.</span> <span class="toc-text">二、ALOHA 协议——最原始的竞争协议</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E5%8D%8F%E8%AE%AE%E7%89%B9%E6%80%A7"><span class="toc-number">1.3.1.</span> <span class="toc-text">2.1 协议特性</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-%E5%90%9E%E5%90%90%E9%87%8F%E5%88%86%E6%9E%90"><span class="toc-number">1.3.2.</span> <span class="toc-text">2.2 吞吐量分析</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81Slotted-ALOHA%E2%80%94%E2%80%94%E5%BC%95%E5%85%A5%E6%97%B6%E6%A7%BD%EF%BC%8C%E6%8F%90%E5%8D%87%E4%B8%80%E5%80%8D%E6%95%88%E7%8E%87"><span class="toc-number">1.4.</span> <span class="toc-text">三、Slotted ALOHA——引入时槽，提升一倍效率</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E6%94%B9%E8%BF%9B%E7%82%B9"><span class="toc-number">1.4.1.</span> <span class="toc-text">3.1 改进点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E6%80%A7%E8%83%BD%E5%85%AC%E5%BC%8F"><span class="toc-number">1.4.2.</span> <span class="toc-text">3.2 性能公式</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-%E4%B8%A4%E7%A7%8D-ALOHA-%E7%9A%84%E5%90%9E%E5%90%90%E7%8E%87%E5%AF%B9%E6%AF%94"><span class="toc-number">1.4.3.</span> <span class="toc-text">3.3 两种 ALOHA 的吞吐率对比</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81CSMA%E2%80%94%E2%80%94%E5%85%88%E5%90%AC%E5%90%8E%E5%8F%91"><span class="toc-number">1.5.</span> <span class="toc-text">四、CSMA——先听后发</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-%E6%A0%B8%E5%BF%83%E6%94%B9%E8%BF%9B"><span class="toc-number">1.5.1.</span> <span class="toc-text">4.1 核心改进</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-%E5%86%B2%E7%AA%81%E6%9C%BA%E5%88%B6%E7%A4%BA%E6%84%8F"><span class="toc-number">1.5.2.</span> <span class="toc-text">4.2 冲突机制示意</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-CSMA-%E5%88%86%E7%B1%BB%E6%A0%91"><span class="toc-number">1.5.3.</span> <span class="toc-text">4.3 CSMA 分类树</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-4-Nonpersistent-CSMA"><span class="toc-number">1.5.4.</span> <span class="toc-text">4.4 Nonpersistent CSMA</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-5-1-persistent-CSMA"><span class="toc-number">1.5.5.</span> <span class="toc-text">4.5 1-persistent CSMA</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-6-p-persistent-CSMA%EF%BC%88%E6%8A%98%E4%B8%AD%E6%96%B9%E6%A1%88%EF%BC%89"><span class="toc-number">1.5.6.</span> <span class="toc-text">4.6 p-persistent CSMA（折中方案）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-7-%E5%A6%82%E4%BD%95%E9%80%89%E5%8F%96-p-%EF%BC%9F"><span class="toc-number">1.5.7.</span> <span class="toc-text">4.7 如何选取 $p$？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-8-CSMA-%E7%B3%BB%E5%88%97%E5%90%9E%E5%90%90%E7%8E%87%E5%AF%B9%E6%AF%94"><span class="toc-number">1.5.8.</span> <span class="toc-text">4.8 CSMA 系列吞吐率对比</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81CSMA-CD%E2%80%94%E2%80%94%E5%B8%A6%E5%86%B2%E7%AA%81%E6%A3%80%E6%B5%8B%E7%9A%84%E6%9C%89%E7%BA%BF%E4%BB%A5%E5%A4%AA%E7%BD%91"><span class="toc-number">1.6.</span> <span class="toc-text">五、CSMA&#x2F;CD——带冲突检测的有线以太网</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E6%94%B9%E8%BF%9B%EF%BC%9A%E8%BE%B9%E5%8F%91%E8%BE%B9%E5%90%AC"><span class="toc-number">1.6.1.</span> <span class="toc-text">5.1 改进：边发边听</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E4%B8%BA%E4%BB%80%E4%B9%88%E9%9C%80%E8%A6%81%E5%86%B2%E7%AA%81%E6%A3%80%E6%B5%8B%EF%BC%9F"><span class="toc-number">1.6.2.</span> <span class="toc-text">5.2 为什么需要冲突检测？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-%E5%86%B2%E7%AA%81%E6%97%B6%E5%BA%8F"><span class="toc-number">1.6.3.</span> <span class="toc-text">5.3 冲突时序</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81CSMA-CA%E2%80%94%E2%80%94%E5%86%B2%E7%AA%81%E9%81%BF%E5%85%8D%EF%BC%8C%E6%97%A0%E7%BA%BF%E5%9C%BA%E6%99%AF%E7%9A%84%E4%B8%BB%E6%B5%81"><span class="toc-number">1.7.</span> <span class="toc-text">六、CSMA&#x2F;CA——冲突避免，无线场景的主流</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E4%B8%BA%E4%BD%95%E4%B8%8D%E8%83%BD%E2%80%9D%E6%A3%80%E6%B5%8B%E2%80%9D%EF%BC%9F"><span class="toc-number">1.7.1.</span> <span class="toc-text">6.1 为何不能”检测”？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E7%AE%97%E6%B3%95%E8%A6%81%E7%82%B9"><span class="toc-number">1.7.2.</span> <span class="toc-text">6.2 算法要点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E5%A4%9A%E8%8A%82%E7%82%B9%E9%80%80%E9%81%BF%E7%A4%BA%E6%84%8F"><span class="toc-number">1.7.3.</span> <span class="toc-text">6.3 多节点退避示意</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-4-CSMA-CA-%E6%97%B6%E5%BA%8F"><span class="toc-number">1.7.4.</span> <span class="toc-text">6.4 CSMA&#x2F;CA 时序</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-5-CSMA-CA-ACK%E2%80%94%E2%80%94%E5%8D%95%E5%90%91%E7%A1%AE%E8%AE%A4%E6%8F%90%E9%AB%98%E5%8F%AF%E9%9D%A0%E6%80%A7"><span class="toc-number">1.7.5.</span> <span class="toc-text">6.5 CSMA&#x2F;CA + ACK——单向确认提高可靠性</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-6-CSMA-CA-RTS-CTS%E2%80%94%E2%80%94%E9%A2%84%E7%95%99%E4%BF%A1%E9%81%93"><span class="toc-number">1.7.6.</span> <span class="toc-text">6.6 CSMA&#x2F;CA + RTS&#x2F;CTS——预留信道</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-7-RTS-CTS-%E6%B6%88%E6%81%AF%E6%B5%81"><span class="toc-number">1.7.7.</span> <span class="toc-text">6.7 RTS&#x2F;CTS 消息流</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%83%E3%80%81PLCA%E2%80%94%E2%80%94%E7%89%A9%E7%90%86%E5%B1%82%E5%86%B2%E7%AA%81%E9%81%BF%E5%85%8D%EF%BC%8810BASE-T1S-%E7%9A%84%E7%A1%AE%E5%AE%9A%E6%80%A7%E6%96%B9%E6%A1%88%EF%BC%89"><span class="toc-number">1.8.</span> <span class="toc-text">七、PLCA——物理层冲突避免（10BASE-T1S 的确定性方案）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#7-1-%E8%AE%BE%E8%AE%A1%E5%93%B2%E5%AD%A6%E7%9A%84%E5%88%87%E6%8D%A2"><span class="toc-number">1.8.1.</span> <span class="toc-text">7.1 设计哲学的切换</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-2-PLCA-%E7%AE%80%E4%BB%8B"><span class="toc-number">1.8.2.</span> <span class="toc-text">7.2 PLCA 简介</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-3-%E5%85%B3%E9%94%AE%E5%8F%82%E6%95%B0"><span class="toc-number">1.8.3.</span> <span class="toc-text">7.3 关键参数</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-4-%E6%80%A7%E8%83%BD%E5%88%86%E6%9E%90"><span class="toc-number">1.8.4.</span> <span class="toc-text">7.4 性能分析</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#7-4-1-%E6%B5%8B%E8%AF%95%E5%9C%BA%E6%99%AF"><span class="toc-number">1.8.4.1.</span> <span class="toc-text">7.4.1 测试场景</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#7-4-2-%E8%B4%9F%E8%BD%BD%E7%8E%87%E5%88%86%E6%9E%90"><span class="toc-number">1.8.4.2.</span> <span class="toc-text">7.4.2 负载率分析</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#7-4-3-%E5%BB%B6%E6%97%B6%E5%88%86%E6%9E%90"><span class="toc-number">1.8.4.3.</span> <span class="toc-text">7.4.3 延时分析</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#7-4-4-%E6%8A%96%E5%8A%A8%E5%AF%B9%E6%AF%94"><span class="toc-number">1.8.4.4.</span> <span class="toc-text">7.4.4 抖动对比</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-5-PLCA-vs-CSMA-%E5%AE%B6%E6%97%8F%EF%BC%9A%E6%A0%B8%E5%BF%83%E5%AF%B9%E6%AF%94"><span class="toc-number">1.8.5.</span> <span class="toc-text">7.5 PLCA vs CSMA 家族：核心对比</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-6-PLCA-%E7%9A%84%E5%B7%A5%E7%A8%8B%E5%AE%9E%E8%B7%B5%E8%A6%81%E7%82%B9"><span class="toc-number">1.8.6.</span> <span class="toc-text">7.6 PLCA 的工程实践要点</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AB%E3%80%81%E5%B0%8F%E7%BB%93%E4%B8%8E%E9%80%89%E5%9E%8B%E5%BB%BA%E8%AE%AE"><span class="toc-number">1.9.</span> <span class="toc-text">八、小结与选型建议</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="toc-number">1.10.</span> <span class="toc-text">参考资料</span></a></li></ol></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/09/11/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20%E5%A4%9A%E8%8A%82%E7%82%B9%E7%BD%91%E7%BB%9C%E7%9A%84%E5%86%B2%E7%AA%81%E5%A4%84%E7%90%86%E7%AE%97%E6%B3%95-%E4%BB%8EALOHA%E5%88%B0CSMA%E5%92%8CPLCA/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/09/11/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20%E5%A4%9A%E8%8A%82%E7%82%B9%E7%BD%91%E7%BB%9C%E7%9A%84%E5%86%B2%E7%AA%81%E5%A4%84%E7%90%86%E7%AE%97%E6%B3%95-%E4%BB%8EALOHA%E5%88%B0CSMA%E5%92%8CPLCA/&text=多节点网络的冲突处理算法——从 ALOHA 到 PLCA"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/09/11/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20%E5%A4%9A%E8%8A%82%E7%82%B9%E7%BD%91%E7%BB%9C%E7%9A%84%E5%86%B2%E7%AA%81%E5%A4%84%E7%90%86%E7%AE%97%E6%B3%95-%E4%BB%8EALOHA%E5%88%B0CSMA%E5%92%8CPLCA/&title=多节点网络的冲突处理算法——从 ALOHA 到 PLCA"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/09/11/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20%E5%A4%9A%E8%8A%82%E7%82%B9%E7%BD%91%E7%BB%9C%E7%9A%84%E5%86%B2%E7%AA%81%E5%A4%84%E7%90%86%E7%AE%97%E6%B3%95-%E4%BB%8EALOHA%E5%88%B0CSMA%E5%92%8CPLCA/&is_video=false&description=多节点网络的冲突处理算法——从 ALOHA 到 PLCA"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=多节点网络的冲突处理算法——从 ALOHA 到 PLCA&body=Check out this article: https://cursorhu.github.io/2026/09/11/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20%E5%A4%9A%E8%8A%82%E7%82%B9%E7%BD%91%E7%BB%9C%E7%9A%84%E5%86%B2%E7%AA%81%E5%A4%84%E7%90%86%E7%AE%97%E6%B3%95-%E4%BB%8EALOHA%E5%88%B0CSMA%E5%92%8CPLCA/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/09/11/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20%E5%A4%9A%E8%8A%82%E7%82%B9%E7%BD%91%E7%BB%9C%E7%9A%84%E5%86%B2%E7%AA%81%E5%A4%84%E7%90%86%E7%AE%97%E6%B3%95-%E4%BB%8EALOHA%E5%88%B0CSMA%E5%92%8CPLCA/&title=多节点网络的冲突处理算法——从 ALOHA 到 PLCA"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/09/11/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20%E5%A4%9A%E8%8A%82%E7%82%B9%E7%BD%91%E7%BB%9C%E7%9A%84%E5%86%B2%E7%AA%81%E5%A4%84%E7%90%86%E7%AE%97%E6%B3%95-%E4%BB%8EALOHA%E5%88%B0CSMA%E5%92%8CPLCA/&title=多节点网络的冲突处理算法——从 ALOHA 到 PLCA"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/09/11/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20%E5%A4%9A%E8%8A%82%E7%82%B9%E7%BD%91%E7%BB%9C%E7%9A%84%E5%86%B2%E7%AA%81%E5%A4%84%E7%90%86%E7%AE%97%E6%B3%95-%E4%BB%8EALOHA%E5%88%B0CSMA%E5%92%8CPLCA/&title=多节点网络的冲突处理算法——从 ALOHA 到 PLCA"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/09/11/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20%E5%A4%9A%E8%8A%82%E7%82%B9%E7%BD%91%E7%BB%9C%E7%9A%84%E5%86%B2%E7%AA%81%E5%A4%84%E7%90%86%E7%AE%97%E6%B3%95-%E4%BB%8EALOHA%E5%88%B0CSMA%E5%92%8CPLCA/&title=多节点网络的冲突处理算法——从 ALOHA 到 PLCA"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/09/11/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20%E5%A4%9A%E8%8A%82%E7%82%B9%E7%BD%91%E7%BB%9C%E7%9A%84%E5%86%B2%E7%AA%81%E5%A4%84%E7%90%86%E7%AE%97%E6%B3%95-%E4%BB%8EALOHA%E5%88%B0CSMA%E5%92%8CPLCA/&name=多节点网络的冲突处理算法——从 ALOHA 到 PLCA&description=&lt;h1 id=&#34;多节点网络的冲突处理算法——从-ALOHA-到-PLCA&#34;&gt;&lt;a href=&#34;#多节点网络的冲突处理算法——从-ALOHA-到-PLCA&#34; class=&#34;headerlink&#34; title=&#34;多节点网络的冲突处理算法——从 ALOHA 到 PLCA&#34;&gt;&lt;/a&gt;多节点网络的冲突处理算法——从 ALOHA 到 PLCA&lt;/h1&gt;&lt;h2 id=&#34;引言&#34;&gt;&lt;a href=&#34;#引言&#34; class=&#34;headerlink&#34; title=&#34;引言&#34;&gt;&lt;/a&gt;引言&lt;/h2&gt;&lt;p&gt;在共享介质的网络中，多个节点同时发送数据会导致&lt;strong&gt;冲突（Collision）&lt;/strong&gt;。如何高效地协调多个节点对共享信道的访问，是数据链路层的核心问题之一。本章系统梳理从 &lt;strong&gt;ALOHA&lt;/strong&gt; 到 &lt;strong&gt;CSMA&amp;#x2F;CD、CSMA&amp;#x2F;CA&lt;/strong&gt; 再到 &lt;strong&gt;PLCA（Physical Layer Collision Avoidance）&lt;/strong&gt; 的演进过程，对比&lt;strong&gt;传统带冲突检测的方案&lt;/strong&gt;与&lt;strong&gt;物理层防碰撞的确定性方案&lt;/strong&gt;，并基于经纬恒润的实测数据，分析 10BASE-T1S 在多节点场景下的负载率、时延与抖动表现。&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;本文素材来源：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;讲义 &lt;code&gt;Chapt-06.ppt&lt;/code&gt;（Multiple Radio Access, Chapter 6）— ALOHA、Slotted ALOHA、CSMA 系列&lt;/li&gt;
+&lt;li&gt;用户提供的 Markdown：&lt;code&gt;C:\ai-projects\minerU\Chapt-06-CSMA\office\Chapt-06-CSMA.md&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;Zhihu 专栏《深度解析 10BASE-T1S PLCA 的多节点通信效率》— &lt;a href=&#34;https://zhuanlan.zhihu.com/p/1995067444474159482&#34;&gt;https://zhuanlan.zhihu.com/p/1995067444474159482&lt;/a&gt; （&lt;strong&gt;因 Zhihu 反爬限制，内容从同源博客园版本获取&lt;/strong&gt;：&lt;a href=&#34;https://www.cnblogs.com/hirain123/p/19033489%EF%BC%89&#34;&gt;https://www.cnblogs.com/hirain123/p/19033489）&lt;/a&gt;&lt;/li&gt;
+&lt;/ol&gt;
+&lt;/blockquote&gt;
+&lt;h2 id=&#34;一、介质共享与多址接入概述&#34;&gt;&lt;a href=&#34;#一、介质共享与多址接入概述&#34; class=&#34;headerlink&#34; title=&#34;一、介质共享与多址接入概述&#34;&gt;&lt;/a&gt;一、介质共享与多址接入概述&lt;/h2&gt;&lt;h3 id=&#34;1-1-多址接入信道模型&#34;&gt;&lt;a href=&#34;#1-1-多址接入信道模型&#34; class=&#34;headerlink&#34; title=&#34;1.1 多址接入信道模型&#34;&gt;&lt;/a&gt;1.1 多址接入信道模型&lt;/h3&gt;&lt;p&gt;&lt;img src=&#34;https://raw.githubusercontent.com/cursorhu/blog-images-on-picgo/master/images/slide-03.png&#34; alt=&#34;多址接入信道模型&#34;&gt;&lt;/p&gt;
+&lt;p&gt;在多址接入（Multiple Access）系统中，每个节点通过&lt;strong&gt;发射&amp;#x2F;接收设备&lt;/strong&gt;与一条被多个节点共享的信道相连，&lt;strong&gt;任何一个节点的发射信号都会被其他节点接收&lt;/strong&gt;。&lt;/p&gt;
+&lt;h3 id=&#34;1-2-多址接入的核心问题&#34;&gt;&lt;a href=&#34;#1-2-多址接入的核心问题&#34; class=&#34;headerlink&#34; title=&#34;1.2 多址接入的核心问题&#34;&gt;&lt;/a&gt;1.2 多址接入的核心问题&lt;/h3&gt;&lt;ul&gt;
+&lt;li&gt;当超过一个节点同时向 BS（基站）的控制信道发送数据时，&lt;strong&gt;冲突（collision）就会发生&lt;/strong&gt;&lt;/li&gt;
+&lt;li&gt;因此多址接入协议必须解决：&lt;strong&gt;由哪个节点来发送？&lt;/strong&gt;&lt;/li&gt;
+&lt;/ul&gt;"><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/09/11/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20%E5%A4%9A%E8%8A%82%E7%82%B9%E7%BD%91%E7%BB%9C%E7%9A%84%E5%86%B2%E7%AA%81%E5%A4%84%E7%90%86%E7%AE%97%E6%B3%95-%E4%BB%8EALOHA%E5%88%B0CSMA%E5%92%8CPLCA/&t=多节点网络的冲突处理算法——从 ALOHA 到 PLCA"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> 菜单</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> 目录</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> 分享</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> 返回顶部</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2026
+    cursorhu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"复制到粘贴板！\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "复制成功！");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+<!-- Mermaid diagrams -->
+
+  <script type="text/javascript">
+  (function() {
+    var mermaidElements = document.querySelectorAll('.mermaid');
+    if (!mermaidElements.length) return;
+
+    var mermaidTheme = 'auto';
+    if (mermaidTheme === 'auto') {
+      var colorscheme = 'dark';
+      mermaidTheme = (colorscheme === 'dark' || colorscheme === 'classic') ? 'dark' : 'default';
+    }
+
+    function initMermaid() {
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: mermaidTheme,
+        logLevel: 'error',
+        securityLevel: 'loose',
+        flowchart: { curve: 'basis' },
+        gantt: { axisFormat: '%m/%d/%Y' },
+        sequence: { actorMargin: 50 }
+      });
+      mermaid.run({ nodes: mermaidElements });
+    }
+
+    var script = document.createElement('script');
+    
+    script.src = 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js';
+    
+    script.onload = initMermaid;
+    document.head.appendChild(script);
+  })();
+  </script>
+
+</body>
+</html>

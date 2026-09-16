@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="RISC-V Boot ROM 的 ECC 实践：从原理到 Python 实现FPGA 启动代码（Boot ROM）出错是嵌入式系统最棘手的故障之一：故障静默发生，CPU 执行了错误的指令却不会产生任何异常，最直接的表现就是”上电跑飞”。ECC（Error Correction Code，奇偶校验码）是应对这一问题的工业标准手段。本文以 某RISC-V MCU项目 的 Boot ROM 为例，介绍">
+<meta property="og:type" content="article">
+<meta property="og:title" content="RISC-V Boot ROM 的 ECC 实践：从原理到 Python 实现">
+<meta property="og:url" content="https://cursorhu.github.io/2026/09/14/RISC-V-Boot-ROM-ECC%E5%AE%9E%E8%B7%B5/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="RISC-V Boot ROM 的 ECC 实践：从原理到 Python 实现FPGA 启动代码（Boot ROM）出错是嵌入式系统最棘手的故障之一：故障静默发生，CPU 执行了错误的指令却不会产生任何异常，最直接的表现就是”上电跑飞”。ECC（Error Correction Code，奇偶校验码）是应对这一问题的工业标准手段。本文以 某RISC-V MCU项目 的 Boot ROM 为例，介绍">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-09-14T07:30:00.000Z">
+<meta property="article:modified_time" content="2026-09-14T07:22:41.940Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="RISC-V, ECC, FPGA, 嵌入式">
+<meta name="twitter:card" content="summary">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>RISC-V Boot ROM 的 ECC 实践：从原理到 Python 实现</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+		<script type="text/x-mathjax-config">
+		  MathJax.Hub.Config({
+			tex2jax: {
+			  skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+			  inlineMath: [['$','$']]
+			}
+		  });
+		</script>
+		<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-MML-AM_CHTML' async></script>
+	
+<meta name="generator" content="Hexo 8.0.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="顶部" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="上一篇" href="/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/%E8%BD%A6%E8%BD%BD%E4%BB%A5%E5%A4%AA%E7%BD%91MACsec%E7%B3%BB%E5%88%97%EF%BC%9A%E5%9B%9B%E5%A4%A7%E6%A0%87%E5%87%86%E6%A6%82%E8%A7%88%E4%B8%8E%E9%A1%B6%E5%B1%82%E5%AE%89%E5%85%A8%E6%9E%B6%E6%9E%84/"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="下一篇" href="/2026/09/11/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20%E5%A4%9A%E8%8A%82%E7%82%B9%E7%BD%91%E7%BB%9C%E7%9A%84%E5%86%B2%E7%AA%81%E5%A4%84%E7%90%86%E7%AE%97%E6%B3%95-%E4%BB%8EALOHA%E5%88%B0CSMA%E5%92%8CPLCA/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="返回顶部" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="分享文章" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">上一篇</span>
+      <span id="i-next" class="info" style="display:none;">下一篇</span>
+      <span id="i-top" class="info" style="display:none;">返回顶部</span>
+      <span id="i-share" class="info" style="display:none;">分享文章</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/09/14/RISC-V-Boot-ROM-ECC%E5%AE%9E%E8%B7%B5/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/09/14/RISC-V-Boot-ROM-ECC%E5%AE%9E%E8%B7%B5/&text=RISC-V Boot ROM 的 ECC 实践：从原理到 Python 实现"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/09/14/RISC-V-Boot-ROM-ECC%E5%AE%9E%E8%B7%B5/&title=RISC-V Boot ROM 的 ECC 实践：从原理到 Python 实现"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/09/14/RISC-V-Boot-ROM-ECC%E5%AE%9E%E8%B7%B5/&is_video=false&description=RISC-V Boot ROM 的 ECC 实践：从原理到 Python 实现"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=RISC-V Boot ROM 的 ECC 实践：从原理到 Python 实现&body=Check out this article: https://cursorhu.github.io/2026/09/14/RISC-V-Boot-ROM-ECC%E5%AE%9E%E8%B7%B5/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/09/14/RISC-V-Boot-ROM-ECC%E5%AE%9E%E8%B7%B5/&title=RISC-V Boot ROM 的 ECC 实践：从原理到 Python 实现"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/09/14/RISC-V-Boot-ROM-ECC%E5%AE%9E%E8%B7%B5/&title=RISC-V Boot ROM 的 ECC 实践：从原理到 Python 实现"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/09/14/RISC-V-Boot-ROM-ECC%E5%AE%9E%E8%B7%B5/&title=RISC-V Boot ROM 的 ECC 实践：从原理到 Python 实现"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/09/14/RISC-V-Boot-ROM-ECC%E5%AE%9E%E8%B7%B5/&title=RISC-V Boot ROM 的 ECC 实践：从原理到 Python 实现"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/09/14/RISC-V-Boot-ROM-ECC%E5%AE%9E%E8%B7%B5/&name=RISC-V Boot ROM 的 ECC 实践：从原理到 Python 实现&description=&lt;h1 id=&#34;RISC-V-Boot-ROM-的-ECC-实践：从原理到-Python-实现&#34;&gt;&lt;a href=&#34;#RISC-V-Boot-ROM-的-ECC-实践：从原理到-Python-实现&#34; class=&#34;headerlink&#34; title=&#34;RISC-V Boot ROM 的 ECC 实践：从原理到 Python 实现&#34;&gt;&lt;/a&gt;RISC-V Boot ROM 的 ECC 实践：从原理到 Python 实现&lt;/h1&gt;&lt;p&gt;FPGA 启动代码（Boot ROM）出错是嵌入式系统最棘手的故障之一：故障静默发生，CPU 执行了错误的指令却不会产生任何异常，最直接的表现就是”上电跑飞”。ECC（Error Correction Code，奇偶校验码）是应对这一问题的工业标准手段。本文以 某RISC-V MCU项目 的 Boot ROM 为例，介绍 ECC 如何在 RISC-V 指令存储这一场景落地——从 Hsiao SEC-DED 算法原理，到 SystemVerilog RTL 实现，再到 Python 固件转换工具，一条链讲清楚。&lt;/p&gt;
+&lt;p&gt;参考工程源码：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&#34;https://github.com/cursorhu/riscv-9310-mini/blob/main/ecc38_32.v&#34;&gt;ecc38_32.v&lt;/a&gt; — RTL 实现&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://github.com/cursorhu/riscv-9310-mini/blob/main/bin_to_fpga.py&#34;&gt;bin_to_fpga.py&lt;/a&gt; — Python 转换工具&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://github.com/cursorhu/riscv-9310-mini/blob/main/docs/12-ECC-Algorithm.md&#34;&gt;docs&amp;#x2F;12-ECC-Algorithm.md&lt;/a&gt; — 算法细节参考&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;一、ECC-原理与应用场景&#34;&gt;&lt;a href=&#34;#一、ECC-原理与应用场景&#34; class=&#34;headerlink&#34; title=&#34;一、ECC 原理与应用场景&#34;&gt;&lt;/a&gt;一、ECC 原理与应用场景&lt;/h2&gt;&lt;h3 id=&#34;1-1-为什么-Boot-ROM-需要-ECC&#34;&gt;&lt;a href=&#34;#1-1-为什么-Boot-ROM-需要-ECC&#34; class=&#34;headerlink&#34; title=&#34;1.1 为什么 Boot ROM 需要 ECC&#34;&gt;&lt;/a&gt;1.1 为什么 Boot ROM 需要 ECC&lt;/h3&gt;&lt;p&gt;ROM 和 Flash 的位翻转有两类成因：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;制造缺陷&lt;/strong&gt;：存储单元的氧化层隧道效应，导致某些存储位永久性偏置&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;软错误（Soft Error）&lt;/strong&gt;：宇宙射线中的中子&amp;#x2F;alpha 粒子撞击存储电容，导致位翻转&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;对于 40 nm 以下工艺的 eFlash，软错误率（SER）在 1000 FIT&amp;#x2F;Mbit 量级——这意味着每 10 亿小时约有 1000 次单 bit 翻转。对可靠性要求严格的工业、汽车应用，这个概率不可忽视。&lt;/p&gt;
+&lt;p&gt;ECC 的核心思路：&lt;strong&gt;在存储数据时额外写入校验位，读出时根据校验关系检测并纠正错误。&lt;/strong&gt;&lt;/p&gt;"><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/09/14/RISC-V-Boot-ROM-ECC%E5%AE%9E%E8%B7%B5/&t=RISC-V Boot ROM 的 ECC 实践：从原理到 Python 实现"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#RISC-V-Boot-ROM-%E7%9A%84-ECC-%E5%AE%9E%E8%B7%B5%EF%BC%9A%E4%BB%8E%E5%8E%9F%E7%90%86%E5%88%B0-Python-%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.</span> <span class="toc-text">RISC-V Boot ROM 的 ECC 实践：从原理到 Python 实现</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81ECC-%E5%8E%9F%E7%90%86%E4%B8%8E%E5%BA%94%E7%94%A8%E5%9C%BA%E6%99%AF"><span class="toc-number">1.1.</span> <span class="toc-text">一、ECC 原理与应用场景</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-%E4%B8%BA%E4%BB%80%E4%B9%88-Boot-ROM-%E9%9C%80%E8%A6%81-ECC"><span class="toc-number">1.1.1.</span> <span class="toc-text">1.1 为什么 Boot ROM 需要 ECC</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-2-%E7%BA%A0%E9%94%99%E8%83%BD%E5%8A%9B%E7%9A%84%E5%87%A0%E4%B8%AA%E5%85%B3%E9%94%AE%E6%A6%82%E5%BF%B5"><span class="toc-number">1.1.2.</span> <span class="toc-text">1.2 纠错能力的几个关键概念</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-3-%E7%BB%8F%E5%85%B8-Hamming-39-32-vs-Hsiao-38-32"><span class="toc-number">1.1.3.</span> <span class="toc-text">1.3 经典 Hamming (39,32) vs. Hsiao (38,32)</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81Hsiao-SEC-DED-38-32-%E7%AE%97%E6%B3%95%E8%AF%A6%E8%A7%A3"><span class="toc-number">1.2.</span> <span class="toc-text">二、Hsiao SEC-DED (38,32) 算法详解</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E6%95%B0%E6%8D%AE%E4%BD%8D%E5%88%B0-Hamming-%E4%BD%8D%E7%BD%AE%E7%9A%84%E6%98%A0%E5%B0%84"><span class="toc-number">1.2.1.</span> <span class="toc-text">2.1 数据位到 Hamming 位置的映射</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-%E5%A5%87%E5%81%B6%E6%A0%A1%E9%AA%8C%E4%BD%8D%E8%AE%A1%E7%AE%97"><span class="toc-number">1.2.2.</span> <span class="toc-text">2.2 奇偶校验位计算</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-ECC-%E5%AD%97%E8%8A%82%E5%B8%83%E5%B1%80"><span class="toc-number">1.2.3.</span> <span class="toc-text">2.3 ECC 字节布局</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-4-%E7%BA%A0%E9%94%99%E5%8E%9F%E7%90%86%EF%BC%88syndrome-%E8%A7%A3%E7%A0%81%EF%BC%89"><span class="toc-number">1.2.4.</span> <span class="toc-text">2.4 纠错原理（syndrome 解码）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81SystemVerilog-RTL-%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.3.</span> <span class="toc-text">三、SystemVerilog RTL 实现</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E7%BC%96%E7%A0%81%E5%99%A8-encecc38-32"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 编码器 encecc38_32</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E8%A7%A3%E7%A0%81%E5%99%A8-dececc38-32-%E6%A0%B8%E5%BF%83%E9%80%BB%E8%BE%91"><span class="toc-number">1.3.2.</span> <span class="toc-text">3.2 解码器 dececc38_32 核心逻辑</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81Python-%E5%AE%9E%E7%8E%B0%EF%BC%9AFirmware-%E5%9B%BA%E4%BB%B6%E5%88%B0-FPGA-ROM"><span class="toc-number">1.4.</span> <span class="toc-text">四、Python 实现：Firmware 固件到 FPGA ROM</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-%E5%BA%94%E7%94%A8%E5%9C%BA%E6%99%AF"><span class="toc-number">1.4.1.</span> <span class="toc-text">4.1 应用场景</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-%E5%AE%8C%E6%95%B4-Python-%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.4.2.</span> <span class="toc-text">4.2 完整 Python 实现</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-%E4%BD%BF%E7%94%A8%E6%96%B9%E5%BC%8F%E4%B8%8E%E8%BE%93%E5%87%BA%E7%A4%BA%E4%BE%8B"><span class="toc-number">1.4.3.</span> <span class="toc-text">4.3 使用方式与输出示例</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-4-%E4%B8%8E-RTL-%E7%9A%84%E4%B8%80%E8%87%B4%E6%80%A7%E4%BF%9D%E8%AF%81"><span class="toc-number">1.4.4.</span> <span class="toc-text">4.4 与 RTL 的一致性保证</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E9%AA%8C%E8%AF%81%E4%B8%8E%E8%B0%83%E8%AF%95"><span class="toc-number">1.5.</span> <span class="toc-text">五、验证与调试</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E7%A6%BB%E7%BA%BF%E9%AA%8C%E8%AF%81"><span class="toc-number">1.5.1.</span> <span class="toc-text">5.1 离线验证</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-FPGA-%E5%9C%A8%E7%BA%BF%E9%AA%8C%E8%AF%81"><span class="toc-number">1.5.2.</span> <span class="toc-text">5.2 FPGA 在线验证</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E6%80%BB%E7%BB%93"><span class="toc-number">1.6.</span> <span class="toc-text">六、总结</span></a></li></ol></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        RISC-V Boot ROM 的 ECC 实践：从原理到 Python 实现
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">cursorhu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2026-09-14T07:30:00.000Z" class="dt-published" itemprop="datePublished">2026-09-14</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fa-solid fa-archive"></i>
+        <a class="category-link" href="/categories/%E6%95%B0%E5%AD%97%E8%8A%AF%E7%89%87/">数字芯片</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/RISC-V-ECC-FPGA-%E5%B5%8C%E5%85%A5%E5%BC%8F/" rel="tag">RISC-V, ECC, FPGA, 嵌入式</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <h1 id="RISC-V-Boot-ROM-的-ECC-实践：从原理到-Python-实现"><a href="#RISC-V-Boot-ROM-的-ECC-实践：从原理到-Python-实现" class="headerlink" title="RISC-V Boot ROM 的 ECC 实践：从原理到 Python 实现"></a>RISC-V Boot ROM 的 ECC 实践：从原理到 Python 实现</h1><p>FPGA 启动代码（Boot ROM）出错是嵌入式系统最棘手的故障之一：故障静默发生，CPU 执行了错误的指令却不会产生任何异常，最直接的表现就是”上电跑飞”。ECC（Error Correction Code，奇偶校验码）是应对这一问题的工业标准手段。本文以 某RISC-V MCU项目 的 Boot ROM 为例，介绍 ECC 如何在 RISC-V 指令存储这一场景落地——从 Hsiao SEC-DED 算法原理，到 SystemVerilog RTL 实现，再到 Python 固件转换工具，一条链讲清楚。</p>
+<p>参考工程源码：</p>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://github.com/cursorhu/riscv-9310-mini/blob/main/ecc38_32.v">ecc38_32.v</a> — RTL 实现</li>
+<li><a target="_blank" rel="noopener" href="https://github.com/cursorhu/riscv-9310-mini/blob/main/bin_to_fpga.py">bin_to_fpga.py</a> — Python 转换工具</li>
+<li><a target="_blank" rel="noopener" href="https://github.com/cursorhu/riscv-9310-mini/blob/main/docs/12-ECC-Algorithm.md">docs&#x2F;12-ECC-Algorithm.md</a> — 算法细节参考</li>
+</ul>
+<h2 id="一、ECC-原理与应用场景"><a href="#一、ECC-原理与应用场景" class="headerlink" title="一、ECC 原理与应用场景"></a>一、ECC 原理与应用场景</h2><h3 id="1-1-为什么-Boot-ROM-需要-ECC"><a href="#1-1-为什么-Boot-ROM-需要-ECC" class="headerlink" title="1.1 为什么 Boot ROM 需要 ECC"></a>1.1 为什么 Boot ROM 需要 ECC</h3><p>ROM 和 Flash 的位翻转有两类成因：</p>
+<ul>
+<li><strong>制造缺陷</strong>：存储单元的氧化层隧道效应，导致某些存储位永久性偏置</li>
+<li><strong>软错误（Soft Error）</strong>：宇宙射线中的中子&#x2F;alpha 粒子撞击存储电容，导致位翻转</li>
+</ul>
+<p>对于 40 nm 以下工艺的 eFlash，软错误率（SER）在 1000 FIT&#x2F;Mbit 量级——这意味着每 10 亿小时约有 1000 次单 bit 翻转。对可靠性要求严格的工业、汽车应用，这个概率不可忽视。</p>
+<p>ECC 的核心思路：<strong>在存储数据时额外写入校验位，读出时根据校验关系检测并纠正错误。</strong></p>
+<h3 id="1-2-纠错能力的几个关键概念"><a href="#1-2-纠错能力的几个关键概念" class="headerlink" title="1.2 纠错能力的几个关键概念"></a>1.2 纠错能力的几个关键概念</h3><table>
+<thead>
+<tr>
+<th>术语</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>SEC</strong></td>
+<td>Single Error Correction — 任意 1 bit 错误可被定位并纠正</td>
+</tr>
+<tr>
+<td><strong>DED</strong></td>
+<td>Double Error Detection — 任意 2 bit 同时错误可被检测（不纠正）</td>
+</tr>
+<tr>
+<td><strong>Hamming Distance</strong></td>
+<td>两个码字之间不同 bit 的数量。码的最小 Hamming Distance 决定纠错能力</td>
+</tr>
+<tr>
+<td><strong>SEC-DED</strong></td>
+<td>Hamming Distance &#x3D; 4，能够 SEC + DED，是工业存储 ECC 的主流标准</td>
+</tr>
+<tr>
+<td><strong>Hsiao Code</strong></td>
+<td>优化版 Hamming 码，奇偶矩阵最小权重 &#x3D; 3，相比经典 Hamming 码面积更小、延迟更低</td>
+</tr>
+</tbody></table>
+<h3 id="1-3-经典-Hamming-39-32-vs-Hsiao-38-32"><a href="#1-3-经典-Hamming-39-32-vs-Hsiao-38-32" class="headerlink" title="1.3 经典 Hamming (39,32) vs. Hsiao (38,32)"></a>1.3 经典 Hamming (39,32) vs. Hsiao (38,32)</h3><p>传统 Hamming(39,32) 用 6 个奇偶位加 1 个总奇偶位 &#x3D; 7 bit 校验，与本方案一致。但经典 Hamming 码的奇偶覆盖矩阵中，最小权重为 3，存在一类”3 bit 数据位同时翻转但 parity 不变”的误纠风险。Hsiao 码通过精心选择的奇偶矩阵，将最小权重提升到 4，消除了这种误纠场景。</p>
+<p>Hsiao 码自 1970 年由 M.Y. Hsiao 提出后，被 IBM、Intel、AMD 以及 DDR5 ECC 广泛采用。特定RISC-V MCU项目 的 Boot ROM 采用的正是 Hsiao SEC-DED (38,32) 码。</p>
+<h2 id="二、Hsiao-SEC-DED-38-32-算法详解"><a href="#二、Hsiao-SEC-DED-38-32-算法详解" class="headerlink" title="二、Hsiao SEC-DED (38,32) 算法详解"></a>二、Hsiao SEC-DED (38,32) 算法详解</h2><h3 id="2-1-数据位到-Hamming-位置的映射"><a href="#2-1-数据位到-Hamming-位置的映射" class="headerlink" title="2.1 数据位到 Hamming 位置的映射"></a>2.1 数据位到 Hamming 位置的映射</h3><p>Hamming 码的基本思想：每个 bit 位置用其<strong>二进制索引</strong>中置位的位，定义它被哪些奇偶校验位覆盖。</p>
+<p>32 个数据位被分散映射到 Hamming 位置 <strong>3, 5, 6, 7, 9..15, 17..31, 33..38</strong>。注意：<strong>Hamming 位置 1, 2, 4, 8, 16, 32 不承载数据</strong>，它们是校验位占位。din[0] 映射到 d3，din[1] 映射到 d5，以此类推：</p>
+<table>
+<thead>
+<tr>
+<th>din bit 位</th>
+<th>0</th>
+<th>1</th>
+<th>2</th>
+<th>3</th>
+<th>4</th>
+<th>5</th>
+<th>6</th>
+<th>7</th>
+<th>8</th>
+<th>9</th>
+<th>10</th>
+<th>11</th>
+<th>12</th>
+<th>13</th>
+<th>14</th>
+<th>15</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Hamming 位</td>
+<td>3</td>
+<td>5</td>
+<td>6</td>
+<td>7</td>
+<td>9</td>
+<td>10</td>
+<td>11</td>
+<td>12</td>
+<td>13</td>
+<td>14</td>
+<td>15</td>
+<td>17</td>
+<td>18</td>
+<td>19</td>
+<td>20</td>
+<td>21</td>
+</tr>
+</tbody></table>
+<table>
+<thead>
+<tr>
+<th>din bit 位</th>
+<th>16</th>
+<th>17</th>
+<th>18</th>
+<th>19</th>
+<th>20</th>
+<th>21</th>
+<th>22</th>
+<th>23</th>
+<th>24</th>
+<th>25</th>
+<th>26</th>
+<th>27</th>
+<th>28</th>
+<th>29</th>
+<th>30</th>
+<th>31</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Hamming 位</td>
+<td>22</td>
+<td>23</td>
+<td>24</td>
+<td>25</td>
+<td>26</td>
+<td>27</td>
+<td>28</td>
+<td>29</td>
+<td>30</td>
+<td>31</td>
+<td>33</td>
+<td>34</td>
+<td>35</td>
+<td>36</td>
+<td>37</td>
+<td>38</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p><strong>注意</strong>：din[26]（即 bit 26）跳过了 Hamming 位置 32，映射到 d33。这是因为位置 32 在此方案中被预留给 p32 校验位本身。</p>
+</blockquote>
+<h3 id="2-2-奇偶校验位计算"><a href="#2-2-奇偶校验位计算" class="headerlink" title="2.2 奇偶校验位计算"></a>2.2 奇偶校验位计算</h3><p>每个奇偶位覆盖<strong>二进制索引中对应 bit 置位</strong>的所有数据位，异或结果即为该校验位的值：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">p1  = d3  ^ d5  ^ d7  ^ d9  ^ d11 ^ d13 ^ d15 ^ d17 ^ d19 ^ d21 ^ d23 ^ d25 ^ d27 ^ d29 ^ d31 ^ d33 ^ d35 ^ d37</span><br><span class="line">p2  = d3  ^ d6  ^ d7  ^ d10 ^ d11 ^ d14 ^ d15 ^ d18 ^ d19 ^ d22 ^ d23 ^ d26 ^ d27 ^ d30 ^ d31 ^ d34 ^ d35 ^ d38</span><br><span class="line">p4  = d5  ^ d6  ^ d7  ^ d12 ^ d13 ^ d14 ^ d15 ^ d20 ^ d21 ^ d22 ^ d23 ^ d28 ^ d29 ^ d30 ^ d31 ^ d36 ^ d37 ^ d38</span><br><span class="line">p8  = d9  ^ d10 ^ d11 ^ d12 ^ d13 ^ d14 ^ d15 ^ d24 ^ d25 ^ d26 ^ d27 ^ d28 ^ d29 ^ d30 ^ d31</span><br><span class="line">p16 = d17 ^ d18 ^ d19 ^ d20 ^ d21 ^ d22 ^ d23 ^ d24 ^ d25 ^ d26 ^ d27 ^ d28 ^ d29 ^ d30 ^ d31</span><br><span class="line">p32 = d33 ^ d34 ^ d35 ^ d36 ^ d37 ^ d38</span><br></pre></td></tr></table></figure>
+
+<p>总奇偶（overall parity）：将上述 6 个校验位与 32 个数据位全部异或，得到 overall_parity。</p>
+<h3 id="2-3-ECC-字节布局"><a href="#2-3-ECC-字节布局" class="headerlink" title="2.3 ECC 字节布局"></a>2.3 ECC 字节布局</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">bit:   7     6        5    4    3    2    1    0</span><br><span class="line">       +-----+--------+----+----+----+----+----+----+</span><br><span class="line">pcode: |  0  |   P    | p32| p16| p8 | p4 | p2 | p1 |</span><br><span class="line">       +-----+--------+----+----+----+----+----+----+</span><br><span class="line">             ↑ overall parity</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>bit 7</strong>：固定为 0</li>
+<li><strong>bit 6</strong>：总奇偶 overall_parity</li>
+<li><strong>bit 5:0</strong>：6 个 Hamming 奇偶位 p32, p16, p8, p4, p2, p1</li>
+</ul>
+<h3 id="2-4-纠错原理（syndrome-解码）"><a href="#2-4-纠错原理（syndrome-解码）" class="headerlink" title="2.4 纠错原理（syndrome 解码）"></a>2.4 纠错原理（syndrome 解码）</h3><p>读回数据时，硬件重新计算 r1..r32（与 p1..p32 相同的覆盖集），再与存储的 pcode[5:0] 异或，得到 <strong>syndrome</strong>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">syndrome[5:0] = &#123;r32^p32, r16^p16, r8^p8, r4^p4, r2^p2, r1^p1&#125;</span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>syndrome</th>
+<th>overall_parity</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>0</td>
+<td>0</td>
+<td>无错误 ✓</td>
+</tr>
+<tr>
+<td>0</td>
+<td>1</td>
+<td>仅 ECC 字节自身 bit 翻转（不影响数据）</td>
+</tr>
+<tr>
+<td>≠ 0</td>
+<td>1</td>
+<td><strong>1 bit 数据错误</strong>，syndrome 值直接指示错误 bit 的 Hamming 位置</td>
+</tr>
+<tr>
+<td>≠ 0</td>
+<td>0</td>
+<td><strong>2 bit 错误</strong>（SEC-DED 可靠检测，不纠正）</td>
+</tr>
+</tbody></table>
+<p><code>dececc38_32</code> 的 case 语句包含 syndrome 0..38 共 39 个分支，每个分支对应具体 Hamming 位置。例如 syndrome&#x3D;3 时翻转 d3，syndrome&#x3D;11 时翻转 d17，以此类推。</p>
+<h2 id="三、SystemVerilog-RTL-实现"><a href="#三、SystemVerilog-RTL-实现" class="headerlink" title="三、SystemVerilog RTL 实现"></a>三、SystemVerilog RTL 实现</h2><p>完整的 RTL 实现在 <code>ecc38_32.v</code> 中，包含编码器 <code>encecc38_32</code> 和解码器 <code>dececc38_32</code> 两个模块。以下是核心逻辑的解读。</p>
+<h3 id="3-1-编码器-encecc38-32"><a href="#3-1-编码器-encecc38-32" class="headerlink" title="3.1 编码器 encecc38_32"></a>3.1 编码器 <code>encecc38_32</code></h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line">module encecc38_32 (din, pcode, encout);</span><br><span class="line"></span><br><span class="line">input  [31:0] din;</span><br><span class="line">output [7:0]  pcode;</span><br><span class="line">output [31:0] encout;</span><br><span class="line"></span><br><span class="line">// 数据位提取 — 32 bit din 按字节分组映射到 Hamming 位置</span><br><span class="line">assign &#123;d12, d11, d10, d9,  d7,  d6,  d5,  d3 &#125; = din[7:0];   // → 位置 &#123;3,5,6,7,9,10,11,12&#125;</span><br><span class="line">assign &#123;d21, d20, d19, d18, d17, d15, d14, d13&#125; = din[15:8];  // → 位置 &#123;13,14,15,17,18,19,20,21&#125;</span><br><span class="line">assign &#123;d29, d28, d27, d26, d25, d24, d23, d22&#125; = din[23:16];  // → 位置 &#123;22..29&#125;</span><br><span class="line">assign &#123;d38, d37, d36, d35, d34, d33, d31, d30&#125; = din[31:24];  // → 位置 &#123;30,31,33..38&#125;</span><br><span class="line"></span><br><span class="line">// 6 个 Hamming 奇偶位</span><br><span class="line">assign p1  = d3  ^ d5  ^ d7  ^ d9  ^ d11 ^ d13 ^ d15 ^ d17</span><br><span class="line">           ^ d19 ^ d21 ^ d23 ^ d25 ^ d27 ^ d29 ^ d31 ^ d33 ^ d35 ^ d37;</span><br><span class="line">assign p2  = d3  ^ d6  ^ d7  ^ d10 ^ d11 ^ d14 ^ d15 ^ d18</span><br><span class="line">           ^ d19 ^ d22 ^ d23 ^ d26 ^ d27 ^ d30 ^ d31 ^ d34 ^ d35 ^ d38;</span><br><span class="line">// ... p4, p8, p16, p32 同理</span><br><span class="line"></span><br><span class="line">// 总奇偶</span><br><span class="line">assign parity = ^(&#123;pcode[5:0], din&#125;);</span><br><span class="line"></span><br><span class="line">// ECC 字节组装</span><br><span class="line">assign pcode[7] = 0;</span><br><span class="line">assign pcode[6] = parity;</span><br><span class="line">assign pcode[5:0] = &#123;p32, p16, p8, p4, p2, p1&#125;;</span><br><span class="line"></span><br><span class="line">assign encout = din;  // 数据透传</span><br><span class="line"></span><br><span class="line">endmodule</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p><strong>设计要点</strong>：数据位按字节分组并反转写入是本方案的特色——这使得奇偶矩阵覆盖的最小权重恰好为 3（Hamming 距离 &#x3D; 4），满足 SEC-DED 的同时奇偶位数量最少。</p>
+</blockquote>
+<h3 id="3-2-解码器-dececc38-32-核心逻辑"><a href="#3-2-解码器-dececc38-32-核心逻辑" class="headerlink" title="3.2 解码器 dececc38_32 核心逻辑"></a>3.2 解码器 <code>dececc38_32</code> 核心逻辑</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">// 重新计算奇偶位</span><br><span class="line">assign r1  = p1  ^ d3  ^ d5  ^ d7  ^ d9  ^ d11 ^ d13 ^ d15 ^ d17</span><br><span class="line">           ^ d19 ^ d21 ^ d23 ^ d25 ^ d27 ^ d29 ^ d31 ^ d33 ^ d35 ^ d37;</span><br><span class="line">assign r2  = p2  ^ d3  ^ d6  ^ d7  ^ d10 ^ d11 ^ d14 ^ d15 ^ d18</span><br><span class="line">           ^ d19 ^ d22 ^ d23 ^ d26 ^ d27 ^ d30 ^ d31 ^ d34 ^ d35 ^ d38;</span><br><span class="line">// ... 同理</span><br><span class="line"></span><br><span class="line">// syndrome 形成</span><br><span class="line">wire [5:0] rcode = dec_off ? 6&#x27;h3f : &#123;r32, r16, r8, r4, r2, r1&#125;;</span><br><span class="line"></span><br><span class="line">// 错误检测与纠正</span><br><span class="line">always @(*) begin</span><br><span class="line">  case (rcode)</span><br><span class="line">    6&#x27;d0: begin onebit_err=parity; twobit_err=0; decout=din; end</span><br><span class="line">    6&#x27;d3: begin</span><br><span class="line">      // syndrome=3 → d3 翻转</span><br><span class="line">      twobit_err = ~parity;</span><br><span class="line">      onebit_err = parity;</span><br><span class="line">      if (parity) decout[7:0] = &#123;d12,d11,d10,d9,d7,d6,d5,~d3&#125;;</span><br><span class="line">      else        decout = din;</span><br><span class="line">    end</span><br><span class="line">    // ... 39 个分支，覆盖 Hamming 位置 1..38</span><br><span class="line">    default: begin twobit_err=~parity; onebit_err=parity; decout=din; end</span><br><span class="line">  endcase</span><br><span class="line">end</span><br></pre></td></tr></table></figure>
+
+<p><code>dec_off</code> 信号强制 syndrome&#x3D;0x3f 用于关闭纠错功能，此时硬件仅报告错误状态而不做纠正。这在启动阶段或安全监控场景下很有用。</p>
+<h2 id="四、Python-实现：Firmware-固件到-FPGA-ROM"><a href="#四、Python-实现：Firmware-固件到-FPGA-ROM" class="headerlink" title="四、Python 实现：Firmware 固件到 FPGA ROM"></a>四、Python 实现：Firmware 固件到 FPGA ROM</h2><h3 id="4-1-应用场景"><a href="#4-1-应用场景" class="headerlink" title="4.1 应用场景"></a>4.1 应用场景</h3><p>FPGA 中的 Boot ROM 是一个 40-bit 宽的存储器初始化文件（<code>.txt</code>），格式为每行 10 个十六进制字符 &#x3D; 5 字节 &#x3D; 40 bit。CPU 读取时，硬件自动完成 ECC 检测和纠正。</p>
+<p>固件编译输出的是标准 RISC-V <code>.bin</code> 文件（32-bit 指令，小端字节序）。需要经过两步转换：</p>
+<ol>
+<li><strong>字节序翻转</strong>：小端 → 大端（FPGA ROM 按大端解释指令）</li>
+<li><strong>ECC 计算</strong>：为每条 32-bit 指令计算 8-bit ECC byte，填充到高 8 位</li>
+</ol>
+<h3 id="4-2-完整-Python-实现"><a href="#4-2-完整-Python-实现" class="headerlink" title="4.2 完整 Python 实现"></a>4.2 完整 Python 实现</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#!/usr/bin/env python3</span></span><br><span class="line"><span class="string">&quot;&quot;&quot;bin_to_fpga.py — RISC-V .bin → FPGA ROM 初始化文件（含 ECC）&quot;&quot;&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> struct</span><br><span class="line"><span class="keyword">from</span> pathlib <span class="keyword">import</span> Path</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">compute_ecc</span>(<span class="params">din: <span class="built_in">int</span></span>) -&gt; <span class="built_in">int</span>:</span><br><span class="line">    <span class="string">&quot;&quot;&quot;计算 32-bit 数据的 Hsiao SEC-DED (38,32) ECC 字节</span></span><br><span class="line"><span class="string">    </span></span><br><span class="line"><span class="string">    与 ecc38_32.v::encecc38_32 逐位等价。</span></span><br><span class="line"><span class="string">    &quot;&quot;&quot;</span></span><br><span class="line">    <span class="comment"># 提取 32 个数据位到对应 Hamming 位置</span></span><br><span class="line">    d3  = (din &gt;&gt; <span class="number">0</span>)  &amp; <span class="number">1</span></span><br><span class="line">    d5  = (din &gt;&gt; <span class="number">1</span>)  &amp; <span class="number">1</span></span><br><span class="line">    d6  = (din &gt;&gt; <span class="number">2</span>)  &amp; <span class="number">1</span></span><br><span class="line">    d7  = (din &gt;&gt; <span class="number">3</span>)  &amp; <span class="number">1</span></span><br><span class="line">    d9  = (din &gt;&gt; <span class="number">4</span>)  &amp; <span class="number">1</span></span><br><span class="line">    d10 = (din &gt;&gt; <span class="number">5</span>)  &amp; <span class="number">1</span></span><br><span class="line">    d11 = (din &gt;&gt; <span class="number">6</span>)  &amp; <span class="number">1</span></span><br><span class="line">    d12 = (din &gt;&gt; <span class="number">7</span>)  &amp; <span class="number">1</span></span><br><span class="line">    d13 = (din &gt;&gt; <span class="number">8</span>)  &amp; <span class="number">1</span></span><br><span class="line">    d14 = (din &gt;&gt; <span class="number">9</span>)  &amp; <span class="number">1</span></span><br><span class="line">    d15 = (din &gt;&gt; <span class="number">10</span>) &amp; <span class="number">1</span></span><br><span class="line">    d17 = (din &gt;&gt; <span class="number">11</span>) &amp; <span class="number">1</span></span><br><span class="line">    d18 = (din &gt;&gt; <span class="number">12</span>) &amp; <span class="number">1</span></span><br><span class="line">    d19 = (din &gt;&gt; <span class="number">13</span>) &amp; <span class="number">1</span></span><br><span class="line">    d20 = (din &gt;&gt; <span class="number">14</span>) &amp; <span class="number">1</span></span><br><span class="line">    d21 = (din &gt;&gt; <span class="number">15</span>) &amp; <span class="number">1</span></span><br><span class="line">    d22 = (din &gt;&gt; <span class="number">16</span>) &amp; <span class="number">1</span></span><br><span class="line">    d23 = (din &gt;&gt; <span class="number">17</span>) &amp; <span class="number">1</span></span><br><span class="line">    d24 = (din &gt;&gt; <span class="number">18</span>) &amp; <span class="number">1</span></span><br><span class="line">    d25 = (din &gt;&gt; <span class="number">19</span>) &amp; <span class="number">1</span></span><br><span class="line">    d26 = (din &gt;&gt; <span class="number">20</span>) &amp; <span class="number">1</span></span><br><span class="line">    d27 = (din &gt;&gt; <span class="number">21</span>) &amp; <span class="number">1</span></span><br><span class="line">    d28 = (din &gt;&gt; <span class="number">22</span>) &amp; <span class="number">1</span></span><br><span class="line">    d29 = (din &gt;&gt; <span class="number">23</span>) &amp; <span class="number">1</span></span><br><span class="line">    d30 = (din &gt;&gt; <span class="number">24</span>) &amp; <span class="number">1</span></span><br><span class="line">    d31 = (din &gt;&gt; <span class="number">25</span>) &amp; <span class="number">1</span></span><br><span class="line">    d33 = (din &gt;&gt; <span class="number">26</span>) &amp; <span class="number">1</span>   <span class="comment"># 跳过 Hamming 位置 32</span></span><br><span class="line">    d34 = (din &gt;&gt; <span class="number">27</span>) &amp; <span class="number">1</span></span><br><span class="line">    d35 = (din &gt;&gt; <span class="number">28</span>) &amp; <span class="number">1</span></span><br><span class="line">    d36 = (din &gt;&gt; <span class="number">29</span>) &amp; <span class="number">1</span></span><br><span class="line">    d37 = (din &gt;&gt; <span class="number">30</span>) &amp; <span class="number">1</span></span><br><span class="line">    d38 = (din &gt;&gt; <span class="number">31</span>) &amp; <span class="number">1</span></span><br><span class="line"></span><br><span class="line">    <span class="comment"># 6 个 Hamming 奇偶位</span></span><br><span class="line">    p1  = d3  ^ d5  ^ d7  ^ d9  ^ d11 ^ d13 ^ d15 ^ d17 \</span><br><span class="line">        ^ d19 ^ d21 ^ d23 ^ d25 ^ d27 ^ d29 ^ d31 ^ d33 ^ d35 ^ d37</span><br><span class="line">    p2  = d3  ^ d6  ^ d7  ^ d10 ^ d11 ^ d14 ^ d15 ^ d18 \</span><br><span class="line">        ^ d19 ^ d22 ^ d23 ^ d26 ^ d27 ^ d30 ^ d31 ^ d34 ^ d35 ^ d38</span><br><span class="line">    p4  = d5  ^ d6  ^ d7  ^ d12 ^ d13 ^ d14 ^ d15 ^ d20 \</span><br><span class="line">        ^ d21 ^ d22 ^ d23 ^ d28 ^ d29 ^ d30 ^ d31 ^ d36 ^ d37 ^ d38</span><br><span class="line">    p8  = d9  ^ d10 ^ d11 ^ d12 ^ d13 ^ d14 ^ d15 ^ d24 \</span><br><span class="line">        ^ d25 ^ d26 ^ d27 ^ d28 ^ d29 ^ d30 ^ d31</span><br><span class="line">    p16 = d17 ^ d18 ^ d19 ^ d20 ^ d21 ^ d22 ^ d23 ^ d24 \</span><br><span class="line">        ^ d25 ^ d26 ^ d27 ^ d28 ^ d29 ^ d30 ^ d31</span><br><span class="line">    p32 = d33 ^ d34 ^ d35 ^ d36 ^ d37 ^ d38</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 总奇偶 = 数据位 1 的个数 XOR 6 个奇偶位</span></span><br><span class="line">    overall_parity = <span class="built_in">bin</span>(din).count(<span class="string">&#x27;1&#x27;</span>) &amp; <span class="number">1</span></span><br><span class="line">    overall_parity ^= p1 ^ p2 ^ p4 ^ p8 ^ p16 ^ p32</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 组装 ECC 字节: [7]=0, [6]=parity, [5:0]=p32..p1</span></span><br><span class="line">    pcode = (overall_parity &lt;&lt; <span class="number">6</span>) | (p32 &lt;&lt; <span class="number">5</span>) | (p16 &lt;&lt; <span class="number">4</span>) | (p8 &lt;&lt; <span class="number">3</span>) \</span><br><span class="line">            | (p4 &lt;&lt; <span class="number">2</span>) | (p2 &lt;&lt; <span class="number">1</span>) | p1</span><br><span class="line">    <span class="keyword">return</span> pcode &amp; <span class="number">0xFF</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">bin_to_fpga_format</span>(<span class="params">input_bin: Path, output_txt: Path</span>):</span><br><span class="line">    <span class="string">&quot;&quot;&quot;将 .bin 转换为 FPGA 40-bit ROM 初始化格式</span></span><br><span class="line"><span class="string">    </span></span><br><span class="line"><span class="string">    输入: .bin (LE, 每 4 字节 = 1 条 RISC-V 指令)</span></span><br><span class="line"><span class="string">    输出: .txt, 每行 10 个十六进制字符 = &lt;ECC:2hex&gt;&lt;指令BE:8hex&gt;</span></span><br><span class="line"><span class="string">    &quot;&quot;&quot;</span></span><br><span class="line">    <span class="keyword">with</span> <span class="built_in">open</span>(input_bin, <span class="string">&#x27;rb&#x27;</span>) <span class="keyword">as</span> fin, <span class="built_in">open</span>(output_txt, <span class="string">&#x27;w&#x27;</span>, encoding=<span class="string">&#x27;utf-8&#x27;</span>) <span class="keyword">as</span> fout:</span><br><span class="line">        <span class="keyword">while</span> chunk := fin.read(<span class="number">4</span>):</span><br><span class="line">            <span class="comment"># 不足 4 字节末尾块补 0</span></span><br><span class="line">            chunk = chunk + <span class="string">b&#x27;\x00&#x27;</span> * (<span class="number">4</span> - <span class="built_in">len</span>(chunk))</span><br><span class="line"></span><br><span class="line">            <span class="comment"># 读取为小端 uint32（RISC-V bin 格式）</span></span><br><span class="line">            dword_le = struct.unpack(<span class="string">&#x27;&lt;I&#x27;</span>, chunk)[<span class="number">0</span>]</span><br><span class="line"></span><br><span class="line">            <span class="comment"># 计算 ECC 字节</span></span><br><span class="line">            ecc = compute_ecc(dword_le)</span><br><span class="line"></span><br><span class="line">            <span class="comment"># 字节序翻转: LE → BE</span></span><br><span class="line">            dword_be = chunk[::-<span class="number">1</span>]</span><br><span class="line"></span><br><span class="line">            <span class="comment"># 输出: &lt;ECC&gt;&lt;BE指令&gt;</span></span><br><span class="line">            fout.write(<span class="string">f&#x27;<span class="subst">&#123;ecc:02x&#125;</span><span class="subst">&#123;dword_be.<span class="built_in">hex</span>()&#125;</span>\n&#x27;</span>)</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-3-使用方式与输出示例"><a href="#4-3-使用方式与输出示例" class="headerlink" title="4.3 使用方式与输出示例"></a>4.3 使用方式与输出示例</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 基本用法</span></span><br><span class="line">python bin_to_fpga.py cs9310-boot.bin</span><br><span class="line"><span class="comment"># 输出: cs9310-boot-fpga.txt</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 指定输出文件</span></span><br><span class="line">python bin_to_fpga.py cs9310-boot.bin boot-rom-fpga.txt</span><br></pre></td></tr></table></figure>
+
+<p>输入 <code>.bin</code> 文件的原始字节与输出 <code>.txt</code> 的对照：</p>
+<table>
+<thead>
+<tr>
+<th><code>.bin</code> 原始字节（LE）</th>
+<th>解析为 uint32</th>
+<th>ECC byte</th>
+<th>FPGA ROM 行输出</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>6f 00 00 09</code></td>
+<td><code>0x0900006f</code></td>
+<td><code>0x3A</code></td>
+<td><code>3a0900006f</code></td>
+</tr>
+<tr>
+<td><code>00 00 00 00</code></td>
+<td><code>0x00000000</code></td>
+<td><code>0x00</code></td>
+<td><code>0000000000</code></td>
+</tr>
+<tr>
+<td><code>6f 00 80 1d</code></td>
+<td><code>0x1d80006f</code></td>
+<td><code>0x25</code></td>
+<td><code>251d80006f</code></td>
+</tr>
+<tr>
+<td><code>6f 00 40 34</code></td>
+<td><code>0x3440006f</code></td>
+<td><code>0x3C</code></td>
+<td><code>3c3440006f</code></td>
+</tr>
+</tbody></table>
+<p>第一条指令 <code>0x0900006f</code>（RISC-V <code>j 0x90</code>）的 ECC 手工验证：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">din = 0x0900006f = 0000 1001 0000 0000 0000 0000 0110 1111</span><br><span class="line"></span><br><span class="line">按位提取: d3=1,d5=1,d6=1,d7=1,d9=0,d10=1,d11=1,d12=0,</span><br><span class="line">          d13..d21=0, d22..d29=0, d30=1,d31=0,d33..d37=0,d38=1</span><br><span class="line"></span><br><span class="line">p1=0, p2=1, p4=0, p8=1, p16=1, p32=1</span><br><span class="line">overall_parity = popcount(0x0900006f) % 2 ⊕ p1⊕p2⊕p4⊕p8⊕p16⊕p32</span><br><span class="line">               = (2+1) % 2 ⊕ 0 ⊕ 1 ⊕ 0 ⊕ 1 ⊕ 1 ⊕ 1</span><br><span class="line">               = 1 ⊕ 0 ⊕ 1 ⊕ 0 ⊕ 1 ⊕ 1 ⊕ 1 = 0</span><br><span class="line"></span><br><span class="line">pcode[5:0] = &#123;1,1,1,0,1,0&#125; = 0x3A</span><br><span class="line">pcode[6]   = 0</span><br><span class="line">pcode[7]   = 0</span><br><span class="line">→ pcode = 0x3A ✓</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-4-与-RTL-的一致性保证"><a href="#4-4-与-RTL-的一致性保证" class="headerlink" title="4.4 与 RTL 的一致性保证"></a>4.4 与 RTL 的一致性保证</h3><p>Python <code>compute_ecc()</code> 与 Verilog <code>encecc38_32</code> 逐位等价的三个依据：</p>
+<ol>
+<li><strong>相同的位提取顺序</strong>：<code>{d12,d11,d10,d9,d7,d6,d5,d3} = din[7:0]</code> 与 Python <code>d3=(din&gt;&gt;0)&amp;1, d5=(din&gt;&gt;1)&amp;1, ...</code> 完全对应</li>
+<li><strong>相同的奇偶方程</strong>：Verilog 的 <code>assign p1 = ...</code> 与 Python 的 <code>p1 = d3 ^ d5 ^ ...</code> 逐字相同</li>
+<li><strong>相同的总奇偶</strong>：<code>verilog parity = ^({pcode[5:0], din})</code> 等价于 Python 的 <code>popcount(din) ^ p1 ^ ... ^ p32</code></li>
+</ol>
+<h2 id="五、验证与调试"><a href="#五、验证与调试" class="headerlink" title="五、验证与调试"></a>五、验证与调试</h2><h3 id="5-1-离线验证"><a href="#5-1-离线验证" class="headerlink" title="5.1 离线验证"></a>5.1 离线验证</h3><p>用 Python 复现解码器逻辑，对每条生成的 ROM 行做 <code>decode(data, ecc)</code> 校验：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">def</span> <span class="title function_">decode</span>(<span class="params">din: <span class="built_in">int</span>, pcode: <span class="built_in">int</span></span>):</span><br><span class="line">    <span class="string">&quot;&quot;&quot;复现 dececc38_32 逻辑，返回 (syndrome, onebit_err, twobit_err)&quot;&quot;&quot;</span></span><br><span class="line">    <span class="comment"># 重新计算 6 个奇偶位...</span></span><br><span class="line">    r1 = p1 ^ (pcode &gt;&gt; <span class="number">0</span> &amp; <span class="number">1</span>)</span><br><span class="line">    r2 = p2 ^ (pcode &gt;&gt; <span class="number">1</span> &amp; <span class="number">1</span>)</span><br><span class="line">    <span class="comment"># ... 同理</span></span><br><span class="line">    syndrome = r32&lt;&lt;<span class="number">5</span> | r16&lt;&lt;<span class="number">4</span> | r8&lt;&lt;<span class="number">3</span> | r4&lt;&lt;<span class="number">2</span> | r2&lt;&lt;<span class="number">1</span> | r1</span><br><span class="line">    overall  = popcount(din) &amp; <span class="number">1</span> ^ p1 ^ p2 ^ p4 ^ p8 ^ p16 ^ p32</span><br><span class="line">    overall ^= pcode &amp; <span class="number">0x7F</span></span><br><span class="line">    <span class="keyword">return</span> syndrome, (syndrome!=<span class="number">0</span> <span class="keyword">and</span> overall), (syndrome!=<span class="number">0</span> <span class="keyword">and</span> <span class="keyword">not</span> overall)</span><br></pre></td></tr></table></figure>
+
+<p>正常生成的行 syndrome 应为 0，onebit_err 和 twobit_err 应均为 False。</p>
+<h3 id="5-2-FPGA-在线验证"><a href="#5-2-FPGA-在线验证" class="headerlink" title="5.2 FPGA 在线验证"></a>5.2 FPGA 在线验证</h3><p>在仿真环境中注入 1-bit 翻转，读回数据应被自动纠正；注入 2-bit 翻转，<code>twobit_err</code> 信号应置位而数据不改变。通过 <code>dec_off</code> 控制可绕过纠正功能，用于验证 raw 数据路径。</p>
+<h2 id="六、总结"><a href="#六、总结" class="headerlink" title="六、总结"></a>六、总结</h2><p>本文完整介绍了 特定RISC-V MCU项目 Boot ROM 场景下 Hsiao SEC-DED (38,32) ECC 的端到端实现链：</p>
+<table>
+<thead>
+<tr>
+<th>层级</th>
+<th>形式</th>
+<th>核心内容</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>算法</td>
+<td>数学</td>
+<td>32 数据位映射到 Hamming 位置，6 个异或奇偶位 + 1 个总奇偶，构成 (38,32) Hsiao 码</td>
+</tr>
+<tr>
+<td>RTL</td>
+<td>SystemVerilog</td>
+<td><code>encecc38_32</code> 编码器 + <code>dececc38_32</code> 解码器，含 syndrome 纠错逻辑</td>
+</tr>
+<tr>
+<td>固件</td>
+<td>Python</td>
+<td><code>bin_to_fpga.py</code>，读取 .bin → 计算 ECC → 输出 FPGA ROM 初始化文件</td>
+</tr>
+</tbody></table>
+<p>这套方案的工程价值在于：<strong>固件工程师不需要了解 ECC 内部细节，只需确保编译输出通过 <code>bin_to_fpga.py</code> 转换，FPGA 硬件自动完成所有纠错工作</strong>。设计者只需关注解码器的 <code>onebit_err</code> 和 <code>twobit_err</code> 信号，用作系统健康状态监控。</p>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">首页</a></li>
+        
+          <li><a href="/archives/">归档</a></li>
+        
+          <li><a href="/tags/">标签</a></li>
+        
+          <li><a href="/categories/">分类</a></li>
+        
+          <li><a href="/search/">搜索</a></li>
+        
+          <li><a href="/about/">关于</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#RISC-V-Boot-ROM-%E7%9A%84-ECC-%E5%AE%9E%E8%B7%B5%EF%BC%9A%E4%BB%8E%E5%8E%9F%E7%90%86%E5%88%B0-Python-%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.</span> <span class="toc-text">RISC-V Boot ROM 的 ECC 实践：从原理到 Python 实现</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81ECC-%E5%8E%9F%E7%90%86%E4%B8%8E%E5%BA%94%E7%94%A8%E5%9C%BA%E6%99%AF"><span class="toc-number">1.1.</span> <span class="toc-text">一、ECC 原理与应用场景</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-%E4%B8%BA%E4%BB%80%E4%B9%88-Boot-ROM-%E9%9C%80%E8%A6%81-ECC"><span class="toc-number">1.1.1.</span> <span class="toc-text">1.1 为什么 Boot ROM 需要 ECC</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-2-%E7%BA%A0%E9%94%99%E8%83%BD%E5%8A%9B%E7%9A%84%E5%87%A0%E4%B8%AA%E5%85%B3%E9%94%AE%E6%A6%82%E5%BF%B5"><span class="toc-number">1.1.2.</span> <span class="toc-text">1.2 纠错能力的几个关键概念</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-3-%E7%BB%8F%E5%85%B8-Hamming-39-32-vs-Hsiao-38-32"><span class="toc-number">1.1.3.</span> <span class="toc-text">1.3 经典 Hamming (39,32) vs. Hsiao (38,32)</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81Hsiao-SEC-DED-38-32-%E7%AE%97%E6%B3%95%E8%AF%A6%E8%A7%A3"><span class="toc-number">1.2.</span> <span class="toc-text">二、Hsiao SEC-DED (38,32) 算法详解</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E6%95%B0%E6%8D%AE%E4%BD%8D%E5%88%B0-Hamming-%E4%BD%8D%E7%BD%AE%E7%9A%84%E6%98%A0%E5%B0%84"><span class="toc-number">1.2.1.</span> <span class="toc-text">2.1 数据位到 Hamming 位置的映射</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-%E5%A5%87%E5%81%B6%E6%A0%A1%E9%AA%8C%E4%BD%8D%E8%AE%A1%E7%AE%97"><span class="toc-number">1.2.2.</span> <span class="toc-text">2.2 奇偶校验位计算</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-ECC-%E5%AD%97%E8%8A%82%E5%B8%83%E5%B1%80"><span class="toc-number">1.2.3.</span> <span class="toc-text">2.3 ECC 字节布局</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-4-%E7%BA%A0%E9%94%99%E5%8E%9F%E7%90%86%EF%BC%88syndrome-%E8%A7%A3%E7%A0%81%EF%BC%89"><span class="toc-number">1.2.4.</span> <span class="toc-text">2.4 纠错原理（syndrome 解码）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81SystemVerilog-RTL-%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.3.</span> <span class="toc-text">三、SystemVerilog RTL 实现</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E7%BC%96%E7%A0%81%E5%99%A8-encecc38-32"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 编码器 encecc38_32</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E8%A7%A3%E7%A0%81%E5%99%A8-dececc38-32-%E6%A0%B8%E5%BF%83%E9%80%BB%E8%BE%91"><span class="toc-number">1.3.2.</span> <span class="toc-text">3.2 解码器 dececc38_32 核心逻辑</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81Python-%E5%AE%9E%E7%8E%B0%EF%BC%9AFirmware-%E5%9B%BA%E4%BB%B6%E5%88%B0-FPGA-ROM"><span class="toc-number">1.4.</span> <span class="toc-text">四、Python 实现：Firmware 固件到 FPGA ROM</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-%E5%BA%94%E7%94%A8%E5%9C%BA%E6%99%AF"><span class="toc-number">1.4.1.</span> <span class="toc-text">4.1 应用场景</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-%E5%AE%8C%E6%95%B4-Python-%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.4.2.</span> <span class="toc-text">4.2 完整 Python 实现</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-%E4%BD%BF%E7%94%A8%E6%96%B9%E5%BC%8F%E4%B8%8E%E8%BE%93%E5%87%BA%E7%A4%BA%E4%BE%8B"><span class="toc-number">1.4.3.</span> <span class="toc-text">4.3 使用方式与输出示例</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-4-%E4%B8%8E-RTL-%E7%9A%84%E4%B8%80%E8%87%B4%E6%80%A7%E4%BF%9D%E8%AF%81"><span class="toc-number">1.4.4.</span> <span class="toc-text">4.4 与 RTL 的一致性保证</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E9%AA%8C%E8%AF%81%E4%B8%8E%E8%B0%83%E8%AF%95"><span class="toc-number">1.5.</span> <span class="toc-text">五、验证与调试</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E7%A6%BB%E7%BA%BF%E9%AA%8C%E8%AF%81"><span class="toc-number">1.5.1.</span> <span class="toc-text">5.1 离线验证</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-FPGA-%E5%9C%A8%E7%BA%BF%E9%AA%8C%E8%AF%81"><span class="toc-number">1.5.2.</span> <span class="toc-text">5.2 FPGA 在线验证</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E6%80%BB%E7%BB%93"><span class="toc-number">1.6.</span> <span class="toc-text">六、总结</span></a></li></ol></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/09/14/RISC-V-Boot-ROM-ECC%E5%AE%9E%E8%B7%B5/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/09/14/RISC-V-Boot-ROM-ECC%E5%AE%9E%E8%B7%B5/&text=RISC-V Boot ROM 的 ECC 实践：从原理到 Python 实现"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/09/14/RISC-V-Boot-ROM-ECC%E5%AE%9E%E8%B7%B5/&title=RISC-V Boot ROM 的 ECC 实践：从原理到 Python 实现"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/09/14/RISC-V-Boot-ROM-ECC%E5%AE%9E%E8%B7%B5/&is_video=false&description=RISC-V Boot ROM 的 ECC 实践：从原理到 Python 实现"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=RISC-V Boot ROM 的 ECC 实践：从原理到 Python 实现&body=Check out this article: https://cursorhu.github.io/2026/09/14/RISC-V-Boot-ROM-ECC%E5%AE%9E%E8%B7%B5/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/09/14/RISC-V-Boot-ROM-ECC%E5%AE%9E%E8%B7%B5/&title=RISC-V Boot ROM 的 ECC 实践：从原理到 Python 实现"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/09/14/RISC-V-Boot-ROM-ECC%E5%AE%9E%E8%B7%B5/&title=RISC-V Boot ROM 的 ECC 实践：从原理到 Python 实现"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/09/14/RISC-V-Boot-ROM-ECC%E5%AE%9E%E8%B7%B5/&title=RISC-V Boot ROM 的 ECC 实践：从原理到 Python 实现"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/09/14/RISC-V-Boot-ROM-ECC%E5%AE%9E%E8%B7%B5/&title=RISC-V Boot ROM 的 ECC 实践：从原理到 Python 实现"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/09/14/RISC-V-Boot-ROM-ECC%E5%AE%9E%E8%B7%B5/&name=RISC-V Boot ROM 的 ECC 实践：从原理到 Python 实现&description=&lt;h1 id=&#34;RISC-V-Boot-ROM-的-ECC-实践：从原理到-Python-实现&#34;&gt;&lt;a href=&#34;#RISC-V-Boot-ROM-的-ECC-实践：从原理到-Python-实现&#34; class=&#34;headerlink&#34; title=&#34;RISC-V Boot ROM 的 ECC 实践：从原理到 Python 实现&#34;&gt;&lt;/a&gt;RISC-V Boot ROM 的 ECC 实践：从原理到 Python 实现&lt;/h1&gt;&lt;p&gt;FPGA 启动代码（Boot ROM）出错是嵌入式系统最棘手的故障之一：故障静默发生，CPU 执行了错误的指令却不会产生任何异常，最直接的表现就是”上电跑飞”。ECC（Error Correction Code，奇偶校验码）是应对这一问题的工业标准手段。本文以 某RISC-V MCU项目 的 Boot ROM 为例，介绍 ECC 如何在 RISC-V 指令存储这一场景落地——从 Hsiao SEC-DED 算法原理，到 SystemVerilog RTL 实现，再到 Python 固件转换工具，一条链讲清楚。&lt;/p&gt;
+&lt;p&gt;参考工程源码：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&#34;https://github.com/cursorhu/riscv-9310-mini/blob/main/ecc38_32.v&#34;&gt;ecc38_32.v&lt;/a&gt; — RTL 实现&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://github.com/cursorhu/riscv-9310-mini/blob/main/bin_to_fpga.py&#34;&gt;bin_to_fpga.py&lt;/a&gt; — Python 转换工具&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://github.com/cursorhu/riscv-9310-mini/blob/main/docs/12-ECC-Algorithm.md&#34;&gt;docs&amp;#x2F;12-ECC-Algorithm.md&lt;/a&gt; — 算法细节参考&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;一、ECC-原理与应用场景&#34;&gt;&lt;a href=&#34;#一、ECC-原理与应用场景&#34; class=&#34;headerlink&#34; title=&#34;一、ECC 原理与应用场景&#34;&gt;&lt;/a&gt;一、ECC 原理与应用场景&lt;/h2&gt;&lt;h3 id=&#34;1-1-为什么-Boot-ROM-需要-ECC&#34;&gt;&lt;a href=&#34;#1-1-为什么-Boot-ROM-需要-ECC&#34; class=&#34;headerlink&#34; title=&#34;1.1 为什么 Boot ROM 需要 ECC&#34;&gt;&lt;/a&gt;1.1 为什么 Boot ROM 需要 ECC&lt;/h3&gt;&lt;p&gt;ROM 和 Flash 的位翻转有两类成因：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;制造缺陷&lt;/strong&gt;：存储单元的氧化层隧道效应，导致某些存储位永久性偏置&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;软错误（Soft Error）&lt;/strong&gt;：宇宙射线中的中子&amp;#x2F;alpha 粒子撞击存储电容，导致位翻转&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;对于 40 nm 以下工艺的 eFlash，软错误率（SER）在 1000 FIT&amp;#x2F;Mbit 量级——这意味着每 10 亿小时约有 1000 次单 bit 翻转。对可靠性要求严格的工业、汽车应用，这个概率不可忽视。&lt;/p&gt;
+&lt;p&gt;ECC 的核心思路：&lt;strong&gt;在存储数据时额外写入校验位，读出时根据校验关系检测并纠正错误。&lt;/strong&gt;&lt;/p&gt;"><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/09/14/RISC-V-Boot-ROM-ECC%E5%AE%9E%E8%B7%B5/&t=RISC-V Boot ROM 的 ECC 实践：从原理到 Python 实现"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> 菜单</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> 目录</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> 分享</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> 返回顶部</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2026
+    cursorhu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"复制到粘贴板！\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "复制成功！");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+<!-- Mermaid diagrams -->
+
+  <script type="text/javascript">
+  (function() {
+    var mermaidElements = document.querySelectorAll('.mermaid');
+    if (!mermaidElements.length) return;
+
+    var mermaidTheme = 'auto';
+    if (mermaidTheme === 'auto') {
+      var colorscheme = 'dark';
+      mermaidTheme = (colorscheme === 'dark' || colorscheme === 'classic') ? 'dark' : 'default';
+    }
+
+    function initMermaid() {
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: mermaidTheme,
+        logLevel: 'error',
+        securityLevel: 'loose',
+        flowchart: { curve: 'basis' },
+        gantt: { axisFormat: '%m/%d/%Y' },
+        sequence: { actorMargin: 50 }
+      });
+      mermaid.run({ nodes: mermaidElements });
+    }
+
+    var script = document.createElement('script');
+    
+    script.src = 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js';
+    
+    script.onload = initMermaid;
+    document.head.appendChild(script);
+  })();
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="深入剖析 IEEE Std 802.1AE-2018(MAC Security) 的标准部分(MACsec帧格式、SecY架构、Cipher Suite)和车载部分(OPEN Alliance Automotive MACsec的精简配置)。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="IEEE 802.1AE-2018 MACsec核心架构与帧格式详解">
+<meta property="og:url" content="https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/IEEE%20802.1AE-2018%20MACsec%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84%E4%B8%8E%E5%B8%A7%E6%A0%BC%E5%BC%8F%E8%AF%A6%E8%A7%A3/index.html">
+<meta property="og:site_name" content="ThinkNotes">
+<meta property="og:description" content="深入剖析 IEEE Std 802.1AE-2018(MAC Security) 的标准部分(MACsec帧格式、SecY架构、Cipher Suite)和车载部分(OPEN Alliance Automotive MACsec的精简配置)。">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-09-16T06:00:00.000Z">
+<meta property="article:modified_time" content="2026-09-16T07:08:20.118Z">
+<meta property="article:author" content="cursorhu">
+<meta property="article:tag" content="Automotive Ethernet">
+<meta property="article:tag" content="GCM-AES">
+<meta property="article:tag" content="IEEE 802.1AE">
+<meta property="article:tag" content="MACsec">
+<meta property="article:tag" content="OPEN Alliance">
+<meta property="article:tag" content="SecTAG">
+<meta property="article:tag" content="SecY">
+<meta name="twitter:card" content="summary">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>IEEE 802.1AE-2018 MACsec核心架构与帧格式详解</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+		<script type="text/x-mathjax-config">
+		  MathJax.Hub.Config({
+			tex2jax: {
+			  skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+			  inlineMath: [['$','$']]
+			}
+		  });
+		</script>
+		<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-MML-AM_CHTML' async></script>
+	
+<meta name="generator" content="Hexo 8.0.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="目录"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="顶部" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="上一篇" href="/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91%20-%20CSMA%E7%A2%B0%E6%92%9E%E6%A3%80%E6%B5%8B%E5%AE%9E%E6%B5%8B%E6%96%B9%E6%A1%88/"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="下一篇" href="/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/IEEE%20802.1X-2020%20%E7%AB%AF%E5%8F%A3%E8%AE%BF%E9%97%AE%E6%8E%A7%E5%88%B6%E4%B8%8EMKA%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84%E8%AF%A6%E8%A7%A3/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="返回顶部" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="分享文章" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">上一篇</span>
+      <span id="i-next" class="info" style="display:none;">下一篇</span>
+      <span id="i-top" class="info" style="display:none;">返回顶部</span>
+      <span id="i-share" class="info" style="display:none;">分享文章</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/IEEE%20802.1AE-2018%20MACsec%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84%E4%B8%8E%E5%B8%A7%E6%A0%BC%E5%BC%8F%E8%AF%A6%E8%A7%A3/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/IEEE%20802.1AE-2018%20MACsec%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84%E4%B8%8E%E5%B8%A7%E6%A0%BC%E5%BC%8F%E8%AF%A6%E8%A7%A3/&text=IEEE 802.1AE-2018 MACsec核心架构与帧格式详解"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/IEEE%20802.1AE-2018%20MACsec%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84%E4%B8%8E%E5%B8%A7%E6%A0%BC%E5%BC%8F%E8%AF%A6%E8%A7%A3/&title=IEEE 802.1AE-2018 MACsec核心架构与帧格式详解"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/IEEE%20802.1AE-2018%20MACsec%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84%E4%B8%8E%E5%B8%A7%E6%A0%BC%E5%BC%8F%E8%AF%A6%E8%A7%A3/&is_video=false&description=IEEE 802.1AE-2018 MACsec核心架构与帧格式详解"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=IEEE 802.1AE-2018 MACsec核心架构与帧格式详解&body=Check out this article: https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/IEEE%20802.1AE-2018%20MACsec%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84%E4%B8%8E%E5%B8%A7%E6%A0%BC%E5%BC%8F%E8%AF%A6%E8%A7%A3/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/IEEE%20802.1AE-2018%20MACsec%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84%E4%B8%8E%E5%B8%A7%E6%A0%BC%E5%BC%8F%E8%AF%A6%E8%A7%A3/&title=IEEE 802.1AE-2018 MACsec核心架构与帧格式详解"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/IEEE%20802.1AE-2018%20MACsec%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84%E4%B8%8E%E5%B8%A7%E6%A0%BC%E5%BC%8F%E8%AF%A6%E8%A7%A3/&title=IEEE 802.1AE-2018 MACsec核心架构与帧格式详解"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/IEEE%20802.1AE-2018%20MACsec%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84%E4%B8%8E%E5%B8%A7%E6%A0%BC%E5%BC%8F%E8%AF%A6%E8%A7%A3/&title=IEEE 802.1AE-2018 MACsec核心架构与帧格式详解"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/IEEE%20802.1AE-2018%20MACsec%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84%E4%B8%8E%E5%B8%A7%E6%A0%BC%E5%BC%8F%E8%AF%A6%E8%A7%A3/&title=IEEE 802.1AE-2018 MACsec核心架构与帧格式详解"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/IEEE%20802.1AE-2018%20MACsec%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84%E4%B8%8E%E5%B8%A7%E6%A0%BC%E5%BC%8F%E8%AF%A6%E8%A7%A3/&name=IEEE 802.1AE-2018 MACsec核心架构与帧格式详解&description=&lt;blockquote&gt;
+&lt;p&gt;本文是「以太网IEEE标准系列」第四篇,聚焦 &lt;strong&gt;IEEE Std 802.1AE™-2018&lt;/strong&gt;(Media Access Control Security)。本文分两部分:第一部分解析通用标准(MACsec帧格式、SecY架构、Cipher Suite),第二部分对照 &lt;strong&gt;OPEN Alliance TC17 Automotive MACsec Specification v1.0&lt;/strong&gt;(2025-05)的车载精简要求。&lt;/p&gt;
+&lt;/blockquote&gt;"><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/IEEE%20802.1AE-2018%20MACsec%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84%E4%B8%8E%E5%B8%A7%E6%A0%BC%E5%BC%8F%E8%AF%A6%E8%A7%A3/&t=IEEE 802.1AE-2018 MACsec核心架构与帧格式详解"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%AC%AC%E4%B8%80%E9%83%A8%E5%88%86-%E6%A0%87%E5%87%86%E7%AF%87"><span class="toc-number">1.</span> <span class="toc-text">第一部分:标准篇</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%80%E3%80%81MACsec-%E5%9C%A8%E5%8D%8F%E8%AE%AE%E6%A0%88%E4%B8%AD%E7%9A%84%E4%BD%8D%E7%BD%AE"><span class="toc-number">1.1.</span> <span class="toc-text">一、MACsec 在协议栈中的位置</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E5%AE%89%E5%85%A8%E5%A8%81%E8%83%81%E4%B8%8E-MACsec-%E7%9A%84%E5%BA%94%E5%AF%B9-6-6-6-8-6-9"><span class="toc-number">1.2.</span> <span class="toc-text">二、安全威胁与 MACsec 的应对(6.6 &#x2F; 6.8 &#x2F; 6.9)</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#2-1-MACsec-%E8%83%BD%E6%8F%90%E4%BE%9B%E4%BB%80%E4%B9%88%E5%AE%89%E5%85%A8%E6%9C%8D%E5%8A%A1-6-9"><span class="toc-number">1.2.1.</span> <span class="toc-text">2.1 MACsec 能提供什么安全服务?(6.9)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-2-MACsec-%E4%B8%8D%E8%83%BD%E5%81%9A%E4%BB%80%E4%B9%88"><span class="toc-number">1.2.2.</span> <span class="toc-text">2.2 MACsec 不能做什么?</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5-CA-SC-SA"><span class="toc-number">1.3.</span> <span class="toc-text">三、核心概念:CA &#x2F; SC &#x2F; SA</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%9B%9B%E3%80%81MACsec-%E5%B8%A7%E6%A0%BC%E5%BC%8F-Chapter-9"><span class="toc-number">1.4.</span> <span class="toc-text">四、MACsec 帧格式(Chapter 9)</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#4-1-MPDU-%E4%B8%89%E5%A4%A7%E7%BB%84%E4%BB%B6"><span class="toc-number">1.4.1.</span> <span class="toc-text">4.1 MPDU 三大组件</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#4-2-SecTAG-%E6%A0%BC%E5%BC%8F-9-3"><span class="toc-number">1.4.2.</span> <span class="toc-text">4.2 SecTAG 格式(9.3)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#4-3-TCI-%E5%AD%97%E6%AE%B5%E8%AF%A6%E8%A7%A3-9-5"><span class="toc-number">1.4.3.</span> <span class="toc-text">4.3 TCI 字段详解(9.5)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#4-4-PN-Packet-Number-9-8"><span class="toc-number">1.4.4.</span> <span class="toc-text">4.4 PN(Packet Number)(9.8)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#4-5-ICV-Integrity-Check-Value-9-11"><span class="toc-number">1.4.5.</span> <span class="toc-text">4.5 ICV(Integrity Check Value)(9.11)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#4-6-MACsec-EtherType-9-4"><span class="toc-number">1.4.6.</span> <span class="toc-text">4.6 MACsec EtherType(9.4)</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BA%94%E3%80%81SecY-%E6%9E%B6%E6%9E%84%E4%B8%8E%E5%B8%A7%E5%A4%84%E7%90%86-Chapter-10"><span class="toc-number">1.5.</span> <span class="toc-text">五、SecY 架构与帧处理(Chapter 10)</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#5-1-SecY-%E7%9A%84%E4%B8%A4%E4%B8%AA%E7%AB%AF%E5%8F%A3"><span class="toc-number">1.5.1.</span> <span class="toc-text">5.1 SecY 的两个端口</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#5-2-%E5%B8%A7%E5%8F%91%E9%80%81%E6%B5%81%E7%A8%8B-Secure-Frame-Generation-10-5"><span class="toc-number">1.5.2.</span> <span class="toc-text">5.2 帧发送流程:Secure Frame Generation(10.5)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#5-3-%E5%B8%A7%E6%8E%A5%E6%94%B6%E6%B5%81%E7%A8%8B-Secure-Frame-Verification-10-6"><span class="toc-number">1.5.3.</span> <span class="toc-text">5.3 帧接收流程:Secure Frame Verification(10.6)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#5-4-XPN-PN-%E6%81%A2%E5%A4%8D-10-6"><span class="toc-number">1.5.4.</span> <span class="toc-text">5.4 XPN PN 恢复(10.6)</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%AD%E3%80%81Cipher-Suite-Chapter-14"><span class="toc-number">1.6.</span> <span class="toc-text">六、Cipher Suite(Chapter 14)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%83%E3%80%81MACsec-%E5%9C%A8%E7%B3%BB%E7%BB%9F%E4%B8%AD%E7%9A%84%E9%83%A8%E7%BD%B2-Chapter-11"><span class="toc-number">1.7.</span> <span class="toc-text">七、MACsec 在系统中的部署(Chapter 11)</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%AC%AC%E4%BA%8C%E9%83%A8%E5%88%86-%E8%BD%A6%E8%BD%BD%E7%AF%87%E2%80%94%E2%80%94OPEN-Alliance-Automotive-MACsec"><span class="toc-number">2.</span> <span class="toc-text">第二部分:车载篇——OPEN Alliance Automotive MACsec</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%AB%E3%80%81Automotive-MACsec-%E7%9A%84%E5%AE%9A%E4%BD%8D"><span class="toc-number">2.1.</span> <span class="toc-text">八、Automotive MACsec 的定位</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B9%9D%E3%80%81Automotive-MACsec-%E5%BF%85%E9%80%89%E8%83%BD%E5%8A%9B%E9%9B%86"><span class="toc-number">2.2.</span> <span class="toc-text">九、Automotive MACsec 必选能力集</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#9-1-%E7%82%B9%E5%AF%B9%E7%82%B9-MACsec-AutoMACsec-01001"><span class="toc-number">2.2.1.</span> <span class="toc-text">9.1 点对点 MACsec(AutoMACsec-01001)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#9-2-SecTAG-%E6%97%A0-SCI-%E6%A8%A1%E5%BC%8F-AutoMACsec-01004"><span class="toc-number">2.2.2.</span> <span class="toc-text">9.2 SecTAG 无 SCI 模式(AutoMACsec-01004)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#9-3-Confidentiality-Offset-AutoMACsec-01005"><span class="toc-number">2.2.3.</span> <span class="toc-text">9.3 Confidentiality Offset(AutoMACsec-01005)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#9-4-%E8%BD%AC%E5%8F%91%E5%88%B0-Common-Port-%E7%9A%84%E8%A7%84%E5%88%99-AutoMACsec-01006-01006A-01006B"><span class="toc-number">2.2.4.</span> <span class="toc-text">9.4 转发到 Common Port 的规则(AutoMACsec-01006, 01006A, 01006B)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#9-5-%E8%A7%A3%E5%AF%86%E5%A4%B1%E8%B4%A5%E5%B8%A7%E7%9A%84%E5%A4%84%E7%90%86-AutoMACsec-01007"><span class="toc-number">2.2.5.</span> <span class="toc-text">9.5 解密失败帧的处理(AutoMACsec-01007)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#9-6-%E4%B8%8D%E4%BE%9D%E8%B5%96-802-3br-%E5%B8%A7%E6%8A%A2%E5%8D%A0-AutoMACsec-01003"><span class="toc-number">2.2.6.</span> <span class="toc-text">9.6 不依赖 802.3br 帧抢占(AutoMACsec-01003)</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8D%81%E3%80%81%E7%BB%9F%E8%AE%A1%E8%AE%A1%E6%95%B0%E5%99%A8%E8%A6%81%E6%B1%82-AutoMACsec-01008"><span class="toc-number">2.3.</span> <span class="toc-text">十、统计计数器要求(AutoMACsec-01008)</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%8F%91%E9%80%81%E6%96%B9%E5%90%91-TX"><span class="toc-number">2.3.1.</span> <span class="toc-text">发送方向(TX)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%8E%A5%E6%94%B6%E6%96%B9%E5%90%91-RX"><span class="toc-number">2.3.2.</span> <span class="toc-text">接收方向(RX)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#SC-%E7%BA%A7%E5%88%AB%E8%AE%A1%E6%95%B0%E5%99%A8"><span class="toc-number">2.3.3.</span> <span class="toc-text">SC 级别计数器</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8D%81%E4%B8%80%E3%80%81Automotive-MACsec-%E4%B8%8E-Automotive-MKA-%E7%9A%84%E5%8D%8F%E5%90%8C"><span class="toc-number">2.4.</span> <span class="toc-text">十一、Automotive MACsec 与 Automotive MKA 的协同</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8D%81%E4%BA%8C%E3%80%81%E5%B7%A5%E7%A8%8B%E9%80%89%E5%9E%8B-%E5%93%AA%E4%BA%9B%E8%8A%AF%E7%89%87%E6%94%AF%E6%8C%81-Automotive-MACsec"><span class="toc-number">2.5.</span> <span class="toc-text">十二、工程选型:哪些芯片支持 Automotive MACsec?</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%80%BB%E7%BB%93"><span class="toc-number">3.</span> <span class="toc-text">总结</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%A0%87%E5%87%86%E9%83%A8%E5%88%86-%E2%98%85-%E4%B8%89%E5%8F%A5%E8%AF%9D%E5%9B%9E%E9%A1%BE-%E2%98%85"><span class="toc-number">3.1.</span> <span class="toc-text">标准部分(★ 三句话回顾 ★)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%BD%A6%E8%BD%BD%E9%83%A8%E5%88%86-%E2%98%85-Automotive-MACsec-%E8%A6%81%E7%82%B9-%E2%98%85"><span class="toc-number">3.2.</span> <span class="toc-text">车载部分(★ Automotive MACsec 要点 ★)</span></a></li></ol></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        IEEE 802.1AE-2018 MACsec核心架构与帧格式详解
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">cursorhu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2026-09-16T06:00:00.000Z" class="dt-published" itemprop="datePublished">2026-09-16</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fa-solid fa-archive"></i>
+        <a class="category-link" href="/categories/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/">以太网IEEE标准系列</a> › <a class="category-link" href="/categories/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/%E7%BD%91%E7%BB%9C%E5%AE%89%E5%85%A8/">网络安全</a> › <a class="category-link" href="/categories/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/%E7%BD%91%E7%BB%9C%E5%AE%89%E5%85%A8/%E6%95%B0%E6%8D%AE%E9%93%BE%E8%B7%AF%E5%B1%82/">数据链路层</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/Automotive-Ethernet/" rel="tag">Automotive Ethernet</a>, <a class="p-category" href="/tags/GCM-AES/" rel="tag">GCM-AES</a>, <a class="p-category" href="/tags/IEEE-802-1AE/" rel="tag">IEEE 802.1AE</a>, <a class="p-category" href="/tags/MACsec/" rel="tag">MACsec</a>, <a class="p-category" href="/tags/OPEN-Alliance/" rel="tag">OPEN Alliance</a>, <a class="p-category" href="/tags/SecTAG/" rel="tag">SecTAG</a>, <a class="p-category" href="/tags/SecY/" rel="tag">SecY</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <blockquote>
+<p>本文是「以太网IEEE标准系列」第四篇,聚焦 <strong>IEEE Std 802.1AE™-2018</strong>(Media Access Control Security)。本文分两部分:第一部分解析通用标准(MACsec帧格式、SecY架构、Cipher Suite),第二部分对照 <strong>OPEN Alliance TC17 Automotive MACsec Specification v1.0</strong>(2025-05)的车载精简要求。</p>
+</blockquote>
+<span id="more"></span>
+
+<h2 id="第一部分-标准篇"><a href="#第一部分-标准篇" class="headerlink" title="第一部分:标准篇"></a>第一部分:标准篇</h2><h3 id="一、MACsec-在协议栈中的位置"><a href="#一、MACsec-在协议栈中的位置" class="headerlink" title="一、MACsec 在协议栈中的位置"></a>一、MACsec 在协议栈中的位置</h3><p><strong>IEEE 802.1AE MACsec</strong> 是整个「车载以太网安全体系」中的<strong>加解密执行层</strong>,位于 MAC 子层和 PHY 之间:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line">┌──────────────────────────────────────────────────────────────────┐</span><br><span class="line">│                      上层协议                                    │</span><br><span class="line">│              (应用层 / IP层 / TCP/UDP)                          │</span><br><span class="line">└──────────────────────────────┬─────────────────────────────────┘</span><br><span class="line">                               │</span><br><span class="line">┌──────────────────────────────▼─────────────────────────────────┐</span><br><span class="line">│                     MAC Service                                  │</span><br><span class="line">│              (802.1Q VLAN标签 / 802.1D 桥接)                   │</span><br><span class="line">└──────────────────────────────┬─────────────────────────────────┘</span><br><span class="line">                               │</span><br><span class="line">┌──────────────────────────────▼─────────────────────────────────┐</span><br><span class="line">│              IEEE 802.1AE MACsec (SecY)                        │</span><br><span class="line">│  ─────────────────────────────────────────────────────────────  │</span><br><span class="line">│  功能:                                                           │</span><br><span class="line">│    · 对 MAC 帧 payload 加解密(GCM-AES)                          │</span><br><span class="line">│    · 对 MAC DA/SA/SecTAG/User Data 做完整性保护(ICV)            │</span><br><span class="line">│    · PN(Packet Number) 抗重放                                    │</span><br><span class="line">│  由谁安装密钥:MKA(802.1X)分发 SAK                               │</span><br><span class="line">└──────────────────────────────┬─────────────────────────────────┘</span><br><span class="line">                               │</span><br><span class="line">┌──────────────────────────────▼─────────────────────────────────┐</span><br><span class="line">│                   MAC (发送/接收控制)                           │</span><br><span class="line">└──────────────────────────────┬─────────────────────────────────┘</span><br><span class="line">                               │</span><br><span class="line">┌──────────────────────────────▼─────────────────────────────────┐</span><br><span class="line">│                      PHY / SerDes                               │</span><br><span class="line">└──────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>🔑 <strong>一句话定位</strong>:MACsec 是唯一一个在 MAC 层(Layer 2)对整个以太网帧(包括 VLAN 标签)提供加密和完整性保护的标准,比 IPsec(Layer 3) 更贴近硬件,开销更小。</p>
+</blockquote>
+<hr>
+<h3 id="二、安全威胁与-MACsec-的应对-6-6-6-8-6-9"><a href="#二、安全威胁与-MACsec-的应对-6-6-6-8-6-9" class="headerlink" title="二、安全威胁与 MACsec 的应对(6.6 &#x2F; 6.8 &#x2F; 6.9)"></a>二、安全威胁与 MACsec 的应对(6.6 &#x2F; 6.8 &#x2F; 6.9)</h3><h4 id="2-1-MACsec-能提供什么安全服务-6-9"><a href="#2-1-MACsec-能提供什么安全服务-6-9" class="headerlink" title="2.1 MACsec 能提供什么安全服务?(6.9)"></a>2.1 MACsec 能提供什么安全服务?(6.9)</h4><table>
+<thead>
+<tr>
+<th>安全服务</th>
+<th>说明</th>
+<th>MACsec 如何实现</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Connectionless data integrity</strong></td>
+<td>连接无关的数据完整性</td>
+<td>MAC DA + SA + SecTAG + User Data 整体算 ICV</td>
+</tr>
+<tr>
+<td><strong>Data origin authenticity</strong></td>
+<td>数据来源真实性</td>
+<td>GCM-AES 认证模式,密文可证明来源</td>
+</tr>
+<tr>
+<td><strong>Confidentiality</strong></td>
+<td>机密性(可选)</td>
+<td>GCM-AES 加密,Confidentiality Offset 指定加密起点</td>
+</tr>
+<tr>
+<td><strong>Replay protection</strong></td>
+<td>抗重放攻击</td>
+<td>PN(Packet Number)单调递增,低于最低可接受 PN 的帧丢弃</td>
+</tr>
+<tr>
+<td><strong>Bounded receive delay</strong></td>
+<td>有界的接收延迟</td>
+<td>协议设计保证,无额外握手帧</td>
+</tr>
+</tbody></table>
+<h4 id="2-2-MACsec-不能做什么"><a href="#2-2-MACsec-不能做什么" class="headerlink" title="2.2 MACsec 不能做什么?"></a>2.2 MACsec 不能做什么?</h4><p>标准原文 5.2 节明确声明:</p>
+<blockquote>
+<p><em>“Conformance to this standard does not ensure that the system of which the MAC Security implementation forms a part is secure, or that the operation of other protocols used to support MAC Security, such as key management and network management do not provide a way for an attacker to breach that security.”</em></p>
+</blockquote>
+<p><strong>MACsec 不保护的内容</strong>:</p>
+<ul>
+<li><strong>MAC 帧 Priority(QoS)字段</strong>:可能被沿途设备修改(AutoMACsec 在接收端做 Priority 映射)</li>
+<li><strong>SecTAG 本身</strong>:TCI&#x2F;AN&#x2F;PN 不加密,只受 ICV 完整性保护</li>
+<li><strong>ICV 本身</strong>:在帧末尾,纯校验数据</li>
+<li><strong>802.1X&#x2F;MKA 密钥管理层</strong>:那是另一个协议的攻击面</li>
+</ul>
+<hr>
+<h3 id="三、核心概念-CA-SC-SA"><a href="#三、核心概念-CA-SC-SA" class="headerlink" title="三、核心概念:CA &#x2F; SC &#x2F; SA"></a>三、核心概念:CA &#x2F; SC &#x2F; SA</h3><p>MACsec 的安全模型建立在一套三级密钥关联上(7.1 节):</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">Connectivity Association (CA)</span><br><span class="line">  ├── Secure Channel (SC) × N per port</span><br><span class="line">  │     ├── Tx SC(本端口发出)</span><br><span class="line">  │     └── Rx SC(本端口接收)</span><br><span class="line">  └── Secure Association (SA) × 2 per SC</span><br><span class="line">        ├── Active SA (当前使用)</span><br><span class="line">        └── Next SA (轮换备用)</span><br><span class="line">              └── SAK (Secure Association Key)</span><br><span class="line">                    └── 由 MKA(802.1X) 派发</span><br></pre></td></tr></table></figure>
+
+<p><strong>关键约束</strong>:</p>
+<ul>
+<li><strong>1 个 SC &#x3D; 1 对 1 SA</strong>(点对点场景),或 <strong>1 对 N SA</strong>(组播场景)</li>
+<li><strong>SA 的 AN</strong>(Association Number, 2 bits) &#x3D; 0~3,用于区分同一 SC 下的两个 SA</li>
+<li><strong>PN</strong>(Packet Number):每发一帧单调递增,防止重放</li>
+</ul>
+<hr>
+<h3 id="四、MACsec-帧格式-Chapter-9"><a href="#四、MACsec-帧格式-Chapter-9" class="headerlink" title="四、MACsec 帧格式(Chapter 9)"></a>四、MACsec 帧格式(Chapter 9)</h3><h4 id="4-1-MPDU-三大组件"><a href="#4-1-MPDU-三大组件" class="headerlink" title="4.1 MPDU 三大组件"></a>4.1 MPDU 三大组件</h4><p>MACsec 在原始 MAC 帧的基础上插入 <strong>SecTAG</strong>,并在末尾追加 <strong>ICV</strong>:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">原始以太网帧(未加密):</span><br><span class="line">┌──────────┬──────────┬─────────────────┬──────────┬─────────┐</span><br><span class="line">│ MAC DA   │ MAC SA   │ 0x0800 / 0x86DD │ Payload   │  FCS    │</span><br><span class="line">│ (6字节)  │ (6字节)  │   EtherType     │ (可变)   │ (4字节) │</span><br><span class="line">└──────────┴──────────┴─────────────────┴──────────┴─────────┘</span><br><span class="line"></span><br><span class="line">MACsec 加密帧(带 SecTAG + ICV):</span><br><span class="line">┌──────────┬──────────┬────────────┬─────────────────┬───────┬──────────┬─────────┐</span><br><span class="line">│ MAC DA   │ MAC SA   │ SecTAG     │ Secure Data      │ ICV   │          │         │</span><br><span class="line">│ (6字节)  │ (6字节)  │ (8~16字节) │ (加密后的Payload)│(8~16B)│ Payload2 │  FCS    │</span><br><span class="line">│          │          │ +EtherType │                  │       │ (可选)   │ (4字节) │</span><br><span class="line">│          │          │ (0x88E5)   │                  │       │          │         │</span><br><span class="line">└──────────┴──────────┴────────────┴─────────────────┴───────┴──────────┴─────────┘</span><br><span class="line">                              ↑ 新增                   ↑ 新增</span><br></pre></td></tr></table></figure>
+
+<h4 id="4-2-SecTAG-格式-9-3"><a href="#4-2-SecTAG-格式-9-3" class="headerlink" title="4.2 SecTAG 格式(9.3)"></a>4.2 SecTAG 格式(9.3)</h4><p>SecTAG 是 MACsec 的”护照”,包含所有解密和校验所需的信息:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">SecTAG 完整格式(16字节,有SCI):</span><br><span class="line">┌──────────┬───────────────────────────────────────────────────────┐</span><br><span class="line">│ EtherType│  TCI+AN    │    PN         │       SCI               │</span><br><span class="line">│  0x88E5  │ (2字节)    │  (4字节)     │  MAC(6)+PortID(2)      │</span><br><span class="line">│          │ [TCI 1字节] │              │                        │</span><br><span class="line">│          │ [AN 0.5B]  │              │                        │</span><br><span class="line">│  2字节   │ +SL(0.5B)  │              │                        │</span><br><span class="line">└──────────┴───────────────────────────────────────────────────────┘</span><br><span class="line"></span><br><span class="line">SecTAG 精简格式(8字节,无SCI,点对点常用):</span><br><span class="line">┌────────────────────────────┬────────────────────────────────────┐</span><br><span class="line">│ EtherType | TCI+AN+SL     │           PN                       │</span><br><span class="line">│  0x88E5   │ (2字节)       │          (4字节)                  │</span><br><span class="line">│           │               │                                    │</span><br><span class="line">│  2字节    │               │          4字节                     │</span><br><span class="line">└────────────────────────────┴────────────────────────────────────┘</span><br><span class="line">  ↑</span><br><span class="line">  Automotive MACsec 优先使用此格式(AutoMACsec-01004)</span><br><span class="line">  每帧省 8 字节 → 节省带宽</span><br></pre></td></tr></table></figure>
+
+<h4 id="4-3-TCI-字段详解-9-5"><a href="#4-3-TCI-字段详解-9-5" class="headerlink" title="4.3 TCI 字段详解(9.5)"></a>4.3 TCI 字段详解(9.5)</h4><p>TCI(TAG Control Information)的 8 个比特每一位都有特定含义:</p>
+<table>
+<thead>
+<tr>
+<th>Bit</th>
+<th>名称</th>
+<th>值&#x3D;0</th>
+<th>值&#x3D;1</th>
+<th>Automotive MACsec</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>8(MSB)</td>
+<td><strong>V</strong>(Version)</td>
+<td>✅ 0(本标准版本)</td>
+<td>保留</td>
+<td>固定&#x3D;0</td>
+</tr>
+<tr>
+<td>7</td>
+<td><strong>ES</strong>(End Station)</td>
+<td>SCI 在 SecTAG 中</td>
+<td>SCI&#x3D;源MAC地址+PortID&#x3D;0001</td>
+<td>用于无 SCI 场景</td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>SC</strong>(SCI present)</td>
+<td>SCI 不在 SecTAG 中</td>
+<td>SCI 在 SecTAG 中显式编码</td>
+<td>无 SCI 时&#x3D;0(AutoMACsec)</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>SCB</strong>(Single Copy Broadcast)</td>
+<td>非 SCB 通道</td>
+<td>SCB 通道(EPON专用)</td>
+<td>EPON 不用&#x3D;0</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>SH</strong>(Secure Channel Hash)</td>
+<td>用于 SCB 通道</td>
+<td>用于 EPON</td>
+<td>不涉及&#x3D;0</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>E</strong>(Encryption)</td>
+<td>仅完整性(Integrity)</td>
+<td>加密+完整性(Confidentiality)</td>
+<td>0&#x3D;仅Integrity,1&#x3D;带Confidentiality</td>
+</tr>
+<tr>
+<td>2-1</td>
+<td><strong>AN</strong>(Association Number)</td>
+<td>00<del>11,标识 SA0</del>SA3</td>
+<td></td>
+<td>SA 标识</td>
+</tr>
+<tr>
+<td>0(LSB)</td>
+<td><strong>(未命名,随 AN)</strong></td>
+<td>见 AN</td>
+<td></td>
+<td></td>
+</tr>
+</tbody></table>
+<blockquote>
+<p><strong>Automotive MACsec 精简点</strong>: Automotive MACsec 通常使用 <code>ES=1, SC=0</code> 组合(Point-to-point,SCI&#x3D;源MAC地址+PortID 0001),或者直接用无 SCI 格式,完全省略 SCI 字段。</p>
+</blockquote>
+<h4 id="4-4-PN-Packet-Number-9-8"><a href="#4-4-PN-Packet-Number-9-8" class="headerlink" title="4.4 PN(Packet Number)(9.8)"></a>4.4 PN(Packet Number)(9.8)</h4><ul>
+<li><strong>发送</strong>:每发出一帧,PN 自动 +1</li>
+<li><strong>长度</strong>:SecTAG 里只存 <strong>低 32 位</strong>,完整 PN 是 64 位(使用 XPN 时)</li>
+<li><strong>XPN(Extended PN)</strong>:在 PN 溢出前必须 rekey,否则攻击者可以重放旧 PN 的帧</li>
+<li>** Automotive MACsec**:必须支持 XPN 和非 XPN 两种 cipher suite(AutoMKA-01004)</li>
+</ul>
+<h4 id="4-5-ICV-Integrity-Check-Value-9-11"><a href="#4-5-ICV-Integrity-Check-Value-9-11" class="headerlink" title="4.5 ICV(Integrity Check Value)(9.11)"></a>4.5 ICV(Integrity Check Value)(9.11)</h4><p>ICV 的计算覆盖:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">ICV = AES-GCM-Authenticate(SAK,</span><br><span class="line">  MAC DA || MAC SA || SecTAG || Secure Data,</span><br><span class="line">  length)</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>默认</strong>:ICV 长度 &#x3D; 16 字节(GCM-AES-128)</li>
+<li><strong>GCM-AES-256</strong>:ICV 长度 &#x3D; 16 字节(256-bit 密钥但 ICV 仍是 128-bit)</li>
+<li><strong>保护范围</strong>:包括 MAC DA、MAC SA、SecTAG、Secure Data,不包括 FCS</li>
+</ul>
+<h4 id="4-6-MACsec-EtherType-9-4"><a href="#4-6-MACsec-EtherType-9-4" class="headerlink" title="4.6 MACsec EtherType(9.4)"></a>4.6 MACsec EtherType(9.4)</h4><table>
+<thead>
+<tr>
+<th>Tag Type</th>
+<th>Name</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>IEEE 802.1AE Security TAG</td>
+<td><strong>MACsec EtherType</strong></td>
+<td><strong>0x88E5</strong></td>
+</tr>
+</tbody></table>
+<blockquote>
+<p><strong>为什么要单独分配 EtherType?</strong> 802.1AE 原文 8.1.5 解释:需要一个与普通以太网帧(0x0800 IPv4, 0x86DD IPv6)不同的 EtherType,让不支持 MACsec 的设备能识别出”这是 MACsec 帧”(虽然不能解密,但可以做过滤)。0x88E5 是 IEEE 802.1 专门为 MACsec 分配的 EtherType。</p>
+</blockquote>
+<hr>
+<h3 id="五、SecY-架构与帧处理-Chapter-10"><a href="#五、SecY-架构与帧处理-Chapter-10" class="headerlink" title="五、SecY 架构与帧处理(Chapter 10)"></a>五、SecY 架构与帧处理(Chapter 10)</h3><p>SecY(MAC Security Entity)是 MACsec 在每个端口上的软件&#x2F;硬件实现单元:</p>
+<h4 id="5-1-SecY-的两个端口"><a href="#5-1-SecY-的两个端口" class="headerlink" title="5.1 SecY 的两个端口"></a>5.1 SecY 的两个端口</h4><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line">SecY 架构(10.1,10.4):</span><br><span class="line"></span><br><span class="line">┌──────────────────────────────────────────────────────────────┐</span><br><span class="line">│                   MAC Service Interface                       │</span><br><span class="line">└──────────────┬───────────────────────────────┬───────────────┘</span><br><span class="line">               │                               │</span><br><span class="line">    ┌──────────▼──────────┐        ┌───────────▼───────────┐</span><br><span class="line">    │  Common Port (CP)  │        │  Controlled Port (CP) │</span><br><span class="line">    │  (非受控端口)      │        │  (受控端口)            │</span><br><span class="line">    │                    │        │                        │</span><br><span class="line">    │  · 始终放行         │        │  · 未认证:阻断业务帧   │</span><br><span class="line">    │  · EAPOL(0x888E)   │        │  · 已认证+MKA:放行业务 │</span><br><span class="line">    │  · 0x88E5 未加密帧  │        │                        │</span><br><span class="line">    │  · LLDP/Dot1AS     │        │                        │</span><br><span class="line">    │  (非 MACsec 帧)     │        │                        │</span><br><span class="line">    └──────────┬──────────┘        └───────────┬────────────┘</span><br><span class="line">               │                               │</span><br><span class="line">               │      ┌────────────────┐        │</span><br><span class="line">               └─────►  SecY 内部处理  ◄───────┘</span><br><span class="line">                        │                   │</span><br><span class="line">                        │  Encrypt/Decrypt  │</span><br><span class="line">                        │  + ICV 计算/校验 │</span><br><span class="line">                        │                   │</span><br><span class="line">                        └────────┬──────────┘</span><br><span class="line">                                 │</span><br><span class="line">                        ┌────────▼────────┐</span><br><span class="line">                        │   SecY Engine   │</span><br><span class="line">                        │  (MAC 硬件层)   │</span><br><span class="line">                        └─────────────────┘</span><br></pre></td></tr></table></figure>
+
+<h4 id="5-2-帧发送流程-Secure-Frame-Generation-10-5"><a href="#5-2-帧发送流程-Secure-Frame-Generation-10-5" class="headerlink" title="5.2 帧发送流程:Secure Frame Generation(10.5)"></a>5.2 帧发送流程:Secure Frame Generation(10.5)</h4><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">发送路径(Protect 操作):</span><br><span class="line"></span><br><span class="line">MAC Client ──MSDU──► SecY</span><br><span class="line">                       │</span><br><span class="line">                       │ ① 分配 Tx SC + AN(查找 SA)</span><br><span class="line">                       │    · 根据 dest MAC / VLAN 策略选择 SC</span><br><span class="line">                       │    · AN 标识当前活跃 SA</span><br><span class="line">                       │</span><br><span class="line">                       │ ② 构建 SecTAG</span><br><span class="line">                       │    · EtherType = 0x88E5</span><br><span class="line">                       │    · TCI:ES=0,SC=0/1, E=0/1,AN=当前SA</span><br><span class="line">                       │    · PN = 当前 SA 的下一个 PN</span><br><span class="line">                       │    · SCI(如果需要) = 本端口 MAC + PortID</span><br><span class="line">                       │</span><br><span class="line">                       │ ③ AES-GCM Protect(SecTAG || MSDU)</span><br><span class="line">                       │    · 使用 SAK 作为认证密钥</span><br><span class="line">                       │    · AAD = MAC DA || MAC SA || SecTAG</span><br><span class="line">                       │    · 若加密:Secure Data = AES-GCM-Encrypt(MSDU)</span><br><span class="line">                       │    · 若仅完整性:Secure Data = MSDU(明文)</span><br><span class="line">                       │    · ICV = AES-GCM 认证Tag(16字节)</span><br><span class="line">                       │</span><br><span class="line">                       ▼</span><br><span class="line">              802.1AE MPDU ──► MAC ──► PHY ──► 双绞线</span><br></pre></td></tr></table></figure>
+
+<p><strong>加密 vs 仅完整性</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>模式</th>
+<th>TCI[E]</th>
+<th>Payload</th>
+<th>ICV</th>
+<th>使用场景</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Integrity Only</strong></td>
+<td>0</td>
+<td>明文</td>
+<td>16字节 ICV</td>
+<td>仅需防篡改,不需要加密(如诊断数据)</td>
+</tr>
+<tr>
+<td><strong>Confidentiality + Integrity</strong></td>
+<td>1</td>
+<td>AES-GCM 密文</td>
+<td>16字节 ICV</td>
+<td>敏感数据保护</td>
+</tr>
+</tbody></table>
+<h4 id="5-3-帧接收流程-Secure-Frame-Verification-10-6"><a href="#5-3-帧接收流程-Secure-Frame-Verification-10-6" class="headerlink" title="5.3 帧接收流程:Secure Frame Verification(10.6)"></a>5.3 帧接收流程:Secure Frame Verification(10.6)</h4><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">接收路径(Validate 操作):</span><br><span class="line"></span><br><span class="line">双绞线 ──► PHY ──► MAC ──► SecY</span><br><span class="line">                               │</span><br><span class="line">                               │ ① 检查 EtherType = 0x88E5</span><br><span class="line">                               │    · 不是 0x88E5 → 交给 Common Port</span><br><span class="line">                               │</span><br><span class="line">                               │ ② 提取 SecTAG</span><br><span class="line">                               │    · 读取 SCI(若有) + AN + PN</span><br><span class="line">                               │    · SCI 查找 Rx SC/SA</span><br><span class="line">                               │</span><br><span class="line">                               │ ③ PN 抗重放检查</span><br><span class="line">                               │    · PN &gt;= 最低可接受 PN? ✅ → 继续</span><br><span class="line">                               │    · PN &lt; 最低可接受 PN? ❌ → 丢弃(InPktsLate)</span><br><span class="line">                               │    · Automotive MACsec:Replay Window = 0,最严格</span><br><span class="line">                               │</span><br><span class="line">                               │ ④ AES-GCM Validate</span><br><span class="line">                               │    · 用同一 SAK 做认证</span><br><span class="line">                               │    · 重新算 ICV 与收到的 ICV 比较</span><br><span class="line">                               │    · 匹配 ✅ → 去除 SecTAG/ICV,还原 MSDU</span><br><span class="line">                               │    · 不匹配 ❌ → 丢弃(InPktsInvalid)</span><br><span class="line">                               │</span><br><span class="line">                               ▼</span><br><span class="line">                      MAC Client ◄── MSDU</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p><strong>Confidentiality Offset</strong>:如果 TCI[E]&#x3D;1 且有 Offset,加密只从 MSDU 的第 Offset 字节开始。Offset 0 &#x3D; 整个 MSDU 都加密;Offset 30&#x2F;50 &#x3D; 前 30&#x2F;50 字节明文(保留 VLAN tag 等元数据)。</p>
+</blockquote>
+<h4 id="5-4-XPN-PN-恢复-10-6"><a href="#5-4-XPN-PN-恢复-10-6" class="headerlink" title="5.4 XPN PN 恢复(10.6)"></a>5.4 XPN PN 恢复(10.6)</h4><p>当使用 64-bit PN(XPN cipher suite)时,SecTAG 只携带低 32 位:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">PN 恢复机制:</span><br><span class="line">  · 第一个收到的帧:用 SecTAG 的 32-bit PN,MSB=0</span><br><span class="line">  · 后续帧:</span><br><span class="line">    - 若 SecTAG PN &gt; 当前保存的 PN → 正常递增</span><br><span class="line">    - 若 SecTAG PN &lt; 当前 PN(回绕) → MSB+1</span><br><span class="line">  · 恢复的 PN 用于:</span><br><span class="line">    ① AES-GCM IV 的高 32 位</span><br><span class="line">    ② 抗重放窗口比较</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h3 id="六、Cipher-Suite-Chapter-14"><a href="#六、Cipher-Suite-Chapter-14" class="headerlink" title="六、Cipher Suite(Chapter 14)"></a>六、Cipher Suite(Chapter 14)</h3><p>MACsec 支持多个 cipher suite,所有 suite 都基于 <strong>AES-GCM</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Cipher Suite ID</th>
+<th>算法</th>
+<th>密钥长度</th>
+<th>PN 长度</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>GCM-AES-128</strong></td>
+<td>AES-GCM</td>
+<td>128-bit</td>
+<td>32-bit</td>
+<td>默认 suite</td>
+</tr>
+<tr>
+<td><strong>GCM-AES-256</strong></td>
+<td>AES-GCM</td>
+<td>256-bit</td>
+<td>32-bit</td>
+<td>更强密钥</td>
+</tr>
+<tr>
+<td><strong>GCM-AES-XPN-128</strong></td>
+<td>AES-GCM</td>
+<td>128-bit</td>
+<td><strong>64-bit</strong></td>
+<td>XPN,高速链路推荐</td>
+</tr>
+<tr>
+<td><strong>GCM-AES-XPN-256</strong></td>
+<td>AES-GCM</td>
+<td>256-bit</td>
+<td><strong>64-bit</strong></td>
+<td>XPN + 256-bit</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>所有 suite 的 ICV 长度固定为 <strong>16 字节</strong>。GCM-AES-128 的加密和认证都使用 128-bit 密钥;GCM-AES-256 同理。</p>
+</blockquote>
+<hr>
+<h3 id="七、MACsec-在系统中的部署-Chapter-11"><a href="#七、MACsec-在系统中的部署-Chapter-11" class="headerlink" title="七、MACsec 在系统中的部署(Chapter 11)"></a>七、MACsec 在系统中的部署(Chapter 11)</h3><p>MACsec 的部署位置决定它保护的范围:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────────────────────────────────────────────┐</span><br><span class="line">│ End Station(终端站)                                         │</span><br><span class="line">│  SecY 直接在 MAC 和 PHY 之间,端到端加密                    │</span><br><span class="line">└─────────────────────────────────────────────────────────────┘</span><br><span class="line"></span><br><span class="line">┌─────────────────────────────────────────────────────────────┐</span><br><span class="line">│ VLAN-unaware MAC Bridge                                     │</span><br><span class="line">│  桥接内部两个端口之间可以有独立的 SecY                       │</span><br><span class="line">└─────────────────────────────────────────────────────────────┘</span><br><span class="line"></span><br><span class="line">┌─────────────────────────────────────────────────────────────┐</span><br><span class="line">│ VLAN-aware Bridge(802.1Q)                                   │</span><br><span class="line">│  每个 VLAN-aware Port 可独立配置 MACsec                      │</span><br><span class="line">│  · CouldProtect:该端口发出的帧需要被保护                    │</span><br><span class="line">│  · ShouldProtect:如果对端支持,应保护                        │</span><br><span class="line">└─────────────────────────────────────────────────────────────┘</span><br><span class="line"></span><br><span class="line">┌─────────────────────────────────────────────────────────────┐</span><br><span class="line">│ Link Aggregation(链路聚合)                                   │</span><br><span class="line">│  MACsec 保护在聚合层之下,每条物理链路独立 SecY             │</span><br><span class="line">└─────────────────────────────────────────────────────────────┘</span><br><span class="line"></span><br><span class="line">┌─────────────────────────────────────────────────────────────┐</span><br><span class="line">│ Provider Bridged Network(802.1Qbh)                          │</span><br><span class="line">│  B-tag 和 S-tag 可以有不同的 MACsec 保护策略                │</span><br><span class="line">└─────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="第二部分-车载篇——OPEN-Alliance-Automotive-MACsec"><a href="#第二部分-车载篇——OPEN-Alliance-Automotive-MACsec" class="headerlink" title="第二部分:车载篇——OPEN Alliance Automotive MACsec"></a>第二部分:车载篇——OPEN Alliance Automotive MACsec</h2><blockquote>
+<p>本部分对照 <strong>OPEN Alliance TC17 Automotive MACsec Specification v1.0</strong>(2025-05, Final, Public),提取所有规范级需求(AutoMACsec-xxxxx),说明 Automotive MACsec 与 IEEE 802.1AE 通用标准的设计差异。</p>
+</blockquote>
+<h3 id="八、Automotive-MACsec-的定位"><a href="#八、Automotive-MACsec-的定位" class="headerlink" title="八、Automotive MACsec 的定位"></a>八、Automotive MACsec 的定位</h3><p>IEEE 802.1AE 是通用标准,覆盖了从企业 LAN 到 EPON 的所有场景。<strong>Automotive MACsec</strong> 是 OPEN Alliance TC17 委员会制定的<strong>车载精简配置表(profile)</strong>,目标是:</p>
+<ul>
+<li><strong>删除</strong>车载不需要的特性(减少芯片 BOM 成本)</li>
+<li><strong>添加</strong>车载需要的特性(如无 SCI 帧格式、FCS 错误转发)</li>
+<li><strong>优化</strong>点对点 switched Automotive Ethernet 的性能</li>
+</ul>
+<blockquote>
+<p>Automotive MACsec 与 IEEE 802.1AE-2018 的关系:两者基于相同的 AES-GCM 加密原语,Automotive MACsec 只在 profile 层面做减法和加法。<strong>未修改的 IEEE 802.1AE 特性必须按原标准实现</strong>。</p>
+</blockquote>
+<hr>
+<h3 id="九、Automotive-MACsec-必选能力集"><a href="#九、Automotive-MACsec-必选能力集" class="headerlink" title="九、Automotive MACsec 必选能力集"></a>九、Automotive MACsec 必选能力集</h3><h4 id="9-1-点对点-MACsec-AutoMACsec-01001"><a href="#9-1-点对点-MACsec-AutoMACsec-01001" class="headerlink" title="9.1 点对点 MACsec(AutoMACsec-01001)"></a>9.1 点对点 MACsec(AutoMACsec-01001)</h4><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">Automotive MACsec 仅支持点对点模式:</span><br><span class="line">  ✅ 每个 Ethernet 端口 ≥ 1 Tx SC + ≥ 1 Rx SC</span><br><span class="line">  ❌ 不支持多接入 MACsec</span><br><span class="line">  ❌ 不支持 EPON SCB</span><br><span class="line"></span><br><span class="line">这与 10BASE-T1S Half Duplex / Full Duplex switched 场景完全吻合。</span><br></pre></td></tr></table></figure>
+
+<h4 id="9-2-SecTAG-无-SCI-模式-AutoMACsec-01004"><a href="#9-2-SecTAG-无-SCI-模式-AutoMACsec-01004" class="headerlink" title="9.2 SecTAG 无 SCI 模式(AutoMACsec-01004)"></a>9.2 SecTAG 无 SCI 模式(AutoMACsec-01004)</h4><p>这是 Automotive MACsec 最重要的带宽优化:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">IEEE 802.1AE 通用:SecTAG 可以有 SCI(16字节)或无 SCI(8字节)</span><br><span class="line">  · 有 SCI:SC 标识显式编码</span><br><span class="line">  · 无 SCI:SC 标识来自 KA(Y)协商(点对点 CA 下已知)</span><br><span class="line"></span><br><span class="line">Automotive MACsec:</span><br><span class="line">  · 优先使用无 SCI 模式(每帧省 8 字节)</span><br><span class="line">  · 每帧减少 8 字节 → 意味着可以传输更多有效载荷</span><br><span class="line">  · 在 10BASE-T1S 10 Mbps 链路上,8 字节 ≈ 6.4μs 额外传输时间</span><br><span class="line"></span><br><span class="line">SecTAG 格式(无 SCI):</span><br><span class="line">  EtherType(2B) + TCI+AN+SL(2B) + PN(4B) = 8 字节 ✅</span><br></pre></td></tr></table></figure>
+
+<h4 id="9-3-Confidentiality-Offset-AutoMACsec-01005"><a href="#9-3-Confidentiality-Offset-AutoMACsec-01005" class="headerlink" title="9.3 Confidentiality Offset(AutoMACsec-01005)"></a>9.3 Confidentiality Offset(AutoMACsec-01005)</h4><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">Automotive MACsec 的加密偏移支持:</span><br><span class="line"></span><br><span class="line">✅ 必选:Integrity without Confidentiality(仅 ICV,无加密)</span><br><span class="line">✅ 必选:Confidentiality with Offset 0(从 MSDU 第 0 字节开始加密)</span><br><span class="line">⚠️ 可选:Offset 30 和 Offset 50</span><br><span class="line"></span><br><span class="line">为什么 Offset 30/50 是可选的?</span><br><span class="line">  · Offset 30:保留 VLAN tag(4B) + 前 26 字节明文</span><br><span class="line">  · Offset 50:保留更多元数据</span><br><span class="line">  · 车载以太网目前没有已知的用例需要这些偏移量</span><br></pre></td></tr></table></figure>
+
+<h4 id="9-4-转发到-Common-Port-的规则-AutoMACsec-01006-01006A-01006B"><a href="#9-4-转发到-Common-Port-的规则-AutoMACsec-01006-01006A-01006B" class="headerlink" title="9.4 转发到 Common Port 的规则(AutoMACsec-01006, 01006A, 01006B)"></a>9.4 转发到 Common Port 的规则(AutoMACsec-01006, 01006A, 01006B)</h4><p>Automotive MACsec 要求能够<strong>按规则将某些帧转发到 Common Port</strong>(不走 MACsec),这在诊断和ECU刷写场景下至关重要:</p>
+<p><strong>发送方向(Tx)规则(01006)</strong>:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">帧被转发到 Common Port 的条件:</span><br><span class="line">  ① MAC DA 匹配(单播/组播)</span><br><span class="line">  ② EtherType 匹配(0x0800 等)</span><br><span class="line">  ③ IEEE 802.1Q VLAN tag + VLAN ID 匹配(可选)</span><br><span class="line">  ─────────────────────────────────────</span><br><span class="line">  至少需要支持 8 条不同规则(AutoMACsec-01006B)</span><br><span class="line">  规则可同时用于 Tx 和 Rx 方向(01006B)</span><br></pre></td></tr></table></figure>
+
+<p><strong>接收方向(Rx)规则(01006A)</strong>:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">非安全帧(非 0x88E5)收到后,按以下规则转发到 Common Port:</span><br><span class="line">  ① MAC DA 匹配</span><br><span class="line">  ② EtherType 匹配(非 0x88E5)</span><br><span class="line">  ③ VLAN tag + VLAN ID 匹配(可选)</span><br></pre></td></tr></table></figure>
+
+<h4 id="9-5-解密失败帧的处理-AutoMACsec-01007"><a href="#9-5-解密失败帧的处理-AutoMACsec-01007" class="headerlink" title="9.5 解密失败帧的处理(AutoMACsec-01007)"></a>9.5 解密失败帧的处理(AutoMACsec-01007)</h4><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">IEEE 802.1AE:解密/校验失败的帧必须丢弃</span><br><span class="line"></span><br><span class="line">Automotive MACsec:</span><br><span class="line">  若帧校验失败(如 ICV 不匹配),且 MACsec 无法丢弃该帧</span><br><span class="line">  → 帧以 FCS 损坏的形式转发出去</span><br><span class="line">  → 接收端网卡会检测 FCS 错误并丢弃</span><br><span class="line">  → 避免帧被意外处理,导致安全问题</span><br><span class="line"></span><br><span class="line">这是一个车载特有的容错设计。</span><br></pre></td></tr></table></figure>
+
+<h4 id="9-6-不依赖-802-3br-帧抢占-AutoMACsec-01003"><a href="#9-6-不依赖-802-3br-帧抢占-AutoMACsec-01003" class="headerlink" title="9.6 不依赖 802.3br 帧抢占(AutoMACsec-01003)"></a>9.6 不依赖 802.3br 帧抢占(AutoMACsec-01003)</h4><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">IEEE 802.1AE 通用标准可以利用 IEEE 802.3br Frame Preemption</span><br><span class="line">(高性能帧中断低优先级帧)来优化 MACsec 开销。</span><br><span class="line"></span><br><span class="line">Automotive MACsec:不依赖 802.3br 功能</span><br><span class="line">  → 允许简化 MACsec 硬件设计</span><br><span class="line">  → 降低芯片成本</span><br><span class="line">  → 在 10BASE-T1S / 100BASE-T1 链路上,帧抢占非必需</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h3 id="十、统计计数器要求-AutoMACsec-01008"><a href="#十、统计计数器要求-AutoMACsec-01008" class="headerlink" title="十、统计计数器要求(AutoMACsec-01008)"></a>十、统计计数器要求(AutoMACsec-01008)</h3><p>Automotive MACsec 规定了精简的统计计数器集(与 IEEE 802.1AE MIB 对齐):</p>
+<h4 id="发送方向-TX"><a href="#发送方向-TX" class="headerlink" title="发送方向(TX)"></a>发送方向(TX)</h4><table>
+<thead>
+<tr>
+<th>计数器</th>
+<th>名称</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>out_pkts_untagged</code></td>
+<td>OutPktsUntagged</td>
+<td>发出的无 SecTAG 帧数</td>
+</tr>
+<tr>
+<td><code>out_pkts_too_long</code></td>
+<td>OutPktsTooLong</td>
+<td>因超长而丢弃的帧数</td>
+</tr>
+<tr>
+<td><code>out_octets_protected</code></td>
+<td>OutPktsProtected</td>
+<td>带完整性保护的发出的帧数</td>
+</tr>
+<tr>
+<td><code>out_octets_encrypted</code></td>
+<td>OutPktsEncrypted</td>
+<td>带加密的发出的帧数</td>
+</tr>
+</tbody></table>
+<h4 id="接收方向-RX"><a href="#接收方向-RX" class="headerlink" title="接收方向(RX)"></a>接收方向(RX)</h4><table>
+<thead>
+<tr>
+<th>计数器</th>
+<th>名称</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>in_pkts_untagged</code></td>
+<td>InPktsUntagged</td>
+<td>收到的无 SecTAG 帧数</td>
+</tr>
+<tr>
+<td><code>in_pkts_no_tag</code></td>
+<td>InPktsNoTag</td>
+<td>期望 MACsec 但收到无 SecTAG 帧</td>
+</tr>
+<tr>
+<td><code>in_pkts_bad_tag</code></td>
+<td>InPktsBadTag</td>
+<td>SecTAG 格式错误帧数</td>
+</tr>
+<tr>
+<td><code>in_pkts_no_sa</code></td>
+<td>InPktsNoSA</td>
+<td>找不到对应 SA 的帧数</td>
+</tr>
+<tr>
+<td><code>in_pkts_no_sa_error</code></td>
+<td>InPktsNoSAError</td>
+<td>无 SA 且校验失败的帧数</td>
+</tr>
+<tr>
+<td><code>in_pkts_overrun</code></td>
+<td>InPktsOverrun</td>
+<td>SecY 过载丢弃的帧数</td>
+</tr>
+<tr>
+<td><code>in_octets_validated</code></td>
+<td>InOctetsValidated</td>
+<td>完整性校验的字节数</td>
+</tr>
+<tr>
+<td><code>in_octets_decrypted</code></td>
+<td>InOctetsDecrypted</td>
+<td>解密的字节数</td>
+</tr>
+</tbody></table>
+<h4 id="SC-级别计数器"><a href="#SC-级别计数器" class="headerlink" title="SC 级别计数器"></a>SC 级别计数器</h4><table>
+<thead>
+<tr>
+<th>方向</th>
+<th>计数器</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Tx SC</td>
+<td><code>out_pkts_protected</code>, <code>out_pkts_encrypted</code></td>
+</tr>
+<tr>
+<td>Rx SC</td>
+<td><code>in_pkts_ok</code>, <code>in_pkts_unchecked</code>, <code>in_pkts_late</code>, <code>in_pkts_invalid</code>, <code>in_pkts_not_valid</code></td>
+</tr>
+</tbody></table>
+<hr>
+<h3 id="十一、Automotive-MACsec-与-Automotive-MKA-的协同"><a href="#十一、Automotive-MACsec-与-Automotive-MKA-的协同" class="headerlink" title="十一、Automotive MACsec 与 Automotive MKA 的协同"></a>十一、Automotive MACsec 与 Automotive MKA 的协同</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line">┌──────────────────────────────────────────────────────────────────┐</span><br><span class="line">│              Automotive MACsec + Automotive MKA                  │</span><br><span class="line">│                                                               │</span><br><span class="line">│  Zone Controller ECU                                            │</span><br><span class="line">│  ┌──────────────────────────────────────────────────────────┐  │</span><br><span class="line">│  │  Automotive MKA (固件层)                                   │  │</span><br><span class="line">│  │  · PSK CAK/CKN                                            │  │</span><br><span class="line">│  │  · Key Server Priority = 0                                 │  │</span><br><span class="line">│  │  · ≤ 30 ms SAK 交付(Link Up → SAK_USE)                  │  │</span><br><span class="line">│  │  · Doubling ramp-up Hello Time (10ms→20ms→...→2s)       │  │</span><br><span class="line">│  │  · Replay Window = 0                                      │  │</span><br><span class="line">│  └──────────────────────┬─────────────────────────────────────┘  │</span><br><span class="line">│                          │ SAK 安装 (AES-128/256 GCM key)      │</span><br><span class="line">│                          ▼                                       │</span><br><span class="line">│  ┌──────────────────────────────────────────────────────────┐  │</span><br><span class="line">│  │  Automotive MACsec SecY Engine (硬件层)                   │  │</span><br><span class="line">│  │  · 点对点 MACsec (≥1 Tx SC + ≥1 Rx SC)                  │  │</span><br><span class="line">│  │  · SecTAG 无 SCI (8字节/帧)                             │  │</span><br><span class="line">│  │  · Confidentiality Offset 0 (必选)                       │  │</span><br><span class="line">│  │  · Integrity Only / Integrity + Confidentiality           │  │</span><br><span class="line">│  │  · Replay Window = 0 (最强保护)                          │  │</span><br><span class="line">│  │  · Common Port 规则转发 (≥8条)                           │  │</span><br><span class="line">│  │  · 不依赖 802.3br 帧抢占                                 │  │</span><br><span class="line">│  └──────────────────────┬─────────────────────────────────────┘  │</span><br><span class="line">│                          │ AES-GCM 加密 MAC 帧 (EtherType=0x88E5)│</span><br><span class="line">│                          ▼                                       │</span><br><span class="line">│                  100BASE-T1 / 1000BASE-T1                       │</span><br><span class="line">└──────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h3 id="十二、工程选型-哪些芯片支持-Automotive-MACsec"><a href="#十二、工程选型-哪些芯片支持-Automotive-MACsec" class="headerlink" title="十二、工程选型:哪些芯片支持 Automotive MACsec?"></a>十二、工程选型:哪些芯片支持 Automotive MACsec?</h3><table>
+<thead>
+<tr>
+<th>厂商</th>
+<th>型号</th>
+<th>类型</th>
+<th align="center">Automotive MACsec</th>
+<th>已验证的 MACsec 规格</th>
+<th>来源</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Texas Instruments</strong></td>
+<td><strong>DP83TC817S-Q1</strong></td>
+<td>100BASE-T1 PHY</td>
+<td align="center">✅</td>
+<td><strong>线速 802.1AE MACsec</strong>;Cipher Suites: <code>GCM-AES-XPN-128/256</code>, <code>GCM-AES-128/256</code>;16 SAK(8 Tx SC + 8 Rx SC);SAK Auto Rollover;Ingress&#x2F;Egress 分类规则数 ≥ 8 条(满足 AutoMACsec-01006B);Window Replay Protection</td>
+<td><a target="_blank" rel="noopener" href="https://www.ti.com/product/DP83TC817S-Q1">TI 产品页</a>+ 读者提供的 datasheet</td>
+</tr>
+<tr>
+<td><strong>Microchip</strong></td>
+<td>LAN8650 &#x2F; LAN8651</td>
+<td>10BASE-T1S MAC-PHY</td>
+<td align="center">❌</td>
+<td>无 MACsec HW(仅做 10BASE-T1S sensor hub)</td>
+<td>厂商产品页</td>
+</tr>
+<tr>
+<td><strong>ONsemi</strong></td>
+<td>NCN26010</td>
+<td>10BASE-T1S MAC-PHY</td>
+<td align="center">❌</td>
+<td>无 MACsec HW</td>
+<td>厂商产品页</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>🚧 <strong>以下数据来自历史资料&#x2F;行业宣传,未经独立 datasheet 核证。如果你要做选型评估,请直接下载对应芯片最新 datasheet 验证。</strong></p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th>厂商</th>
+<th>型号</th>
+<th>类型</th>
+<th align="center">本文原声称 MACsec</th>
+<th>实际验证状态</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Texas Instruments</strong></td>
+<td>DP83TC839</td>
+<td>100BASE-T1 PHY</td>
+<td align="center">✅(声称)</td>
+<td>⚠️ 未验证(但 TC8 系列命名可能带 MACsec,建议直接查 datasheet)</td>
+</tr>
+<tr>
+<td><strong>NXP</strong></td>
+<td>S32G2 &#x2F; S32G3</td>
+<td>车载 SoC</td>
+<td align="center">✅(声称)</td>
+<td>⚠️ 未验证(建议查 S32G Reference Manual)</td>
+</tr>
+<tr>
+<td><strong>Broadcom</strong></td>
+<td>BCM8953X 系列</td>
+<td>Automotive Switch</td>
+<td align="center">✅(声称)</td>
+<td>⚠️ 未验证</td>
+</tr>
+<tr>
+<td><strong>Marvell</strong> &#x2F; <strong>Infineon</strong></td>
+<td>88Q5050 系列</td>
+<td>Automotive Switch</td>
+<td align="center">✅(声称)</td>
+<td>⚠️ 未验证</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><h3 id="标准部分-★-三句话回顾-★"><a href="#标准部分-★-三句话回顾-★" class="headerlink" title="标准部分(★ 三句话回顾 ★)"></a>标准部分(★ 三句话回顾 ★)</h3><ol>
+<li><strong>MACsec 在哪一层</strong>:在 MAC 层(Layer 2)对整个以太网帧(包括 VLAN)提供加密和 ICV 完整性保护,比 IPsec 更贴近硬件,开销更小。</li>
+<li><strong>帧格式</strong>:在原始 MAC 帧中插入 SecTAG(8~16字节,含 EtherType&#x3D;0x88E5、TCI、PN,可选 SCI)和 ICV(16字节),可选加密 Secure Data。</li>
+<li><strong>SecY 架构</strong>:Common Port 始终放行非 MACsec 帧(如 EAPOL);Controlled Port 在 MKA 认证通过后放行业务帧;帧处理分 Protect(发送加密)和 Validate(接收解密校验)两路。</li>
+</ol>
+<h3 id="车载部分-★-Automotive-MACsec-要点-★"><a href="#车载部分-★-Automotive-MACsec-要点-★" class="headerlink" title="车载部分(★ Automotive MACsec 要点 ★)"></a>车载部分(★ Automotive MACsec 要点 ★)</h3><ol>
+<li><strong>点对点 + 无 SCI</strong>:只支持 switched Ethernet 点对点,SecTAG 优先省略 SCI(每帧省 8 字节)。</li>
+<li><strong>Offset 0 + Integrity Only</strong>:Confidentiality Offset 0 必选,Offset 30&#x2F;50 可选;Integrity Only 模式也必须支持。</li>
+<li><strong>Common Port 规则 + 诊断转发</strong>:支持 ≥8 条规则将特定帧(如诊断帧)转发到 Common Port;解密失败帧可带 FCS 错误转发。</li>
+<li><strong>硬件部署</strong>:MACsec 集成在 PHY 内部(如已 datasheet 验证的 TI DP83TC817S-Q1)或 SoC&#x2F;MAC IP 中(详情需查各厂商最新 datasheet);Automotive MACsec profile 不依赖 802.3br 帧抢占。</li>
+</ol>
+<hr>
+<blockquote>
+<p><strong>版权声明</strong>: 本文引用了 IEEE Std 802.1AE-2018 和 OPEN Alliance Automotive MACsec Specification v1.0 的内容,版权归各标准组织所有,引用仅供学习。</p>
+</blockquote>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">首页</a></li>
+        
+          <li><a href="/archives/">归档</a></li>
+        
+          <li><a href="/tags/">标签</a></li>
+        
+          <li><a href="/categories/">分类</a></li>
+        
+          <li><a href="/search/">搜索</a></li>
+        
+          <li><a href="/about/">关于</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%AC%AC%E4%B8%80%E9%83%A8%E5%88%86-%E6%A0%87%E5%87%86%E7%AF%87"><span class="toc-number">1.</span> <span class="toc-text">第一部分:标准篇</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%80%E3%80%81MACsec-%E5%9C%A8%E5%8D%8F%E8%AE%AE%E6%A0%88%E4%B8%AD%E7%9A%84%E4%BD%8D%E7%BD%AE"><span class="toc-number">1.1.</span> <span class="toc-text">一、MACsec 在协议栈中的位置</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E5%AE%89%E5%85%A8%E5%A8%81%E8%83%81%E4%B8%8E-MACsec-%E7%9A%84%E5%BA%94%E5%AF%B9-6-6-6-8-6-9"><span class="toc-number">1.2.</span> <span class="toc-text">二、安全威胁与 MACsec 的应对(6.6 &#x2F; 6.8 &#x2F; 6.9)</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#2-1-MACsec-%E8%83%BD%E6%8F%90%E4%BE%9B%E4%BB%80%E4%B9%88%E5%AE%89%E5%85%A8%E6%9C%8D%E5%8A%A1-6-9"><span class="toc-number">1.2.1.</span> <span class="toc-text">2.1 MACsec 能提供什么安全服务?(6.9)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-2-MACsec-%E4%B8%8D%E8%83%BD%E5%81%9A%E4%BB%80%E4%B9%88"><span class="toc-number">1.2.2.</span> <span class="toc-text">2.2 MACsec 不能做什么?</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5-CA-SC-SA"><span class="toc-number">1.3.</span> <span class="toc-text">三、核心概念:CA &#x2F; SC &#x2F; SA</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%9B%9B%E3%80%81MACsec-%E5%B8%A7%E6%A0%BC%E5%BC%8F-Chapter-9"><span class="toc-number">1.4.</span> <span class="toc-text">四、MACsec 帧格式(Chapter 9)</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#4-1-MPDU-%E4%B8%89%E5%A4%A7%E7%BB%84%E4%BB%B6"><span class="toc-number">1.4.1.</span> <span class="toc-text">4.1 MPDU 三大组件</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#4-2-SecTAG-%E6%A0%BC%E5%BC%8F-9-3"><span class="toc-number">1.4.2.</span> <span class="toc-text">4.2 SecTAG 格式(9.3)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#4-3-TCI-%E5%AD%97%E6%AE%B5%E8%AF%A6%E8%A7%A3-9-5"><span class="toc-number">1.4.3.</span> <span class="toc-text">4.3 TCI 字段详解(9.5)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#4-4-PN-Packet-Number-9-8"><span class="toc-number">1.4.4.</span> <span class="toc-text">4.4 PN(Packet Number)(9.8)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#4-5-ICV-Integrity-Check-Value-9-11"><span class="toc-number">1.4.5.</span> <span class="toc-text">4.5 ICV(Integrity Check Value)(9.11)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#4-6-MACsec-EtherType-9-4"><span class="toc-number">1.4.6.</span> <span class="toc-text">4.6 MACsec EtherType(9.4)</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BA%94%E3%80%81SecY-%E6%9E%B6%E6%9E%84%E4%B8%8E%E5%B8%A7%E5%A4%84%E7%90%86-Chapter-10"><span class="toc-number">1.5.</span> <span class="toc-text">五、SecY 架构与帧处理(Chapter 10)</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#5-1-SecY-%E7%9A%84%E4%B8%A4%E4%B8%AA%E7%AB%AF%E5%8F%A3"><span class="toc-number">1.5.1.</span> <span class="toc-text">5.1 SecY 的两个端口</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#5-2-%E5%B8%A7%E5%8F%91%E9%80%81%E6%B5%81%E7%A8%8B-Secure-Frame-Generation-10-5"><span class="toc-number">1.5.2.</span> <span class="toc-text">5.2 帧发送流程:Secure Frame Generation(10.5)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#5-3-%E5%B8%A7%E6%8E%A5%E6%94%B6%E6%B5%81%E7%A8%8B-Secure-Frame-Verification-10-6"><span class="toc-number">1.5.3.</span> <span class="toc-text">5.3 帧接收流程:Secure Frame Verification(10.6)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#5-4-XPN-PN-%E6%81%A2%E5%A4%8D-10-6"><span class="toc-number">1.5.4.</span> <span class="toc-text">5.4 XPN PN 恢复(10.6)</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%AD%E3%80%81Cipher-Suite-Chapter-14"><span class="toc-number">1.6.</span> <span class="toc-text">六、Cipher Suite(Chapter 14)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%83%E3%80%81MACsec-%E5%9C%A8%E7%B3%BB%E7%BB%9F%E4%B8%AD%E7%9A%84%E9%83%A8%E7%BD%B2-Chapter-11"><span class="toc-number">1.7.</span> <span class="toc-text">七、MACsec 在系统中的部署(Chapter 11)</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%AC%AC%E4%BA%8C%E9%83%A8%E5%88%86-%E8%BD%A6%E8%BD%BD%E7%AF%87%E2%80%94%E2%80%94OPEN-Alliance-Automotive-MACsec"><span class="toc-number">2.</span> <span class="toc-text">第二部分:车载篇——OPEN Alliance Automotive MACsec</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%AB%E3%80%81Automotive-MACsec-%E7%9A%84%E5%AE%9A%E4%BD%8D"><span class="toc-number">2.1.</span> <span class="toc-text">八、Automotive MACsec 的定位</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B9%9D%E3%80%81Automotive-MACsec-%E5%BF%85%E9%80%89%E8%83%BD%E5%8A%9B%E9%9B%86"><span class="toc-number">2.2.</span> <span class="toc-text">九、Automotive MACsec 必选能力集</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#9-1-%E7%82%B9%E5%AF%B9%E7%82%B9-MACsec-AutoMACsec-01001"><span class="toc-number">2.2.1.</span> <span class="toc-text">9.1 点对点 MACsec(AutoMACsec-01001)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#9-2-SecTAG-%E6%97%A0-SCI-%E6%A8%A1%E5%BC%8F-AutoMACsec-01004"><span class="toc-number">2.2.2.</span> <span class="toc-text">9.2 SecTAG 无 SCI 模式(AutoMACsec-01004)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#9-3-Confidentiality-Offset-AutoMACsec-01005"><span class="toc-number">2.2.3.</span> <span class="toc-text">9.3 Confidentiality Offset(AutoMACsec-01005)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#9-4-%E8%BD%AC%E5%8F%91%E5%88%B0-Common-Port-%E7%9A%84%E8%A7%84%E5%88%99-AutoMACsec-01006-01006A-01006B"><span class="toc-number">2.2.4.</span> <span class="toc-text">9.4 转发到 Common Port 的规则(AutoMACsec-01006, 01006A, 01006B)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#9-5-%E8%A7%A3%E5%AF%86%E5%A4%B1%E8%B4%A5%E5%B8%A7%E7%9A%84%E5%A4%84%E7%90%86-AutoMACsec-01007"><span class="toc-number">2.2.5.</span> <span class="toc-text">9.5 解密失败帧的处理(AutoMACsec-01007)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#9-6-%E4%B8%8D%E4%BE%9D%E8%B5%96-802-3br-%E5%B8%A7%E6%8A%A2%E5%8D%A0-AutoMACsec-01003"><span class="toc-number">2.2.6.</span> <span class="toc-text">9.6 不依赖 802.3br 帧抢占(AutoMACsec-01003)</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8D%81%E3%80%81%E7%BB%9F%E8%AE%A1%E8%AE%A1%E6%95%B0%E5%99%A8%E8%A6%81%E6%B1%82-AutoMACsec-01008"><span class="toc-number">2.3.</span> <span class="toc-text">十、统计计数器要求(AutoMACsec-01008)</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%8F%91%E9%80%81%E6%96%B9%E5%90%91-TX"><span class="toc-number">2.3.1.</span> <span class="toc-text">发送方向(TX)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%8E%A5%E6%94%B6%E6%96%B9%E5%90%91-RX"><span class="toc-number">2.3.2.</span> <span class="toc-text">接收方向(RX)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#SC-%E7%BA%A7%E5%88%AB%E8%AE%A1%E6%95%B0%E5%99%A8"><span class="toc-number">2.3.3.</span> <span class="toc-text">SC 级别计数器</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8D%81%E4%B8%80%E3%80%81Automotive-MACsec-%E4%B8%8E-Automotive-MKA-%E7%9A%84%E5%8D%8F%E5%90%8C"><span class="toc-number">2.4.</span> <span class="toc-text">十一、Automotive MACsec 与 Automotive MKA 的协同</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8D%81%E4%BA%8C%E3%80%81%E5%B7%A5%E7%A8%8B%E9%80%89%E5%9E%8B-%E5%93%AA%E4%BA%9B%E8%8A%AF%E7%89%87%E6%94%AF%E6%8C%81-Automotive-MACsec"><span class="toc-number">2.5.</span> <span class="toc-text">十二、工程选型:哪些芯片支持 Automotive MACsec?</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%80%BB%E7%BB%93"><span class="toc-number">3.</span> <span class="toc-text">总结</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%A0%87%E5%87%86%E9%83%A8%E5%88%86-%E2%98%85-%E4%B8%89%E5%8F%A5%E8%AF%9D%E5%9B%9E%E9%A1%BE-%E2%98%85"><span class="toc-number">3.1.</span> <span class="toc-text">标准部分(★ 三句话回顾 ★)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%BD%A6%E8%BD%BD%E9%83%A8%E5%88%86-%E2%98%85-Automotive-MACsec-%E8%A6%81%E7%82%B9-%E2%98%85"><span class="toc-number">3.2.</span> <span class="toc-text">车载部分(★ Automotive MACsec 要点 ★)</span></a></li></ol></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/IEEE%20802.1AE-2018%20MACsec%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84%E4%B8%8E%E5%B8%A7%E6%A0%BC%E5%BC%8F%E8%AF%A6%E8%A7%A3/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/IEEE%20802.1AE-2018%20MACsec%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84%E4%B8%8E%E5%B8%A7%E6%A0%BC%E5%BC%8F%E8%AF%A6%E8%A7%A3/&text=IEEE 802.1AE-2018 MACsec核心架构与帧格式详解"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/IEEE%20802.1AE-2018%20MACsec%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84%E4%B8%8E%E5%B8%A7%E6%A0%BC%E5%BC%8F%E8%AF%A6%E8%A7%A3/&title=IEEE 802.1AE-2018 MACsec核心架构与帧格式详解"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/IEEE%20802.1AE-2018%20MACsec%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84%E4%B8%8E%E5%B8%A7%E6%A0%BC%E5%BC%8F%E8%AF%A6%E8%A7%A3/&is_video=false&description=IEEE 802.1AE-2018 MACsec核心架构与帧格式详解"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=IEEE 802.1AE-2018 MACsec核心架构与帧格式详解&body=Check out this article: https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/IEEE%20802.1AE-2018%20MACsec%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84%E4%B8%8E%E5%B8%A7%E6%A0%BC%E5%BC%8F%E8%AF%A6%E8%A7%A3/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/IEEE%20802.1AE-2018%20MACsec%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84%E4%B8%8E%E5%B8%A7%E6%A0%BC%E5%BC%8F%E8%AF%A6%E8%A7%A3/&title=IEEE 802.1AE-2018 MACsec核心架构与帧格式详解"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/IEEE%20802.1AE-2018%20MACsec%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84%E4%B8%8E%E5%B8%A7%E6%A0%BC%E5%BC%8F%E8%AF%A6%E8%A7%A3/&title=IEEE 802.1AE-2018 MACsec核心架构与帧格式详解"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/IEEE%20802.1AE-2018%20MACsec%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84%E4%B8%8E%E5%B8%A7%E6%A0%BC%E5%BC%8F%E8%AF%A6%E8%A7%A3/&title=IEEE 802.1AE-2018 MACsec核心架构与帧格式详解"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/IEEE%20802.1AE-2018%20MACsec%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84%E4%B8%8E%E5%B8%A7%E6%A0%BC%E5%BC%8F%E8%AF%A6%E8%A7%A3/&title=IEEE 802.1AE-2018 MACsec核心架构与帧格式详解"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/IEEE%20802.1AE-2018%20MACsec%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84%E4%B8%8E%E5%B8%A7%E6%A0%BC%E5%BC%8F%E8%AF%A6%E8%A7%A3/&name=IEEE 802.1AE-2018 MACsec核心架构与帧格式详解&description=&lt;blockquote&gt;
+&lt;p&gt;本文是「以太网IEEE标准系列」第四篇,聚焦 &lt;strong&gt;IEEE Std 802.1AE™-2018&lt;/strong&gt;(Media Access Control Security)。本文分两部分:第一部分解析通用标准(MACsec帧格式、SecY架构、Cipher Suite),第二部分对照 &lt;strong&gt;OPEN Alliance TC17 Automotive MACsec Specification v1.0&lt;/strong&gt;(2025-05)的车载精简要求。&lt;/p&gt;
+&lt;/blockquote&gt;"><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://cursorhu.github.io/2026/09/16/%E4%BB%A5%E5%A4%AA%E7%BD%91IEEE%E6%A0%87%E5%87%86%E7%B3%BB%E5%88%97/IEEE%20802.1AE-2018%20MACsec%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84%E4%B8%8E%E5%B8%A7%E6%A0%BC%E5%BC%8F%E8%AF%A6%E8%A7%A3/&t=IEEE 802.1AE-2018 MACsec核心架构与帧格式详解"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> 菜单</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> 目录</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> 分享</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> 返回顶部</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2026
+    cursorhu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">首页</a></li><!--
+     --><!--
+       --><li><a href="/archives/">归档</a></li><!--
+     --><!--
+       --><li><a href="/tags/">标签</a></li><!--
+     --><!--
+       --><li><a href="/categories/">分类</a></li><!--
+     --><!--
+       --><li><a href="/search/">搜索</a></li><!--
+     --><!--
+       --><li><a href="/about/">关于</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"复制到粘贴板！\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "复制成功！");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+<!-- Mermaid diagrams -->
+
+  <script type="text/javascript">
+  (function() {
+    var mermaidElements = document.querySelectorAll('.mermaid');
+    if (!mermaidElements.length) return;
+
+    var mermaidTheme = 'auto';
+    if (mermaidTheme === 'auto') {
+      var colorscheme = 'dark';
+      mermaidTheme = (colorscheme === 'dark' || colorscheme === 'classic') ? 'dark' : 'default';
+    }
+
+    function initMermaid() {
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: mermaidTheme,
+        logLevel: 'error',
+        securityLevel: 'loose',
+        flowchart: { curve: 'basis' },
+        gantt: { axisFormat: '%m/%d/%Y' },
+        sequence: { actorMargin: 50 }
+      });
+      mermaid.run({ nodes: mermaidElements });
+    }
+
+    var script = document.createElement('script');
+    
+    script.src = 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js';
+    
+    script.onload = initMermaid;
+    document.head.appendChild(script);
+  })();
+  </script>
+
+</body>
+</html>
